@@ -32,7 +32,8 @@ a, a:visited {
     position: absolute;
     width: 100%;
     height: 100%;
-    background: rgba(25, 25, 25, 0.49);
+    /*For opacity: 
+    background: rgba(25, 25, 25, 0.2);*/
     left: 0;
     top: 0;
 }
@@ -47,10 +48,10 @@ a, a:visited {
     border: 1px solid black;
 }
 .content {
-    margin-bottom: 50px;
+    margin-bottom: 30px;
 }
 .content__inner {
-    padding-top: 10px;
+    padding-top: 3px;
 }
 .project:first-child {
     margin-bottom: 30px;
@@ -119,7 +120,7 @@ a, a:visited {
     position: relative;
 }
 .block-content {
-    margin: 66% 0% 20%;
+    margin: 8% 0% 20%;
 }
 @media screen and (min-width: 320px) and (max-width: 767px){
   .block-content {
@@ -182,7 +183,13 @@ a, a:visited {
     margin-bottom: 5px;
     margin-right: 5px
 }
+.mine_img{
+    
+    height: 45%;
+    width: 45%;
+    border-radius: 50%;
 
+}
 .chip>img {
     float: left;
     margin: 0 8px 0 -12px;
