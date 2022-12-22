@@ -22,7 +22,7 @@ a, a:visited {
     left: 0;
     color: white;
     position: fixed;
-    background-image: url(../img/codeme.jpg);
+    background-image: url(../img/codeme-2.png);
     background-size: cover;
 }
 .main-name {
@@ -192,7 +192,7 @@ a, a:visited {
 .mine_img{
     display: inline-block;
     height: 45%;
-    width: 40%;
+    width: 50%;
     border-radius: 50%;
 
 }
