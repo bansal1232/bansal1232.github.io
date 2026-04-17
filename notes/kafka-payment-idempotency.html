@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kafka & Payment Idempotency — Interview Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&family=Literata:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#f7f5f0;--surface:#ffffff;--surface2:#f0ede6;--border:#ddd7cb;
+  --text:#1c1917;--muted:#78716c;--heading:#0c0a09;
+  --ink:#1c1917;--ink-light:#44403c;
+  --kafka:#0a6bcc;--kafka-d:#e8f1fb;
+  --debug:#b45309;--debug-d:#fef3e2;
+  --pay:#047857;--pay-d:#ecfdf5;
+  --red:#dc2626;--red-d:#fef2f2;
+  --purple:#7c3aed;--purple-d:#f3f0ff;
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);line-height:1.75}
+::selection{background:var(--kafka);color:#fff}
+
+.hero{background:var(--ink);color:#f5f5f0;padding:4rem 2rem 3.5rem;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 30h60M30 0v60' stroke='%23ffffff08' stroke-width='1'/%3E%3C/svg%3E")}
+.hero .num{font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:700;letter-spacing:.15em;color:rgba(255,255,255,.35);margin-bottom:.75rem;position:relative}
+.hero h1{font-size:2.7rem;font-weight:800;letter-spacing:-.03em;line-height:1.12;position:relative}
+.hero h1 em{font-style:normal;color:#60a5fa}
+.hero .sub{color:rgba(255,255,255,.45);font-size:.95rem;margin-top:.5rem;position:relative}
+
+.wrap{max-width:880px;margin:0 auto;padding:2.5rem 1.5rem 5rem}
+
+/* QUESTION HEADER */
+.qh{padding:2.5rem 0 1.5rem;border-bottom:2px solid var(--ink);margin-bottom:2rem;display:flex;align-items:flex-start;gap:1rem}
+.qh .qnum{font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.35rem .75rem;border-radius:6px;white-space:nowrap;margin-top:.35rem}
+.qn-kafka{background:var(--kafka-d);color:var(--kafka)}
+.qn-debug{background:var(--debug-d);color:var(--debug)}
+.qn-pay{background:var(--pay-d);color:var(--pay)}
+.qh h2{font-size:1.5rem;font-weight:700;color:var(--heading);letter-spacing:-.015em;line-height:1.35}
+
+/* SECTION */
+.sec{margin-bottom:2.5rem}
+.stag{display:inline-block;font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:.28rem .75rem;border-radius:5px;margin-bottom:.65rem}
+.st-kafka{background:var(--kafka-d);color:var(--kafka)}
+.st-debug{background:var(--debug-d);color:var(--debug)}
+.st-pay{background:var(--pay-d);color:var(--pay)}
+.st-red{background:var(--red-d);color:var(--red)}
+.st-purple{background:var(--purple-d);color:var(--purple)}
+
+.sec h3{font-size:1.15rem;font-weight:700;color:var(--heading);margin-bottom:.3rem}
+.sec>p{color:var(--muted);font-size:.9rem;margin-bottom:1.25rem;max-width:660px}
+
+/* DIAGRAM BOX */
+.dia{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.75rem;overflow-x:auto;margin-bottom:1.25rem}
+.dia pre{background:transparent;border:none;padding:0;margin:0;font-family:'JetBrains Mono',monospace;font-size:.7rem;line-height:1.65;color:var(--ink)}
+
+/* CODE */
+.clbl{font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:inline-block;padding:.28rem .7rem;border-radius:7px 7px 0 0}
+.cl-k{background:var(--kafka-d);color:var(--kafka)}
+.cl-d{background:var(--debug-d);color:var(--debug)}
+.cl-p{background:var(--pay-d);color:var(--pay)}
+.cl-r{background:var(--red-d);color:var(--red)}
+.cl-v{background:var(--purple-d);color:var(--purple)}
+
+pre{background:#0f0f0f;border:1px solid #2a2a2a;border-radius:0 8px 8px 8px;padding:1.25rem 1.3rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.77rem;line-height:1.85;color:#d4d4d4;margin-bottom:1rem}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.35rem 1.5rem;margin-bottom:.75rem}
+.card h4{font-size:.95rem;font-weight:700;color:var(--heading);margin-bottom:.25rem}
+.card p,.card li{font-size:.85rem;color:var(--muted);line-height:1.7}
+.card ul{list-style:none;margin-top:.35rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.2rem}
+.card ul li::before{content:'→';position:absolute;left:0;color:var(--kafka);font-weight:700}
+.card.debug-card ul li::before{color:var(--debug)}
+.card.pay-card ul li::before{color:var(--pay)}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem}
+@media(max-width:700px){.g2,.g3{grid-template-columns:1fr}.hero h1{font-size:1.9rem}.wrap{padding:1.5rem 1rem 4rem}.qh{flex-direction:column;gap:.5rem}}
+
+/* HIGHLIGHT */
+.hl{border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:.85rem;font-size:.84rem}
+.hl-k{background:var(--kafka-d);border-left:3px solid var(--kafka);color:var(--kafka)}
+.hl-d{background:var(--debug-d);border-left:3px solid var(--debug);color:var(--debug)}
+.hl-p{background:var(--pay-d);border-left:3px solid var(--pay);color:var(--pay)}
+.hl-r{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}
+.hl strong{font-weight:700}
+
+/* FLOW STEPS */
+.flow{counter-reset:flowstep;padding-left:2.4rem;position:relative}
+.flow::before{content:'';position:absolute;left:.9rem;top:.6rem;bottom:.6rem;width:2px;background:var(--border)}
+.flow .fs{position:relative;margin-bottom:1.25rem;counter-increment:flowstep}
+.flow .fs::before{content:counter(flowstep);position:absolute;left:-2.4rem;top:.05rem;width:1.8rem;height:1.8rem;border-radius:50%;font-size:.68rem;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:1}
+.flow.kafka-flow .fs::before{background:var(--kafka);color:#fff}
+.flow.debug-flow .fs::before{background:var(--debug);color:#fff}
+.flow.pay-flow .fs::before{background:var(--pay);color:#fff}
+.flow .fs h4{font-size:.92rem;font-weight:700;color:var(--heading);margin-bottom:.15rem}
+.flow .fs p{font-size:.84rem;color:var(--muted)}
+.flow .fs .cmd{font-family:'JetBrains Mono',monospace;font-size:.75rem;background:var(--surface2);padding:.5rem .8rem;border-radius:6px;margin-top:.4rem;display:block;overflow-x:auto;color:var(--ink-light)}
+
+.divider{height:1px;background:var(--border);margin:2.5rem 0}
+
+/* IQ */
+.iq{background:var(--kafka-d);border-left:3px solid var(--kafka);border-radius:0 8px 8px 0;padding:.65rem 1rem;margin-bottom:.65rem;font-size:.84rem;color:var(--kafka);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.iq.dq{background:var(--debug-d);border-color:var(--debug);color:var(--debug)}
+.iq.pq{background:var(--pay-d);border-color:var(--pay);color:var(--pay)}
+
+.ans{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1.2rem;margin-bottom:.85rem;font-size:.84rem;color:var(--text)}
+.ans strong{color:var(--heading)}
+
+.tbl{width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:1rem}
+.tbl th{background:var(--surface2);text-align:left;padding:.55rem .75rem;font-weight:700;font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)}
+.tbl td{padding:.55rem .75rem;border-bottom:1px solid var(--border);color:var(--ink-light)}
+.tbl tr:last-child td{border-bottom:none}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="num">BACKEND INTERVIEW · SYSTEM DESIGN</div>
+  <h1>Kafka Internals, Debugging<br/>& <em>Payment Idempotency</em></h1>
+  <div class="sub">Three must-know interview topics — explained with diagrams, commands, and code</div>
+</div>
+
+<div class="wrap">
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  QUESTION 1: KAFKA BASICS                                    ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+
+<div class="qh">
+  <span class="qnum qn-kafka">Q1</span>
+  <h2>Discuss the basic working of Kafka and its various components</h2>
+</div>
+
+<!-- WHAT IS KAFKA -->
+<div class="sec">
+  <span class="stag st-kafka">Overview</span>
+  <h3>What is Apache Kafka?</h3>
+  <p>Kafka is a distributed, fault-tolerant, high-throughput event streaming platform. Think of it as a durable commit log where producers write events and consumers read them — at their own pace, without losing data.</p>
+
+  <div class="dia">
+<pre>
+                            KAFKA CLUSTER
+  ┌────────┐         ┌────────────────────────────────────┐         ┌────────┐
+  │Producer│────────►│                                    │────────►│Consumer│
+  │   A    │  write  │   Broker 1    Broker 2    Broker 3 │  read   │ Group 1│
+  └────────┘         │   ┌──────┐   ┌──────┐   ┌──────┐  │         └────────┘
+  ┌────────┐         │   │ P0   │   │ P1   │   │ P2   │  │         ┌────────┐
+  │Producer│────────►│   │(Lead)│   │(Lead)│   │(Lead)│  │────────►│Consumer│
+  │   B    │         │   │ P1   │   │ P2   │   │ P0   │  │         │ Group 2│
+  └────────┘         │   │(Rep) │   │(Rep) │   │(Rep) │  │         └────────┘
+                     │   └──────┘   └──────┘   └──────┘  │
+                     │                                    │
+                     │          ZooKeeper / KRaft          │
+                     │       (metadata & coordination)     │
+                     └────────────────────────────────────┘
+
+  P0, P1, P2 = Partitions of a Topic
+  (Lead) = Leader partition    (Rep) = Replica/Follower
+</pre>
+  </div>
+</div>
+
+<!-- COMPONENTS -->
+<div class="sec">
+  <span class="stag st-kafka">Components</span>
+  <h3>Core Components Explained</h3>
+
+  <div class="g2">
+    <div class="card">
+      <h4>1. Producer</h4>
+      <p>Publishes messages (events) to a Kafka topic. Decides which partition to send to — via round-robin, key-based hashing, or custom partitioner. Supports batching and compression.</p>
+    </div>
+    <div class="card">
+      <h4>2. Consumer</h4>
+      <p>Reads messages from topic partitions. Tracks its position using offsets. Part of a Consumer Group for parallel processing. Can auto-commit or manually commit offsets.</p>
+    </div>
+    <div class="card">
+      <h4>3. Broker</h4>
+      <p>A single Kafka server that stores data and serves clients. A cluster has multiple brokers for fault-tolerance. Each broker handles read/write for the partitions it leads.</p>
+    </div>
+    <div class="card">
+      <h4>4. Topic</h4>
+      <p>A logical category/feed name to which messages are published. Think of it as a "table" in a database. Messages in a topic are immutable and append-only.</p>
+    </div>
+    <div class="card">
+      <h4>5. Partition</h4>
+      <p>A topic is split into partitions for parallelism. Each partition is an ordered, immutable log. Messages within a partition have a sequential offset. Partitions are distributed across brokers.</p>
+    </div>
+    <div class="card">
+      <h4>6. Consumer Group</h4>
+      <p>A set of consumers that cooperatively read from a topic. Each partition is assigned to exactly one consumer in the group. Enables horizontal scaling of consumption.</p>
+    </div>
+    <div class="card">
+      <h4>7. Offset</h4>
+      <p>A unique sequential ID for each message within a partition. Consumers track their offset to know where they left off. Stored in an internal topic: <code>__consumer_offsets</code>.</p>
+    </div>
+    <div class="card">
+      <h4>8. ZooKeeper / KRaft</h4>
+      <p>Manages cluster metadata: broker registration, topic configs, partition leaders. KRaft (Kafka Raft) is the new built-in replacement for ZooKeeper, removing the external dependency.</p>
+    </div>
+  </div>
+</div>
+
+<!-- HOW MESSAGE FLOWS -->
+<div class="sec">
+  <span class="stag st-kafka">Message Flow</span>
+  <h3>How a Message Travels Through Kafka</h3>
+
+  <div class="flow kafka-flow">
+    <div class="fs">
+      <h4>Producer serializes the message</h4>
+      <p>Key + Value are serialized (JSON, Avro, Protobuf). If a key is present, it's hashed to determine the target partition. No key → round-robin across partitions.</p>
+    </div>
+    <div class="fs">
+      <h4>Message sent to the Partition Leader broker</h4>
+      <p>Producer's metadata cache knows which broker leads each partition. Message is sent directly to that broker. Batching and compression happen here for throughput.</p>
+    </div>
+    <div class="fs">
+      <h4>Leader writes to its commit log</h4>
+      <p>The message is appended to the partition's on-disk log. It gets assigned a unique offset (e.g., offset 42). The write is sequential I/O — this is why Kafka is fast.</p>
+    </div>
+    <div class="fs">
+      <h4>Replicas (followers) pull from the leader</h4>
+      <p>Follower brokers fetch the new message and write it to their local log. Once enough replicas confirm (based on <code>acks</code> config), the message is "committed."</p>
+    </div>
+    <div class="fs">
+      <h4>Leader sends acknowledgment to producer</h4>
+      <p><code>acks=0</code>: fire-and-forget (no ack). <code>acks=1</code>: leader confirms. <code>acks=all</code>: all ISR replicas confirm. Tradeoff: durability vs latency.</p>
+    </div>
+    <div class="fs">
+      <h4>Consumer polls the broker for new messages</h4>
+      <p>Consumer sends a fetch request with its current offset. Broker returns messages from that offset onwards. Consumer processes them and commits the new offset.</p>
+    </div>
+  </div>
+</div>
+
+<!-- KEY CONCEPTS -->
+<div class="sec">
+  <span class="stag st-kafka">Key Concepts</span>
+  <h3>Important Concepts Interviewers Expect You to Know</h3>
+
+  <div class="dia">
+<pre>
+  ┌─────────────── PARTITION 0 ────────────────────────────────┐
+  │ offset: 0 │ 1 │ 2 │ 3 │ 4 │ 5 │ 6 │ 7 │ 8 │ ...        │
+  │           │   │   │   │   │   │   │   │   │              │
+  │ ◄─── old messages ──── │ ──── new messages ───►           │
+  │                         │                                  │
+  │                    committed                               │
+  │                     offset                                 │
+  │                    (Consumer                               │
+  │                     position)                              │
+  └────────────────────────────────────────────────────────────┘
+
+  CONSUMER GROUP ASSIGNMENT:
+  ┌─────────────────────────────────────────────┐
+  │ Topic: "orders" (3 partitions)              │
+  │                                             │
+  │   Consumer Group "payment-service":         │
+  │     Consumer A  ← reads P0                  │
+  │     Consumer B  ← reads P1                  │
+  │     Consumer C  ← reads P2                  │
+  │                                             │
+  │   Consumer Group "analytics-service":       │
+  │     Consumer X  ← reads P0, P1             │
+  │     Consumer Y  ← reads P2                  │
+  │                                             │
+  │   ⚠ If consumers > partitions:              │
+  │     Extra consumers sit IDLE                │
+  └─────────────────────────────────────────────┘
+
+  ISR (In-Sync Replicas):
+  ┌─────────────────────────────────────────────┐
+  │  Broker 1 (Leader)  → offset 100  ✓ ISR    │
+  │  Broker 2 (Follower)→ offset 99   ✓ ISR    │
+  │  Broker 3 (Follower)→ offset 85   ✗ OUT    │
+  │                                             │
+  │  replica.lag.max.messages controls          │
+  │  when a follower is kicked from ISR         │
+  └─────────────────────────────────────────────┘
+</pre>
+  </div>
+
+  <table class="tbl">
+    <tr><th>Config</th><th>What it controls</th><th>Trade-off</th></tr>
+    <tr><td><code>acks</code></td><td>How many replicas must confirm a write</td><td>Durability vs latency</td></tr>
+    <tr><td><code>replication.factor</code></td><td>Number of copies of each partition</td><td>Fault-tolerance vs storage</td></tr>
+    <tr><td><code>min.insync.replicas</code></td><td>Minimum ISR count to accept a write</td><td>Availability vs consistency</td></tr>
+    <tr><td><code>retention.ms</code></td><td>How long messages are kept</td><td>Storage vs replay ability</td></tr>
+    <tr><td><code>num.partitions</code></td><td>Parallelism of a topic</td><td>Throughput vs ordering</td></tr>
+    <tr><td><code>enable.auto.commit</code></td><td>Auto vs manual offset commits</td><td>Convenience vs exactly-once</td></tr>
+    <tr><td><code>max.poll.records</code></td><td>Max messages per consumer poll()</td><td>Throughput vs processing time</td></tr>
+  </table>
+</div>
+
+<div class="divider"></div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  QUESTION 2: DEBUGGING CONSUMER ISSUES                       ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+
+<div class="qh">
+  <span class="qnum qn-debug">Q2</span>
+  <h2>How to debug if a producer publishes messages but a consumer cannot consume them?</h2>
+</div>
+
+<div class="sec">
+  <span class="stag st-debug">Approach</span>
+  <h3>Systematic Debugging Checklist</h3>
+  <p>Follow this order — from most common to least common causes. In an interview, walk through this methodically.</p>
+
+  <div class="flow debug-flow">
+    <div class="fs">
+      <h4>Verify the producer is actually writing successfully</h4>
+      <p>Don't assume the producer is working. Check producer logs for errors. Verify with the console consumer or by checking topic offsets.</p>
+      <span class="cmd">kafka-console-consumer --bootstrap-server localhost:9092 --topic orders --from-beginning</span>
+      <span class="cmd">kafka-run-class kafka.tools.GetOffsetShell --broker-list localhost:9092 --topic orders</span>
+    </div>
+
+    <div class="fs">
+      <h4>Check if the consumer is in the correct Consumer Group</h4>
+      <p>A very common issue — the consumer is subscribed to a different group ID, so it's reading from a different set of offsets, or it was already consumed and committed those offsets before.</p>
+      <span class="cmd">kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group payment-service</span>
+    </div>
+
+    <div class="fs">
+      <h4>Check consumer group LAG</h4>
+      <p>If LAG = 0 but consumer sees no messages, it means all messages were already consumed (offset is at the end). If LAG > 0 but consumer isn't reading, the consumer is likely stuck or disconnected.</p>
+      <span class="cmd">kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group payment-service
+
+# Output columns: TOPIC  PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG  CONSUMER-ID
+# If LAG keeps growing → consumer is slow or dead
+# If CURRENT-OFFSET = LOG-END-OFFSET → nothing new to read</span>
+    </div>
+
+    <div class="fs">
+      <h4>Check topic & partition assignment</h4>
+      <p>Is the consumer assigned to partitions? If the group has more consumers than partitions, some consumers will be idle. Also check if the consumer is subscribed to the correct topic name (typo!).</p>
+      <span class="cmd"># In consumer logs, look for:
+# "Assigned partitions: [orders-0, orders-1]"
+# If "Assigned partitions: []" → consumer is idle or rebalancing</span>
+    </div>
+
+    <div class="fs">
+      <h4>Check auto.offset.reset config</h4>
+      <p>If a consumer group is NEW (no committed offsets) and <code>auto.offset.reset=latest</code>, it will only see messages published AFTER it started. Old messages are invisible. Set to <code>earliest</code> to consume from the beginning.</p>
+      <span class="cmd"># In consumer config:
+# auto.offset.reset=earliest   → start from offset 0
+# auto.offset.reset=latest     → start from latest (miss old messages)
+# auto.offset.reset=none       → throw exception if no offset found</span>
+    </div>
+
+    <div class="fs">
+      <h4>Check for consumer rebalancing loops</h4>
+      <p>If processing takes too long, the consumer fails to call <code>poll()</code> within <code>max.poll.interval.ms</code>, gets kicked from the group, rejoins, gets reassigned → infinite loop. Look for "Member X has been removed" in logs.</p>
+      <span class="cmd"># Fix: increase max.poll.interval.ms or decrease max.poll.records
+# Or fix the slow processing in your consumer code</span>
+    </div>
+
+    <div class="fs">
+      <h4>Check for deserialization errors</h4>
+      <p>Producer writes Avro, consumer expects JSON → deserialization fails silently or throws. Consumer might be crashing on every message without making progress.</p>
+      <span class="cmd"># Check consumer logs for:
+# "SerializationException" or "DeserializationException"
+# Ensure producer serializer matches consumer deserializer</span>
+    </div>
+
+    <div class="fs">
+      <h4>Check network / ACL / authentication</h4>
+      <p>Consumer might not have permission to read from the topic (ACL issue), or there's a firewall between consumer and broker. Also check if SSL/SASL configs match.</p>
+      <span class="cmd"># Check broker logs for:
+# "Authorization failed" or "Authentication failed"
+# kafka-acls --list --topic orders --bootstrap-server localhost:9092</span>
+    </div>
+
+    <div class="fs">
+      <h4>Check if messages have expired (retention)</h4>
+      <p>If <code>retention.ms</code> is short and consumer was offline for too long, messages were deleted before the consumer could read them. The consumer's committed offset now points to a deleted segment.</p>
+      <span class="cmd"># Check topic retention:
+# kafka-configs --describe --entity-type topics --entity-name orders --bootstrap-server localhost:9092</span>
+    </div>
+  </div>
+</div>
+
+<!-- SUMMARY TABLE -->
+<div class="sec">
+  <span class="stag st-debug">Quick Reference</span>
+  <h3>Diagnosis Matrix</h3>
+
+  <table class="tbl">
+    <tr><th>Symptom</th><th>Likely Cause</th><th>Fix</th></tr>
+    <tr><td>LAG = 0, no messages</td><td>Already consumed or <code>auto.offset.reset=latest</code></td><td>Reset offsets or use <code>earliest</code></td></tr>
+    <tr><td>LAG growing, consumer active</td><td>Slow processing or rebalancing</td><td>Increase poll interval, reduce batch size</td></tr>
+    <tr><td>LAG growing, no active consumer</td><td>Consumer crashed or disconnected</td><td>Check consumer logs, restart</td></tr>
+    <tr><td>Consumer assigned 0 partitions</td><td>More consumers than partitions, or wrong topic</td><td>Scale down consumers or add partitions</td></tr>
+    <tr><td>Constant rebalancing</td><td>Processing exceeds <code>max.poll.interval.ms</code></td><td>Increase timeout or optimize processing</td></tr>
+    <tr><td>Deserialization errors in logs</td><td>Schema mismatch between producer/consumer</td><td>Align serializers, use Schema Registry</td></tr>
+    <tr><td>Consumer starts but reads nothing</td><td>ACL denied, wrong bootstrap server, or wrong group</td><td>Check permissions, config, network</td></tr>
+  </table>
+
+  <div class="hl hl-d"><strong>Interview Tip:</strong> Start by saying "I'd approach this systematically" and walk through producer verification → consumer group check → lag analysis → config check. This shows structured thinking.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  QUESTION 3: PAYMENT IDEMPOTENCY                             ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+
+<div class="qh">
+  <span class="qnum qn-pay">Q3</span>
+  <h2>In a payment system, how do you ensure retries don't deduct balance multiple times?</h2>
+</div>
+
+<div class="sec">
+  <span class="stag st-pay">The Problem</span>
+  <h3>Why Retries Cause Double Deductions</h3>
+
+  <div class="dia">
+<pre>
+  THE PROBLEM SCENARIO:
+  ═══════════════════════════════════════════════════════════════
+
+  Client                    Payment Service               Database
+    │                              │                          │
+    │──── POST /pay $100 ────────►│                          │
+    │                              │── BEGIN TX ──────────────►│
+    │                              │   UPDATE balance -= 100   │
+    │                              │── COMMIT ────────────────►│
+    │                              │                          │
+    │    ✗ TIMEOUT (network)       │◄── 200 OK ──────────────│
+    │    (client never got         │    (but response lost     │
+    │     the response)            │     in network)           │
+    │                              │                          │
+    │──── POST /pay $100 ────────►│                          │
+    │     (RETRY! same request)    │── BEGIN TX ──────────────►│
+    │                              │   UPDATE balance -= 100   │
+    │                              │── COMMIT ────────────────►│  ⚠ DOUBLE
+    │◄── 200 OK ──────────────────│◄── OK ───────────────────│    DEDUCTION!
+    │                              │                          │
+
+  Balance was 500.
+  After 1st request: 400 ✓
+  After retry:       300 ✗  ← User lost $100 extra!
+</pre>
+  </div>
+</div>
+
+<!-- SOLUTION: IDEMPOTENCY KEY -->
+<div class="sec">
+  <span class="stag st-pay">Solution</span>
+  <h3>Idempotency Key — The Industry Standard</h3>
+  <p>The core idea: every payment request carries a unique <code>idempotency_key</code>. Before processing, we check if we've already processed this key. If yes, return the cached response. If no, process and store the result.</p>
+
+  <div class="dia">
+<pre>
+  THE SOLUTION:
+  ═══════════════════════════════════════════════════════════════
+
+  Client                    Payment Service               Database
+    │                              │                          │
+    │  POST /pay $100              │                          │
+    │  Idempotency-Key: "abc-123" │                          │
+    │─────────────────────────────►│                          │
+    │                              │── Check: "abc-123"       │
+    │                              │   exists in              │
+    │                              │   idempotency_store? ───►│
+    │                              │◄── NO ──────────────────│
+    │                              │                          │
+    │                              │── BEGIN TX ──────────────►│
+    │                              │   1. INSERT into          │
+    │                              │      idempotency_store    │
+    │                              │      (key, status,result) │
+    │                              │   2. UPDATE balance -=100 │
+    │                              │── COMMIT ────────────────►│
+    │                              │                          │
+    │  ✗ TIMEOUT                   │◄── OK ──────────────────│
+    │                              │                          │
+    │  POST /pay $100              │                          │
+    │  Idempotency-Key: "abc-123" │                          │
+    │─────────────────────────────►│                          │
+    │                              │── Check: "abc-123"       │
+    │                              │   exists? ──────────────►│
+    │                              │◄── YES, return cached ──│
+    │                              │                          │
+    │◄── 200 OK (cached) ─────────│    ✅ NO DOUBLE          │
+    │    (same response as 1st)    │       DEDUCTION!         │
+
+  Balance: 400 ✓ (deducted only once)
+</pre>
+  </div>
+</div>
+
+<!-- DATABASE DESIGN -->
+<div class="sec">
+  <span class="stag st-pay">Implementation</span>
+  <h3>Database Schema & Code</h3>
+
+  <span class="clbl cl-p">idempotency_store table</span>
+<pre><span class="cmt">-- Stores the result of each unique payment request</span>
+<span class="kw">CREATE TABLE</span> <span class="ty">idempotency_store</span> (
+    idempotency_key   <span class="ty">VARCHAR</span>(<span class="num">255</span>) <span class="kw">PRIMARY KEY</span>,
+    status            <span class="ty">VARCHAR</span>(<span class="num">20</span>),   <span class="cmt">-- PROCESSING, SUCCESS, FAILED</span>
+    response_code     <span class="ty">INT</span>,
+    response_body     <span class="ty">TEXT</span>,           <span class="cmt">-- cached JSON response</span>
+    created_at        <span class="ty">TIMESTAMP</span> <span class="kw">DEFAULT NOW</span>(),
+    expires_at        <span class="ty">TIMESTAMP</span>        <span class="cmt">-- TTL: auto-cleanup old keys</span>
+);
+
+<span class="cmt">-- UNIQUE constraint on key ensures no duplicates even</span>
+<span class="cmt">-- under race conditions (DB-level safety net)</span></pre>
+
+  <span class="clbl cl-p">PaymentService.java — Idempotent Handler</span>
+<pre><span class="kw">public class</span> <span class="ty">PaymentService</span> {
+
+    <span class="an">@Transactional</span>
+    <span class="kw">public</span> <span class="ty">PaymentResponse</span> <span class="fn">processPayment</span>(<span class="ty">PaymentRequest</span> req) {
+        <span class="ty">String</span> key = req.<span class="fn">getIdempotencyKey</span>();
+
+        <span class="cmt">// ── Step 1: Check if already processed ──</span>
+        <span class="ty">Optional</span>&lt;<span class="ty">IdempotencyRecord</span>&gt; existing =
+            idempotencyRepo.<span class="fn">findByKey</span>(key);
+
+        <span class="kw">if</span> (existing.<span class="fn">isPresent</span>()) {
+            <span class="ty">IdempotencyRecord</span> record = existing.<span class="fn">get</span>();
+
+            <span class="kw">if</span> (record.<span class="fn">getStatus</span>() == <span class="ty">Status</span>.<span class="an">PROCESSING</span>) {
+                <span class="cmt">// Another thread is processing this right now</span>
+                <span class="kw">throw new</span> <span class="ty">ConflictException</span>(
+                    <span class="str">"Payment is being processed. Retry later."</span>);
+            }
+
+            <span class="cmt">// Already completed — return cached response</span>
+            <span class="kw">return</span> record.<span class="fn">getCachedResponse</span>();
+        }
+
+        <span class="cmt">// ── Step 2: Claim this key (with PROCESSING status) ──</span>
+        <span class="kw">try</span> {
+            idempotencyRepo.<span class="fn">insert</span>(<span class="kw">new</span> <span class="ty">IdempotencyRecord</span>(
+                key, <span class="ty">Status</span>.<span class="an">PROCESSING</span>, <span class="kw">null</span>
+            ));
+        } <span class="kw">catch</span> (<span class="ty">DuplicateKeyException</span> e) {
+            <span class="cmt">// Race condition: another thread inserted first</span>
+            <span class="kw">throw new</span> <span class="ty">ConflictException</span>(<span class="str">"Duplicate request"</span>);
+        }
+
+        <span class="cmt">// ── Step 3: Process the actual payment ──</span>
+        <span class="kw">try</span> {
+            <span class="fn">validateBalance</span>(req.<span class="fn">getUserId</span>(), req.<span class="fn">getAmount</span>());
+            <span class="fn">deductBalance</span>(req.<span class="fn">getUserId</span>(), req.<span class="fn">getAmount</span>());
+            <span class="fn">createTransaction</span>(req);
+
+            <span class="ty">PaymentResponse</span> response = <span class="kw">new</span> <span class="ty">PaymentResponse</span>(
+                <span class="ty">Status</span>.<span class="an">SUCCESS</span>, <span class="str">"Payment processed"</span>);
+
+            <span class="cmt">// ── Step 4: Save result & mark as SUCCESS ──</span>
+            idempotencyRepo.<span class="fn">updateStatus</span>(
+                key, <span class="ty">Status</span>.<span class="an">SUCCESS</span>, response);
+
+            <span class="kw">return</span> response;
+
+        } <span class="kw">catch</span> (<span class="ty">Exception</span> e) {
+            <span class="cmt">// Payment failed — mark as FAILED so retries can reattempt</span>
+            idempotencyRepo.<span class="fn">updateStatus</span>(
+                key, <span class="ty">Status</span>.<span class="an">FAILED</span>, <span class="kw">null</span>);
+            <span class="kw">throw</span> e;
+        }
+    }
+}</pre>
+
+  <div class="hl hl-p"><strong>Critical:</strong> Steps 1 (claim key), 2 (deduct balance), and 3 (save result) must happen in the <strong>SAME database transaction</strong>. This ensures atomicity — if any step fails, everything rolls back, including the idempotency record.</div>
+</div>
+
+<!-- MULTIPLE STRATEGIES -->
+<div class="sec">
+  <span class="stag st-pay">All Strategies</span>
+  <h3>5 Approaches to Payment Idempotency</h3>
+
+  <div class="card pay-card">
+    <h4>① Idempotency Key (Primary Strategy) ⭐</h4>
+    <ul>
+      <li>Client generates a UUID for each unique payment intent</li>
+      <li>Server stores key + result in the same DB transaction as the payment</li>
+      <li>Retries with the same key return the cached result</li>
+      <li>Used by: Stripe, Razorpay, PayPal</li>
+    </ul>
+  </div>
+
+  <div class="card pay-card">
+    <h4>② Unique Transaction ID / Request ID</h4>
+    <ul>
+      <li>Similar to idempotency key, but server-generated</li>
+      <li>Add UNIQUE constraint on transaction table: <code>(user_id, request_id)</code></li>
+      <li>DB rejects the duplicate INSERT → no double deduction</li>
+      <li>Simpler but relies on DB constraint enforcement</li>
+    </ul>
+  </div>
+
+  <div class="card pay-card">
+    <h4>③ Optimistic Locking with Version Check</h4>
+    <ul>
+      <li>Each account has a <code>version</code> column</li>
+      <li><code>UPDATE accounts SET balance = balance - 100, version = version + 1 WHERE id = ? AND version = ?</code></li>
+      <li>If version changed (concurrent update), UPDATE affects 0 rows → retry with fresh read</li>
+      <li>Prevents lost updates but doesn't prevent retries inherently</li>
+    </ul>
+  </div>
+
+  <div class="card pay-card">
+    <h4>④ State Machine for Transactions</h4>
+    <ul>
+      <li>Payment goes through states: INITIATED → PROCESSING → SUCCESS/FAILED</li>
+      <li>Only INITIATED → PROCESSING transition deducts money</li>
+      <li>Retries check current state — if already PROCESSING or SUCCESS, skip deduction</li>
+      <li>Used for complex multi-step payments (escrow, settlements)</li>
+    </ul>
+  </div>
+
+  <div class="card pay-card">
+    <h4>⑤ Kafka Producer Idempotency (for event-driven systems)</h4>
+    <ul>
+      <li>Enable <code>enable.idempotence=true</code> in Kafka producer config</li>
+      <li>Kafka assigns a Producer ID + Sequence Number to each message</li>
+      <li>Broker detects and deduplicates retried messages automatically</li>
+      <li>Guarantees exactly-once at the Kafka layer — still need app-level idempotency for DB writes</li>
+    </ul>
+  </div>
+</div>
+
+<!-- RACE CONDITIONS -->
+<div class="sec">
+  <span class="stag st-red">Edge Cases</span>
+  <h3>Race Conditions & How to Handle Them</h3>
+
+  <div class="dia">
+<pre>
+  RACE CONDITION: Two retries arrive simultaneously
+  ═══════════════════════════════════════════════════════════
+
+  Thread A                          Thread B
+     │                                  │
+     │── Check key "abc-123" ──►        │── Check key "abc-123" ──►
+     │◄── NOT FOUND ───────────         │◄── NOT FOUND ───────────
+     │                                  │
+     │── INSERT key "abc-123" ──►       │── INSERT key "abc-123" ──►
+     │◄── OK ──────────────────         │◄── DuplicateKeyException! ✓
+     │                                  │    (DB UNIQUE constraint
+     │── Deduct balance ──────►         │     saves us)
+     │◄── OK ──────────────────         │
+     │                                  │── Return "conflict" ────►
+     │── Mark SUCCESS ────────►         │
+     │◄── OK ──────────────────         │
+
+  SOLUTION: The UNIQUE constraint on idempotency_key in the DB
+  acts as the final safety net, even if the application-level
+  check misses a race condition.
+
+
+  ADDITIONAL SAFEGUARDS:
+  ┌─────────────────────────────────────────────────────────┐
+  │  1. SELECT ... FOR UPDATE (pessimistic locking)         │
+  │     Lock the row when checking, preventing concurrent   │
+  │     reads until the transaction completes.              │
+  │                                                         │
+  │  2. Redis SETNX (distributed lock for microservices)    │
+  │     SETNX idempotency:abc-123 "processing" EX 30       │
+  │     Only one thread wins. Others get "already locked."  │
+  │                                                         │
+  │  3. Database advisory locks                             │
+  │     pg_advisory_xact_lock(hash(idempotency_key))        │
+  │     Lightweight, auto-released on transaction end.      │
+  └─────────────────────────────────────────────────────────┘
+</pre>
+  </div>
+</div>
+
+<!-- KAFKA + PAYMENT COMBINED -->
+<div class="sec">
+  <span class="stag st-purple">Combined: Kafka + Payment Idempotency</span>
+  <h3>End-to-End Architecture</h3>
+
+  <div class="dia">
+<pre>
+  FULL ARCHITECTURE: Event-Driven Payment with Idempotency
+  ═══════════════════════════════════════════════════════════
+
+  ┌──────────┐     ┌────────────┐     ┌─────────────────┐     ┌──────────┐
+  │  Client   │────►│   API       │────►│  Kafka Topic     │────►│ Payment   │
+  │  (App)    │     │  Gateway    │     │  "payment-       │     │ Consumer  │
+  │           │     │             │     │   requests"      │     │ Service   │
+  └──────────┘     └────────────┘     └─────────────────┘     └────┬─────┘
+       │                                                           │
+       │  Idempotency-Key                                          │
+       │  in HTTP header                                           │
+       │                                  ┌───────────────────┐    │
+       │                                  │   Database         │◄───┘
+       │                                  │  ┌───────────────┐ │
+       │                                  │  │idempotency_   │ │
+       │                                  │  │store          │ │
+       │                                  │  ├───────────────┤ │
+       │                                  │  │accounts       │ │
+       │                                  │  ├───────────────┤ │
+       │                                  │  │transactions   │ │
+       │                                  │  └───────────────┘ │
+       │                                  └───────────────────┘
+       │
+       │  THREE LAYERS OF IDEMPOTENCY:
+       │
+       │  Layer 1: API Gateway deduplicates by Idempotency-Key
+       │           (Redis cache, TTL = 24h)
+       │
+       │  Layer 2: Kafka producer idempotence (enable.idempotence=true)
+       │           Prevents duplicate messages in topic
+       │
+       │  Layer 3: Payment Consumer checks idempotency_store in DB
+       │           (UNIQUE constraint = final safety net)
+</pre>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- INTERVIEW Q&A -->
+<div class="sec">
+  <span class="stag st-pay">Interview Q&A</span>
+  <h3>Follow-up Questions They Might Ask</h3>
+
+  <div class="iq pq">Who generates the idempotency key — client or server?</div>
+  <div class="ans"><strong>Client.</strong> The client generates a UUID before making the request. This way, if the client retries, it sends the same key. If the server generated it, the client wouldn't know the key to send on retry (because the response was lost). Stripe's API uses this exact approach — clients pass an <code>Idempotency-Key</code> header.</div>
+
+  <div class="iq pq">How long do you keep idempotency keys?</div>
+  <div class="ans"><strong>24–48 hours typically.</strong> After that, the same key can be reused. Use a TTL-based cleanup: <code>expires_at = created_at + 24h</code>. A background job or database TTL mechanism (Cassandra TTL, Redis EXPIRE, pg_cron) deletes expired records. Stripe keeps keys for 24 hours.</div>
+
+  <div class="iq pq">What if the server crashes AFTER deducting balance but BEFORE saving the idempotency record?</div>
+  <div class="ans"><strong>This is exactly why both operations must be in the SAME database transaction.</strong> If the process crashes mid-transaction, the DB rolls back everything — both the balance deduction AND the idempotency record insertion. On retry, the key won't exist, so it processes normally. Atomicity is non-negotiable here.</div>
+
+  <div class="iq pq">What about distributed systems with separate DBs?</div>
+  <div class="ans"><strong>Use the Outbox Pattern.</strong> Write the payment result + an "outbox event" in the same local transaction. A separate process reads the outbox and publishes to Kafka. The consumer on the other service also checks its own idempotency store. This gives you exactly-once semantics across services without distributed transactions (which are fragile and slow).</div>
+
+  <div class="iq pq">How does Kafka's built-in idempotency work?</div>
+  <div class="ans"><strong>Producer-side:</strong> With <code>enable.idempotence=true</code>, the broker assigns each producer a PID (Producer ID) and tracks sequence numbers per partition. If a retry sends the same (PID, sequence) pair, the broker silently discards the duplicate. <strong>Consumer-side:</strong> Use <code>isolation.level=read_committed</code> with transactions to get exactly-once delivery. But this only covers the Kafka layer — your application still needs its own idempotency logic for database writes.</div>
+
+  <div class="iq pq">Can you use Redis instead of a DB for idempotency checks?</div>
+  <div class="ans"><strong>Yes, but with caveats.</strong> Redis is faster for lookups, making it great for the "check" step. But Redis is not durable by default — if Redis crashes, you lose keys and might reprocess. <strong>Best practice:</strong> Use Redis as a fast first-level cache (SETNX with TTL), and the database UNIQUE constraint as the durable safety net. Two layers: speed + safety.</div>
+
+  <div class="iq pq">Difference between idempotency and exactly-once processing?</div>
+  <div class="ans"><strong>Idempotency</strong> = applying the same operation multiple times produces the same result (application-level design). <strong>Exactly-once</strong> = the system guarantees a message is processed exactly one time (infrastructure-level guarantee). In practice, true exactly-once is extremely hard. Most systems achieve "effectively once" by combining at-least-once delivery + idempotent consumers. Kafka Streams achieves exactly-once within Kafka using transactions, but cross-system exactly-once still needs application-level idempotency.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SUMMARY -->
+<div class="sec">
+  <span class="stag st-kafka">Summary</span>
+  <h3>Quick Interview Cheat Sheet</h3>
+
+  <div class="dia">
+<pre>
+┌──────────────────────────────────────────────────────────────────┐
+│                    INTERVIEW ANSWER STRUCTURE                     │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  Q1: KAFKA BASICS                                                 │
+│  → "Kafka is a distributed commit log with producers, consumers,  │
+│     brokers, topics, partitions, and consumer groups."            │
+│  → Draw the architecture diagram                                  │
+│  → Explain message flow (6 steps)                                │
+│  → Mention: acks, ISR, replication, retention, offsets            │
+│                                                                   │
+│  Q2: DEBUG CONSUMER NOT CONSUMING                                │
+│  → "I'd approach this systematically..."                         │
+│  → Verify producer → check consumer group → check lag             │
+│  → Check auto.offset.reset → rebalancing → deserialization       │
+│  → Show you know the CLI commands                                │
+│                                                                   │
+│  Q3: PAYMENT IDEMPOTENCY                                         │
+│  → "Every request gets a unique idempotency key"                 │
+│  → Check-before-process + SAME transaction + UNIQUE constraint    │
+│  → Draw the before/after diagram                                 │
+│  → Mention: Redis cache layer, TTL cleanup, outbox pattern       │
+│  → Handle race conditions: SETNX, SELECT FOR UPDATE, DB unique   │
+│                                                                   │
+└──────────────────────────────────────────────────────────────────┘
+</pre>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

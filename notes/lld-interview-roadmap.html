@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LLD Interview Roadmap</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;500;600;700;800&family=Newsreader:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #faf9f6;
+    --surface: #ffffff;
+    --surface-alt: #f4f1ec;
+    --border: #e4e0d8;
+    --text: #1a1714;
+    --text-muted: #6b6560;
+    --accent: #c44b24;
+    --accent-light: #fef0eb;
+    --green: #2a7d4f;
+    --green-light: #eef7f0;
+    --blue: #2563a8;
+    --blue-light: #eef4fb;
+    --purple: #6d3caa;
+    --purple-light: #f3eefa;
+    --gold: #a67c00;
+    --gold-light: #fdf8ea;
+    --dark: #1a1714;
+    --dark-surface: #2a2520;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 0;
+  }
+
+  /* ─── HERO ─── */
+  .hero {
+    background: var(--dark);
+    color: #fff;
+    padding: 4rem 2rem 3.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 30% 70%, rgba(196,75,36,0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(109,60,170,0.1) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .hero .tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(196,75,36,0.15);
+    padding: 0.4rem 1.2rem;
+    border-radius: 100px;
+    margin-bottom: 1.2rem;
+    position: relative;
+  }
+
+  .hero h1 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    margin-bottom: 0.6rem;
+    position: relative;
+  }
+
+  .hero p {
+    color: rgba(255,255,255,0.55);
+    font-size: 1.05rem;
+    max-width: 550px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  /* ─── CONTENT ─── */
+  .content {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 5rem;
+  }
+
+  /* ─── SECTION ─── */
+  .section {
+    margin-bottom: 3rem;
+  }
+
+  .section-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.9rem;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+  }
+
+  .section-label.red { background: var(--accent-light); color: var(--accent); }
+  .section-label.green { background: var(--green-light); color: var(--green); }
+  .section-label.blue { background: var(--blue-light); color: var(--blue); }
+  .section-label.purple { background: var(--purple-light); color: var(--purple); }
+  .section-label.gold { background: var(--gold-light); color: var(--gold); }
+
+  .section h2 {
+    font-size: 1.65rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.4rem;
+  }
+
+  .section > p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+    max-width: 640px;
+  }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .card h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .card h3 .icon {
+    font-size: 1.2rem;
+    line-height: 1;
+  }
+
+  .card p, .card li {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.75;
+  }
+
+  .card ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 0.5rem;
+  }
+
+  .card ul li {
+    padding-left: 1.3rem;
+    position: relative;
+    margin-bottom: 0.35rem;
+  }
+
+  .card ul li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ─── STEP FLOW ─── */
+  .steps {
+    position: relative;
+    padding-left: 2.5rem;
+  }
+
+  .steps::before {
+    content: '';
+    position: absolute;
+    left: 0.95rem;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    width: 2px;
+    background: var(--border);
+  }
+
+  .step {
+    position: relative;
+    margin-bottom: 1.75rem;
+  }
+
+  .step::before {
+    content: attr(data-num);
+    position: absolute;
+    left: -2.5rem;
+    top: 0.1rem;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    background: var(--dark);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+  }
+
+  .step h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+  }
+
+  .step p {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+  }
+
+  .step .example {
+    background: var(--surface-alt);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    margin-top: 0.6rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.8;
+    color: var(--text);
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .step .note {
+    margin-top: 0.5rem;
+    font-size: 0.82rem;
+    color: var(--accent);
+    font-weight: 600;
+    font-style: italic;
+  }
+
+  /* ─── GRID ─── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  @media (max-width: 650px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 2rem; }
+    .hero { padding: 3rem 1.5rem 2.5rem; }
+    .content { padding: 2rem 1rem 4rem; }
+    .steps { padding-left: 2.2rem; }
+    .step::before { left: -2.2rem; width: 1.6rem; height: 1.6rem; font-size: 0.65rem; }
+  }
+
+  /* ─── PATTERN TABLE ─── */
+  .pattern-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 650px) {
+    .pattern-grid { grid-template-columns: 1fr; }
+  }
+
+  .pattern-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+  }
+
+  .pattern-item .name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 0.15rem;
+  }
+
+  .pattern-item .use {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .pattern-item .freq {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    margin-top: 0.4rem;
+  }
+
+  .freq.high { background: #fde2e2; color: #b91c1c; }
+  .freq.med { background: #fef3c7; color: #92400e; }
+  .freq.low { background: #e0e7ff; color: #3730a3; }
+
+  /* ─── PROBLEM LIST ─── */
+  .problem-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  @media (max-width: 650px) {
+    .problem-list { grid-template-columns: 1fr 1fr; }
+  }
+
+  .problem-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.15s;
+  }
+
+  .problem-chip:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .problem-chip .diff {
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 0.2rem;
+  }
+
+  .diff.easy { color: var(--green); }
+  .diff.medium { color: var(--gold); }
+  .diff.hard { color: var(--accent); }
+
+  /* ─── TIMELINE ─── */
+  .timeline {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+
+  @media (max-width: 650px) {
+    .timeline { grid-template-columns: 1fr 1fr; }
+  }
+
+  .timeline-block {
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+    text-align: center;
+  }
+
+  .timeline-block .week {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.4rem;
+  }
+
+  .timeline-block .task {
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  .timeline-block .detail {
+    font-size: 0.72rem;
+    margin-top: 0.2rem;
+    opacity: 0.7;
+  }
+
+  .tb-1 { background: var(--accent-light); color: var(--accent); }
+  .tb-2 { background: var(--blue-light); color: var(--blue); }
+  .tb-3 { background: var(--purple-light); color: var(--purple); }
+  .tb-4 { background: var(--green-light); color: var(--green); }
+
+  /* ─── DO/DONT ─── */
+  .dodont {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  @media (max-width: 650px) {
+    .dodont { grid-template-columns: 1fr; }
+  }
+
+  .do-card, .dont-card {
+    border-radius: var(--radius);
+    padding: 1.25rem 1.4rem;
+  }
+
+  .do-card {
+    background: var(--green-light);
+    border: 1px solid rgba(42,125,79,0.2);
+  }
+
+  .dont-card {
+    background: #fef2f2;
+    border: 1px solid rgba(185,28,28,0.15);
+  }
+
+  .do-card h4 { color: var(--green); font-size: 0.9rem; margin-bottom: 0.5rem; }
+  .dont-card h4 { color: #b91c1c; font-size: 0.9rem; margin-bottom: 0.5rem; }
+
+  .do-card li, .dont-card li {
+    font-size: 0.83rem;
+    margin-bottom: 0.3rem;
+    padding-left: 1.2rem;
+    position: relative;
+    list-style: none;
+  }
+
+  .do-card li::before { content: '✓'; position: absolute; left: 0; color: var(--green); font-weight: 700; }
+  .dont-card li::before { content: '✗'; position: absolute; left: 0; color: #b91c1c; font-weight: 700; }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 3rem 0;
+  }
+
+  .callout {
+    background: var(--gold-light);
+    border: 1px solid rgba(166,124,0,0.2);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-top: 1rem;
+  }
+
+  .callout h4 {
+    color: var(--gold);
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+  }
+
+  .callout p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HERO ═══════════ -->
+<div class="hero">
+  <div class="tag">Complete Interview Guide</div>
+  <h1>Low-Level Design<br/>Interview Roadmap</h1>
+  <p>A structured approach to cracking LLD rounds — from first principles to mock interviews.</p>
+</div>
+
+<div class="content">
+
+<!-- ═══════════ SECTION 1: THE APPROACH ═══════════ -->
+<div class="section">
+  <span class="section-label red">Phase 1</span>
+  <h2>The 7-Step Approach (Use This in Every Interview)</h2>
+  <p>Follow this framework for any LLD question. Interviewers evaluate your thought process, not just the final answer.</p>
+
+  <div class="steps">
+
+    <div class="step" data-num="1">
+      <h3>Clarify Requirements (2–3 min)</h3>
+      <p>Ask questions to narrow scope. Identify the core use cases (pick 3–5 most important ones). Clarify what's in scope vs. out of scope. This shows maturity — jumping straight to code is a red flag.</p>
+      <div class="example">Q: "Design a parking lot system"
+
+You ask:
+• How many floors? Single or multi-level?
+• What vehicle types? (bike, car, truck)
+• Do we need payment processing?
+• Real-time availability display needed?
+• Is there a reservation system?
+
+Scope down: "Let's focus on vehicle parking/unparking,
+spot assignment, and fee calculation."</div>
+    </div>
+
+    <div class="step" data-num="2">
+      <h3>Identify Core Entities & Their Attributes (3–4 min)</h3>
+      <p>List the nouns from your requirements — these become your classes. Identify what data each entity holds. Think about relationships: has-a, is-a, uses-a.</p>
+      <div class="example">Entities for Parking Lot:
+─────────────────────────────────
+ParkingLot      → name, floors[], entry/exitGates[]
+ParkingFloor    → floorNumber, spots[]
+ParkingSpot     → spotId, spotType, isOccupied, vehicle
+Vehicle         → licensePlate, vehicleType
+Ticket          → ticketId, entryTime, vehicle, spot
+Payment         → amount, paymentMethod, timestamp</div>
+    </div>
+
+    <div class="step" data-num="3">
+      <h3>Define Relationships & Class Diagram (4–5 min)</h3>
+      <p>Draw a rough class diagram on the whiteboard. Show inheritance (Vehicle → Car, Bike), composition (ParkingLot has ParkingFloors), and associations. Use enums for fixed types.</p>
+      <div class="example">         ParkingLot
+         ├── List&lt;ParkingFloor&gt;       (composition)
+         └── List&lt;Gate&gt;
+
+         ParkingFloor
+         └── List&lt;ParkingSpot&gt;        (composition)
+
+         ParkingSpot
+         └── Vehicle                   (association)
+
+         Vehicle  (abstract)
+         ├── Car                       (inheritance)
+         ├── Bike
+         └── Truck
+
+         VehicleType   → ENUM {CAR, BIKE, TRUCK}
+         SpotType      → ENUM {COMPACT, REGULAR, LARGE}
+         PaymentMethod → ENUM {CASH, CARD, UPI}</div>
+    </div>
+
+    <div class="step" data-num="4">
+      <h3>Define Core APIs / Interfaces (3–4 min)</h3>
+      <p>Write the method signatures for key operations. Think about what each entity can DO — these become your methods. Start with interfaces for flexibility.</p>
+      <div class="example">interface ParkingStrategy {
+    ParkingSpot findSpot(VehicleType type);
+}
+
+interface FeeStrategy {
+    double calculateFee(Ticket ticket);
+}
+
+class ParkingLotService {
+    Ticket parkVehicle(Vehicle v);
+    Payment unparkVehicle(Ticket t);
+    int getAvailableSpots(VehicleType type);
+}</div>
+    </div>
+
+    <div class="step" data-num="5">
+      <h3>Apply Design Patterns (3–4 min)</h3>
+      <p>This is where you shine. Identify which patterns fit naturally — don't force them. Explain WHY you're using each pattern.</p>
+      <div class="example">Strategy Pattern → ParkingStrategy
+  • NearestToEntryStrategy
+  • NearestToElevatorStrategy
+  (Easily swap parking algorithms)
+
+Factory Pattern → VehicleFactory
+  • Creates Car/Bike/Truck based on type
+  (Decouples creation from usage)
+
+Singleton Pattern → ParkingLotService
+  (Only one parking lot instance)
+
+Observer Pattern → SpotAvailabilityNotifier
+  (Notify display boards when spots change)</div>
+    </div>
+
+    <div class="step" data-num="6">
+      <h3>Write Key Classes with Code (8–10 min)</h3>
+      <p>Write the most critical 3–4 classes with actual code. You don't need to code everything — focus on the classes that demonstrate your design decisions.</p>
+      <div class="example">public class ParkingLotService {
+    private static ParkingLotService instance;
+    private List&lt;ParkingFloor&gt; floors;
+    private ParkingStrategy strategy;
+    private FeeStrategy feeStrategy;
+
+    public Ticket parkVehicle(Vehicle vehicle) {
+        ParkingSpot spot = strategy.findSpot(
+            vehicle.getType()
+        );
+        if (spot == null)
+            throw new ParkingFullException();
+
+        spot.assignVehicle(vehicle);
+        return new Ticket(vehicle, spot,
+            LocalDateTime.now());
+    }
+
+    public Payment unparkVehicle(Ticket ticket) {
+        double fee = feeStrategy
+            .calculateFee(ticket);
+        ticket.getSpot().removeVehicle();
+        return new Payment(fee, PaymentMethod.CASH);
+    }
+}</div>
+    </div>
+
+    <div class="step" data-num="7">
+      <h3>Discuss Extensibility & Trade-offs (2–3 min)</h3>
+      <p>Talk about how your design handles future requirements. Mention concurrency, thread-safety, and edge cases. This is the finishing touch that separates good from great.</p>
+      <div class="example">Extensibility:
+• "Adding a new vehicle type (e.g., EV) only needs
+   a new subclass — no existing code changes (OCP)"
+• "Swapping fee strategy (hourly → per-minute) is
+   just injecting a new FeeStrategy implementation"
+
+Concurrency:
+• "ParkingSpot.assignVehicle() should be synchronized
+   to prevent two cars getting the same spot"
+• "Could use ConcurrentHashMap for spot lookup"
+
+Edge cases:
+• What if the lot is full?
+• What if a ticket is lost?
+• What about overnight parking fee calculation?</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 2: DESIGN PATTERNS ═══════════ -->
+<div class="section">
+  <span class="section-label green">Phase 2</span>
+  <h2>Design Patterns You Must Know</h2>
+  <p>These are the patterns that come up most frequently. Know when and why to use each one.</p>
+
+  <div class="pattern-grid">
+    <div class="pattern-item">
+      <div class="name">Strategy</div>
+      <div class="use">Swap algorithms at runtime — pricing, sorting, routing, authentication methods</div>
+      <span class="freq high">Very High</span>
+    </div>
+    <div class="pattern-item">
+      <div class="name">Observer</div>
+      <div class="use">Event notification — stock price alerts, UI updates, notification systems</div>
+      <span class="freq high">Very High</span>
+    </div>
+    <div class="pattern-item">
+      <div class="name">Factory / Abstract Factory</div>
+      <div class="use">Object creation without exposing logic — vehicle types, document parsers</div>
+      <span class="freq high">Very High</span>
+    </div>
+    <div class="pattern-item">
+      <div class="name">Singleton</div>
+      <div class="use">Single instance — DB connection pool, logger, configuration manager</div>
+      <span class="freq high">Very High</span>
+    </div>
+    <div class="pattern-item">
+      <div class="name">Decorator</div>
+      <div class="use">Add behavior dynamically — pizza toppings, I/O streams, middleware</div>
+      <span class="freq med">Medium</span>
+    </div>
+    <div class="pattern-item">
+      <div class="name">Chain of Responsibility</div>
+      <div class="use">Pass request along a chain — log levels, vending machine, ATM dispenser</div>
+      <span class="freq med">Medium</span>
+    </div>
+    <div class="pattern-item">
+      <div class="name">State</div>
+      <div class="use">Object behavior changes with state — vending machine, elevator, order status</div>
+      <span class="freq med">Medium</span>
+    </div>
+    <div class="pattern-item">
+      <div class="name">Builder</div>
+      <div class="use">Step-by-step object construction — complex configs, query builders</div>
+      <span class="freq med">Medium</span>
+    </div>
+    <div class="pattern-item">
+      <div class="name">Command</div>
+      <div class="use">Encapsulate actions — undo/redo, task queues, remote controls</div>
+      <span class="freq med">Medium</span>
+    </div>
+    <div class="pattern-item">
+      <div class="name">Adapter</div>
+      <div class="use">Bridge incompatible interfaces — third-party integrations, legacy wrappers</div>
+      <span class="freq low">Low-Medium</span>
+    </div>
+  </div>
+
+  <div class="callout">
+    <h4>Golden Rule for Interviews</h4>
+    <p>Don't memorize patterns — understand the PROBLEM each pattern solves. When an interviewer asks "Why Strategy here?", your answer should be: "Because we need to swap pricing algorithms without modifying existing code, satisfying the Open-Closed Principle."</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 3: SOLID ═══════════ -->
+<div class="section">
+  <span class="section-label blue">Phase 3</span>
+  <h2>SOLID Principles — Use Them, Don't Just Recite Them</h2>
+  <p>Interviewers don't ask you to define SOLID. They watch whether your design follows it.</p>
+
+  <div class="card">
+    <h3><span class="icon">S</span> Single Responsibility</h3>
+    <p>Each class does ONE thing. ParkingSpot doesn't calculate fees. Ticket doesn't manage payment. If you can't describe what a class does in one sentence without using "and", split it.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon">O</span> Open-Closed Principle</h3>
+    <p>Open for extension, closed for modification. This is WHY you use Strategy, Factory, and Observer. Adding a new vehicle type shouldn't require editing ParkingLotService — just add a new class.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon">L</span> Liskov Substitution</h3>
+    <p>Subtypes must be substitutable for their base types. If your ElectricCar extends Car, it should work anywhere Car is expected. If it needs special charging logic that breaks the contract, reconsider your hierarchy.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon">I</span> Interface Segregation</h3>
+    <p>Don't force classes to implement methods they don't need. Instead of one giant VehicleService interface, split into Parkable, Billable, Reservable — each class implements only what's relevant.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon">D</span> Dependency Inversion</h3>
+    <p>Depend on abstractions, not concretions. ParkingLotService depends on ParkingStrategy (interface), not NearestSpotStrategy (concrete class). This is why your code is testable and flexible.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 4: PRACTICE PROBLEMS ═══════════ -->
+<div class="section">
+  <span class="section-label purple">Phase 4</span>
+  <h2>Must-Practice LLD Problems</h2>
+  <p>Start with easy ones and work your way up. Solve at least 10–12 before your interview.</p>
+
+  <div class="problem-list">
+    <div class="problem-chip">Parking Lot<span class="diff easy">Starter</span></div>
+    <div class="problem-chip">Tic-Tac-Toe<span class="diff easy">Starter</span></div>
+    <div class="problem-chip">Library Mgmt<span class="diff easy">Starter</span></div>
+    <div class="problem-chip">Vending Machine<span class="diff easy">Starter</span></div>
+    <div class="problem-chip">ATM System<span class="diff easy">Starter</span></div>
+    <div class="problem-chip">Snake & Ladder<span class="diff medium">Medium</span></div>
+    <div class="problem-chip">Elevator System<span class="diff medium">Medium</span></div>
+    <div class="problem-chip">BookMyShow<span class="diff medium">Medium</span></div>
+    <div class="problem-chip">Splitwise<span class="diff medium">Medium</span></div>
+    <div class="problem-chip">Chess Game<span class="diff medium">Medium</span></div>
+    <div class="problem-chip">Hotel Booking<span class="diff medium">Medium</span></div>
+    <div class="problem-chip">Food Delivery<span class="diff hard">Hard</span></div>
+    <div class="problem-chip">Ride Sharing<span class="diff hard">Hard</span></div>
+    <div class="problem-chip">Stock Exchange<span class="diff hard">Hard</span></div>
+    <div class="problem-chip">Social Media Feed<span class="diff hard">Hard</span></div>
+  </div>
+
+  <div class="callout">
+    <h4>How to Practice Each Problem</h4>
+    <p>Set a 45-minute timer. Follow the 7-step approach above. Write actual code, not pseudocode. After you're done, compare with 2–3 online solutions and note what you missed. Track which patterns came up in each problem.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 5: STUDY PLAN ═══════════ -->
+<div class="section">
+  <span class="section-label gold">Phase 5</span>
+  <h2>4-Week Study Plan</h2>
+  <p>A realistic timeline if you're preparing alongside work or college.</p>
+
+  <div class="timeline">
+    <div class="timeline-block tb-1">
+      <div class="week">Week 1</div>
+      <div class="task">Foundations</div>
+      <div class="detail">OOP concepts, SOLID principles, UML basics, 2 easy problems</div>
+    </div>
+    <div class="timeline-block tb-2">
+      <div class="week">Week 2</div>
+      <div class="task">Patterns</div>
+      <div class="detail">Learn top 6 patterns with code, solve 3 easy + 1 medium</div>
+    </div>
+    <div class="timeline-block tb-3">
+      <div class="week">Week 3</div>
+      <div class="task">Practice</div>
+      <div class="detail">Solve 4–5 medium problems, time yourself, review solutions</div>
+    </div>
+    <div class="timeline-block tb-4">
+      <div class="week">Week 4</div>
+      <div class="task">Mock + Polish</div>
+      <div class="detail">2 hard problems, mock interviews with a friend, refine your approach</div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 6: DO/DONT ═══════════ -->
+<div class="section">
+  <span class="section-label red">Final Tips</span>
+  <h2>Interview Day: Do's and Don'ts</h2>
+
+  <div class="dodont">
+    <div class="do-card">
+      <h4>✓ Do This</h4>
+      <ul>
+        <li>Clarify requirements before designing</li>
+        <li>Think out loud — narrate your thought process</li>
+        <li>Start with interfaces, then implement</li>
+        <li>Use meaningful class/method names</li>
+        <li>Draw a quick class diagram first</li>
+        <li>Mention trade-offs of your decisions</li>
+        <li>Handle edge cases and exceptions</li>
+        <li>Show awareness of concurrency concerns</li>
+        <li>Keep classes small and focused</li>
+        <li>Ask for feedback mid-way: "Does this direction look good?"</li>
+      </ul>
+    </div>
+    <div class="dont-card">
+      <h4>✗ Avoid This</h4>
+      <ul>
+        <li>Jumping straight to code without planning</li>
+        <li>Using design patterns just to show off</li>
+        <li>Creating god classes that do everything</li>
+        <li>Ignoring the interviewer's hints or redirections</li>
+        <li>Over-engineering with unnecessary abstractions</li>
+        <li>Using generic names like Manager, Helper, Utils</li>
+        <li>Hardcoding values instead of using enums/configs</li>
+        <li>Spending too long on one part (watch your time)</li>
+        <li>Forgetting access modifiers (everything public)</li>
+        <li>Arguing when the interviewer suggests a change</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 7: RESOURCES ═══════════ -->
+<div class="section">
+  <span class="section-label green">Resources</span>
+  <h2>Recommended Learning Path</h2>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>📖 Books</h3>
+      <ul>
+        <li>Head First Design Patterns (beginner-friendly)</li>
+        <li>Clean Code by Robert C. Martin</li>
+        <li>Design Patterns (Gang of Four) — use as reference</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>💻 Practice Platforms</h3>
+      <ul>
+        <li>Workat.tech — LLD problem set with solutions</li>
+        <li>GitHub — search "awesome low level design"</li>
+        <li>LeetCode Discuss — LLD tagged questions</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🎥 YouTube Channels</h3>
+      <ul>
+        <li>Concept && Coding (Hindi + English)</li>
+        <li>Sudocode — clean LLD walkthroughs</li>
+        <li>Tech Dummies — pattern explanations</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🧠 Key Mindset</h3>
+      <ul>
+        <li>LLD ≠ memorizing patterns</li>
+        <li>LLD = breaking problems into clean, extensible objects</li>
+        <li>Practice writing code, not just reading solutions</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

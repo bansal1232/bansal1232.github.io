@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Java 25 Interview Cheat Sheet</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0e1117;
+    --surface: #161b22;
+    --surface-hover: #1c2230;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #f0883e;
+    --accent-dim: rgba(240,136,62,0.12);
+    --green: #3fb950;
+    --green-dim: rgba(63,185,80,0.12);
+    --red: #f85149;
+    --red-dim: rgba(248,81,73,0.12);
+    --blue: #58a6ff;
+    --blue-dim: rgba(88,166,255,0.12);
+    --purple: #bc8cff;
+    --purple-dim: rgba(188,140,255,0.12);
+    --code-bg: #0d1117;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 2rem 1.5rem 4rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    padding: 3rem 0 2.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 3rem;
+  }
+
+  header .badge {
+    display: inline-block;
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.35rem 1rem;
+    border-radius: 100px;
+    margin-bottom: 1rem;
+  }
+
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 900;
+    font-size: 2.6rem;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 0.5rem;
+  }
+
+  header p { color: var(--text-muted); font-size: 1.05rem; }
+
+  .feature {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    margin-bottom: 1.75rem;
+    transition: border-color 0.2s;
+  }
+
+  .feature:hover { border-color: var(--accent); }
+
+  .feature-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .feature-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-dim);
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    letter-spacing: 0.05em;
+  }
+
+  .feature h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 1.35rem;
+    line-height: 1.3;
+  }
+
+  .feature .desc {
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .interview-q {
+    background: var(--blue-dim);
+    border-left: 3px solid var(--blue);
+    border-radius: 0 8px 8px 0;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: var(--blue);
+    font-weight: 500;
+  }
+
+  .interview-q::before { content: "Q: "; font-weight: 700; }
+
+  .code-block {
+    position: relative;
+    margin-bottom: 1rem;
+  }
+
+  .code-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.8rem;
+    border-radius: 8px 8px 0 0;
+    display: inline-block;
+    font-weight: 600;
+  }
+
+  .code-label.before {
+    background: var(--red-dim);
+    color: var(--red);
+  }
+
+  .code-label.after {
+    background: var(--green-dim);
+    color: var(--green);
+  }
+
+  .code-label.example {
+    background: var(--purple-dim);
+    color: var(--purple);
+  }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 0 8px 8px 8px;
+    padding: 1.25rem 1.25rem;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.75;
+    color: var(--text);
+  }
+
+  pre .kw { color: #ff7b72; }
+  pre .str { color: #a5d6ff; }
+  pre .cmt { color: #8b949e; font-style: italic; }
+  pre .fn { color: #d2a8ff; }
+  pre .type { color: #79c0ff; }
+  pre .num { color: #f0883e; }
+  pre .ann { color: #ffa657; }
+
+  .tip {
+    background: var(--green-dim);
+    border-left: 3px solid var(--green);
+    border-radius: 0 8px 8px 0;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    color: var(--green);
+    margin-top: 0.5rem;
+  }
+
+  .tip::before { content: "💡 Interview Tip: "; font-weight: 700; }
+
+  .versus {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  @media (max-width: 650px) {
+    .versus { grid-template-columns: 1fr; }
+    header h1 { font-size: 1.8rem; }
+    body { padding: 1rem 1rem 3rem; }
+    .feature { padding: 1.5rem; }
+  }
+
+  .toc {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 3rem;
+  }
+
+  @media (max-width: 650px) {
+    .toc { grid-template-columns: 1fr; }
+  }
+
+  .toc a {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    text-decoration: none;
+    color: var(--text);
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+
+  .toc a:hover {
+    border-color: var(--accent);
+    background: var(--surface-hover);
+  }
+
+  .toc a .n {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">Interview Prep</div>
+  <h1>Java 25 Features<br/>with Code Examples</h1>
+  <p>LTS Release · September 2025 · 18 JEPs</p>
+</header>
+
+<nav class="toc">
+  <a href="#f1"><span class="n">01</span> Compact Source Files</a>
+  <a href="#f2"><span class="n">02</span> Flexible Constructor Bodies</a>
+  <a href="#f3"><span class="n">03</span> Module Import Declarations</a>
+  <a href="#f4"><span class="n">04</span> Primitive Pattern Matching</a>
+  <a href="#f5"><span class="n">05</span> Scoped Values</a>
+  <a href="#f6"><span class="n">06</span> Structured Concurrency</a>
+  <a href="#f7"><span class="n">07</span> Compact Object Headers</a>
+  <a href="#f8"><span class="n">08</span> Key Derivation Function API</a>
+</nav>
+
+<!-- 1 -->
+<div class="feature" id="f1">
+  <div class="feature-header">
+    <span class="feature-num">01</span>
+    <h2>Compact Source Files & Instance Main Methods</h2>
+  </div>
+  <p class="desc">No more class wrapper or <code>public static void main(String[] args)</code>. Write simple programs with minimal ceremony.</p>
+
+  <div class="interview-q">Write a Hello World program in Java 25 without a class declaration.</div>
+
+  <div class="versus">
+    <div class="code-block">
+      <span class="code-label before">Before (Java 21)</span>
+<pre><span class="kw">public class</span> <span class="type">HelloWorld</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(<span class="type">String</span>[] args) {
+        System.out.<span class="fn">println</span>(<span class="str">"Hello, World!"</span>);
+    }
+}</pre>
+    </div>
+    <div class="code-block">
+      <span class="code-label after">After (Java 25)</span>
+<pre><span class="cmt">// That's the entire file!</span>
+<span class="kw">void</span> <span class="fn">main</span>() {
+    <span class="fn">println</span>(<span class="str">"Hello, World!"</span>);
+}</pre>
+    </div>
+  </div>
+
+  <div class="tip">Mention that this was inspired by languages like Python/Kotlin to lower the barrier for beginners. The class is implicitly created by the compiler.</div>
+</div>
+
+<!-- 2 -->
+<div class="feature" id="f2">
+  <div class="feature-header">
+    <span class="feature-num">02</span>
+    <h2>Flexible Constructor Bodies</h2>
+  </div>
+  <p class="desc">You can now execute statements <strong>before</strong> <code>super()</code> or <code>this()</code> — as long as you don't access <code>this</code>.</p>
+
+  <div class="interview-q">How does Java 25 change constructor chaining rules? Give an example.</div>
+
+  <div class="versus">
+    <div class="code-block">
+      <span class="code-label before">Before (Java 21)</span>
+<pre><span class="kw">class</span> <span class="type">Employee</span> <span class="kw">extends</span> <span class="type">Person</span> {
+    <span class="fn">Employee</span>(<span class="type">String</span> rawName) {
+        <span class="cmt">// ❌ Cannot validate before super()
+        // if (rawName == null) throw ...
+        // Must call super() FIRST</span>
+        <span class="kw">super</span>(<span class="fn">validate</span>(rawName));
+    }
+
+    <span class="cmt">// Workaround: static helper method</span>
+    <span class="kw">private static</span> <span class="type">String</span> <span class="fn">validate</span>(<span class="type">String</span> n) {
+        <span class="kw">if</span> (n == <span class="kw">null</span>) <span class="kw">throw new</span>
+            <span class="type">IllegalArgumentException</span>();
+        <span class="kw">return</span> n.<span class="fn">strip</span>();
+    }
+}</pre>
+    </div>
+    <div class="code-block">
+      <span class="code-label after">After (Java 25)</span>
+<pre><span class="kw">class</span> <span class="type">Employee</span> <span class="kw">extends</span> <span class="type">Person</span> {
+    <span class="fn">Employee</span>(<span class="type">String</span> rawName) {
+        <span class="cmt">// ✅ Validate BEFORE super()</span>
+        <span class="kw">if</span> (rawName == <span class="kw">null</span>) {
+            <span class="kw">throw new</span>
+              <span class="type">IllegalArgumentException</span>(
+                <span class="str">"Name cannot be null"</span>
+              );
+        }
+        <span class="type">String</span> cleaned = rawName.<span class="fn">strip</span>();
+
+        <span class="cmt">// Now call super</span>
+        <span class="kw">super</span>(cleaned);
+    }
+}</pre>
+    </div>
+  </div>
+
+  <div class="tip">Emphasize: you still cannot read/write instance fields or call instance methods before super(). Only local variables and static members are allowed in the "prologue" section.</div>
+</div>
+
+<!-- 3 -->
+<div class="feature" id="f3">
+  <div class="feature-header">
+    <span class="feature-num">03</span>
+    <h2>Module Import Declarations</h2>
+  </div>
+  <p class="desc">Import all exported packages of a module with a single statement. Drastically reduces import boilerplate.</p>
+
+  <div class="interview-q">What is a module import declaration and when would you use it?</div>
+
+  <div class="versus">
+    <div class="code-block">
+      <span class="code-label before">Before (Java 21)</span>
+<pre><span class="kw">import</span> java.util.List;
+<span class="kw">import</span> java.util.Map;
+<span class="kw">import</span> java.util.stream.Collectors;
+<span class="kw">import</span> java.io.IOException;
+<span class="kw">import</span> java.nio.file.Files;
+<span class="kw">import</span> java.nio.file.Path;
+
+<span class="cmt">// 6 import statements just to get started</span></pre>
+    </div>
+    <div class="code-block">
+      <span class="code-label after">After (Java 25)</span>
+<pre><span class="kw">import module</span> java.base;
+
+<span class="cmt">// ✅ All public types from java.base
+// are now available: List, Map, Path,
+// Files, Stream, Collectors, etc.</span></pre>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <span class="code-label example">Full Example</span>
+<pre><span class="kw">import module</span> java.base;
+
+<span class="kw">void</span> <span class="fn">main</span>() {
+    <span class="type">List</span>&lt;<span class="type">String</span>&gt; names = <span class="type">List</span>.<span class="fn">of</span>(<span class="str">"Alice"</span>, <span class="str">"Bob"</span>, <span class="str">"Charlie"</span>);
+
+    <span class="type">Map</span>&lt;<span class="type">Integer</span>, <span class="type">List</span>&lt;<span class="type">String</span>&gt;&gt; grouped = names.<span class="fn">stream</span>()
+        .<span class="fn">collect</span>(<span class="type">Collectors</span>.<span class="fn">groupingBy</span>(<span class="type">String</span>::length));
+
+    <span class="fn">println</span>(grouped);
+    <span class="cmt">// {3=[Bob], 5=[Alice], 7=[Charlie]}</span>
+}</pre>
+  </div>
+
+  <div class="tip">Mention that ambiguities (e.g., java.util.List vs. java.awt.List) are resolved by explicit single-type imports taking precedence.</div>
+</div>
+
+<!-- 4 -->
+<div class="feature" id="f4">
+  <div class="feature-header">
+    <span class="feature-num">04</span>
+    <h2>Primitive Types in Pattern Matching</h2>
+  </div>
+  <p class="desc">Pattern matching with <code>instanceof</code> and <code>switch</code> now supports all primitive types — no more manual casting.</p>
+
+  <div class="interview-q">Show how primitive pattern matching works in switch expressions.</div>
+
+  <div class="versus">
+    <div class="code-block">
+      <span class="code-label before">Before (Java 21)</span>
+<pre><span class="kw">static</span> <span class="type">String</span> <span class="fn">classify</span>(<span class="type">Object</span> obj) {
+    <span class="kw">if</span> (obj <span class="kw">instanceof</span> <span class="type">Integer</span> i) {
+        <span class="kw">return</span> <span class="str">"Integer: "</span> + i;
+    } <span class="kw">else if</span> (obj <span class="kw">instanceof</span> <span class="type">Double</span> d) {
+        <span class="kw">return</span> <span class="str">"Double: "</span> + d;
+    }
+    <span class="kw">return</span> <span class="str">"Unknown"</span>;
+    <span class="cmt">// ❌ No primitive support</span>
+}</pre>
+    </div>
+    <div class="code-block">
+      <span class="code-label after">After (Java 25)</span>
+<pre><span class="kw">static</span> <span class="type">String</span> <span class="fn">classify</span>(<span class="type">Object</span> obj) {
+    <span class="kw">return switch</span> (obj) {
+        <span class="kw">case</span> <span class="type">int</span> i    -> <span class="str">"int: "</span> + i;
+        <span class="kw">case</span> <span class="type">double</span> d -> <span class="str">"double: "</span> + d;
+        <span class="kw">case</span> <span class="type">long</span> l  -> <span class="str">"long: "</span> + l;
+        <span class="kw">default</span>      -> <span class="str">"other"</span>;
+    };
+    <span class="cmt">// ✅ Primitives work directly!</span>
+}</pre>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <span class="code-label example">instanceof with primitives</span>
+<pre><span class="kw">static void</span> <span class="fn">process</span>(<span class="type">Object</span> obj) {
+    <span class="kw">if</span> (obj <span class="kw">instanceof</span> <span class="type">int</span> i) {
+        <span class="fn">println</span>(<span class="str">"Got a primitive int: "</span> + i);
+    }
+
+    <span class="cmt">// Also works with guards</span>
+    <span class="kw">if</span> (obj <span class="kw">instanceof</span> <span class="type">int</span> i && i > <span class="num">100</span>) {
+        <span class="fn">println</span>(<span class="str">"Large int: "</span> + i);
+    }
+}</pre>
+  </div>
+
+  <div class="tip">This eliminates the asymmetry where reference types worked with pattern matching but primitives didn't. Mention it unifies the type system in pattern contexts.</div>
+</div>
+
+<!-- 5 -->
+<div class="feature" id="f5">
+  <div class="feature-header">
+    <span class="feature-num">05</span>
+    <h2>Scoped Values (Finalized)</h2>
+  </div>
+  <p class="desc">An immutable, thread-safe alternative to <code>ThreadLocal</code> — designed for virtual threads and structured concurrency.</p>
+
+  <div class="interview-q">Compare ScopedValue vs ThreadLocal. When would you choose one over the other?</div>
+
+  <div class="versus">
+    <div class="code-block">
+      <span class="code-label before">ThreadLocal (Old Way)</span>
+<pre><span class="cmt">// ❌ Mutable, leak-prone, per-thread copy</span>
+<span class="kw">static final</span> <span class="type">ThreadLocal</span>&lt;<span class="type">String</span>&gt; USER
+    = <span class="kw">new</span> <span class="type">ThreadLocal</span>&lt;&gt;();
+
+<span class="kw">void</span> <span class="fn">handleRequest</span>() {
+    USER.<span class="fn">set</span>(<span class="str">"alice"</span>);
+    <span class="kw">try</span> {
+        <span class="fn">doWork</span>();
+    } <span class="kw">finally</span> {
+        USER.<span class="fn">remove</span>(); <span class="cmt">// easy to forget!</span>
+    }
+}
+
+<span class="kw">void</span> <span class="fn">doWork</span>() {
+    <span class="type">String</span> u = USER.<span class="fn">get</span>(); <span class="cmt">// "alice"</span>
+    USER.<span class="fn">set</span>(<span class="str">"bob"</span>);  <span class="cmt">// ⚠ mutated!</span>
+}</pre>
+    </div>
+    <div class="code-block">
+      <span class="code-label after">ScopedValue (Java 25)</span>
+<pre><span class="cmt">// ✅ Immutable, auto-cleaned, efficient</span>
+<span class="kw">static final</span> <span class="type">ScopedValue</span>&lt;<span class="type">String</span>&gt; USER
+    = <span class="type">ScopedValue</span>.<span class="fn">newInstance</span>();
+
+<span class="kw">void</span> <span class="fn">handleRequest</span>() {
+    <span class="type">ScopedValue</span>
+      .<span class="fn">where</span>(USER, <span class="str">"alice"</span>)
+      .<span class="fn">run</span>(() -> <span class="fn">doWork</span>());
+    <span class="cmt">// auto-cleaned when scope ends</span>
+}
+
+<span class="kw">void</span> <span class="fn">doWork</span>() {
+    <span class="type">String</span> u = USER.<span class="fn">get</span>(); <span class="cmt">// "alice"</span>
+    <span class="cmt">// Cannot mutate! Immutable by design</span>
+}</pre>
+    </div>
+  </div>
+
+  <div class="tip">Key interview points: ScopedValue is immutable (no set method), automatically scoped (no try/finally cleanup), inherited by child threads, and works efficiently with millions of virtual threads where ThreadLocal would be wasteful.</div>
+</div>
+
+<!-- 6 -->
+<div class="feature" id="f6">
+  <div class="feature-header">
+    <span class="feature-num">06</span>
+    <h2>Structured Concurrency (Finalized)</h2>
+  </div>
+  <p class="desc">Treat a group of concurrent subtasks as a single unit — if one fails, cancel the rest automatically.</p>
+
+  <div class="interview-q">Write code using StructuredTaskScope to fetch data from two services concurrently.</div>
+
+  <div class="versus">
+    <div class="code-block">
+      <span class="code-label before">Before (Unstructured)</span>
+<pre><span class="cmt">// ❌ Manual thread management</span>
+<span class="type">ExecutorService</span> exec =
+    <span class="type">Executors</span>.<span class="fn">newFixedThreadPool</span>(<span class="num">2</span>);
+
+<span class="type">Future</span>&lt;<span class="type">User</span>&gt;  f1 = exec.<span class="fn">submit</span>(
+    () -> <span class="fn">fetchUser</span>(id));
+<span class="type">Future</span>&lt;<span class="type">Order</span>&gt; f2 = exec.<span class="fn">submit</span>(
+    () -> <span class="fn">fetchOrder</span>(id));
+
+<span class="cmt">// If fetchUser fails, fetchOrder
+// keeps running wastefully</span>
+<span class="type">User</span>  user  = f1.<span class="fn">get</span>();
+<span class="type">Order</span> order = f2.<span class="fn">get</span>();
+exec.<span class="fn">shutdown</span>();</pre>
+    </div>
+    <div class="code-block">
+      <span class="code-label after">After (Java 25)</span>
+<pre><span class="cmt">// ✅ Structured - auto-cancellation</span>
+<span class="type">Response</span> <span class="fn">handle</span>(<span class="type">int</span> id) <span class="kw">throws</span> <span class="type">Exception</span> {
+  <span class="kw">try</span> (<span class="kw">var</span> scope = <span class="kw">new</span>
+      <span class="type">StructuredTaskScope</span>
+        .<span class="type">ShutdownOnFailure</span>()) {
+
+    <span class="kw">var</span> user  = scope.<span class="fn">fork</span>(
+        () -> <span class="fn">fetchUser</span>(id));
+    <span class="kw">var</span> order = scope.<span class="fn">fork</span>(
+        () -> <span class="fn">fetchOrder</span>(id));
+
+    scope.<span class="fn">join</span>()
+         .<span class="fn">throwIfFailed</span>();
+
+    <span class="kw">return new</span> <span class="type">Response</span>(
+        user.<span class="fn">get</span>(), order.<span class="fn">get</span>());
+  }
+  <span class="cmt">// If either fails, the other is
+  // cancelled immediately!</span>
+}</pre>
+    </div>
+  </div>
+
+  <div class="tip">Mention ShutdownOnFailure (fail-fast, cancel siblings) vs ShutdownOnSuccess (return first success, cancel rest). Both are built-in policies.</div>
+</div>
+
+<!-- 7 -->
+<div class="feature" id="f7">
+  <div class="feature-header">
+    <span class="feature-num">07</span>
+    <h2>Compact Object Headers</h2>
+  </div>
+  <p class="desc">Object headers shrunk from 96–128 bits to 64 bits. Huge memory savings for apps with millions of small objects.</p>
+
+  <div class="interview-q">Explain Compact Object Headers and its impact on memory usage.</div>
+
+  <div class="code-block">
+    <span class="code-label example">Impact Illustration</span>
+<pre><span class="cmt">// An empty Object in memory:</span>
+
+<span class="cmt">// Java 21 (default):  128 bits header = 16 bytes</span>
+<span class="cmt">//   [ Mark Word (64 bits) | Klass Pointer (64 bits) ]</span>
+
+<span class="cmt">// Java 25 (compact):   64 bits header =  8 bytes</span>
+<span class="cmt">//   [ Combined Mark + Klass (64 bits) ]</span>
+
+<span class="cmt">// Real-world impact example:</span>
+<span class="cmt">// 10 million small objects (e.g., records in a cache)</span>
+<span class="cmt">//   Before: 10M × 16 bytes = 160 MB in headers alone</span>
+<span class="cmt">//   After:  10M ×  8 bytes =  80 MB in headers</span>
+<span class="cmt">//   Savings: 80 MB → ~50% reduction!</span>
+
+<span class="cmt">// Enable at JVM level:</span>
+<span class="cmt">// java -XX:+UseCompactObjectHeaders MyApp</span></pre>
+  </div>
+
+  <div class="tip">Originated from Project Lilliput. Mention that this is now a product-level feature (not experimental). Particularly beneficial for data-heavy applications, caches, and microservices with many short-lived objects.</div>
+</div>
+
+<!-- 8 -->
+<div class="feature" id="f8">
+  <div class="feature-header">
+    <span class="feature-num">08</span>
+    <h2>Key Derivation Function API (KDF)</h2>
+  </div>
+  <p class="desc">A new standard API for deriving cryptographic keys — needed for TLS, password hashing, and modern security protocols.</p>
+
+  <div class="interview-q">What is the Key Derivation Function API and why was it added?</div>
+
+  <div class="code-block">
+    <span class="code-label example">Usage Example</span>
+<pre><span class="kw">import</span> javax.crypto.KDF;
+<span class="kw">import</span> javax.crypto.SecretKey;
+<span class="kw">import</span> javax.crypto.spec.HKDFParameterSpec;
+
+<span class="kw">void</span> <span class="fn">deriveKey</span>() <span class="kw">throws</span> <span class="type">Exception</span> {
+    <span class="cmt">// Create a KDF instance using HKDF-SHA256</span>
+    <span class="type">KDF</span> kdf = <span class="type">KDF</span>.<span class="fn">getInstance</span>(<span class="str">"HKDF-SHA256"</span>);
+
+    <span class="cmt">// Define extraction parameters</span>
+    <span class="kw">byte</span>[] salt = <span class="str">"random-salt"</span>.<span class="fn">getBytes</span>();
+    <span class="kw">byte</span>[] ikm  = <span class="str">"input-key-material"</span>.<span class="fn">getBytes</span>();
+    <span class="kw">byte</span>[] info = <span class="str">"context-info"</span>.<span class="fn">getBytes</span>();
+
+    <span class="cmt">// Extract-then-Expand in one step</span>
+    <span class="type">HKDFParameterSpec</span> params =
+        <span class="type">HKDFParameterSpec</span>
+            .<span class="fn">extractThenExpand</span>(salt, ikm, info, <span class="num">32</span>);
+
+    <span class="cmt">// Derive a 256-bit AES key</span>
+    <span class="type">SecretKey</span> derivedKey =
+        kdf.<span class="fn">deriveKey</span>(<span class="str">"AES"</span>, params);
+
+    <span class="fn">println</span>(<span class="str">"Key algo: "</span> + derivedKey.<span class="fn">getAlgorithm</span>());
+    <span class="cmt">// Output: Key algo: AES</span>
+}</pre>
+  </div>
+
+  <div class="tip">Before Java 25, developers relied on third-party libraries (like Bouncy Castle) for KDF. Now it's part of the standard library. Mention HKDF is used in TLS 1.3, Signal Protocol, and many modern crypto protocols.</div>
+</div>
+
+</body>
+</html>

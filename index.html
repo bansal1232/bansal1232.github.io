@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="description" content="Hi! I am Shubham Bansal, final year undergraduate from Bundelkhand Institute of Engineering & Technology, Jhansi">
+    <meta name="description" content="Shubham Bansal — Senior Software Engineer with 7+ years building high-throughput distributed systems across fintech, healthtech & e-commerce. Node.js, Java, AWS.">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- Facebook Open Graph meta -->
-    <meta property="og:title" content="Shubham Bansal">
-    <meta property="og:description" content="final year undergraduate from Bundelkhand Institute of Engineering & Technology, Jhansi">
+    <meta property="og:title" content="Shubham Bansal — Senior Software Engineer">
+    <meta property="og:description" content="7+ years building high-throughput distributed systems. Node.js, Java microservices, event-driven architectures, AWS cloud-native backends.">
     <meta name="msapplication-TileColor" content="#ffffff">
     <title>Shubham Bansal</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
@@ -20,6 +20,10 @@
     <link rel="stylesheet" href="css/style.css">
   </head>
   <body>
+    <a class="top-cta" href="design-development.html" target="_blank">
+      <span class="top-cta__icon">🛠️</span>
+      <span class="top-cta__text">Design &amp; Development</span>
+    </a>
     <section class="main-container">
       <div class="blocks">
         <div class="block block--left" >
@@ -27,7 +31,7 @@
             <div class="block-content">
             <div class="upper">
             <div align="center"><img class="mine_img" src="img/photo-new.jpg" ></div>
-            <b><p style="font-size: 20px; text-align: center;">Competitive programming is a Race, if you don't code fast then there would be no use of it</p></b>
+            <b><p style="font-size: 20px; text-align: center;">Building high-throughput distributed systems that scale — one latency-saving optimisation at a time.</p></b>
             </div>
             <div class="lower">
               <h1 class="block__title main-name">
@@ -37,7 +41,7 @@
               </span>
               </h1>
               <h1 class="block__title">
-              <span>Programmer, Reader, Writer</span>
+              <span>Senior Software Engineer · Distributed Systems · Backend</span>
               </h1>
               <div class="block__social">
                 <a href="mailto:shubhambansal1232@gmail.com" class="btn_email">shubhambansal1232@gmail.com</a>
@@ -69,7 +73,8 @@
                     </span>
                     </h2>
                     <div class="content__inner">
-                      <p>As a Senior Software Engineer, I am passionate about programming, with a strong focus on data structures, algorithms, and enhancing System Design and Architecture. Outside of work, I enjoy sharing my expertise with others. Though an ambivert, I find great fulfillment in contributing to the broader community. Additionally, I am an avid badminton player, which helps me maintain a balanced and active lifestyle..</p>
+                      <p>Senior Software Engineer with <b>7+ years</b> of experience building high-throughput distributed systems across <b>fintech, healthtech, and e-commerce</b>. I specialise in Node.js and Java microservices, event-driven architectures, API security, and cloud-native backends on AWS — with a consistent track record of improving system performance, reducing latency, and leading end-to-end platform migrations at scale.</p>
+                      <p>Outside of work, I share what I learn through <b>80+ technical articles</b> on GeeksforGeeks, play badminton, and travel whenever I can.</p>
                       </div>
                     </div>
 
@@ -85,50 +90,51 @@
                         <div class="experience">
                           <div class="meta-title"><a href="https://www.onsurity.com/" target = "_blank">Onsurity</a></div>
                           <div class="experience__role">Senior Software Engineer</div>
-                          <div class="experience__time">23-JAN-2023 - Present</div>
-                          <div class="experience__location">Bangalore, India</div>
+                          <div class="experience__time">Jan 2023 - Present</div>
+                          <div class="experience__location">Bengaluru, India</div>
                           <ul>
-                             <li>Enhanced the Admin panel by optimizing MongoDB queries with
-                              lookup, batching, projection, indexing, and the Aggregation Framework.</li>
-                             <li>Created an invoice generation service to dynamically produce 16-digit
-                              invoice numbers at scale, using caching and Hibernate Entity Mapping.</li>
-                             <li>Configured and deployed AWS Lambda using versioning for beta testing without impacting the stable production version.</li>
+                             <li>Architected and shipped end-to-end B2B insurance membership APIs for the <b>CRED integration</b>, serving <b>~10K API calls/day</b> at 99.9% uptime — secured against replay attacks via timestamp validation + HMAC-SHA256 signing and Redis locking for idempotency.</li>
+                             <li>Slashed employer dashboard API <b>p95 latency by ~40%</b> by introducing an Elasticsearch caching layer absorbing <b>~5000 queries/min</b> at peak, eliminating high-frequency MongoDB round-trips.</li>
+                             <li>Led migration of the onboarding module from a monolith to microservices, cutting end-to-end onboarding time from <b>1 hour to 15 minutes</b> and enabling each service to scale independently.</li>
+                             <li>Built a multi-tenant Node.js (Fastify) backend with MongoDB for transactional data, PostgreSQL (Sequelize) for relational queries, and OpenSearch/Elasticsearch for full-text search and analytics.</li>
+                             <li>Decoupled post-onboarding workflows using <b>Agenda</b> (MongoDB-backed) for scheduled jobs and <b>Bull</b> (Redis-backed) for durable queues — reliable delivery of email campaigns, beneficiary triggers, and billing notifications.</li>
+                             <li>Rewrote slow admin MongoDB aggregations with <b>$lookup</b>, batching, projection, and compound indexing — reducing execution time on large collections by <b>~60%</b>.</li>
+                             <li>Designed a collision-free distributed invoice generation service producing unique <b>16-digit invoice numbers</b> via Redis atomic counters — handling <b>~100K invoices/day</b> with zero duplicates.</li>
                           </ul>
                        </div>
 
 
                          <div class="experience">
                             <div class="meta-title"><a href="https://pharmeasy.in/" target = "_blank">PharmEasy</a></div>
-                            <div class="experience__role">Senior Software Developer</div>
-                            <div class="experience__time">25-Oct-2021 - 20-JAN-2023</div>
-                            <div class="experience__location">Bangalore, India</div>
+                            <div class="experience__role">Senior Software Engineer</div>
+                            <div class="experience__time">Oct 2021 - Jan 2023</div>
+                            <div class="experience__location">Mumbai, India</div>
                             <ul>
-                               <li>Implemented Redis pipeline to reduce the response time of API calls.</li>
-                               <li>Designed and developed a full architecture of BMGM (Buy more get More) feature.</li>
-                               <li>Developed feature to upload discounts by providing multiple different dates.</li>
+                               <li>Designed and launched the <b>PLD (Product Level Discount)</b> module delivering targeted, real-time promotions to <b>millions of users</b> — ingested bulk discount data via CSV, processing <b>~100K records/batch</b> in configurable chunks using <b>Spring Batch</b> without memory pressure.</li>
+                               <li>Eliminated per-request round-trip overhead on high-traffic read APIs using <b>Redis pipelining</b> — cut average response time from <b>10ms to 3ms (~70% improvement)</b>; exposed discounts via paginated REST APIs with filtering support.</li>
                             </ul>
                          </div>
                          <div class="experience">
-                            <div class="meta-title"><a href="https://www.samsung.com/" target = "_blank">SAMSUNG</a></div>
-                            <div class="experience__role">SENIOR SOFTWARE ENGINEER</div>
-                            <div class="experience__time">01-Aug-2019 - 22-Oct-2021</div>
-                            <div class="experience__location">Bangalore, India</div>
+                            <div class="meta-title"><a href="https://www.samsung.com/" target = "_blank">Samsung R&amp;D Institute</a></div>
+                            <div class="experience__role">Senior Software Engineer</div>
+                            <div class="experience__time">Aug 2019 - Oct 2021</div>
+                            <div class="experience__location">Bengaluru, India</div>
                             <ul>
-                              <li>LSS(LockedScreenStories) module where Partner ADs are shown to user on mobile lock screen.</li>
-                              <li>Developed pipeline to sync ADs from Partner DB to Samsung DB and render only eligible ADs to the client via Amazon s3.</li>
+                              <li>Engineered the <b>LSS (Locked Screen Stories)</b> platform serving targeted partner ads to <b>millions of Samsung devices</b> — built an automated Partner DB → Samsung DB sync pipeline with eligibility filtering and monitoring scripts that cut incident detection time by <b>~50%</b>.</li>
+                              <li>Contributed core features to <b>Samsung Pay</b> (NFC/MST contactless payments): TTL-based Couchbase caching cut DB calls by <b>20%</b>; built a centralised notification handler with per-hour/per-day <b>rate limiting</b> to protect CMN infrastructure from traffic spikes.</li>
+                              <li>Implemented secure certificate exchange using the <b>Cryptographic Message Syntax (CMS)</b> standard for the Auth Service; recognised company-wide for the Samsung Pay Mini Cloud Auth solution.</li>
+                              <li>Developed Auth Service REST APIs covering customer onboarding, Send/Collect Money flows, and full wallet lifecycle management.</li>
                            </ul>
                          </div>
                          <div>
                             <div class="meta-title"><a href="https://www.paytmmoney.com/" target = "_blank">Paytm Money</a></div>
-                            <div class="experience__role">SOFTWARE ENGINEER</div>
-                            <div class="experience__time">16-July-2018 - 30-July-2019</div>
-                            <div class="experience__location">Bangalore, India</div>             
+                            <div class="experience__role">Software Engineer</div>
+                            <div class="experience__time">Jul 2018 - Jul 2019</div>
+                            <div class="experience__location">Noida, India</div>
 
                             <ul>
-                               <li>
-                                Configured Master slave database architecture to reduce and distribute the load of read heavy API calls
-                               </li>
-                               <li>Implemented Distributed Lock on database using HazelCast to prevent the read/write calls concurrently</li>
+                               <li>Architected a <b>master-slave database setup</b> to distribute read-heavy API traffic across replicas — improved throughput and reduced primary DB load for India's largest retail stock-trading platform.</li>
+                               <li>Prevented race conditions on critical write paths by implementing <b>HazelCast distributed locks</b>, ensuring data consistency under high concurrency.</li>
                             </ul>
                          </div>
                       </div>
@@ -195,6 +201,19 @@
                     </div>
                     
                     
+                    <div class="content content--notes">
+                      <h2 class="content__tag">
+                      <span class="title relative">
+                        🛠️ DESIGN &amp; DEVELOPMENT
+                        <span class="half-border"></span>
+                      </span>
+                      </h2>
+                      <div class="content__inner">
+                        <p>A curated set of deep dives on system design, LLD, and backend engineering — interview prep, case studies, and production patterns.</p>
+                        <a class="notes-link-btn" href="design-development.html" target="_blank">Explore all projects →</a>
+                      </div>
+                    </div>
+
                       <div class="Publications">
                         <h2 class="content__tag">
                         <span class="title relative">
@@ -233,33 +252,80 @@
                         </span>
                         </h2>
                         <div class="content__inner">
-                          <b>Programming Languages: </b>&nbsp;
+                          <b>Languages: </b>&nbsp;
                           <span class="skills skill">Java</span>
-                          <span class="skills skill">C</span>
-                          <span class="skills skill">C++</span>
+                          <span class="skills skill">JavaScript / Node.js</span>
                           <span class="skills skill">Python</span>
-                          </br>
-                          <b>TECH STACK: </b> &nbsp;
-                          <span class="skills skill">Spring-boot</span>
-                          <span class="skills skill">Kafka</span>
-                          <span class="skills skill">Redis</span>
-                          <span class="skills skill">AWS</span>
-
+                          <span class="skills skill">C++</span>
                           <br>
-                          <b>Database: </b>&nbsp;
-                          <span class="skills skill">MySql</span>
+                          <b>Frameworks: </b>&nbsp;
+                          <span class="skills skill">Fastify</span>
+                          <span class="skills skill">Spring Boot</span>
+                          <span class="skills skill">Spring Batch</span>
+                          <span class="skills skill">Sequelize ORM</span>
+                          <br>
+                          <b>Databases: </b>&nbsp;
                           <span class="skills skill">MongoDB</span>
-                          <span class="skills skill">CouchBaseDB</span>
-
+                          <span class="skills skill">MySQL</span>
+                          <span class="skills skill">PostgreSQL</span>
+                          <span class="skills skill">CouchbaseDB</span>
+                          <span class="skills skill">OpenSearch / Elasticsearch</span>
                           <br>
-                          <b>Operating System: </b> &nbsp;
+                          <b>Caching &amp; Queues: </b>&nbsp;
+                          <span class="skills skill">Redis</span>
+                          <span class="skills skill">ElastiCache</span>
+                          <span class="skills skill">Apache Kafka</span>
+                          <span class="skills skill">AWS SQS</span>
+                          <span class="skills skill">Bull</span>
+                          <span class="skills skill">Agenda</span>
+                          <br>
+                          <b>AWS: </b>&nbsp;
+                          <span class="skills skill">SQS</span>
+                          <span class="skills skill">S3</span>
+                          <span class="skills skill">SNS</span>
+                          <span class="skills skill">ElastiCache</span>
+                          <span class="skills skill">Elastic Beanstalk</span>
+                          <span class="skills skill">Secrets Manager</span>
+                          <br>
+                          <b>Auth &amp; Security: </b>&nbsp;
+                          <span class="skills skill">JWT</span>
+                          <span class="skills skill">HMAC-SHA256</span>
+                          <span class="skills skill">RBAC</span>
+                          <span class="skills skill">Replay-Attack Prevention</span>
+                          <span class="skills skill">HazelCast</span>
+                          <br>
+                          <b>API Design: </b>&nbsp;
+                          <span class="skills skill">REST</span>
+                          <span class="skills skill">OpenAPI / Swagger</span>
+                          <span class="skills skill">Idempotency</span>
+                          <span class="skills skill">Rate Limiting</span>
+                          <br>
+                          <b>DevOps &amp; Observability: </b>&nbsp;
+                          <span class="skills skill">Docker</span>
                           <span class="skills skill">Linux</span>
-                          <br>
-                          <b>Other Tools and APIs: </b>&nbsp;
-                          <span class="skills skill">Mathematica</span>
-                          <span class="skills skill">LaTex</span>
+                          <span class="skills skill">ELK Stack</span>
+                          <span class="skills skill">Elastic APM</span>
+                          <span class="skills skill">GitHub Actions</span>
                         </div>
                         <!-- </div> -->
+                      </div>
+
+                      <div class="content content--exp">
+                        <h2 class="content__tag">
+                        <span class="title relative">
+                          🏆 ACHIEVEMENTS
+                          <span class="half-border"></span>
+                        </span>
+                        </h2>
+                        <div class="content__inner">
+                          <ul>
+                            <li><b>Performance Cyclone — Q1</b> at Onsurity — awarded to the top 5% of engineers each quarter for exceptional delivery impact.</li>
+                            <li><b>Value Creator Award</b> at Samsung R&amp;D — recognised for sustained contribution to product quality and team velocity.</li>
+                            <li>Recognised across <b>Samsung Bangalore</b> for leading the Samsung Pay Mini Cloud Auth solution, a critical security component shipped to production.</li>
+                            <li>Published <b>80+ technical articles</b> on <a href="https://auth.geeksforgeeks.org/user/Shubham%20Bansal%2013/articles" target="_blank">GeeksforGeeks</a> covering data structures, algorithms, and backend systems.</li>
+                            <li>Secured <b>Rank 76 in TCS CodeVita 2018</b> (Round 2) — top 0.1% among 300,000+ participants globally.</li>
+                          </ul>
+                        </div>
                       </div>
                       <div class="content content--interests">
                         <h2 class="content__tag">
@@ -316,7 +382,7 @@
 
                     </div>
                     <div class="copyright" align = "center">
-                      &copy; Shubham Bansal - 2024 .
+                      &copy; Shubham Bansal - 2026 .
                     </div>
                   </div>
                 </div>

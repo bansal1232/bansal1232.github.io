@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MakeMyTrip — LLD Interview Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:700px;margin-left:auto;margin-right:auto}
+.back-link{position:absolute;top:18px;left:18px;font-size:13px;color:var(--muted);text-decoration:none;z-index:2}
+.back-link:hover{color:var(--orange)}
+
+.wrap{max-width:940px;margin:0 auto;padding:2.5rem 1.5rem 5rem}
+
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--muted);font-size:.92rem;margin-bottom:1.5rem;max-width:720px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.35rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.87rem;color:var(--muted);line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+.card strong{color:var(--heading);font-weight:600}
+
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:4}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+.state-flow{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2rem;overflow-x:auto;margin-bottom:1rem}
+.state-flow pre{background:transparent;border:none;padding:0;margin:0;font-size:.72rem;line-height:1.7;color:var(--text)}
+
+.hl{background:linear-gradient(135deg,var(--yellow-d) 0%,rgba(212,168,56,.04) 100%);border-left:3px solid var(--yellow);padding:1.1rem 1.3rem;border-radius:0 var(--r) var(--r) 0;margin-bottom:1rem}
+.hl p{font-size:.88rem;color:var(--text)}
+.hl strong{color:var(--yellow)}
+
+.qa{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:.75rem;overflow:hidden}
+.qa .q{padding:1rem 1.3rem;font-weight:600;color:var(--heading);font-size:.95rem;background:var(--surface2);border-left:3px solid var(--cyan)}
+.qa .a{padding:1rem 1.3rem;font-size:.87rem;color:var(--muted);line-height:1.75}
+.qa .a strong{color:var(--heading)}
+
+table{width:100%;border-collapse:collapse;margin-bottom:1rem;font-size:.85rem}
+th,td{padding:.7rem .9rem;border:1px solid var(--border);text-align:left;vertical-align:top}
+th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;letter-spacing:.05em;text-transform:uppercase}
+td{color:var(--muted);background:var(--surface)}
+
+.toc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.3rem 1.5rem;margin-bottom:3rem}
+.toc h4{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);margin-bottom:.6rem}
+.toc ol{padding-left:1.3rem;columns:2;column-gap:2rem}
+.toc li{font-size:.85rem;margin-bottom:.25rem;color:var(--muted)}
+.toc a{color:var(--text);text-decoration:none}
+.toc a:hover{color:var(--orange)}
+@media(max-width:700px){.toc ol{columns:1}}
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <a class="back-link" href="../design-development.html">← All projects</a>
+  <span class="pill">Low-Level Design · Interview Deep Dive</span>
+  <h1>MakeMyTrip <span>— LLD</span></h1>
+  <p class="sub">Complete interview-grade design: requirements, entities, patterns, concurrency, cross-questions, and the mental model you need to arrive at this design on your own.</p>
+</section>
+
+<div class="wrap">
+
+<div class="toc">
+  <h4>Table of contents</h4>
+  <ol>
+    <li><a href="#intuition">Building the intuition first</a></li>
+    <li><a href="#clarify">Clarifying questions</a></li>
+    <li><a href="#req">Requirements</a></li>
+    <li><a href="#entities">Core entities</a></li>
+    <li><a href="#patterns">Design patterns used</a></li>
+    <li><a href="#code">Class-level design</a></li>
+    <li><a href="#state">Booking state machine</a></li>
+    <li><a href="#concurrency">Concurrency &amp; atomicity</a></li>
+    <li><a href="#payment">Payment, refund, money flow</a></li>
+    <li><a href="#crossq">Cross-questions &amp; answers</a></li>
+    <li><a href="#checklist">Interview checklist</a></li>
+  </ol>
+</div>
+
+<!-- ── INTUITION ── -->
+<section class="sec" id="intuition">
+  <span class="sec-tag tag-orange">Start here</span>
+  <h2>How to build the intuition</h2>
+  <p>Before any class diagram, anchor yourself on 4 mental moves. Every good LLD answer comes from these — not memorisation.</p>
+
+  <div class="card">
+    <h3>1. Find the "product" abstraction</h3>
+    <p>MakeMyTrip sells <strong>flights, hotels, buses, trains, cabs, holiday packages</strong>. They look different but behave similarly: search → view → hold inventory → pay → confirm → cancel/refund. That similarity is your <strong>abstraction</strong> — a <code>Bookable</code> or <code>TravelProduct</code>. Every LLD question has one hidden abstraction; find it first, the rest of the design falls out.</p>
+  </div>
+  <div class="card">
+    <h3>2. Separate "what changes" from "what doesn't"</h3>
+    <p>The <strong>booking lifecycle</strong> (search → hold → pay → confirm) rarely changes. What changes: <strong>how</strong> inventory is fetched (GDS vs own DB), <strong>how</strong> price is computed, <strong>how</strong> payment is charged. Stable stuff → <strong>templates / skeletons</strong>. Variable stuff → <strong>strategies / plugins</strong>. This single move produces 80% of the design patterns you'll use.</p>
+  </div>
+  <div class="card">
+    <h3>3. Draw the money &amp; inventory flows, not the screens</h3>
+    <p>Interviewers don't care about UI. They care: <strong>when does money move, when does inventory lock, what happens if one fails</strong>. Draw two parallel timelines — inventory state vs payment state — and design around their intersections (holds, compensations, idempotency).</p>
+  </div>
+  <div class="card">
+    <h3>4. Every "what if X fails" → a design decision</h3>
+    <p>Treat failures as first-class. "Payment timed out after seat was held" is not an edge case; it's the <em>normal</em> case at scale. The moment you accept that, you start reaching for state machines, sagas, idempotency keys, and compensation — without being told to.</p>
+  </div>
+
+  <div class="hl">
+    <p><strong>Interview tip:</strong> Say these 4 moves aloud at the start. It signals maturity and buys you time to think. Then say: <em>"Let me clarify scope first"</em> — and ask the questions below.</p>
+  </div>
+</section>
+
+<!-- ── CLARIFY ── -->
+<section class="sec" id="clarify">
+  <span class="sec-tag tag-cyan">Step 1</span>
+  <h2>Clarifying questions to ask</h2>
+  <p>Never start coding. Ask these, write the answers on the board — they scope your whole design.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📦 Scope</h3>
+      <ul>
+        <li>Which verticals? (flights only? flight + hotel? packages?)</li>
+        <li>B2C only or also B2B/agent portal?</li>
+        <li>One-way, round-trip, multi-city?</li>
+        <li>Single traveller or group bookings?</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🗂️ Inventory</h3>
+      <ul>
+        <li>Own inventory or aggregator (GDS: Amadeus/Sabre)?</li>
+        <li>Real-time or cached search results?</li>
+        <li>How long do we hold a seat before payment?</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>💳 Payments</h3>
+      <ul>
+        <li>Which methods? (card, UPI, wallet, EMI, pay-later)</li>
+        <li>Split payments? (wallet + card, coupon + UPI)</li>
+        <li>Partial refunds, cancellation fees?</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚖️ Non-functional</h3>
+      <ul>
+        <li>QPS for search vs booking?</li>
+        <li>Consistency: is "no double booking" strict?</li>
+        <li>SLA for search latency? booking latency?</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ── REQUIREMENTS ── -->
+<section class="sec" id="req">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements</h2>
+  <p>Assume a typical interview scope: flight + hotel booking, card/UPI/wallet payments, single traveller or group.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>Functional</h3>
+      <ul>
+        <li>Search flights / hotels with filters (price, stops, rating, time)</li>
+        <li>Hold inventory for N minutes during checkout</li>
+        <li>Accept payment (card, UPI, wallet, coupon, EMI — stackable)</li>
+        <li>Confirm booking, issue e-ticket / voucher</li>
+        <li>Cancellation with partial/full refund per fare rules</li>
+        <li>User wallet, loyalty points, coupons</li>
+        <li>Notifications: email, SMS, push, WhatsApp</li>
+        <li>Price alerts for saved searches</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Non-functional</h3>
+      <ul>
+        <li><strong>No double booking</strong> — strict single-seat invariant</li>
+        <li><strong>Idempotent</strong> booking &amp; payment APIs</li>
+        <li><strong>Search p95 &lt; 800ms</strong>, booking p95 &lt; 2s</li>
+        <li>Graceful degradation if GDS is slow (show cached fare, warn user)</li>
+        <li>Audit trail for every money / inventory mutation</li>
+        <li>Extensible to new products (train, bus) without changing core</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ── ENTITIES ── -->
+<section class="sec" id="entities">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Core entities</h2>
+  <p>Keep nouns small and specific. These are the ~15 classes you'll end up drawing.</p>
+
+  <table>
+    <thead><tr><th>Entity</th><th>Responsibility</th><th>Key fields / relations</th></tr></thead>
+    <tbody>
+      <tr><td><strong>User</strong></td><td>Auth, profile, travellers, wallet, loyalty tier</td><td>id, email, phone, walletRef, tier</td></tr>
+      <tr><td><strong>TravelProduct</strong> <em>(abstract)</em></td><td>Common contract: id, price, availability, fareRules</td><td>Flight / Hotel / Bus extend this</td></tr>
+      <tr><td><strong>Flight</strong></td><td>Represents a flight segment/leg</td><td>airline, from, to, dep/arr, seatMap, fareClasses</td></tr>
+      <tr><td><strong>Hotel</strong></td><td>Property with room types</td><td>location, amenities, roomInventory[]</td></tr>
+      <tr><td><strong>SearchCriteria</strong></td><td>Immutable query object</td><td>origin, destination, dates, pax, class, filters</td></tr>
+      <tr><td><strong>SearchResult</strong></td><td>Listing of products + faceted filters</td><td>products[], appliedFilters</td></tr>
+      <tr><td><strong>Cart</strong></td><td>Items + add-ons + price breakdown</td><td>items[], addons[], priceBreakup</td></tr>
+      <tr><td><strong>PriceBreakup</strong></td><td>Base + tax + fees + discount + payable</td><td>lineItems[], total, payable</td></tr>
+      <tr><td><strong>Hold</strong> / <strong>InventoryLock</strong></td><td>Time-bound reservation</td><td>productId, pax, expiryAt, holdId</td></tr>
+      <tr><td><strong>Booking</strong></td><td>Aggregate root for a confirmed trip</td><td>pnr/voucher, travellers[], state, items[], payments[]</td></tr>
+      <tr><td><strong>Payment</strong></td><td>One attempt/capture</td><td>method, amount, status, gatewayRef, idempotencyKey</td></tr>
+      <tr><td><strong>Coupon</strong> / <strong>Wallet</strong> / <strong>LoyaltyPoints</strong></td><td>Value adjusters applied before payment</td><td>rules engine decides stackability</td></tr>
+      <tr><td><strong>CancellationPolicy</strong> / <strong>FareRule</strong></td><td>Pure function: returns refundable amount</td><td>slabs (hrs before departure → % refund)</td></tr>
+      <tr><td><strong>Refund</strong></td><td>Reverse money flow, tracks state</td><td>bookingId, amount, toMethod, status</td></tr>
+      <tr><td><strong>Notification</strong></td><td>Multi-channel message</td><td>channel, template, recipient, status</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── PATTERNS ── -->
+<section class="sec" id="patterns">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>Design patterns — what and why</h2>
+  <p>Each pattern maps to a specific variability axis. Saying "we'll use Strategy" isn't enough — explain <em>what varies</em>.</p>
+
+  <div class="card">
+    <h3><span style="color:var(--orange)">Strategy</span> — search, filter, pricing, payment, refund</h3>
+    <p><strong>Varies:</strong> <em>how</em> an operation is done. Search flights via GDS vs own DB; price with dynamic-pricing vs static; pay via Stripe vs PayU vs UPI; apply coupon as %-off vs flat-off vs BOGO.</p>
+    <p>Define <code>PricingStrategy</code>, <code>SearchStrategy</code>, <code>PaymentStrategy</code>, <code>CouponStrategy</code>. Inject via constructor. New algorithm = new class, zero change to core.</p>
+  </div>
+
+  <div class="card">
+    <h3><span style="color:var(--blue)">Factory</span> — product &amp; provider creation</h3>
+    <p><strong>Varies:</strong> <em>which</em> concrete object to build. <code>ProductFactory.create(type)</code> returns <code>Flight</code>, <code>Hotel</code>, etc. <code>PaymentGatewayFactory</code> returns the right gateway client. Keeps <code>if-else</code> ladders out of business logic.</p>
+  </div>
+
+  <div class="card">
+    <h3><span style="color:var(--green)">Builder</span> — complex booking &amp; cart</h3>
+    <p><strong>Problem:</strong> a booking has travellers, add-ons (meal/seat/insurance), coupons, payment splits. Constructor with 10 args is unreadable. <code>Booking.builder().traveller(…).addon(…).coupon(…).split(…).build()</code> is clean and enforces invariants in <code>build()</code>.</p>
+  </div>
+
+  <div class="card">
+    <h3><span style="color:var(--yellow)">Decorator</span> — add-ons on top of base fare</h3>
+    <p><strong>Varies:</strong> price composition. <code>FarePrice → + SeatFee → + MealFee → + InsuranceFee → + ConvenienceFee</code>. Each decorator wraps the previous, overriding <code>getAmount()</code>. Add-ons become pluggable without editing base fare code.</p>
+  </div>
+
+  <div class="card">
+    <h3><span style="color:var(--cyan)">Chain of Responsibility</span> — checkout pipeline</h3>
+    <p>Booking request flows through: <code>ValidateRequest → CheckInventory → ApplyCoupon → ReservePayment → ConfirmWithSupplier → GenerateTicket → Notify</code>. Each handler can pass, fail (with compensation), or short-circuit. Makes cross-cutting steps (fraud check, rate limit) trivially insertable.</p>
+  </div>
+
+  <div class="card">
+    <h3><span style="color:var(--red)">State</span> — booking lifecycle</h3>
+    <p>Booking states: <code>INITIATED → HOLD → PAYMENT_PENDING → PAYMENT_FAILED / CONFIRMED → CANCELLED / REFUND_PENDING / REFUNDED</code>. Encode transitions in a State pattern (or table) so invalid moves (e.g. cancel an already-refunded) fail fast.</p>
+  </div>
+
+  <div class="card">
+    <h3><span style="color:var(--purple)">Observer</span> — notifications &amp; price alerts</h3>
+    <p>On <code>BookingConfirmed</code>, observers fire: email, SMS, WhatsApp, loyalty-point-credit, CRM sync. On <code>PriceDrop</code>, saved-search subscribers get push notifications. Decouples event producers from handlers.</p>
+  </div>
+
+  <div class="card">
+    <h3><span style="color:var(--orange)">Template Method</span> — booking skeleton</h3>
+    <p>The <strong>algorithm outline</strong> (hold → pay → confirm → notify) is identical for flight, hotel, bus. Define <code>AbstractBookingService.book()</code> as a template that calls abstract hooks (<code>holdInventory()</code>, <code>confirmWithSupplier()</code>) — concrete services fill the blanks.</p>
+  </div>
+
+  <div class="card">
+    <h3><span style="color:var(--green)">Singleton</span> — caches &amp; config</h3>
+    <p>One in-memory fare cache, one GDS client pool, one config store. Spring-style DI already gives you this — just be explicit that you want one instance per JVM.</p>
+  </div>
+
+  <div class="card">
+    <h3><span style="color:var(--blue)">Facade</span> — booking API surface</h3>
+    <p><code>BookingFacade.book(request)</code> hides the chain, state machine, saga, notifications. Callers (mobile, web, partner) see one clean method.</p>
+  </div>
+
+  <div class="card">
+    <h3><span style="color:var(--yellow)">Saga / Compensating transaction</span> <em>(pattern, not GoF)</em></h3>
+    <p>Money and inventory live in separate systems. A saga ensures: if payment captured but supplier confirmation failed → auto-refund + release hold. Each step has a compensation. Critical to mention in any booking LLD.</p>
+  </div>
+</section>
+
+<!-- ── CODE ── -->
+<section class="sec" id="code">
+  <span class="sec-tag tag-green">Step 5</span>
+  <h2>Class-level design (pseudo-Java)</h2>
+  <p>Skeleton the interviewer actually expects to see. Focus on interfaces &amp; signatures — implementations are one-liners.</p>
+
+  <span class="code-label cl-blue">core abstractions</span>
+<pre><span class="kw">interface</span> <span class="ty">TravelProduct</span> {
+    <span class="ty">String</span> <span class="fn">id</span>();
+    <span class="ty">ProductType</span> <span class="fn">type</span>();          <span class="cmt">// FLIGHT, HOTEL, BUS…</span>
+    <span class="ty">Money</span> <span class="fn">basePrice</span>();
+    <span class="ty">Availability</span> <span class="fn">availability</span>(<span class="ty">SearchCriteria</span> c);
+    <span class="ty">FareRule</span> <span class="fn">fareRule</span>();
+}
+
+<span class="kw">interface</span> <span class="ty">InventoryProvider</span>&lt;<span class="ty">P</span> <span class="kw">extends</span> <span class="ty">TravelProduct</span>&gt; {
+    <span class="ty">List</span>&lt;<span class="ty">P</span>&gt; <span class="fn">search</span>(<span class="ty">SearchCriteria</span> c);
+    <span class="ty">Hold</span>           <span class="fn">hold</span>(<span class="ty">String</span> productId, <span class="ty">int</span> pax, <span class="ty">Duration</span> ttl);
+    <span class="kw">void</span>           <span class="fn">release</span>(<span class="ty">String</span> holdId);
+    <span class="ty">SupplierRef</span>    <span class="fn">confirm</span>(<span class="ty">String</span> holdId);   <span class="cmt">// returns PNR/voucher</span>
+}
+
+<span class="kw">interface</span> <span class="ty">PricingStrategy</span>   { <span class="ty">PriceBreakup</span> <span class="fn">price</span>(<span class="ty">Cart</span> c, <span class="ty">User</span> u); }
+<span class="kw">interface</span> <span class="ty">PaymentStrategy</span>   { <span class="ty">PaymentResult</span> <span class="fn">charge</span>(<span class="ty">PaymentRequest</span> r); }
+<span class="kw">interface</span> <span class="ty">CouponStrategy</span>    { <span class="ty">Money</span> <span class="fn">discount</span>(<span class="ty">Cart</span> c, <span class="ty">Coupon</span> k); }
+<span class="kw">interface</span> <span class="ty">RefundStrategy</span>    { <span class="ty">Refund</span> <span class="fn">refund</span>(<span class="ty">Booking</span> b, <span class="ty">Money</span> amt); }
+</pre>
+
+  <span class="code-label cl-purple">booking aggregate &amp; state</span>
+<pre><span class="kw">class</span> <span class="ty">Booking</span> {
+    <span class="kw">final</span> <span class="ty">String</span> id;
+    <span class="kw">final</span> <span class="ty">User</span> user;
+    <span class="kw">final</span> <span class="ty">List</span>&lt;<span class="ty">BookingItem</span>&gt; items;         <span class="cmt">// flight + hotel etc.</span>
+    <span class="kw">final</span> <span class="ty">List</span>&lt;<span class="ty">Payment</span>&gt;     payments;      <span class="cmt">// split payments</span>
+    <span class="kw">private</span> <span class="ty">BookingState</span> state;           <span class="cmt">// State pattern</span>
+
+    <span class="kw">void</span> <span class="fn">transition</span>(<span class="ty">BookingEvent</span> e) {
+        state = state.on(e, <span class="kw">this</span>);       <span class="cmt">// enforces legal transitions</span>
+    }
+}
+
+<span class="kw">interface</span> <span class="ty">BookingState</span> { <span class="ty">BookingState</span> <span class="fn">on</span>(<span class="ty">BookingEvent</span> e, <span class="ty">Booking</span> b); }
+<span class="cmt">// Concrete: InitiatedState, HeldState, PaidState, ConfirmedState,
+//            CancelledState, RefundedState… each implements legal moves only</span>
+</pre>
+
+  <span class="code-label cl-orange">checkout chain</span>
+<pre><span class="kw">abstract class</span> <span class="ty">CheckoutHandler</span> {
+    <span class="kw">protected</span> <span class="ty">CheckoutHandler</span> next;
+    <span class="kw">public final</span> <span class="ty">BookingContext</span> <span class="fn">handle</span>(<span class="ty">BookingContext</span> ctx) {
+        <span class="fn">process</span>(ctx);
+        <span class="kw">return</span> next == <span class="kw">null</span> ? ctx : next.<span class="fn">handle</span>(ctx);
+    }
+    <span class="kw">protected abstract void</span> <span class="fn">process</span>(<span class="ty">BookingContext</span> ctx);
+}
+
+<span class="cmt">// Concrete handlers — each focused, each compensatable</span>
+ValidateRequest  → CheckFraud → HoldInventory → ApplyCoupon
+                 → ReservePayment → ConfirmWithSupplier
+                 → GenerateTicket → PublishEvents → Notify
+</pre>
+
+  <span class="code-label cl-green">pricing with decorators</span>
+<pre><span class="kw">interface</span> <span class="ty">Priced</span> { <span class="ty">Money</span> <span class="fn">amount</span>(); }
+
+<span class="kw">class</span> <span class="ty">BaseFare</span> <span class="kw">implements</span> <span class="ty">Priced</span> { … }
+
+<span class="kw">abstract class</span> <span class="ty">FareAddon</span> <span class="kw">implements</span> <span class="ty">Priced</span> {
+    <span class="kw">protected final</span> <span class="ty">Priced</span> inner;
+    <span class="kw">public</span> <span class="ty">Money</span> <span class="fn">amount</span>() { <span class="kw">return</span> inner.<span class="fn">amount</span>().<span class="fn">plus</span>(<span class="fn">feeAmount</span>()); }
+    <span class="kw">protected abstract</span> <span class="ty">Money</span> <span class="fn">feeAmount</span>();
+}
+<span class="cmt">// SeatSelection, MealUpgrade, InsurancePlan, ConvenienceFee…</span>
+</pre>
+
+  <span class="code-label cl-cyan">facade</span>
+<pre><span class="kw">class</span> <span class="ty">BookingFacade</span> {
+    <span class="ty">BookingResponse</span> <span class="fn">book</span>(<span class="ty">BookingRequest</span> r) {
+        <span class="kw">var</span> ctx = <span class="kw">new</span> <span class="ty">BookingContext</span>(r);
+        checkoutChain.<span class="fn">handle</span>(ctx);           <span class="cmt">// may throw, triggers saga</span>
+        <span class="kw">return</span> <span class="ty">BookingResponse</span>.<span class="fn">from</span>(ctx.booking);
+    }
+}
+</pre>
+</section>
+
+<!-- ── STATE DIAGRAM ── -->
+<section class="sec" id="state">
+  <span class="sec-tag tag-red">Step 6</span>
+  <h2>Booking state machine</h2>
+  <p>Draw this on the whiteboard. Every transition has a trigger event and, ideally, a compensation.</p>
+
+  <div class="state-flow">
+<pre>
+    [INITIATED]
+         │ selectProduct
+         ▼
+    [CART_READY] ── holdFailed ──► [ABANDONED]
+         │ holdOk
+         ▼
+    [HELD] ─── holdExpired ───► [EXPIRED] (auto-release)
+         │ paymentSubmitted
+         ▼
+    [PAYMENT_PENDING] ── paymentFailed ──► [PAYMENT_FAILED] ──► release hold
+         │ paymentCaptured
+         ▼
+    [PAID] ── supplierConfirmFailed ──► [SUPPLIER_FAILED] ──► refund (saga)
+         │ supplierConfirmed
+         ▼
+    [CONFIRMED] ── userCancel ──► [CANCELLATION_REQUESTED]
+                                      │ applyFareRules
+                                      ▼
+                                 [REFUND_PENDING] ──► [REFUNDED] / [PARTIAL_REFUNDED]
+</pre>
+  </div>
+
+  <div class="hl">
+    <p><strong>Invariant to verbalise:</strong> money only moves with inventory, and inventory only commits with money. Any divergence → saga compensates.</p>
+  </div>
+</section>
+
+<!-- ── CONCURRENCY ── -->
+<section class="sec" id="concurrency">
+  <span class="sec-tag tag-yellow">Step 7</span>
+  <h2>Concurrency &amp; atomicity</h2>
+  <p>This is where LLD interviews separate mid from senior candidates. Be specific.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔒 No double booking</h3>
+      <ul>
+        <li><strong>Optimistic lock</strong> on seat row (<code>version</code> column). Update with <code>WHERE version = ?</code> — if 0 rows updated, retry.</li>
+        <li><strong>Pessimistic lock</strong> (<code>SELECT … FOR UPDATE</code>) when a single row represents hot inventory (flash sale).</li>
+        <li><strong>Redis atomic</strong> <code>DECR</code> / Lua script for inventory counters in high-QPS search→hold.</li>
+        <li><strong>Unique DB constraint</strong> on <code>(flightId, seatNumber, date)</code> as final safety net.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🪪 Idempotency</h3>
+      <ul>
+        <li>Client sends <code>Idempotency-Key</code> header on every POST to <code>/book</code> and <code>/pay</code>.</li>
+        <li>Server stores <code>(key → response)</code> in Redis with TTL; replays return cached response.</li>
+        <li>Same key on payment provider side (<code>payment.idempotencyKey</code>) prevents double-charge on retry.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⏱️ Hold expiry</h3>
+      <ul>
+        <li>Hold row has <code>expiresAt</code>. A background job sweeps expired holds and releases inventory.</li>
+        <li>Or: Redis key with TTL → on expiry event, publish to Kafka → release.</li>
+        <li>On payment arrival, check <code>expiresAt &gt; now</code> under lock before capturing.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🔁 Retries &amp; timeouts</h3>
+      <ul>
+        <li>Every external call (GDS, payment) has <strong>timeout + bounded retry + circuit breaker</strong>.</li>
+        <li>Never retry a non-idempotent call without an idempotency key.</li>
+        <li>On unknown state (timeout), mark <code>PENDING</code> and reconcile async — never assume failure.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ── PAYMENT ── -->
+<section class="sec" id="payment">
+  <span class="sec-tag tag-green">Step 8</span>
+  <h2>Payment, split, coupon, refund</h2>
+
+  <div class="card">
+    <h3>Split payment math</h3>
+    <p>Payable = Base + Tax + Addons − Discount. A booking can be paid via multiple <code>Payment</code> rows (wallet ₹500 + UPI ₹2300). Invariant: <code>sum(payments.amount) == booking.payable</code>. Each <code>Payment</code> has its own <code>status</code> and gateway reference; the booking only transitions to <code>PAID</code> when <em>all</em> payments are captured.</p>
+  </div>
+
+  <div class="card">
+    <h3>Coupon / wallet / loyalty stacking</h3>
+    <p>Apply in a defined order to avoid gaming: <strong>coupon → loyalty → wallet → gateway</strong>. A <code>DiscountEngine</code> (chain of <code>CouponStrategy</code>, <code>LoyaltyStrategy</code>, <code>WalletStrategy</code>) produces a final <code>PriceBreakup</code>. Stackability rules live in config, not code — new coupon type = new row.</p>
+  </div>
+
+  <div class="card">
+    <h3>Refund flow</h3>
+    <p>Refund original payment method first (RBI requirement). If a payment was split across wallet + card, refund each proportionally. Refund state: <code>REQUESTED → INITIATED → SUCCESS / FAILED</code>; failed refunds retry with jitter. Full trace via <code>refundId → paymentId → bookingId</code>.</p>
+  </div>
+</section>
+
+<!-- ── CROSS QUESTIONS ── -->
+<section class="sec" id="crossq">
+  <span class="sec-tag tag-red">Step 9</span>
+  <h2>Cross-questions &amp; model answers</h2>
+  <p>These are the follow-ups I've personally been asked or asked as interviewer. Answer briefly, lead with the invariant.</p>
+
+  <div class="qa"><div class="q">Q1. Payment succeeded but supplier confirmation failed. What now?</div>
+  <div class="a"><strong>Saga compensation.</strong> Move booking to <code>SUPPLIER_FAILED</code>, trigger refund to original method, release hold, notify user. Never auto-retry supplier blindly — do 1–2 idempotent retries, then compensate. Log everything for reconciliation.</div></div>
+
+  <div class="qa"><div class="q">Q2. Two users try to book the last seat at the same instant.</div>
+  <div class="a">Only one wins. Use optimistic locking on seat row (<code>UPDATE … WHERE version = ?</code>) or Redis Lua atomic decrement. Loser gets a "sold out, please pick another" response <em>before</em> payment page — never after money moves.</div></div>
+
+  <div class="qa"><div class="q">Q3. User refreshes / double-clicks "Pay". How do you prevent double charge?</div>
+  <div class="a">Client generates an <code>Idempotency-Key</code> when entering the pay screen. Server de-dupes by that key in Redis (24h TTL) and forwards the same key to the gateway. Any retry returns the first attempt's result.</div></div>
+
+  <div class="qa"><div class="q">Q4. How do you support a new product type — say, cruise — with minimal change?</div>
+  <div class="a">Implement <code>TravelProduct</code>, plug a <code>CruiseInventoryProvider</code>, extend <code>AbstractBookingService</code>. The checkout chain, state machine, payment, notifications reuse as-is. This is why we chose Template Method + Strategy up front.</div></div>
+
+  <div class="qa"><div class="q">Q5. How does dynamic pricing fit in?</div>
+  <div class="a"><code>PricingStrategy</code> plugs in — a <code>DynamicPricingStrategy</code> calls an ML service with context (occupancy, time-to-departure, user segment). Cache the output with short TTL keyed on <code>(productId, segment)</code>; fall back to base fare on ML timeout.</div></div>
+
+  <div class="qa"><div class="q">Q6. Cancellation — who computes the refundable amount?</div>
+  <div class="a"><code>CancellationPolicy.compute(booking, now)</code>: pure function, slab-based (e.g. ">48h → 90%", "24–48h → 50%", "&lt;24h → 0%"). Airlines send these slabs via fare rules; we store them with the booking so refund math is reproducible even if rules change later.</div></div>
+
+  <div class="qa"><div class="q">Q7. How do you audit "who changed what" across booking, payment, inventory?</div>
+  <div class="a">Every state mutation emits an <code>event</code> to an append-only event log (Kafka + persistence). Each event has <code>entityId</code>, <code>actor</code>, <code>before</code>, <code>after</code>, <code>reason</code>. Reconciliation jobs replay to detect divergence.</div></div>
+
+  <div class="qa"><div class="q">Q8. What if the GDS is down during search?</div>
+  <div class="a">Serve cached results with a "prices may change" flag. On booking, always re-validate with GDS under a fresh hold; if re-price differs by &gt; ε, reconfirm with user. Never book against stale price.</div></div>
+
+  <div class="qa"><div class="q">Q9. Group booking of 6 seats — all-or-nothing?</div>
+  <div class="a">Atomic hold: acquire all 6 seats in a single transaction or Redis Lua. If fewer available, hold none and return. On payment failure, release all 6. Never partial-confirm unless product explicitly allows it.</div></div>
+
+  <div class="qa"><div class="q">Q10. How do you prevent coupon abuse / replay?</div>
+  <div class="a">Coupon has <code>maxUsesPerUser</code>, <code>globalMaxUses</code>, <code>validFrom/To</code>. Apply decrement atomically (Redis <code>INCR</code> against limit). Bind to user &amp; booking on success. Abuse detection: count applications per device/IP over window.</div></div>
+
+  <div class="qa"><div class="q">Q11. Notifications — email failed, do we retry forever?</div>
+  <div class="a">No. Dead-letter queue after N attempts with exponential backoff. Observers are non-blocking; booking confirmation never depends on notification success. Surface "resend ticket" UI for recoverable cases.</div></div>
+
+  <div class="qa"><div class="q">Q12. How do you test this without live payments/GDS?</div>
+  <div class="a">Abstract every external boundary behind an interface (<code>PaymentGateway</code>, <code>InventoryProvider</code>). Use in-memory fakes for unit tests, contract tests against sandbox, end-to-end on staging with provider sandboxes. Property tests for state machine transitions.</div></div>
+
+  <div class="qa"><div class="q">Q13. Timezones — flight departs 23:55 Delhi, arrives 04:30 London next day. Where do you store times?</div>
+  <div class="a">Store everything in UTC + origin IANA zone (<code>Asia/Kolkata</code>) + destination zone. Display in local zone. Fare rules (e.g. "&gt;24h before departure") are computed against <em>departure local time</em>, not UTC.</div></div>
+
+  <div class="qa"><div class="q">Q14. A user has both flight + hotel in one booking. Flight confirmed, hotel supplier fails.</div>
+  <div class="a">This is a <strong>multi-leg saga</strong>. Options: (a) ask user — keep flight, cancel+refund hotel, or cancel both; (b) policy-driven auto-choice based on cancellation cost. Either way, the booking goes to <code>PARTIAL_CONFIRMED</code> and action is explicit, not silent.</div></div>
+
+  <div class="qa"><div class="q">Q15. Scaling search to millions of QPS — is this still LLD?</div>
+  <div class="a">No — redirect to HLD (Elastic/OpenSearch cluster, fare cache, read-through). But mention the <em>LLD hook</em>: <code>SearchStrategy</code> has a <code>CachedSearchStrategy</code> decorator; the domain classes don't change.</div></div>
+</section>
+
+<!-- ── CHECKLIST ── -->
+<section class="sec" id="checklist">
+  <span class="sec-tag tag-cyan">Before you wrap up</span>
+  <h2>Interview checklist</h2>
+  <p>Run through this mentally in the last 5 minutes — catching a miss here adds one full point to the final rating.</p>
+
+  <div class="card">
+    <h3>Things to explicitly call out</h3>
+    <ul>
+      <li>Named the hidden abstraction (<code>TravelProduct</code>) early</li>
+      <li>Separated lifecycle (Template) from behaviour (Strategy)</li>
+      <li>Drew the state machine with terminal states on both success and failure</li>
+      <li>Mentioned <strong>idempotency keys</strong> on every mutating API</li>
+      <li>Addressed concurrency (optimistic vs pessimistic vs Redis atomic — and <em>which</em> where)</li>
+      <li>Acknowledged <strong>saga / compensating transactions</strong> for cross-system consistency</li>
+      <li>Called out <strong>audit trail</strong> via event log</li>
+      <li>Showed extensibility: "to add cruise, implement X, everything else stays"</li>
+      <li>Handled timezones, split payments, partial refunds, group bookings</li>
+      <li>Connected back to the user (cancellation UX, failure messaging)</li>
+    </ul>
+  </div>
+
+  <div class="hl">
+    <p><strong>Final line to say:</strong> "I've kept the domain model small and pushed variability into strategies. That way, adding a new travel product or payment method is additive — no change to the core booking lifecycle. Happy to deep-dive into any piece."</p>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

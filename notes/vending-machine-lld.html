@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Vending Machine — LLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1}
+
+.wrap{max-width:900px;margin:0 auto;padding:2.5rem 1.5rem 5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--muted);font-size:.92rem;margin-bottom:1.5rem;max-width:660px}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.3rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.87rem;color:var(--muted);line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:4}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── STATE DIAGRAM ── */
+.state-flow{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2rem;overflow-x:auto;margin-bottom:1rem}
+.state-flow pre{background:transparent;border:none;padding:0;margin:0;font-size:.72rem;line-height:1.7;color:var(--text)}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.85rem}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+
+.highlight strong{font-weight:700}
+.highlight::before{font-weight:800;margin-right:.35rem}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.85rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.85rem;color:var(--text);border:1px solid var(--border)}
+.ans strong{color:var(--heading)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="pill">Low-Level Design</div>
+  <h1>Vending <span>Machine</span></h1>
+  <p class="sub">Complete interview-ready design — State Pattern, Chain of Responsibility, full code & edge cases</p>
+</div>
+
+<div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: REQUIREMENTS                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>Clarify Requirements</h2>
+  <p>Always start by asking these questions to the interviewer before designing anything.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Machine holds multiple products in slots (with quantity)</li>
+        <li>User selects a product, inserts coins/notes</li>
+        <li>Machine validates payment ≥ product price</li>
+        <li>Machine dispenses product & returns change</li>
+        <li>User can cancel transaction and get refund</li>
+        <li>Admin can add/refill products & collect money</li>
+        <li>Multiple coin denominations (₹1, ₹5, ₹10)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>❌ Out of Scope (clarify these)</h3>
+      <ul>
+        <li>Digital payments (UPI, card) — keep it coin-based</li>
+        <li>Multiple vending machines / distributed system</li>
+        <li>User authentication or loyalty programs</li>
+        <li>Inventory management across locations</li>
+        <li>Temperature control (cold drinks vs snacks)</li>
+        <li>Display/UI rendering</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: USE CASES                          -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Core Use Cases</h2>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🟢 Happy Path</h3>
+      <ul>
+        <li>Select product</li>
+        <li>Insert sufficient coins</li>
+        <li>Get product + change</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🟡 Cancel Flow</h3>
+      <ul>
+        <li>Select product</li>
+        <li>Insert some coins</li>
+        <li>Press cancel</li>
+        <li>Get full refund</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🔴 Edge Cases</h3>
+      <ul>
+        <li>Product out of stock</li>
+        <li>Insufficient payment</li>
+        <li>Machine can't give change</li>
+        <li>No product selected</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: ENTITIES                           -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Identify Entities</h2>
+
+  <div class="state-flow">
+<pre>
+┌─────────────────────────────────────────────────────────────────────┐
+│                        ENTITIES MAP                                  │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│   VendingMachine          Product              Coin (Enum)           │
+│   ├─ currentState         ├─ name              ├─ PENNY (1)         │
+│   ├─ inventory            ├─ price             ├─ NICKEL (5)        │
+│   ├─ selectedProduct      └─ code              ├─ DIME (10)         │
+│   ├─ totalInserted                             └─ QUARTER (25)      │
+│   └─ coinInventory        ItemShelf                                  │
+│                           ├─ product           State (Interface)     │
+│   Inventory               ├─ quantity          ├─ IdleState          │
+│   ├─ shelves[]            └─ shelfCode         ├─ HasMoneyState      │
+│   ├─ addProduct()                              ├─ SelectionState     │
+│   ├─ getProduct()                              └─ DispenseState      │
+│   └─ updateQuantity()                                                │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+</pre>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: STATE DIAGRAM                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>State Machine (The Heart of This Design)</h2>
+  <p>The vending machine has 4 states. Every user action transitions the machine between states. This is the <strong>State Design Pattern</strong> — the most critical pattern for this problem.</p>
+
+  <div class="state-flow">
+<pre>
+                        ┌──────────────────────────────────────┐
+                        │           STATE TRANSITIONS          │
+                        └──────────────────────────────────────┘
+
+     ┌───────────┐   selectProduct()   ┌────────────────┐
+     │           │ ──────────────────► │                │
+     │   IDLE    │                     │  PRODUCT       │
+     │   STATE   │ ◄────────────────── │  SELECTED      │
+     │           │   cancel()          │  STATE         │
+     └───────────┘                     └───────┬────────┘
+          ▲                                    │
+          │                            insertCoin()
+          │                                    │
+          │                                    ▼
+     ┌────┴──────┐   change returned   ┌────────────────┐
+     │           │ ◄────────────────── │                │
+     │  DISPENSE │                     │  HAS MONEY     │
+     │  STATE    │   enough money?     │  STATE         │
+     │           │ ◄────────────────── │                │
+     └───────────┘   dispenseProduct() └────────────────┘
+          │                                    │
+          │         product dispensed           │
+          └──────────► back to IDLE ◄──────────┘
+                                        cancel() → refund
+
+
+  Each state only allows VALID operations:
+  ┌──────────────────┬─────────┬────────┬──────────┬──────────┐
+  │ Action           │  Idle   │ Select │ HasMoney │ Dispense │
+  ├──────────────────┼─────────┼────────┼──────────┼──────────┤
+  │ selectProduct()  │   ✅    │   ❌   │    ❌    │    ❌    │
+  │ insertCoin()     │   ❌    │   ✅   │    ✅    │    ❌    │
+  │ pressButton()    │   ❌    │   ❌   │    ✅    │    ❌    │
+  │ dispenseProduct()│   ❌    │   ❌   │    ❌    │    ✅    │
+  │ cancel()         │   ❌    │   ✅   │    ✅    │    ❌    │
+  └──────────────────┴─────────┴────────┴──────────┴──────────┘
+</pre>
+  </div>
+
+  <div class="highlight hl-orange"><strong>Why State Pattern?</strong> Without it, you'd have massive if-else chains in every method checking the current state. State pattern makes each state a separate class, each handling only its valid operations. Adding a new state = adding a new class (Open-Closed Principle).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: DESIGN PATTERNS USED               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec">
+  <span class="sec-tag tag-yellow">Step 5</span>
+  <h2>Design Patterns Used</h2>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔄 State Pattern</h3>
+      <p>Machine behavior changes based on state — Idle, ProductSelected, HasMoney, Dispense. Each state encapsulates its own behavior.</p>
+    </div>
+    <div class="card">
+      <h3>⛓️ Chain of Responsibility</h3>
+      <p>For coin change calculation — ₹10 handler → ₹5 handler → ₹1 handler. Each handler dispenses what it can, passes remainder to next.</p>
+    </div>
+    <div class="card">
+      <h3>🏭 Singleton</h3>
+      <p>VendingMachine is a single instance. Only one machine object exists at runtime. Thread-safe if needed.</p>
+    </div>
+    <div class="card">
+      <h3>📦 Enum Pattern</h3>
+      <p>Coin denominations as enum with values. Clean, type-safe, and prevents invalid coin types.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: COMPLETE CODE                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec">
+  <span class="sec-tag tag-cyan">Step 6</span>
+  <h2>Complete Code Implementation</h2>
+  <p>Write these classes during the interview. Prioritize: Enums → Models → State Interface → Each State → VendingMachine → Chain of Responsibility.</p>
+
+  <!-- 6A: COIN ENUM -->
+  <span class="code-label cl-orange">Coin.java — Enum</span>
+<pre><span class="kw">public enum</span> <span class="ty">Coin</span> {
+    <span class="an">PENNY</span>(<span class="num">1</span>),
+    <span class="an">NICKEL</span>(<span class="num">5</span>),
+    <span class="an">DIME</span>(<span class="num">10</span>),
+    <span class="an">QUARTER</span>(<span class="num">25</span>);
+
+    <span class="kw">public final int</span> value;
+
+    <span class="fn">Coin</span>(<span class="kw">int</span> value) {
+        <span class="kw">this</span>.value = value;
+    }
+}</pre>
+
+  <!-- 6B: PRODUCT -->
+  <span class="code-label cl-green">Product.java</span>
+<pre><span class="kw">public class</span> <span class="ty">Product</span> {
+    <span class="kw">private</span> <span class="ty">String</span> name;
+    <span class="kw">private int</span> price;
+    <span class="kw">private</span> <span class="ty">String</span> code;  <span class="cmt">// e.g., "A1", "B3"</span>
+
+    <span class="kw">public</span> <span class="fn">Product</span>(<span class="ty">String</span> name, <span class="kw">int</span> price, <span class="ty">String</span> code) {
+        <span class="kw">this</span>.name = name;
+        <span class="kw">this</span>.price = price;
+        <span class="kw">this</span>.code = code;
+    }
+
+    <span class="cmt">// getters</span>
+    <span class="kw">public</span> <span class="ty">String</span> <span class="fn">getName</span>()  { <span class="kw">return</span> name; }
+    <span class="kw">public int</span>    <span class="fn">getPrice</span>() { <span class="kw">return</span> price; }
+    <span class="kw">public</span> <span class="ty">String</span> <span class="fn">getCode</span>()  { <span class="kw">return</span> code; }
+}</pre>
+
+  <!-- 6C: ITEM SHELF -->
+  <span class="code-label cl-green">ItemShelf.java</span>
+<pre><span class="kw">public class</span> <span class="ty">ItemShelf</span> {
+    <span class="kw">private</span> <span class="ty">Product</span> product;
+    <span class="kw">private int</span> quantity;
+    <span class="kw">private</span> <span class="ty">String</span> shelfCode;
+
+    <span class="kw">public</span> <span class="fn">ItemShelf</span>(<span class="ty">Product</span> product, <span class="kw">int</span> quantity, <span class="ty">String</span> code) {
+        <span class="kw">this</span>.product = product;
+        <span class="kw">this</span>.quantity = quantity;
+        <span class="kw">this</span>.shelfCode = code;
+    }
+
+    <span class="kw">public boolean</span> <span class="fn">isAvailable</span>() { <span class="kw">return</span> quantity > <span class="num">0</span>; }
+    <span class="kw">public void</span> <span class="fn">reduceQuantity</span>()  { quantity--; }
+
+    <span class="cmt">// getters & setters</span>
+    <span class="kw">public</span> <span class="ty">Product</span> <span class="fn">getProduct</span>()     { <span class="kw">return</span> product; }
+    <span class="kw">public int</span>     <span class="fn">getQuantity</span>()    { <span class="kw">return</span> quantity; }
+    <span class="kw">public</span> <span class="ty">String</span>  <span class="fn">getShelfCode</span>()  { <span class="kw">return</span> shelfCode; }
+    <span class="kw">public void</span>    <span class="fn">setQuantity</span>(<span class="kw">int</span> q) { <span class="kw">this</span>.quantity = q; }
+}</pre>
+
+  <!-- 6D: INVENTORY -->
+  <span class="code-label cl-green">Inventory.java</span>
+<pre><span class="kw">public class</span> <span class="ty">Inventory</span> {
+    <span class="kw">private</span> <span class="ty">Map</span>&lt;<span class="ty">String</span>, <span class="ty">ItemShelf</span>&gt; shelves;  <span class="cmt">// code → shelf</span>
+
+    <span class="kw">public</span> <span class="fn">Inventory</span>() {
+        <span class="kw">this</span>.shelves = <span class="kw">new</span> <span class="ty">HashMap</span>&lt;&gt;();
+    }
+
+    <span class="kw">public void</span> <span class="fn">addProduct</span>(<span class="ty">Product</span> product, <span class="kw">int</span> qty, <span class="ty">String</span> code) {
+        shelves.<span class="fn">put</span>(code, <span class="kw">new</span> <span class="ty">ItemShelf</span>(product, qty, code));
+    }
+
+    <span class="kw">public</span> <span class="ty">ItemShelf</span> <span class="fn">getShelf</span>(<span class="ty">String</span> code) {
+        <span class="kw">if</span> (!shelves.<span class="fn">containsKey</span>(code))
+            <span class="kw">throw new</span> <span class="ty">RuntimeException</span>(<span class="str">"Invalid product code: "</span> + code);
+        <span class="kw">return</span> shelves.<span class="fn">get</span>(code);
+    }
+
+    <span class="kw">public</span> <span class="ty">Map</span>&lt;<span class="ty">String</span>, <span class="ty">ItemShelf</span>&gt; <span class="fn">getAllShelves</span>() {
+        <span class="kw">return</span> <span class="ty">Collections</span>.<span class="fn">unmodifiableMap</span>(shelves);
+    }
+}</pre>
+
+  <!-- 6E: STATE INTERFACE — THE KEY PART -->
+  <div class="highlight hl-purple"><strong>⭐ State Interface — Most Important Part</strong> — This is what interviewers evaluate most closely. Each method represents a user action. Invalid actions in a state throw exceptions.</div>
+
+  <span class="code-label cl-purple">State.java — Interface</span>
+<pre><span class="kw">public interface</span> <span class="ty">State</span> {
+
+    <span class="kw">void</span> <span class="fn">selectProduct</span>(<span class="ty">VendingMachine</span> machine, <span class="ty">String</span> code);
+
+    <span class="kw">void</span> <span class="fn">insertCoin</span>(<span class="ty">VendingMachine</span> machine, <span class="ty">Coin</span> coin);
+
+    <span class="kw">void</span> <span class="fn">pressDispenseButton</span>(<span class="ty">VendingMachine</span> machine);
+
+    <span class="kw">void</span> <span class="fn">cancel</span>(<span class="ty">VendingMachine</span> machine);
+}</pre>
+
+  <!-- 6F: IDLE STATE -->
+  <span class="code-label cl-blue">IdleState.java</span>
+<pre><span class="kw">public class</span> <span class="ty">IdleState</span> <span class="kw">implements</span> <span class="ty">State</span> {
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">selectProduct</span>(<span class="ty">VendingMachine</span> machine, <span class="ty">String</span> code) {
+        <span class="ty">ItemShelf</span> shelf = machine.<span class="fn">getInventory</span>().<span class="fn">getShelf</span>(code);
+
+        <span class="kw">if</span> (!shelf.<span class="fn">isAvailable</span>()) {
+            <span class="kw">throw new</span> <span class="ty">RuntimeException</span>(<span class="str">"Product out of stock: "</span> + code);
+        }
+
+        <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"Selected: "</span> + shelf.<span class="fn">getProduct</span>().<span class="fn">getName</span>()
+            + <span class="str">" | Price: "</span> + shelf.<span class="fn">getProduct</span>().<span class="fn">getPrice</span>());
+
+        machine.<span class="fn">setSelectedProduct</span>(shelf.<span class="fn">getProduct</span>());
+        machine.<span class="fn">setState</span>(<span class="kw">new</span> <span class="ty">ProductSelectedState</span>());
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">insertCoin</span>(<span class="ty">VendingMachine</span> m, <span class="ty">Coin</span> coin) {
+        <span class="kw">throw new</span> <span class="ty">RuntimeException</span>(<span class="str">"Please select a product first"</span>);
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">pressDispenseButton</span>(<span class="ty">VendingMachine</span> m) {
+        <span class="kw">throw new</span> <span class="ty">RuntimeException</span>(<span class="str">"Please select a product first"</span>);
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">cancel</span>(<span class="ty">VendingMachine</span> m) {
+        <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"Nothing to cancel"</span>);
+    }
+}</pre>
+
+  <!-- 6G: PRODUCT SELECTED STATE -->
+  <span class="code-label cl-blue">ProductSelectedState.java</span>
+<pre><span class="kw">public class</span> <span class="ty">ProductSelectedState</span> <span class="kw">implements</span> <span class="ty">State</span> {
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">selectProduct</span>(<span class="ty">VendingMachine</span> m, <span class="ty">String</span> code) {
+        <span class="kw">throw new</span> <span class="ty">RuntimeException</span>(<span class="str">"Product already selected. Insert coins."</span>);
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">insertCoin</span>(<span class="ty">VendingMachine</span> machine, <span class="ty">Coin</span> coin) {
+        machine.<span class="fn">addCoin</span>(coin);
+        <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"Inserted: "</span> + coin.value
+            + <span class="str">" | Total: "</span> + machine.<span class="fn">getTotalInserted</span>());
+        machine.<span class="fn">setState</span>(<span class="kw">new</span> <span class="ty">HasMoneyState</span>());
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">pressDispenseButton</span>(<span class="ty">VendingMachine</span> m) {
+        <span class="kw">throw new</span> <span class="ty">RuntimeException</span>(<span class="str">"Please insert coins first"</span>);
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">cancel</span>(<span class="ty">VendingMachine</span> machine) {
+        <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"Selection cancelled."</span>);
+        machine.<span class="fn">setSelectedProduct</span>(<span class="kw">null</span>);
+        machine.<span class="fn">setState</span>(<span class="kw">new</span> <span class="ty">IdleState</span>());
+    }
+}</pre>
+
+  <!-- 6H: HAS MONEY STATE -->
+  <span class="code-label cl-blue">HasMoneyState.java</span>
+<pre><span class="kw">public class</span> <span class="ty">HasMoneyState</span> <span class="kw">implements</span> <span class="ty">State</span> {
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">selectProduct</span>(<span class="ty">VendingMachine</span> m, <span class="ty">String</span> code) {
+        <span class="kw">throw new</span> <span class="ty">RuntimeException</span>(<span class="str">"Product already selected"</span>);
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">insertCoin</span>(<span class="ty">VendingMachine</span> machine, <span class="ty">Coin</span> coin) {
+        machine.<span class="fn">addCoin</span>(coin);
+        <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"Inserted: "</span> + coin.value
+            + <span class="str">" | Total: "</span> + machine.<span class="fn">getTotalInserted</span>());
+        <span class="cmt">// Stay in HasMoneyState — user might add more coins</span>
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">pressDispenseButton</span>(<span class="ty">VendingMachine</span> machine) {
+        <span class="kw">int</span> price = machine.<span class="fn">getSelectedProduct</span>().<span class="fn">getPrice</span>();
+        <span class="kw">int</span> inserted = machine.<span class="fn">getTotalInserted</span>();
+
+        <span class="kw">if</span> (inserted < price) {
+            <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"Insufficient! Need "</span>
+                + (price - inserted) + <span class="str">" more."</span>);
+            <span class="kw">return</span>;  <span class="cmt">// stay in HasMoneyState</span>
+        }
+
+        <span class="cmt">// Enough money — transition to Dispense</span>
+        machine.<span class="fn">setState</span>(<span class="kw">new</span> <span class="ty">DispenseState</span>());
+        machine.<span class="fn">getState</span>().<span class="fn">pressDispenseButton</span>(machine);
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">cancel</span>(<span class="ty">VendingMachine</span> machine) {
+        <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"Cancelled. Refunding: "</span>
+            + machine.<span class="fn">getTotalInserted</span>());
+        machine.<span class="fn">refundFullAmount</span>();
+        machine.<span class="fn">setSelectedProduct</span>(<span class="kw">null</span>);
+        machine.<span class="fn">setState</span>(<span class="kw">new</span> <span class="ty">IdleState</span>());
+    }
+}</pre>
+
+  <!-- 6I: DISPENSE STATE -->
+  <span class="code-label cl-blue">DispenseState.java</span>
+<pre><span class="kw">public class</span> <span class="ty">DispenseState</span> <span class="kw">implements</span> <span class="ty">State</span> {
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">selectProduct</span>(<span class="ty">VendingMachine</span> m, <span class="ty">String</span> c) {
+        <span class="kw">throw new</span> <span class="ty">RuntimeException</span>(<span class="str">"Dispensing in progress..."</span>);
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">insertCoin</span>(<span class="ty">VendingMachine</span> m, <span class="ty">Coin</span> c) {
+        <span class="kw">throw new</span> <span class="ty">RuntimeException</span>(<span class="str">"Dispensing in progress..."</span>);
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">pressDispenseButton</span>(<span class="ty">VendingMachine</span> machine) {
+        <span class="ty">Product</span> product = machine.<span class="fn">getSelectedProduct</span>();
+        <span class="kw">int</span> price = product.<span class="fn">getPrice</span>();
+        <span class="kw">int</span> inserted = machine.<span class="fn">getTotalInserted</span>();
+        <span class="kw">int</span> change = inserted - price;
+
+        <span class="cmt">// 1. Dispense the product</span>
+        <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"🎉 Dispensing: "</span> + product.<span class="fn">getName</span>());
+
+        <span class="cmt">// 2. Reduce inventory</span>
+        <span class="ty">String</span> code = product.<span class="fn">getCode</span>();
+        machine.<span class="fn">getInventory</span>().<span class="fn">getShelf</span>(code).<span class="fn">reduceQuantity</span>();
+
+        <span class="cmt">// 3. Return change using Chain of Responsibility</span>
+        <span class="kw">if</span> (change > <span class="num">0</span>) {
+            <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"Returning change: "</span> + change);
+            <span class="ty">CoinChangeHandler</span>.<span class="fn">returnChange</span>(change);
+        }
+
+        <span class="cmt">// 4. Reset machine state</span>
+        machine.<span class="fn">resetTransaction</span>();
+        machine.<span class="fn">setState</span>(<span class="kw">new</span> <span class="ty">IdleState</span>());
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">cancel</span>(<span class="ty">VendingMachine</span> m) {
+        <span class="kw">throw new</span> <span class="ty">RuntimeException</span>(<span class="str">"Cannot cancel during dispensing"</span>);
+    }
+}</pre>
+
+  <!-- 6J: CHAIN OF RESPONSIBILITY — CHANGE -->
+  <div class="highlight hl-yellow"><strong>⛓️ Chain of Responsibility</strong> — For returning change in minimum coins. Each handler tries its denomination, passes remainder to the next handler.</div>
+
+  <span class="code-label cl-yellow">CoinChangeHandler.java</span>
+<pre><span class="kw">public abstract class</span> <span class="ty">CoinChangeHandler</span> {
+    <span class="kw">protected</span> <span class="ty">CoinChangeHandler</span> nextHandler;
+
+    <span class="kw">public void</span> <span class="fn">setNext</span>(<span class="ty">CoinChangeHandler</span> next) {
+        <span class="kw">this</span>.nextHandler = next;
+    }
+
+    <span class="kw">public abstract void</span> <span class="fn">dispense</span>(<span class="kw">int</span> amount);
+
+    <span class="cmt">// Factory method to build the chain</span>
+    <span class="kw">public static void</span> <span class="fn">returnChange</span>(<span class="kw">int</span> amount) {
+        <span class="ty">CoinChangeHandler</span> quarter = <span class="kw">new</span> <span class="ty">CoinDispenser</span>(<span class="num">25</span>, <span class="str">"QUARTER"</span>);
+        <span class="ty">CoinChangeHandler</span> dime    = <span class="kw">new</span> <span class="ty">CoinDispenser</span>(<span class="num">10</span>, <span class="str">"DIME"</span>);
+        <span class="ty">CoinChangeHandler</span> nickel  = <span class="kw">new</span> <span class="ty">CoinDispenser</span>(<span class="num">5</span>,  <span class="str">"NICKEL"</span>);
+        <span class="ty">CoinChangeHandler</span> penny   = <span class="kw">new</span> <span class="ty">CoinDispenser</span>(<span class="num">1</span>,  <span class="str">"PENNY"</span>);
+
+        quarter.<span class="fn">setNext</span>(dime);
+        dime.<span class="fn">setNext</span>(nickel);
+        nickel.<span class="fn">setNext</span>(penny);
+
+        quarter.<span class="fn">dispense</span>(amount);
+    }
+}
+
+<span class="kw">public class</span> <span class="ty">CoinDispenser</span> <span class="kw">extends</span> <span class="ty">CoinChangeHandler</span> {
+    <span class="kw">private int</span> coinValue;
+    <span class="kw">private</span> <span class="ty">String</span> coinName;
+
+    <span class="kw">public</span> <span class="fn">CoinDispenser</span>(<span class="kw">int</span> value, <span class="ty">String</span> name) {
+        <span class="kw">this</span>.coinValue = value;
+        <span class="kw">this</span>.coinName = name;
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="fn">dispense</span>(<span class="kw">int</span> amount) {
+        <span class="kw">if</span> (amount >= coinValue) {
+            <span class="kw">int</span> count = amount / coinValue;
+            <span class="kw">int</span> remainder = amount % coinValue;
+            <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"  Returning "</span> + count + <span class="str">" × "</span> + coinName);
+
+            <span class="kw">if</span> (remainder > <span class="num">0</span> && nextHandler != <span class="kw">null</span>) {
+                nextHandler.<span class="fn">dispense</span>(remainder);
+            }
+        } <span class="kw">else if</span> (nextHandler != <span class="kw">null</span>) {
+            nextHandler.<span class="fn">dispense</span>(amount);
+        }
+    }
+}</pre>
+
+  <!-- 6K: VENDING MACHINE — MAIN CLASS -->
+  <span class="code-label cl-red">VendingMachine.java — Main Class</span>
+<pre><span class="kw">public class</span> <span class="ty">VendingMachine</span> {
+    <span class="kw">private</span> <span class="ty">State</span> currentState;
+    <span class="kw">private</span> <span class="ty">Inventory</span> inventory;
+    <span class="kw">private</span> <span class="ty">Product</span> selectedProduct;
+    <span class="kw">private</span> <span class="ty">List</span>&lt;<span class="ty">Coin</span>&gt; insertedCoins;
+
+    <span class="kw">public</span> <span class="fn">VendingMachine</span>() {
+        <span class="kw">this</span>.currentState = <span class="kw">new</span> <span class="ty">IdleState</span>();
+        <span class="kw">this</span>.inventory = <span class="kw">new</span> <span class="ty">Inventory</span>();
+        <span class="kw">this</span>.insertedCoins = <span class="kw">new</span> <span class="ty">ArrayList</span>&lt;&gt;();
+    }
+
+    <span class="cmt">// ── User Actions (delegated to current State) ──</span>
+    <span class="kw">public void</span> <span class="fn">selectProduct</span>(<span class="ty">String</span> code) {
+        currentState.<span class="fn">selectProduct</span>(<span class="kw">this</span>, code);
+    }
+
+    <span class="kw">public void</span> <span class="fn">insertCoin</span>(<span class="ty">Coin</span> coin) {
+        currentState.<span class="fn">insertCoin</span>(<span class="kw">this</span>, coin);
+    }
+
+    <span class="kw">public void</span> <span class="fn">pressDispenseButton</span>() {
+        currentState.<span class="fn">pressDispenseButton</span>(<span class="kw">this</span>);
+    }
+
+    <span class="kw">public void</span> <span class="fn">cancel</span>() {
+        currentState.<span class="fn">cancel</span>(<span class="kw">this</span>);
+    }
+
+    <span class="cmt">// ── Internal helpers ──</span>
+    <span class="kw">public void</span> <span class="fn">addCoin</span>(<span class="ty">Coin</span> coin) {
+        insertedCoins.<span class="fn">add</span>(coin);
+    }
+
+    <span class="kw">public int</span> <span class="fn">getTotalInserted</span>() {
+        <span class="kw">return</span> insertedCoins.<span class="fn">stream</span>()
+            .<span class="fn">mapToInt</span>(c -> c.value)
+            .<span class="fn">sum</span>();
+    }
+
+    <span class="kw">public void</span> <span class="fn">refundFullAmount</span>() {
+        <span class="kw">int</span> total = <span class="fn">getTotalInserted</span>();
+        <span class="kw">if</span> (total > <span class="num">0</span>) {
+            <span class="ty">CoinChangeHandler</span>.<span class="fn">returnChange</span>(total);
+        }
+        insertedCoins.<span class="fn">clear</span>();
+    }
+
+    <span class="kw">public void</span> <span class="fn">resetTransaction</span>() {
+        selectedProduct = <span class="kw">null</span>;
+        insertedCoins.<span class="fn">clear</span>();
+    }
+
+    <span class="cmt">// ── Getters & Setters ──</span>
+    <span class="kw">public</span> <span class="ty">State</span>     <span class="fn">getState</span>()            { <span class="kw">return</span> currentState; }
+    <span class="kw">public void</span>      <span class="fn">setState</span>(<span class="ty">State</span> s)     { <span class="kw">this</span>.currentState = s; }
+    <span class="kw">public</span> <span class="ty">Inventory</span> <span class="fn">getInventory</span>()        { <span class="kw">return</span> inventory; }
+    <span class="kw">public</span> <span class="ty">Product</span>   <span class="fn">getSelectedProduct</span>()  { <span class="kw">return</span> selectedProduct; }
+    <span class="kw">public void</span>      <span class="fn">setSelectedProduct</span>(<span class="ty">Product</span> p) {
+        <span class="kw">this</span>.selectedProduct = p;
+    }
+}</pre>
+
+  <!-- 6L: DEMO / MAIN -->
+  <span class="code-label cl-cyan">Main.java — Demo All Use Cases</span>
+<pre><span class="kw">public class</span> <span class="ty">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(<span class="ty">String</span>[] args) {
+
+        <span class="ty">VendingMachine</span> vm = <span class="kw">new</span> <span class="ty">VendingMachine</span>();
+
+        <span class="cmt">// Admin: Stock the machine</span>
+        vm.<span class="fn">getInventory</span>().<span class="fn">addProduct</span>(
+            <span class="kw">new</span> <span class="ty">Product</span>(<span class="str">"Coke"</span>, <span class="num">25</span>, <span class="str">"A1"</span>), <span class="num">5</span>, <span class="str">"A1"</span>);
+        vm.<span class="fn">getInventory</span>().<span class="fn">addProduct</span>(
+            <span class="kw">new</span> <span class="ty">Product</span>(<span class="str">"Chips"</span>, <span class="num">15</span>, <span class="str">"B2"</span>), <span class="num">3</span>, <span class="str">"B2"</span>);
+        vm.<span class="fn">getInventory</span>().<span class="fn">addProduct</span>(
+            <span class="kw">new</span> <span class="ty">Product</span>(<span class="str">"Candy"</span>, <span class="num">10</span>, <span class="str">"C3"</span>), <span class="num">0</span>, <span class="str">"C3"</span>); <span class="cmt">// out of stock</span>
+
+        <span class="cmt">// ───────── USE CASE 1: Happy Path ─────────</span>
+        <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"═══ USE CASE 1: Happy Path ═══"</span>);
+        vm.<span class="fn">selectProduct</span>(<span class="str">"A1"</span>);                <span class="cmt">// Idle → ProductSelected</span>
+        vm.<span class="fn">insertCoin</span>(<span class="ty">Coin</span>.<span class="an">DIME</span>);              <span class="cmt">// ProductSelected → HasMoney</span>
+        vm.<span class="fn">insertCoin</span>(<span class="ty">Coin</span>.<span class="an">DIME</span>);              <span class="cmt">// stay in HasMoney</span>
+        vm.<span class="fn">insertCoin</span>(<span class="ty">Coin</span>.<span class="an">DIME</span>);              <span class="cmt">// total = 30, price = 25</span>
+        vm.<span class="fn">pressDispenseButton</span>();              <span class="cmt">// HasMoney → Dispense → Idle</span>
+        <span class="cmt">// Output: Dispensing Coke, Returning change: 5 (1 × NICKEL)</span>
+
+        <span class="cmt">// ───────── USE CASE 2: Cancel After Selection ─────────</span>
+        <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"\n═══ USE CASE 2: Cancel ═══"</span>);
+        vm.<span class="fn">selectProduct</span>(<span class="str">"B2"</span>);
+        vm.<span class="fn">insertCoin</span>(<span class="ty">Coin</span>.<span class="an">QUARTER</span>);
+        vm.<span class="fn">cancel</span>();                           <span class="cmt">// Refund 25, → Idle</span>
+
+        <span class="cmt">// ───────── USE CASE 3: Out of Stock ─────────</span>
+        <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"\n═══ USE CASE 3: Out of Stock ═══"</span>);
+        <span class="kw">try</span> {
+            vm.<span class="fn">selectProduct</span>(<span class="str">"C3"</span>);             <span class="cmt">// throws RuntimeException</span>
+        } <span class="kw">catch</span> (<span class="ty">Exception</span> e) {
+            <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"Error: "</span> + e.<span class="fn">getMessage</span>());
+        }
+
+        <span class="cmt">// ───────── USE CASE 4: Insufficient Payment ─────────</span>
+        <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"\n═══ USE CASE 4: Insufficient ═══"</span>);
+        vm.<span class="fn">selectProduct</span>(<span class="str">"A1"</span>);
+        vm.<span class="fn">insertCoin</span>(<span class="ty">Coin</span>.<span class="an">NICKEL</span>);             <span class="cmt">// only 5, need 25</span>
+        vm.<span class="fn">pressDispenseButton</span>();              <span class="cmt">// prints "Need 20 more"</span>
+        vm.<span class="fn">insertCoin</span>(<span class="ty">Coin</span>.<span class="an">QUARTER</span>);            <span class="cmt">// now 30, enough</span>
+        vm.<span class="fn">pressDispenseButton</span>();              <span class="cmt">// dispenses + change 5</span>
+
+        <span class="cmt">// ───────── USE CASE 5: Invalid Action ─────────</span>
+        <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"\n═══ USE CASE 5: Invalid Action ═══"</span>);
+        <span class="kw">try</span> {
+            vm.<span class="fn">insertCoin</span>(<span class="ty">Coin</span>.<span class="an">DIME</span>);            <span class="cmt">// In Idle state — error!</span>
+        } <span class="kw">catch</span> (<span class="ty">Exception</span> e) {
+            <span class="ty">System</span>.out.<span class="fn">println</span>(<span class="str">"Error: "</span> + e.<span class="fn">getMessage</span>());
+        }
+    }
+}</pre>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: CLASS DIAGRAM                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec">
+  <span class="sec-tag tag-green">Step 7</span>
+  <h2>Class Diagram (Draw This on Whiteboard)</h2>
+
+  <div class="state-flow">
+<pre>
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          CLASS RELATIONSHIPS                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│                          ┌──────────────┐                                   │
+│                          │  «interface»  │                                   │
+│                          │    State      │                                   │
+│                          │──────────────│                                   │
+│                          │+selectProduct │                                   │
+│                          │+insertCoin    │                                   │
+│                          │+pressDispense │                                   │
+│                          │+cancel        │                                   │
+│                          └──────┬───────┘                                   │
+│                     ┌───────┬───┴───┬──────────┐                            │
+│                     ▼       ▼       ▼          ▼                            │
+│               ┌─────────┐ ┌────────┐ ┌─────────┐ ┌──────────┐             │
+│               │IdleState│ │Product │ │HasMoney │ │Dispense  │             │
+│               │         │ │Selected│ │State    │ │State     │             │
+│               │         │ │State   │ │         │ │          │             │
+│               └─────────┘ └────────┘ └─────────┘ └──────────┘             │
+│                                                                             │
+│   ┌──────────────────┐        ┌────────────┐       ┌──────────────┐        │
+│   │  VendingMachine   │ has──►│  Inventory  │has──►│  ItemShelf    │        │
+│   │──────────────────│        │────────────│       │──────────────│        │
+│   │- currentState    │        │- shelves   │       │- product     │        │
+│   │- selectedProduct │        │+addProduct │       │- quantity    │        │
+│   │- insertedCoins   │        │+getShelf   │       │+isAvailable  │        │
+│   │+selectProduct()  │        └────────────┘       │+reduceQty    │        │
+│   │+insertCoin()     │                              └──────┬───────┘        │
+│   │+pressDispense()  │        ┌────────────┐              │ has            │
+│   │+cancel()         │        │  «enum»    │              ▼                 │
+│   └──────────────────┘        │   Coin     │       ┌──────────────┐        │
+│                                │────────────│       │   Product     │        │
+│   ┌──────────────────────┐    │ PENNY(1)   │       │──────────────│        │
+│   │  «abstract»           │    │ NICKEL(5)  │       │- name        │        │
+│   │  CoinChangeHandler    │    │ DIME(10)   │       │- price       │        │
+│   │──────────────────────│    │ QUARTER(25) │       │- code        │        │
+│   │- nextHandler         │    └────────────┘       └──────────────┘        │
+│   │+setNext()            │                                                  │
+│   │+dispense(amount)     │                                                  │
+│   └──────────┬───────────┘                                                  │
+│              ▼                                                               │
+│   ┌──────────────────────┐                                                  │
+│   │   CoinDispenser       │                                                  │
+│   │──────────────────────│                                                  │
+│   │- coinValue           │                                                  │
+│   │- coinName            │                                                  │
+│   │+dispense(amount)     │                                                  │
+│   └──────────────────────┘                                                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+</pre>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: EDGE CASES                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec">
+  <span class="sec-tag tag-red">Step 8</span>
+  <h2>Edge Cases & How We Handle Them</h2>
+  <p>Mentioning these proactively shows depth and impresses interviewers.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔴 Product Out of Stock</h3>
+      <p>IdleState.selectProduct() checks <code>shelf.isAvailable()</code> before transitioning. Throws exception if quantity is 0.</p>
+    </div>
+    <div class="card">
+      <h3>🔴 Insufficient Payment</h3>
+      <p>HasMoneyState.pressDispense() compares inserted vs price. If less, stays in HasMoneyState and prompts user to insert more.</p>
+    </div>
+    <div class="card">
+      <h3>🔴 Invalid Actions in Wrong State</h3>
+      <p>Each state throws RuntimeException for invalid operations. E.g., can't insertCoin() in IdleState — must select product first.</p>
+    </div>
+    <div class="card">
+      <h3>🔴 Cancel Mid-Transaction</h3>
+      <p>Both ProductSelectedState and HasMoneyState support cancel(). Coins are fully refunded via CoinChangeHandler chain.</p>
+    </div>
+    <div class="card">
+      <h3>🔴 Machine Can't Return Exact Change</h3>
+      <p>Advanced: Track coin inventory in the machine. Before dispensing, verify change can be made. If not, reject the transaction or ask for exact change.</p>
+    </div>
+    <div class="card">
+      <h3>🔴 Concurrent Access</h3>
+      <p>In a real system, use <code>synchronized</code> blocks or <code>ReentrantLock</code> on state transitions to prevent race conditions with multiple users.</p>
+    </div>
+    <div class="card">
+      <h3>🔴 Invalid Product Code</h3>
+      <p>Inventory.getShelf() throws exception for unknown codes. No silent failures — always fail loud.</p>
+    </div>
+    <div class="card">
+      <h3>🔴 Power Failure During Dispense</h3>
+      <p>Discussion point: Persist state to disk before dispensing. On restart, check if product was physically dispensed. This is an advanced consideration.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: SOLID MAPPING                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec">
+  <span class="sec-tag tag-yellow">Step 9</span>
+  <h2>How This Design Follows SOLID</h2>
+
+  <div class="highlight hl-green"><strong>S — Single Responsibility:</strong> Each state class handles only its own behavior. Inventory manages stock. CoinChangeHandler handles change. VendingMachine orchestrates.</div>
+  <div class="highlight hl-blue"><strong>O — Open/Closed:</strong> Adding a new state (e.g., MaintenanceState) = new class. No modification to existing states. Adding a new coin denomination = new enum value + chain link.</div>
+  <div class="highlight hl-purple"><strong>L — Liskov Substitution:</strong> Any State implementation can replace another in VendingMachine. The machine doesn't know which concrete state it's using.</div>
+  <div class="highlight hl-orange"><strong>I — Interface Segregation:</strong> State interface has only 4 focused methods. We don't force states to implement admin operations (refill, collectMoney).</div>
+  <div class="highlight hl-yellow"><strong>D — Dependency Inversion:</strong> VendingMachine depends on State (interface), not IdleState (concrete). Easy to test with mock states.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: INTERVIEW Q&A                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec">
+  <span class="sec-tag tag-cyan">Step 10</span>
+  <h2>Interview Q&A — What They'll Ask</h2>
+
+  <div class="iq">Why did you choose the State pattern here?</div>
+  <div class="ans"><strong>Answer:</strong> The vending machine has clearly defined states with different valid operations in each. Without the State pattern, every method would need a giant if-else checking the current state — that's fragile and violates OCP. With the State pattern, each state is a class that encapsulates its behavior, and state transitions are clean and explicit.</div>
+
+  <div class="iq">What if I want to add a "Maintenance Mode" where the machine is locked?</div>
+  <div class="ans"><strong>Answer:</strong> Just create a new <code>MaintenanceState</code> implementing State. All 4 methods throw "Machine is under maintenance." Admin calls <code>machine.setState(new MaintenanceState())</code>. Zero changes to existing code — pure OCP.</div>
+
+  <div class="iq">Why Chain of Responsibility for change instead of a simple method?</div>
+  <div class="ans"><strong>Answer:</strong> It's extensible — adding a new coin denomination (₹2) means adding one handler and linking it in the chain. It also follows SRP — each handler only knows about its own denomination. However, for an interview, I'd mention that a simple greedy loop would also work for this specific problem. The pattern shines when you need dynamic chains or conditional processing.</div>
+
+  <div class="iq">How would you handle thread safety?</div>
+  <div class="ans"><strong>Answer:</strong> Wrap state transitions in a <code>ReentrantLock</code>. The critical section is: check state → perform action → transition state. This must be atomic. Alternatively, use <code>synchronized</code> on the VendingMachine methods. In production, I'd prefer lock-free designs or actor-based models for high throughput.</div>
+
+  <div class="iq">What if the machine doesn't have enough coins to return change?</div>
+  <div class="ans"><strong>Answer:</strong> Add a <code>CoinInventory</code> that tracks available coins in the machine. Before transitioning to DispenseState, verify that change can be assembled from available coins. If not, show "EXACT CHANGE ONLY" and reject over-payments, or refund and cancel the transaction.</div>
+
+  <div class="iq">Can you make this more testable?</div>
+  <div class="ans"><strong>Answer:</strong> Already fairly testable since we depend on the State interface — we can mock it in unit tests. For even better testability: inject Inventory and State via constructor (Dependency Injection), use an interface for CoinChangeHandler to mock change calculation, and use events/callbacks instead of System.out.println for verifying output.</div>
+
+  <div class="iq">What's the time complexity of the change algorithm?</div>
+  <div class="ans"><strong>Answer:</strong> The chain iterates through denominations (constant, ~4 coin types), and for each does O(1) division and modulo. Total: O(D) where D is the number of denominations. This greedy approach works because our coin system is canonical (each coin divides the next). For arbitrary denominations, you'd need dynamic programming.</div>
+
+  <div class="iq">How would you extend this for digital payments?</div>
+  <div class="ans"><strong>Answer:</strong> Create a <code>PaymentStrategy</code> interface with implementations: <code>CoinPayment</code>, <code>CardPayment</code>, <code>UPIPayment</code>. The State classes delegate to the active payment strategy. This decouples payment logic from state management — Strategy + State patterns together.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: CHEAT SHEET SUMMARY               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec">
+  <span class="sec-tag tag-orange">Quick Reference</span>
+  <h2>Interview Cheat Sheet Summary</h2>
+
+  <div class="state-flow">
+<pre>
+┌──────────────────────────────────────────────────────┐
+│              VENDING MACHINE LLD SUMMARY              │
+├──────────────────────────────────────────────────────┤
+│                                                       │
+│  Entities:   VendingMachine, Inventory, ItemShelf,    │
+│              Product, Coin (enum), State (interface)  │
+│                                                       │
+│  States:     Idle → ProductSelected → HasMoney        │
+│              → Dispense → back to Idle                │
+│                                                       │
+│  Patterns:   State (core), Chain of Responsibility    │
+│              (change), Singleton (optional), Enum     │
+│                                                       │
+│  Key Classes: 4 State classes + VendingMachine        │
+│               + Inventory + CoinChangeHandler chain   │
+│                                                       │
+│  Edge Cases: Out of stock, insufficient money,        │
+│              cancel/refund, invalid state actions,    │
+│              exact change, thread safety              │
+│                                                       │
+│  SOLID:      ✓ All 5 principles demonstrated          │
+│                                                       │
+│  Time in Interview: ~30-35 minutes                    │
+│    Requirements:   3 min                              │
+│    Entities:       3 min                              │
+│    State Diagram:  5 min                              │
+│    Core Code:     15 min                              │
+│    Discussion:     5 min                              │
+│                                                       │
+└──────────────────────────────────────────────────────┘
+</pre>
+  </div>
+</div>
+
+</div>
+</body>
+</html>
