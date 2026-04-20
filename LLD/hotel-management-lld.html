@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Hotel Management System — LLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:640px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT (laptop = sidebar + content, mobile = stacked) ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--muted);font-size:.92rem;margin-bottom:1.5rem;max-width:720px}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.3rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.87rem;color:var(--muted);line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.85rem}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.highlight strong{font-weight:700}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.85rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.85rem;color:var(--text);border:1px solid var(--border)}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.82rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.6rem .85rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--muted)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">Low-Level Design</div>
+  <h1>Hotel Management <span>System</span></h1>
+  <p class="sub">End-to-end design — Booking, Search, Cancellation, Housekeeping, Payments with full MySQL schema & ER diagrams</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Clarify Requirements</a></li>
+      <li><a href="#s2">Actors &amp; Use Cases</a></li>
+      <li><a href="#s3">Core Entities &amp; Enums</a></li>
+      <li><a href="#s4">Class Diagram</a></li>
+      <li><a href="#s5">ER Diagram</a></li>
+      <li><a href="#s6">MySQL Schema DDL</a></li>
+      <li><a href="#s7">Schema Reference</a></li>
+      <li><a href="#s8">Key Flows</a></li>
+      <li><a href="#s9">Design Patterns</a></li>
+      <li><a href="#s10">BookingService Code</a></li>
+      <li><a href="#s11">Critical SQL Queries</a></li>
+      <li><a href="#s12">Interview Q&amp;A</a></li>
+      <li><a href="#s13">Summary &amp; Extensions</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: REQUIREMENTS                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>Clarify Requirements</h2>
+  <p>A Hotel Management System lets managers handle online hotel operations — rooms, bookings, billing, housekeeping — from a single portal. Guests can search & book rooms online.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Search rooms by date, location, room-type</li>
+        <li>Book different room types: Standard, Deluxe, Family Suite</li>
+        <li>Retrieve "who booked room X" / "all rooms booked by user Y"</li>
+        <li>Cancel booking — full refund if &gt; 24hrs before check-in</li>
+        <li>Send notifications near check-in / check-out</li>
+        <li>Housekeeping log per room</li>
+        <li>Add room-service, food, amenities to booking</li>
+        <li>Payment via credit card, check, or cash</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>❌ Out of Scope (clarify first)</h3>
+      <ul>
+        <li>Multi-hotel chains / franchise distribution</li>
+        <li>Loyalty / rewards program</li>
+        <li>Dynamic pricing / surge engine</li>
+        <li>Review & rating system</li>
+        <li>Third-party OTA integration (MMT, Booking)</li>
+        <li>Staff payroll / HR module</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>Scale assumptions:</strong> ~100 hotels · 500 rooms/hotel · 10K concurrent searches · 1K bookings/day. Reads &gt;&gt; writes → cache aggressively on search, transactional consistency on booking.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: ACTORS & USE CASES                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Actors &amp; Use Cases</h2>
+
+  <div class="g4">
+    <div class="card">
+      <h3>👤 Guest</h3>
+      <ul>
+        <li>Search rooms</li>
+        <li>Book / cancel</li>
+        <li>Add services</li>
+        <li>Pay bill</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🧑‍💼 Receptionist</h3>
+      <ul>
+        <li>Check-in / out</li>
+        <li>Walk-in booking</li>
+        <li>Issue invoice</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🧹 Housekeeper</h3>
+      <ul>
+        <li>View task log</li>
+        <li>Mark room clean</li>
+        <li>Report damage</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🧑‍🔧 Manager / Admin</h3>
+      <ul>
+        <li>Add rooms</li>
+        <li>View reports</li>
+        <li>Manage staff</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  G([Guest])
+  R([Receptionist])
+  H([Housekeeper])
+  M([Manager])
+
+  G --> S[Search Rooms]
+  G --> B[Book Room]
+  G --> C[Cancel Booking]
+  G --> P[Pay Bill]
+  G --> A[Add Service/Amenity]
+
+  R --> CI[Check-In]
+  R --> CO[Check-Out]
+  R --> WI[Walk-in Booking]
+
+  H --> HT[View Housekeeping Log]
+  H --> MC[Mark Room Clean]
+
+  M --> AR[Add/Edit Rooms]
+  M --> RP[View Reports]
+
+  style G fill:#e8743b,stroke:#e8743b,color:#fff
+  style R fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style H fill:#38b265,stroke:#38b265,color:#fff
+  style M fill:#9b72cf,stroke:#9b72cf,color:#fff
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CORE ENTITIES                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Core Entities &amp; Enums</h2>
+  <p>Before tables, identify the domain objects. Each maps to a class in code and (usually) a table in DB.</p>
+
+  <div class="g3">
+    <div class="card"><h3>🏨 Hotel</h3><p>Has a location and many rooms. Identifiable by id + name.</p></div>
+    <div class="card"><h3>🛏️ Room</h3><p>Belongs to a hotel. Has a type, a style, a status, and a price.</p></div>
+    <div class="card"><h3>📅 Booking</h3><p>Guest × Room × Date-range. Tracks total, status, payment.</p></div>
+    <div class="card"><h3>👤 User</h3><p>Base for Guest / Receptionist / Housekeeper / Manager (role).</p></div>
+    <div class="card"><h3>💳 Payment</h3><p>One-to-one with booking. Supports Card / Cash / Cheque.</p></div>
+    <div class="card"><h3>🧹 Housekeeping Log</h3><p>Task per room — cleaning, laundry, damage report.</p></div>
+    <div class="card"><h3>🍽️ Service Charge</h3><p>Food, laundry, minibar — line items on a booking.</p></div>
+    <div class="card"><h3>🔔 Notification</h3><p>Reminder near check-in / check-out. Email / SMS / Push.</p></div>
+    <div class="card"><h3>🏷️ RoomType</h3><p>Enum — STANDARD, DELUXE, FAMILY_SUITE, PRESIDENTIAL.</p></div>
+  </div>
+
+  <div class="g2">
+    <div>
+      <span class="code-label cl-purple">enum · Java</span>
+<pre><span class="kw">public enum</span> <span class="ty">RoomType</span> {
+  <span class="num">STANDARD</span>, <span class="num">DELUXE</span>,
+  <span class="num">FAMILY_SUITE</span>, <span class="num">PRESIDENTIAL</span>
+}
+
+<span class="kw">public enum</span> <span class="ty">RoomStatus</span> {
+  <span class="num">AVAILABLE</span>, <span class="num">BOOKED</span>,
+  <span class="num">OCCUPIED</span>, <span class="num">UNDER_MAINTENANCE</span>
+}</pre>
+    </div>
+    <div>
+      <span class="code-label cl-orange">enum · Java</span>
+<pre><span class="kw">public enum</span> <span class="ty">BookingStatus</span> {
+  <span class="num">CONFIRMED</span>, <span class="num">CHECKED_IN</span>,
+  <span class="num">CHECKED_OUT</span>, <span class="num">CANCELLED</span>
+}
+
+<span class="kw">public enum</span> <span class="ty">PaymentMode</span> {
+  <span class="num">CREDIT_CARD</span>, <span class="num">CASH</span>, <span class="num">CHEQUE</span>
+}</pre>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: CLASS DIAGRAM                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>Class Diagram</h2>
+  <p>High-level OOP view — the classes, their fields, and relationships. Drives both the Java model layer and DB tables.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+classDiagram
+  class Hotel {
+    +Long id
+    +String name
+    +Address address
+    +List~Room~ rooms
+    +addRoom(Room)
+  }
+  class Room {
+    +Long id
+    +String roomNumber
+    +RoomType type
+    +RoomStatus status
+    +BigDecimal pricePerNight
+    +isAvailable(from, to) bool
+  }
+  class User {
+    +Long id
+    +String name
+    +String email
+    +String phone
+    +Role role
+  }
+  class Guest
+  class Receptionist
+  class Housekeeper
+  class Manager
+
+  class Booking {
+    +Long id
+    +Long guestId
+    +Long roomId
+    +LocalDate checkIn
+    +LocalDate checkOut
+    +BookingStatus status
+    +BigDecimal total
+    +confirm()
+    +cancel()
+  }
+  class Payment {
+    +Long id
+    +Long bookingId
+    +BigDecimal amount
+    +PaymentMode mode
+    +PaymentStatus status
+  }
+  class ServiceCharge {
+    +Long id
+    +Long bookingId
+    +String description
+    +BigDecimal amount
+  }
+  class HousekeepingLog {
+    +Long id
+    +Long roomId
+    +Long staffId
+    +TaskType taskType
+    +LocalDateTime performedAt
+  }
+  class Notification {
+    +Long id
+    +Long userId
+    +String message
+    +Channel channel
+  }
+
+  User <|-- Guest
+  User <|-- Receptionist
+  User <|-- Housekeeper
+  User <|-- Manager
+
+  Hotel "1" *-- "many" Room
+  Guest "1" --> "many" Booking
+  Booking "many" --> "1" Room
+  Booking "1" --> "1" Payment
+  Booking "1" --> "many" ServiceCharge
+  Room "1" --> "many" HousekeepingLog
+  User "1" --> "many" Notification
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: ER DIAGRAM                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>ER Diagram — MySQL Schema</h2>
+  <p>Maps the class diagram into relational tables. PK / FK constraints and indexes shown.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  HOTEL ||--o{ ROOM : has
+  HOTEL {
+    BIGINT id PK
+    VARCHAR name
+    VARCHAR city
+    VARCHAR country
+  }
+  ROOM {
+    BIGINT id PK
+    BIGINT hotel_id FK
+    VARCHAR room_number
+    ENUM type
+    ENUM status
+    DECIMAL price_per_night
+  }
+  USER ||--o{ BOOKING : makes
+  USER {
+    BIGINT id PK
+    VARCHAR name
+    VARCHAR email
+    VARCHAR phone
+    ENUM role
+  }
+  BOOKING ||--|| PAYMENT : has
+  BOOKING ||--o{ SERVICE_CHARGE : includes
+  BOOKING ||--o{ NOTIFICATION : triggers
+  ROOM ||--o{ BOOKING : booked_in
+  ROOM ||--o{ HOUSEKEEPING_LOG : logged
+  BOOKING {
+    BIGINT id PK
+    BIGINT guest_id FK
+    BIGINT room_id FK
+    DATE check_in
+    DATE check_out
+    ENUM status
+    DECIMAL total_amount
+    DATETIME created_at
+  }
+  PAYMENT {
+    BIGINT id PK
+    BIGINT booking_id FK
+    DECIMAL amount
+    ENUM mode
+    ENUM status
+    DATETIME paid_at
+  }
+  SERVICE_CHARGE {
+    BIGINT id PK
+    BIGINT booking_id FK
+    VARCHAR description
+    DECIMAL amount
+    DATETIME added_at
+  }
+  HOUSEKEEPING_LOG {
+    BIGINT id PK
+    BIGINT room_id FK
+    BIGINT staff_id FK
+    ENUM task_type
+    TEXT notes
+    DATETIME performed_at
+  }
+  NOTIFICATION {
+    BIGINT id PK
+    BIGINT user_id FK
+    BIGINT booking_id FK
+    ENUM channel
+    TEXT message
+    DATETIME sent_at
+  }
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: MYSQL SCHEMA - FULL DDL            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-yellow">Step 6</span>
+  <h2>MySQL Schema — Full DDL</h2>
+  <p>Complete production-ready DDL with PKs, FKs, composite indexes, and constraints to catch overlapping bookings.</p>
+
+  <span class="code-label cl-yellow">sql · hotel.sql</span>
+<pre><span class="cmt">-- ════════════════ 1. HOTEL ════════════════</span>
+<span class="kw">CREATE TABLE</span> hotel (
+  id           <span class="ty">BIGINT</span> <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
+  name         <span class="ty">VARCHAR</span>(<span class="num">200</span>) <span class="kw">NOT NULL</span>,
+  address_line <span class="ty">VARCHAR</span>(<span class="num">500</span>),
+  city         <span class="ty">VARCHAR</span>(<span class="num">100</span>) <span class="kw">NOT NULL</span>,
+  state        <span class="ty">VARCHAR</span>(<span class="num">100</span>),
+  country      <span class="ty">VARCHAR</span>(<span class="num">100</span>) <span class="kw">NOT NULL</span>,
+  created_at   <span class="ty">DATETIME DEFAULT CURRENT_TIMESTAMP</span>,
+  <span class="kw">INDEX</span> idx_hotel_location (city, country)
+);
+
+<span class="cmt">-- ════════════════ 2. USER ════════════════</span>
+<span class="kw">CREATE TABLE</span> user (
+  id         <span class="ty">BIGINT</span> <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
+  name       <span class="ty">VARCHAR</span>(<span class="num">150</span>) <span class="kw">NOT NULL</span>,
+  email      <span class="ty">VARCHAR</span>(<span class="num">200</span>) <span class="kw">NOT NULL UNIQUE</span>,
+  phone      <span class="ty">VARCHAR</span>(<span class="num">20</span>),
+  password_hash <span class="ty">VARCHAR</span>(<span class="num">255</span>),
+  role       <span class="kw">ENUM</span>(<span class="str">'GUEST'</span>,<span class="str">'RECEPTIONIST'</span>,<span class="str">'HOUSEKEEPER'</span>,<span class="str">'MANAGER'</span>) <span class="kw">NOT NULL DEFAULT</span> <span class="str">'GUEST'</span>,
+  created_at <span class="ty">DATETIME DEFAULT CURRENT_TIMESTAMP</span>
+);
+
+<span class="cmt">-- ════════════════ 3. ROOM ════════════════</span>
+<span class="kw">CREATE TABLE</span> room (
+  id              <span class="ty">BIGINT</span> <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
+  hotel_id        <span class="ty">BIGINT</span> <span class="kw">NOT NULL</span>,
+  room_number     <span class="ty">VARCHAR</span>(<span class="num">10</span>) <span class="kw">NOT NULL</span>,
+  type            <span class="kw">ENUM</span>(<span class="str">'STANDARD'</span>,<span class="str">'DELUXE'</span>,<span class="str">'FAMILY_SUITE'</span>,<span class="str">'PRESIDENTIAL'</span>) <span class="kw">NOT NULL</span>,
+  status          <span class="kw">ENUM</span>(<span class="str">'AVAILABLE'</span>,<span class="str">'BOOKED'</span>,<span class="str">'OCCUPIED'</span>,<span class="str">'UNDER_MAINTENANCE'</span>) <span class="kw">DEFAULT</span> <span class="str">'AVAILABLE'</span>,
+  price_per_night <span class="ty">DECIMAL</span>(<span class="num">10</span>,<span class="num">2</span>) <span class="kw">NOT NULL</span>,
+  max_occupancy   <span class="ty">INT</span> <span class="kw">DEFAULT</span> <span class="num">2</span>,
+  <span class="kw">UNIQUE</span> (hotel_id, room_number),
+  <span class="kw">FOREIGN KEY</span> (hotel_id) <span class="kw">REFERENCES</span> hotel(id),
+  <span class="kw">INDEX</span> idx_room_type_status (hotel_id, type, status)
+);
+
+<span class="cmt">-- ════════════════ 4. BOOKING ════════════════</span>
+<span class="kw">CREATE TABLE</span> booking (
+  id           <span class="ty">BIGINT</span> <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
+  guest_id     <span class="ty">BIGINT</span> <span class="kw">NOT NULL</span>,
+  room_id      <span class="ty">BIGINT</span> <span class="kw">NOT NULL</span>,
+  check_in     <span class="ty">DATE</span> <span class="kw">NOT NULL</span>,
+  check_out    <span class="ty">DATE</span> <span class="kw">NOT NULL</span>,
+  status       <span class="kw">ENUM</span>(<span class="str">'CONFIRMED'</span>,<span class="str">'CHECKED_IN'</span>,<span class="str">'CHECKED_OUT'</span>,<span class="str">'CANCELLED'</span>) <span class="kw">DEFAULT</span> <span class="str">'CONFIRMED'</span>,
+  total_amount <span class="ty">DECIMAL</span>(<span class="num">10</span>,<span class="num">2</span>) <span class="kw">NOT NULL</span>,
+  created_at   <span class="ty">DATETIME DEFAULT CURRENT_TIMESTAMP</span>,
+  <span class="kw">FOREIGN KEY</span> (guest_id) <span class="kw">REFERENCES</span> user(id),
+  <span class="kw">FOREIGN KEY</span> (room_id) <span class="kw">REFERENCES</span> room(id),
+  <span class="kw">CHECK</span> (check_out > check_in),
+  <span class="kw">INDEX</span> idx_room_dates (room_id, check_in, check_out),
+  <span class="kw">INDEX</span> idx_guest (guest_id, status)
+);
+
+<span class="cmt">-- ════════════════ 5. PAYMENT ════════════════</span>
+<span class="kw">CREATE TABLE</span> payment (
+  id         <span class="ty">BIGINT</span> <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
+  booking_id <span class="ty">BIGINT</span> <span class="kw">NOT NULL UNIQUE</span>,
+  amount     <span class="ty">DECIMAL</span>(<span class="num">10</span>,<span class="num">2</span>) <span class="kw">NOT NULL</span>,
+  mode       <span class="kw">ENUM</span>(<span class="str">'CREDIT_CARD'</span>,<span class="str">'CASH'</span>,<span class="str">'CHEQUE'</span>) <span class="kw">NOT NULL</span>,
+  status     <span class="kw">ENUM</span>(<span class="str">'PENDING'</span>,<span class="str">'COMPLETED'</span>,<span class="str">'REFUNDED'</span>,<span class="str">'FAILED'</span>) <span class="kw">DEFAULT</span> <span class="str">'PENDING'</span>,
+  txn_ref    <span class="ty">VARCHAR</span>(<span class="num">100</span>),
+  paid_at    <span class="ty">DATETIME</span>,
+  <span class="kw">FOREIGN KEY</span> (booking_id) <span class="kw">REFERENCES</span> booking(id)
+);
+
+<span class="cmt">-- ════════════════ 6. SERVICE_CHARGE ════════════════</span>
+<span class="kw">CREATE TABLE</span> service_charge (
+  id          <span class="ty">BIGINT</span> <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
+  booking_id  <span class="ty">BIGINT</span> <span class="kw">NOT NULL</span>,
+  category    <span class="kw">ENUM</span>(<span class="str">'FOOD'</span>,<span class="str">'LAUNDRY'</span>,<span class="str">'MINIBAR'</span>,<span class="str">'SPA'</span>,<span class="str">'AMENITY'</span>,<span class="str">'OTHER'</span>),
+  description <span class="ty">VARCHAR</span>(<span class="num">300</span>),
+  amount      <span class="ty">DECIMAL</span>(<span class="num">10</span>,<span class="num">2</span>) <span class="kw">NOT NULL</span>,
+  added_at    <span class="ty">DATETIME DEFAULT CURRENT_TIMESTAMP</span>,
+  <span class="kw">FOREIGN KEY</span> (booking_id) <span class="kw">REFERENCES</span> booking(id),
+  <span class="kw">INDEX</span> idx_booking (booking_id)
+);
+
+<span class="cmt">-- ════════════════ 7. HOUSEKEEPING_LOG ════════════════</span>
+<span class="kw">CREATE TABLE</span> housekeeping_log (
+  id           <span class="ty">BIGINT</span> <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
+  room_id      <span class="ty">BIGINT</span> <span class="kw">NOT NULL</span>,
+  staff_id     <span class="ty">BIGINT</span> <span class="kw">NOT NULL</span>,
+  task_type    <span class="kw">ENUM</span>(<span class="str">'CLEANING'</span>,<span class="str">'LAUNDRY'</span>,<span class="str">'DAMAGE_REPORT'</span>,<span class="str">'RESTOCK'</span>) <span class="kw">NOT NULL</span>,
+  notes        <span class="ty">TEXT</span>,
+  performed_at <span class="ty">DATETIME DEFAULT CURRENT_TIMESTAMP</span>,
+  <span class="kw">FOREIGN KEY</span> (room_id) <span class="kw">REFERENCES</span> room(id),
+  <span class="kw">FOREIGN KEY</span> (staff_id) <span class="kw">REFERENCES</span> user(id),
+  <span class="kw">INDEX</span> idx_room_date (room_id, performed_at)
+);
+
+<span class="cmt">-- ════════════════ 8. NOTIFICATION ════════════════</span>
+<span class="kw">CREATE TABLE</span> notification (
+  id         <span class="ty">BIGINT</span> <span class="kw">AUTO_INCREMENT PRIMARY KEY</span>,
+  user_id    <span class="ty">BIGINT</span> <span class="kw">NOT NULL</span>,
+  booking_id <span class="ty">BIGINT</span>,
+  channel    <span class="kw">ENUM</span>(<span class="str">'EMAIL'</span>,<span class="str">'SMS'</span>,<span class="str">'PUSH'</span>) <span class="kw">NOT NULL</span>,
+  message    <span class="ty">TEXT</span>,
+  sent_at    <span class="ty">DATETIME</span>,
+  status     <span class="kw">ENUM</span>(<span class="str">'PENDING'</span>,<span class="str">'SENT'</span>,<span class="str">'FAILED'</span>) <span class="kw">DEFAULT</span> <span class="str">'PENDING'</span>,
+  <span class="kw">FOREIGN KEY</span> (user_id) <span class="kw">REFERENCES</span> user(id),
+  <span class="kw">FOREIGN KEY</span> (booking_id) <span class="kw">REFERENCES</span> booking(id)
+);
+</pre>
+
+  <div class="highlight hl-yellow"><strong>Why composite index idx_room_dates?</strong> The "is room available" query filters by <code>room_id</code> + date overlap. A single composite index on (room_id, check_in, check_out) makes overlap queries seek directly instead of scanning.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: TABLE REFERENCE                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-cyan">Step 7</span>
+  <h2>Schema Reference — At a Glance</h2>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Table</th><th>Purpose</th><th>Key Columns</th></tr></thead>
+      <tbody>
+        <tr><td><code>hotel</code></td><td>Property info</td><td>id, name, city, country</td></tr>
+        <tr><td><code>user</code></td><td>Guests + staff (role)</td><td>id, email, role</td></tr>
+        <tr><td><code>room</code></td><td>Inventory</td><td>hotel_id, type, status, price</td></tr>
+        <tr><td><code>booking</code></td><td>Reservation record</td><td>guest_id, room_id, check_in/out, status</td></tr>
+        <tr><td><code>payment</code></td><td>One per booking</td><td>booking_id, amount, mode, status</td></tr>
+        <tr><td><code>service_charge</code></td><td>Add-ons: food, spa, etc.</td><td>booking_id, category, amount</td></tr>
+        <tr><td><code>housekeeping_log</code></td><td>Task audit per room</td><td>room_id, staff_id, task_type</td></tr>
+        <tr><td><code>notification</code></td><td>Outbound messages</td><td>user_id, booking_id, channel</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: KEY FLOWS — SEQUENCE DIAGRAMS      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-green">Step 8</span>
+  <h2>Key Flows — Sequence Diagrams</h2>
+
+  <h3 style="font-family:'Playfair Display',serif;color:var(--heading);margin:1.5rem 0 .5rem;font-size:1.15rem">🔍 Search &amp; Book Room</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor G as Guest
+  participant API as BookingAPI
+  participant SS as SearchService
+  participant BS as BookingService
+  participant DB as MySQL
+  participant PG as PaymentGateway
+  participant NS as NotificationService
+
+  G->>API: GET /rooms?city=X&from&to&type
+  API->>SS: searchAvailable(filter)
+  SS->>DB: SELECT rooms LEFT JOIN booking<br/>WHERE NOT overlaps(from,to)
+  DB-->>SS: available rooms
+  SS-->>G: list
+
+  G->>API: POST /bookings {roomId,dates}
+  API->>BS: createBooking()
+  BS->>DB: BEGIN TXN
+  BS->>DB: SELECT room FOR UPDATE
+  BS->>DB: verify no overlap
+  BS->>DB: INSERT booking (CONFIRMED)
+  BS->>PG: chargeCard()
+  PG-->>BS: txnRef
+  BS->>DB: INSERT payment (COMPLETED)
+  BS->>DB: COMMIT
+  BS->>NS: sendConfirmationEmail()
+  BS-->>G: 201 Booking
+    </div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;color:var(--heading);margin:1.75rem 0 .5rem;font-size:1.15rem">❌ Cancel Booking (24hr Rule)</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor G as Guest
+  participant API
+  participant BS as BookingService
+  participant RS as RefundService
+  participant DB
+
+  G->>API: DELETE /bookings/{id}
+  API->>BS: cancel(id)
+  BS->>DB: SELECT booking
+  alt checkIn - now > 24h
+    BS->>RS: fullRefund()
+    RS-->>BS: refunded
+  else within 24h
+    BS->>RS: partialRefund(0)
+    RS-->>BS: no refund
+  end
+  BS->>DB: UPDATE booking SET status=CANCELLED
+  BS-->>G: 200 OK (refund details)
+    </div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;color:var(--heading);margin:1.75rem 0 .5rem;font-size:1.15rem">🔔 Check-in Reminder (Scheduled Job)</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant CRON as Scheduler (daily 9AM)
+  participant NS as NotificationService
+  participant DB
+  participant EM as Email/SMS Provider
+
+  CRON->>NS: dispatchReminders()
+  NS->>DB: SELECT bookings WHERE<br/>check_in = TOMORROW AND status=CONFIRMED
+  DB-->>NS: bookings[]
+  loop each booking
+    NS->>EM: send(user.email, template)
+    NS->>DB: INSERT notification (SENT)
+  end
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: DESIGN PATTERNS                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-yellow">Step 9</span>
+  <h2>Design Patterns Used</h2>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🏭 Factory — RoomFactory</h3>
+      <p>Instantiates correct Room subclass (Standard/Deluxe/Suite) based on type. Centralises construction logic and default pricing.</p>
+    </div>
+    <div class="card">
+      <h3>📣 Observer — Notification</h3>
+      <p>BookingService publishes events (<code>BookingCreated</code>, <code>CheckInTomorrow</code>). NotificationService subscribes &amp; fires email/SMS/push.</p>
+    </div>
+    <div class="card">
+      <h3>💳 Strategy — Payment</h3>
+      <p><code>PaymentStrategy</code> interface with <code>CardStrategy</code>, <code>CashStrategy</code>, <code>ChequeStrategy</code>. Swap implementations without touching booking logic.</p>
+    </div>
+    <div class="card">
+      <h3>🔄 State — Booking</h3>
+      <p>Booking transitions CONFIRMED → CHECKED_IN → CHECKED_OUT. Each state restricts valid operations (no cancel after checkout).</p>
+    </div>
+    <div class="card">
+      <h3>🗄️ Repository / DAO</h3>
+      <p><code>BookingRepository</code>, <code>RoomRepository</code>. Clean separation between DB and business logic. Easy to mock in tests.</p>
+    </div>
+    <div class="card">
+      <h3>🧩 Singleton — Services</h3>
+      <p>Stateless services (BookingService, NotificationService) as singletons wired by DI framework (Spring). One instance per JVM.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: CORE SERVICE CODE                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-red">Step 10</span>
+  <h2>BookingService — Core Logic</h2>
+  <p>Transactional booking creation with pessimistic lock to prevent double-booking under concurrency.</p>
+
+  <span class="code-label cl-red">java · BookingService</span>
+<pre><span class="an">@Service</span>
+<span class="kw">public class</span> <span class="ty">BookingService</span> {
+  <span class="kw">private final</span> <span class="ty">BookingRepository</span> bookingRepo;
+  <span class="kw">private final</span> <span class="ty">RoomRepository</span>    roomRepo;
+  <span class="kw">private final</span> <span class="ty">PaymentService</span>    paymentService;
+  <span class="kw">private final</span> <span class="ty">EventPublisher</span>    publisher;
+
+  <span class="an">@Transactional</span>
+  <span class="kw">public</span> <span class="ty">Booking</span> <span class="fn">createBooking</span>(<span class="ty">BookingRequest</span> req) {
+    <span class="cmt">// 1. Lock the room row for this transaction</span>
+    <span class="ty">Room</span> room = roomRepo.<span class="fn">findByIdForUpdate</span>(req.getRoomId())
+        .<span class="fn">orElseThrow</span>(() -> <span class="kw">new</span> <span class="ty">RoomNotFoundException</span>());
+
+    <span class="cmt">// 2. Verify no overlap</span>
+    <span class="kw">boolean</span> clash = bookingRepo.<span class="fn">existsOverlap</span>(
+        room.<span class="fn">getId</span>(), req.<span class="fn">getCheckIn</span>(), req.<span class="fn">getCheckOut</span>());
+    <span class="kw">if</span> (clash) <span class="kw">throw new</span> <span class="ty">RoomUnavailableException</span>();
+
+    <span class="cmt">// 3. Compute total</span>
+    <span class="ty">BigDecimal</span> nights = <span class="ty">BigDecimal</span>.<span class="fn">valueOf</span>(
+        <span class="ty">ChronoUnit</span>.DAYS.<span class="fn">between</span>(req.<span class="fn">getCheckIn</span>(), req.<span class="fn">getCheckOut</span>()));
+    <span class="ty">BigDecimal</span> total = room.<span class="fn">getPricePerNight</span>().<span class="fn">multiply</span>(nights);
+
+    <span class="cmt">// 4. Persist booking</span>
+    <span class="ty">Booking</span> booking = <span class="ty">Booking</span>.<span class="fn">builder</span>()
+        .<span class="fn">guestId</span>(req.<span class="fn">getGuestId</span>())
+        .<span class="fn">roomId</span>(room.<span class="fn">getId</span>())
+        .<span class="fn">checkIn</span>(req.<span class="fn">getCheckIn</span>())
+        .<span class="fn">checkOut</span>(req.<span class="fn">getCheckOut</span>())
+        .<span class="fn">status</span>(BookingStatus.CONFIRMED)
+        .<span class="fn">totalAmount</span>(total)
+        .<span class="fn">build</span>();
+    booking = bookingRepo.<span class="fn">save</span>(booking);
+
+    <span class="cmt">// 5. Charge &amp; publish event (Observer fires notification)</span>
+    paymentService.<span class="fn">charge</span>(booking, req.<span class="fn">getPaymentMode</span>());
+    publisher.<span class="fn">publish</span>(<span class="kw">new</span> <span class="ty">BookingCreatedEvent</span>(booking));
+    <span class="kw">return</span> booking;
+  }
+
+  <span class="an">@Transactional</span>
+  <span class="kw">public</span> <span class="ty">RefundResult</span> <span class="fn">cancel</span>(<span class="ty">Long</span> bookingId) {
+    <span class="ty">Booking</span> b = bookingRepo.<span class="fn">findById</span>(bookingId).<span class="fn">orElseThrow</span>();
+    <span class="kw">if</span> (b.<span class="fn">getStatus</span>() != BookingStatus.CONFIRMED)
+      <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="str">"Cannot cancel"</span>);
+
+    <span class="ty">long</span> hoursToCheckIn = <span class="ty">ChronoUnit</span>.HOURS.<span class="fn">between</span>(
+        <span class="ty">LocalDateTime</span>.<span class="fn">now</span>(), b.<span class="fn">getCheckIn</span>().<span class="fn">atStartOfDay</span>());
+
+    <span class="ty">RefundResult</span> refund = (hoursToCheckIn &gt; <span class="num">24</span>)
+        ? paymentService.<span class="fn">fullRefund</span>(b)
+        : <span class="ty">RefundResult</span>.<span class="fn">noRefund</span>();
+
+    b.<span class="fn">setStatus</span>(BookingStatus.CANCELLED);
+    bookingRepo.<span class="fn">save</span>(b);
+    publisher.<span class="fn">publish</span>(<span class="kw">new</span> <span class="ty">BookingCancelledEvent</span>(b, refund));
+    <span class="kw">return</span> refund;
+  }
+}</pre>
+
+  <div class="highlight hl-red"><strong>Concurrency risk:</strong> Two guests booking the same room for overlapping dates at the exact same millisecond. Solution above: <code>SELECT … FOR UPDATE</code> on the room row inside the transaction → serialises conflicting bookings at DB level.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: CRITICAL QUERIES                  -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-blue">Step 11</span>
+  <h2>Critical SQL Queries</h2>
+
+  <span class="code-label cl-blue">sql · search available rooms</span>
+<pre><span class="cmt">-- Rooms in Bangalore, Deluxe, Mar 1–5 — not overlapping any active booking</span>
+<span class="kw">SELECT</span> r.* <span class="kw">FROM</span> room r
+  <span class="kw">JOIN</span> hotel h <span class="kw">ON</span> h.id = r.hotel_id
+<span class="kw">WHERE</span> h.city = <span class="str">'Bangalore'</span>
+  <span class="kw">AND</span> r.type = <span class="str">'DELUXE'</span>
+  <span class="kw">AND</span> r.status = <span class="str">'AVAILABLE'</span>
+  <span class="kw">AND NOT EXISTS</span> (
+    <span class="kw">SELECT</span> <span class="num">1</span> <span class="kw">FROM</span> booking b
+    <span class="kw">WHERE</span> b.room_id = r.id
+      <span class="kw">AND</span> b.status <span class="kw">IN</span> (<span class="str">'CONFIRMED'</span>,<span class="str">'CHECKED_IN'</span>)
+      <span class="kw">AND</span> b.check_in &lt; <span class="str">'2026-03-05'</span>
+      <span class="kw">AND</span> b.check_out &gt; <span class="str">'2026-03-01'</span>
+  );</pre>
+
+  <span class="code-label cl-green">sql · who booked room X?</span>
+<pre><span class="kw">SELECT</span> u.name, u.email, b.check_in, b.check_out, b.status
+<span class="kw">FROM</span> booking b
+  <span class="kw">JOIN</span> user u <span class="kw">ON</span> u.id = b.guest_id
+<span class="kw">WHERE</span> b.room_id = <span class="num">42</span>
+<span class="kw">ORDER BY</span> b.check_in <span class="kw">DESC</span>;</pre>
+
+  <span class="code-label cl-purple">sql · all rooms booked by a customer</span>
+<pre><span class="kw">SELECT</span> r.room_number, h.name <span class="kw">AS</span> hotel, b.check_in, b.check_out
+<span class="kw">FROM</span> booking b
+  <span class="kw">JOIN</span> room r  <span class="kw">ON</span> r.id = b.room_id
+  <span class="kw">JOIN</span> hotel h <span class="kw">ON</span> h.id = r.hotel_id
+<span class="kw">WHERE</span> b.guest_id = <span class="num">101</span>
+<span class="kw">ORDER BY</span> b.check_in <span class="kw">DESC</span>;</pre>
+
+  <span class="code-label cl-orange">sql · total bill for a booking</span>
+<pre><span class="kw">SELECT</span>
+  b.total_amount <span class="kw">AS</span> room_charge,
+  <span class="kw">COALESCE</span>(<span class="kw">SUM</span>(sc.amount), <span class="num">0</span>) <span class="kw">AS</span> services,
+  b.total_amount + <span class="kw">COALESCE</span>(<span class="kw">SUM</span>(sc.amount), <span class="num">0</span>) <span class="kw">AS</span> grand_total
+<span class="kw">FROM</span> booking b
+  <span class="kw">LEFT JOIN</span> service_charge sc <span class="kw">ON</span> sc.booking_id = b.id
+<span class="kw">WHERE</span> b.id = <span class="num">555</span>
+<span class="kw">GROUP BY</span> b.id, b.total_amount;</pre>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: INTERVIEW Q&A                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-purple">Step 12</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">How do you prevent double-booking the same room?</div>
+  <div class="ans"><strong>Answer:</strong> Pessimistic lock — inside the booking transaction, do <code>SELECT … FROM room WHERE id=? FOR UPDATE</code>. Then check overlap. Conflicting transactions serialise at the DB. Alternative: optimistic lock with <code>version</code> column &amp; retry, or Redis distributed lock for multi-node.</div>
+
+  <div class="iq">How do you model room availability efficiently?</div>
+  <div class="ans"><strong>Answer:</strong> Don't precompute per-date availability — too many rows. Instead derive it: "a room is free for [from, to] iff NO booking exists where <code>check_in &lt; to AND check_out &gt; from</code>". Composite index on <code>(room_id, check_in, check_out)</code> makes this a fast range seek.</div>
+
+  <div class="iq">How do you scale search?</div>
+  <div class="ans"><strong>Answer:</strong> Three layers — (1) Cache popular search results in Redis keyed by <code>city|type|date-range</code>, TTL 60s. (2) Move search to Elasticsearch for geo + filter queries. (3) Shard inventory by region if dataset gets huge.</div>
+
+  <div class="iq">How do you send check-in reminders?</div>
+  <div class="ans"><strong>Answer:</strong> Cron job runs daily at 9 AM → queries bookings where <code>check_in = TOMORROW</code> → pushes to Kafka → NotificationService consumes and dispatches email/SMS via provider. Writes to <code>notification</code> table for audit + retry.</div>
+
+  <div class="iq">Why is Payment 1-to-1 with Booking, not many?</div>
+  <div class="ans"><strong>Answer:</strong> A booking's payment is a single financial transaction (even refunds update status, not create a new row). If we needed split payments, we'd switch to 1-to-many. For this scale, 1-1 keeps invariants simple and makes the UNIQUE constraint enforce it at the DB level.</div>
+
+  <div class="iq">How would you support multiple hotels in different time zones?</div>
+  <div class="ans"><strong>Answer:</strong> Store all times as UTC <code>DATETIME</code>. Store the hotel's IANA timezone on the <code>hotel</code> row (e.g. <code>Asia/Kolkata</code>). Compute check-in/out at hotel-local midnight, convert to UTC for storage. Display always in hotel-local time.</div>
+
+  <div class="iq">How do you handle "no-show" guests?</div>
+  <div class="ans"><strong>Answer:</strong> A scheduled job at midnight after check-in date marks <code>CONFIRMED</code> bookings as <code>NO_SHOW</code> (add to enum). Charge full first night per policy. Room status becomes <code>AVAILABLE</code> again.</div>
+
+  <div class="iq">Refund policy enforcement — where does the 24-hour rule live?</div>
+  <div class="ans"><strong>Answer:</strong> In the service layer (<code>BookingService.cancel()</code>), not DB. Policies change — keep them in code (or config), not schema. The DB stores facts (amount refunded), the service enforces rules.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: WRAP-UP                           -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-orange">Wrap-up</span>
+  <h2>Summary &amp; Extensions</h2>
+
+  <div class="highlight hl-green"><strong>What we covered:</strong> 8 tables, 4 actors, 6 design patterns, search/book/cancel flows with sequence diagrams, concurrency story, and a dozen interview-ready answers.</div>
+  <div class="highlight hl-blue"><strong>Extensions to discuss:</strong> Dynamic pricing engine · Reviews / ratings · Group booking (N rooms) · Loyalty points · Channel-manager integration with MakeMyTrip / Booking.com · Multi-tenant SaaS model for hotel chains.</div>
+  <div class="highlight hl-purple"><strong>Trade-offs to flag:</strong> MySQL vs Postgres (we picked MySQL per spec — Postgres has richer range/exclusion constraints that would enforce "no overlapping bookings" declaratively). Sync vs async notification. Pessimistic vs optimistic locking.</div>
+</div>
+
+  </div>
+</div>
+
+</body>
+</html>
