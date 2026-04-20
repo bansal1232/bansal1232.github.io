@@ -28,7 +28,26 @@ body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);line-h
 .hero h1 em{font-style:normal;color:#60a5fa}
 .hero .sub{color:rgba(255,255,255,.45);font-size:.95rem;margin-top:.5rem;position:relative}
 
-.wrap{max-width:880px;margin:0 auto;padding:2.5rem 1.5rem 5rem}
+.wrap{min-width:0}
+
+/* ─── LAYOUT (laptop = sidebar + content, mobile = stacked) ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:toc}
+.sidebar ol li{counter-increment:toc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(toc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--kafka);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--kafka)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.qh{scroll-margin-top:1.5rem}
 
 /* QUESTION HEADER */
 .qh{padding:2.5rem 0 1.5rem;border-bottom:2px solid var(--ink);margin-bottom:2rem;display:flex;align-items:flex-start;gap:1rem}
@@ -78,7 +97,7 @@ pre{background:#0f0f0f;border:1px solid #2a2a2a;border-radius:0 8px 8px 8px;padd
 /* GRID */
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem}
-@media(max-width:700px){.g2,.g3{grid-template-columns:1fr}.hero h1{font-size:1.9rem}.wrap{padding:1.5rem 1rem 4rem}.qh{flex-direction:column;gap:.5rem}}
+@media(max-width:700px){.g2,.g3{grid-template-columns:1fr}.hero h1{font-size:1.9rem}.qh{flex-direction:column;gap:.5rem}}
 
 /* HIGHLIGHT */
 .hl{border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:.85rem;font-size:.84rem}
@@ -125,13 +144,24 @@ pre{background:#0f0f0f;border:1px solid #2a2a2a;border-radius:0 8px 8px 8px;padd
   <div class="sub">Three must-know interview topics — explained with diagrams, commands, and code</div>
 </div>
 
-<div class="wrap">
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#q1">Kafka Basics &amp; Components</a></li>
+      <li><a href="#q2">Debugging Kafka Consumers</a></li>
+      <li><a href="#q3">Payment Idempotency</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
 
 <!-- ╔══════════════════════════════════════════════════════════════╗ -->
 <!-- ║  QUESTION 1: KAFKA BASICS                                    ║ -->
 <!-- ╚══════════════════════════════════════════════════════════════╝ -->
 
-<div class="qh">
+<div class="qh" id="q1">
   <span class="qnum qn-kafka">Q1</span>
   <h2>Discuss the basic working of Kafka and its various components</h2>
 </div>
@@ -148,15 +178,15 @@ pre{background:#0f0f0f;border:1px solid #2a2a2a;border-radius:0 8px 8px 8px;padd
   ┌────────┐         ┌────────────────────────────────────┐         ┌────────┐
   │Producer│────────►│                                    │────────►│Consumer│
   │   A    │  write  │   Broker 1    Broker 2    Broker 3 │  read   │ Group 1│
-  └────────┘         │   ┌──────┐   ┌──────┐   ┌──────┐  │         └────────┘
-  ┌────────┐         │   │ P0   │   │ P1   │   │ P2   │  │         ┌────────┐
-  │Producer│────────►│   │(Lead)│   │(Lead)│   │(Lead)│  │────────►│Consumer│
-  │   B    │         │   │ P1   │   │ P2   │   │ P0   │  │         │ Group 2│
-  └────────┘         │   │(Rep) │   │(Rep) │   │(Rep) │  │         └────────┘
-                     │   └──────┘   └──────┘   └──────┘  │
+  └────────┘         │   ┌──────┐   ┌──────┐   ┌──────┐   │         └────────┘
+  ┌────────┐         │   │ P0   │   │ P1   │   │ P2   │   │         ┌────────┐
+  │Producer│────────►│   │(Lead)│   │(Lead)│   │(Lead)│   │────────►│Consumer│
+  │   B    │         │   │ P1   │   │ P2   │   │ P0   │   │         │ Group 2│
+  └────────┘         │   │(Rep) │   │(Rep) │   │(Rep) │   │         └────────┘
+                     │   └──────┘   └──────┘   └──────┘   │
                      │                                    │
-                     │          ZooKeeper / KRaft          │
-                     │       (metadata & coordination)     │
+                     │          ZooKeeper / KRaft         │
+                     │       (metadata & coordination)    │
                      └────────────────────────────────────┘
 
   P0, P1, P2 = Partitions of a Topic
@@ -304,7 +334,7 @@ pre{background:#0f0f0f;border:1px solid #2a2a2a;border-radius:0 8px 8px 8px;padd
 <!-- ║  QUESTION 2: DEBUGGING CONSUMER ISSUES                       ║ -->
 <!-- ╚══════════════════════════════════════════════════════════════╝ -->
 
-<div class="qh">
+<div class="qh" id="q2">
   <span class="qnum qn-debug">Q2</span>
   <h2>How to debug if a producer publishes messages but a consumer cannot consume them?</h2>
 </div>
@@ -412,7 +442,7 @@ pre{background:#0f0f0f;border:1px solid #2a2a2a;border-radius:0 8px 8px 8px;padd
 <!-- ║  QUESTION 3: PAYMENT IDEMPOTENCY                             ║ -->
 <!-- ╚══════════════════════════════════════════════════════════════╝ -->
 
-<div class="qh">
+<div class="qh" id="q3">
   <span class="qnum qn-pay">Q3</span>
   <h2>In a payment system, how do you ensure retries don't deduct balance multiple times?</h2>
 </div>
@@ -790,6 +820,7 @@ pre{background:#0f0f0f;border:1px solid #2a2a2a;border-radius:0 8px 8px 8px;padd
   </div>
 </div>
 
+  </div>
 </div>
 </body>
 </html>

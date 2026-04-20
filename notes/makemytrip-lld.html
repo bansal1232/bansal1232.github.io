@@ -31,7 +31,26 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);lin
 .back-link{position:absolute;top:18px;left:18px;font-size:13px;color:var(--muted);text-decoration:none;z-index:2}
 .back-link:hover{color:var(--orange)}
 
-.wrap{max-width:940px;margin:0 auto;padding:2.5rem 1.5rem 5rem}
+.wrap{min-width:0}
+
+/* ─── LAYOUT (laptop = sidebar + content, mobile = stacked) ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
 
 .sec{margin-bottom:3.5rem}
 .sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
@@ -69,7 +88,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
-@media(max-width:700px){.g2,.g3{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+@media(max-width:700px){.g2,.g3{grid-template-columns:1fr}.hero h1{font-size:2.1rem}}
 
 .state-flow{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2rem;overflow-x:auto;margin-bottom:1rem}
 .state-flow pre{background:transparent;border:none;padding:0;margin:0;font-size:.72rem;line-height:1.7;color:var(--text)}
@@ -106,24 +125,26 @@ td{color:var(--muted);background:var(--surface)}
   <p class="sub">Complete interview-grade design: requirements, entities, patterns, concurrency, cross-questions, and the mental model you need to arrive at this design on your own.</p>
 </section>
 
-<div class="wrap">
+<div class="layout">
 
-<div class="toc">
-  <h4>Table of contents</h4>
-  <ol>
-    <li><a href="#intuition">Building the intuition first</a></li>
-    <li><a href="#clarify">Clarifying questions</a></li>
-    <li><a href="#req">Requirements</a></li>
-    <li><a href="#entities">Core entities</a></li>
-    <li><a href="#patterns">Design patterns used</a></li>
-    <li><a href="#code">Class-level design</a></li>
-    <li><a href="#state">Booking state machine</a></li>
-    <li><a href="#concurrency">Concurrency &amp; atomicity</a></li>
-    <li><a href="#payment">Payment, refund, money flow</a></li>
-    <li><a href="#crossq">Cross-questions &amp; answers</a></li>
-    <li><a href="#checklist">Interview checklist</a></li>
-  </ol>
-</div>
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#intuition">Building the intuition</a></li>
+      <li><a href="#clarify">Clarifying questions</a></li>
+      <li><a href="#req">Requirements</a></li>
+      <li><a href="#entities">Core entities</a></li>
+      <li><a href="#patterns">Design patterns</a></li>
+      <li><a href="#code">Class-level design</a></li>
+      <li><a href="#state">Booking state machine</a></li>
+      <li><a href="#concurrency">Concurrency &amp; atomicity</a></li>
+      <li><a href="#payment">Payment &amp; money flow</a></li>
+      <li><a href="#crossq">Cross-questions</a></li>
+      <li><a href="#checklist">Interview checklist</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
 
 <!-- ── INTUITION ── -->
 <section class="sec" id="intuition">
@@ -585,6 +606,7 @@ ValidateRequest  → CheckFraud → HoldInventory → ApplyCoupon
   </div>
 </section>
 
+  </div>
 </div>
 </body>
 </html>

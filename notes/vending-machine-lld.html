@@ -30,7 +30,26 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);lin
 .hero h1 span{color:var(--orange)}
 .hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1}
 
-.wrap{max-width:900px;margin:0 auto;padding:2.5rem 1.5rem 5rem}
+.wrap{min-width:0}
+
+/* ─── LAYOUT (laptop = sidebar + content, mobile = stacked) ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
 
 /* ── SECTION ── */
 .sec{margin-bottom:3.5rem}
@@ -71,7 +90,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 /* ── GRID ── */
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
-@media(max-width:700px){.g2,.g3{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+@media(max-width:700px){.g2,.g3{grid-template-columns:1fr}.hero h1{font-size:2.1rem}}
 
 /* ── STATE DIAGRAM ── */
 .state-flow{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2rem;overflow-x:auto;margin-bottom:1rem}
@@ -107,12 +126,31 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
   <p class="sub">Complete interview-ready design — State Pattern, Chain of Responsibility, full code & edge cases</p>
 </div>
 
-<div class="wrap">
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Clarify Requirements</a></li>
+      <li><a href="#s2">Core Use Cases</a></li>
+      <li><a href="#s3">Identify Entities</a></li>
+      <li><a href="#s4">State Machine</a></li>
+      <li><a href="#s5">Design Patterns Used</a></li>
+      <li><a href="#s6">Complete Code</a></li>
+      <li><a href="#s7">Class Diagram</a></li>
+      <li><a href="#s8">Edge Cases</a></li>
+      <li><a href="#s9">SOLID Compliance</a></li>
+      <li><a href="#s10">Interview Q&amp;A</a></li>
+      <li><a href="#s11">Cheat Sheet Summary</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 1: REQUIREMENTS                       -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec">
+<div class="sec" id="s1">
   <span class="sec-tag tag-orange">Step 1</span>
   <h2>Clarify Requirements</h2>
   <p>Always start by asking these questions to the interviewer before designing anything.</p>
@@ -149,7 +187,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 2: USE CASES                          -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec">
+<div class="sec" id="s2">
   <span class="sec-tag tag-green">Step 2</span>
   <h2>Core Use Cases</h2>
 
@@ -188,7 +226,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 3: ENTITIES                           -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec">
+<div class="sec" id="s3">
   <span class="sec-tag tag-blue">Step 3</span>
   <h2>Identify Entities</h2>
 
@@ -221,7 +259,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 4: STATE DIAGRAM                      -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec">
+<div class="sec" id="s4">
   <span class="sec-tag tag-purple">Step 4</span>
   <h2>State Machine (The Heart of This Design)</h2>
   <p>The vending machine has 4 states. Every user action transitions the machine between states. This is the <strong>State Design Pattern</strong> — the most critical pattern for this problem.</p>
@@ -275,7 +313,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 5: DESIGN PATTERNS USED               -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec">
+<div class="sec" id="s5">
   <span class="sec-tag tag-yellow">Step 5</span>
   <h2>Design Patterns Used</h2>
 
@@ -304,7 +342,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 6: COMPLETE CODE                      -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec">
+<div class="sec" id="s6">
   <span class="sec-tag tag-cyan">Step 6</span>
   <h2>Complete Code Implementation</h2>
   <p>Write these classes during the interview. Prioritize: Enums → Models → State Interface → Each State → VendingMachine → Chain of Responsibility.</p>
@@ -738,7 +776,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 7: CLASS DIAGRAM                      -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec">
+<div class="sec" id="s7">
   <span class="sec-tag tag-green">Step 7</span>
   <h2>Class Diagram (Draw This on Whiteboard)</h2>
 
@@ -804,7 +842,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 8: EDGE CASES                         -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec">
+<div class="sec" id="s8">
   <span class="sec-tag tag-red">Step 8</span>
   <h2>Edge Cases & How We Handle Them</h2>
   <p>Mentioning these proactively shows depth and impresses interviewers.</p>
@@ -850,7 +888,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 9: SOLID MAPPING                      -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec">
+<div class="sec" id="s9">
   <span class="sec-tag tag-yellow">Step 9</span>
   <h2>How This Design Follows SOLID</h2>
 
@@ -866,7 +904,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 10: INTERVIEW Q&A                     -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec">
+<div class="sec" id="s10">
   <span class="sec-tag tag-cyan">Step 10</span>
   <h2>Interview Q&A — What They'll Ask</h2>
 
@@ -900,7 +938,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 11: CHEAT SHEET SUMMARY               -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec">
+<div class="sec" id="s11">
   <span class="sec-tag tag-orange">Quick Reference</span>
   <h2>Interview Cheat Sheet Summary</h2>
 
@@ -940,6 +978,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
   </div>
 </div>
 
+  </div>
 </div>
 </body>
 </html>

@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Networking — The OSI 7-Layer Model Explained Simply</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;500;600;700;800&family=Newsreader:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #faf9f6;
+    --surface: #ffffff;
+    --surface-alt: #f4f1ec;
+    --border: #e4e0d8;
+    --text: #1a1714;
+    --text-muted: #6b6560;
+    --accent: #6d3caa;
+    --accent-light: #f3eefa;
+    --green: #2a7d4f;
+    --green-light: #eef7f0;
+    --blue: #2563a8;
+    --blue-light: #eef4fb;
+    --purple: #6d3caa;
+    --purple-light: #f3eefa;
+    --gold: #a67c00;
+    --gold-light: #fdf8ea;
+    --red: #c44b24;
+    --red-light: #fef0eb;
+    --dark: #1a1714;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+
+  /* ─── HERO ─── */
+  .hero {
+    background: var(--dark);
+    color: #fff;
+    padding: 5rem 2rem 4rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle at 30% 70%, rgba(109,60,170,0.22) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(37,99,168,0.14) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .hero-inner {
+    max-width: 820px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .hero .tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #c9a6ea;
+    background: rgba(109,60,170,0.28);
+    padding: 0.45rem 1.3rem;
+    border-radius: 100px;
+    margin-bottom: 1.3rem;
+  }
+
+  .hero h1 {
+    font-size: 3.2rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 0.9rem;
+  }
+
+  .hero p {
+    color: rgba(255,255,255,0.72);
+    font-size: 1.15rem;
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-top: 1.6rem;
+    color: rgba(255,255,255,0.7);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: color 0.2s;
+  }
+  .back-link:hover { color: #fff; }
+
+  /* ─── LAYOUT (laptop = sidebar + content, mobile = stacked) ─── */
+  .layout {
+    max-width: 1920px;
+    margin: 0 auto;
+    padding: 3rem 4rem 5rem;
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 4.5rem;
+    align-items: start;
+  }
+
+  @media (max-width: 1200px) {
+    .layout {
+      padding: 3rem 2rem 5rem;
+      gap: 3rem;
+    }
+  }
+
+  @media (max-width: 960px) {
+    .layout {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      padding: 2rem 1.2rem 4rem;
+    }
+  }
+
+  /* ─── SIDEBAR TOC ─── */
+  .sidebar {
+    position: sticky;
+    top: 2rem;
+    font-size: 0.88rem;
+  }
+
+  @media (max-width: 960px) {
+    .sidebar { position: static; top: auto; }
+  }
+
+  .sidebar h4 {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar ol {
+    list-style: none;
+    padding: 0;
+    counter-reset: toc;
+  }
+
+  .sidebar ol li {
+    counter-increment: toc;
+    margin-bottom: 0.35rem;
+  }
+
+  .sidebar ol li::before {
+    content: counter(toc, decimal-leading-zero);
+    display: inline-block;
+    width: 1.8rem;
+    color: var(--accent);
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+  }
+
+  .sidebar a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.15s;
+    font-size: 0.9rem;
+  }
+
+  .sidebar a:hover { color: var(--accent); }
+
+  @media (max-width: 960px) {
+    .sidebar ol {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.35rem 1rem;
+    }
+    .sidebar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.4rem;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .sidebar ol { grid-template-columns: 1fr; }
+  }
+
+  /* ─── MAIN CONTENT ─── */
+  .content { min-width: 0; }
+
+  .section {
+    margin-bottom: 3.5rem;
+    scroll-margin-top: 1.5rem;
+  }
+
+  .section-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.9rem;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+  .section-label.red    { background: var(--red-light); color: var(--red); }
+  .section-label.blue   { background: var(--blue-light); color: var(--blue); }
+  .section-label.green  { background: var(--green-light); color: var(--green); }
+  .section-label.gold   { background: var(--gold-light); color: var(--gold); }
+  .section-label.purple { background: var(--purple-light); color: var(--purple); }
+
+  .section h2 {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+  }
+
+  @media (max-width: 700px) {
+    .section h2 { font-size: 1.55rem; }
+  }
+
+  .section > p.lead {
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    margin-bottom: 1.5rem;
+    max-width: 760px;
+  }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.6rem 1.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .card h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.55rem;
+  }
+
+  .card p, .card li {
+    color: var(--text-muted);
+    font-size: 0.98rem;
+    line-height: 1.75;
+  }
+
+  .card ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 0.5rem;
+  }
+
+  .card ul li {
+    padding-left: 1.3rem;
+    position: relative;
+    margin-bottom: 0.4rem;
+  }
+
+  .card ul li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .example {
+    background: var(--surface-alt);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin-top: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.85;
+    color: var(--text);
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  @media (max-width: 700px) {
+    .example { font-size: 0.74rem; }
+  }
+
+  /* ─── TABLE ─── */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    font-size: 0.93rem;
+  }
+
+  .compare-table th {
+    background: var(--surface-alt);
+    text-align: left;
+    padding: 0.95rem 1.1rem;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .compare-table td {
+    padding: 0.95rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    vertical-align: top;
+  }
+
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table td:first-child {
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.87rem;
+    background: var(--surface-alt);
+    padding: 0.14rem 0.45rem;
+    border-radius: 4px;
+  }
+
+  /* ─── LAYER STACK (visual) ─── */
+  .layer-stack {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+  .layer-row {
+    display: grid;
+    grid-template-columns: 52px 160px 1fr 1.3fr;
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.92rem;
+    align-items: center;
+    gap: 1rem;
+  }
+  @media (max-width: 800px) {
+    .layer-row { grid-template-columns: 40px 1fr 1fr; gap: 0.75rem; padding: 0.85rem 1rem; font-size: 0.84rem; }
+    .layer-row .devices { display: none; }
+  }
+  .layer-row:last-child { border-bottom: none; }
+  .layer-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #fff;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .layer-row .name { font-weight: 700; color: var(--text); font-size: 1rem; }
+  .layer-row .pdu { color: var(--text-muted); }
+  .layer-row .devices { color: var(--text-muted); font-size: 0.88rem; }
+
+  .l7 .layer-num { background: #6d3caa; }
+  .l6 .layer-num { background: #8b5cb8; }
+  .l5 .layer-num { background: #2563a8; }
+  .l4 .layer-num { background: #3a8db8; }
+  .l3 .layer-num { background: #2a7d4f; }
+  .l2 .layer-num { background: #a67c00; }
+  .l1 .layer-num { background: #c44b24; }
+
+  /* ─── LAYER DETAIL ─── */
+  .layer-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 1.8rem 2rem;
+    margin-bottom: 1rem;
+  }
+
+  @media (max-width: 700px) {
+    .layer-card { padding: 1.4rem 1.5rem; }
+  }
+
+  .layer-card .top {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin-bottom: 0.8rem;
+    flex-wrap: wrap;
+  }
+  .layer-card .badge-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 0.8rem;
+    background: var(--accent);
+    color: #fff;
+    padding: 0.25rem 0.7rem;
+    border-radius: 5px;
+    letter-spacing: 0.05em;
+  }
+  .layer-card h3 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--text);
+    margin: 0;
+  }
+  .layer-card .pdu-pill {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: var(--surface-alt);
+    color: var(--text-muted);
+    padding: 0.25rem 0.65rem;
+    border-radius: 4px;
+  }
+  .layer-card > p {
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1.75;
+    margin-bottom: 0.6rem;
+  }
+  .layer-card .analogy {
+    background: var(--accent-light);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    margin: 0.9rem 0;
+    font-size: 0.95rem;
+    color: var(--text);
+    line-height: 1.65;
+  }
+  .layer-card .analogy strong { color: var(--accent); }
+
+  .layer-card.l7 { border-left-color: #6d3caa; }
+  .layer-card.l7 .badge-num { background: #6d3caa; }
+  .layer-card.l7 .analogy { background: #f3eefa; }
+  .layer-card.l7 .analogy strong { color: #6d3caa; }
+
+  .layer-card.l6 { border-left-color: #8b5cb8; }
+  .layer-card.l6 .badge-num { background: #8b5cb8; }
+  .layer-card.l6 .analogy { background: #f6f1fb; }
+  .layer-card.l6 .analogy strong { color: #8b5cb8; }
+
+  .layer-card.l5 { border-left-color: #2563a8; }
+  .layer-card.l5 .badge-num { background: #2563a8; }
+  .layer-card.l5 .analogy { background: #eef4fb; }
+  .layer-card.l5 .analogy strong { color: #2563a8; }
+
+  .layer-card.l4 { border-left-color: #3a8db8; }
+  .layer-card.l4 .badge-num { background: #3a8db8; }
+  .layer-card.l4 .analogy { background: #ecf3f8; }
+  .layer-card.l4 .analogy strong { color: #3a8db8; }
+
+  .layer-card.l3 { border-left-color: #2a7d4f; }
+  .layer-card.l3 .badge-num { background: #2a7d4f; }
+  .layer-card.l3 .analogy { background: #eef7f0; }
+  .layer-card.l3 .analogy strong { color: #2a7d4f; }
+
+  .layer-card.l2 { border-left-color: #a67c00; }
+  .layer-card.l2 .badge-num { background: #a67c00; }
+  .layer-card.l2 .analogy { background: #fdf8ea; }
+  .layer-card.l2 .analogy strong { color: #a67c00; }
+
+  .layer-card.l1 { border-left-color: #c44b24; }
+  .layer-card.l1 .badge-num { background: #c44b24; }
+  .layer-card.l1 .analogy { background: #fef0eb; }
+  .layer-card.l1 .analogy strong { color: #c44b24; }
+
+  /* ─── MINI GRID ─── */
+  .mini-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.85rem;
+    margin-top: 1rem;
+  }
+  @media (max-width: 700px) { .mini-grid { grid-template-columns: 1fr; } }
+
+  .mini-card {
+    background: var(--surface-alt);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+  }
+  .mini-card h5 {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+  }
+  .mini-card .val {
+    font-size: 0.92rem;
+    color: var(--text);
+    line-height: 1.55;
+  }
+
+  /* ─── MNEMONIC BOX ─── */
+  .mnemonic-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+    margin-bottom: 1rem;
+  }
+
+  @media (max-width: 900px) {
+    .mnemonic-row { grid-template-columns: 1fr; }
+  }
+
+  .mnemonic {
+    background: linear-gradient(135deg, var(--purple-light), var(--blue-light));
+    border: 1px solid rgba(109,60,170,0.2);
+    border-radius: var(--radius);
+    padding: 1.6rem 1.8rem;
+  }
+  .mnemonic h3 {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--purple);
+    margin-bottom: 0.6rem;
+  }
+  .mnemonic .sentence {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    margin-bottom: 0.8rem;
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+  }
+  .mnemonic .sentence .first-letter {
+    color: var(--purple);
+    font-weight: 800;
+    font-style: normal;
+  }
+  .mnemonic .breakdown {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.9;
+    background: rgba(255,255,255,0.6);
+    padding: 0.9rem 1.1rem;
+    border-radius: 8px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  /* ─── CALLOUTS ─── */
+  .callout {
+    background: var(--gold-light);
+    border: 1px solid rgba(166,124,0,0.2);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-top: 1rem;
+  }
+  .callout h4 {
+    color: var(--gold);
+    font-size: 0.88rem;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+  }
+  .callout p { font-size: 0.95rem; color: var(--text-muted); line-height: 1.7; }
+
+  /* ─── Q&A ─── */
+  .qa {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.3rem 1.5rem;
+    margin-bottom: 0.85rem;
+  }
+  .qa .q {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text);
+    margin-bottom: 0.4rem;
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+  }
+  .qa .q::before {
+    content: 'Q';
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 800;
+    margin-top: 0.1rem;
+  }
+  .qa .a {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.75;
+    padding-left: 2.1rem;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 3.5rem 0;
+  }
+
+  .footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    margin-top: 3rem;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HERO ═══════════ -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="tag">Networking · Beginner Friendly</div>
+    <h1>The OSI 7-Layer Model<br/>— Explained Like You're 10</h1>
+    <p>Forget textbook jargon. We'll use everyday analogies — the postal system, phone calls, and restaurants — to make all 7 layers actually click. Plus a mnemonic to never forget them.</p>
+    <a class="back-link" href="../design-development.html">← Back to all deep dives</a>
+  </div>
+</div>
+
+<!-- ═══════════ LAYOUT ═══════════ -->
+<div class="layout">
+
+  <!-- ── Sidebar TOC ── -->
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is the OSI Model</a></li>
+      <li><a href="#s2">How to Remember the Order</a></li>
+      <li><a href="#s3">All 7 Layers at a Glance</a></li>
+      <li><a href="#s4">Layer 1 — Physical</a></li>
+      <li><a href="#s5">Layer 2 — Data Link</a></li>
+      <li><a href="#s6">Layer 3 — Network</a></li>
+      <li><a href="#s7">Layer 4 — Transport</a></li>
+      <li><a href="#s8">Layer 5 — Session</a></li>
+      <li><a href="#s9">Layer 6 — Presentation</a></li>
+      <li><a href="#s10">Layer 7 — Application</a></li>
+      <li><a href="#s11">The Postal Analogy</a></li>
+      <li><a href="#s12">OSI vs TCP/IP</a></li>
+      <li><a href="#s13">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <!-- ── Main Content ── -->
+  <main class="content">
+
+  <!-- ── 1. What is OSI ── -->
+  <div class="section" id="s1">
+    <span class="section-label purple">Section 1</span>
+    <h2>What is the OSI Model?</h2>
+    <p class="lead">When you open a website, a <i>lot</i> happens between your laptop and Google's server. The OSI model is just a way of breaking that "a lot" into <b>7 smaller jobs</b>, with each job handled by a different "layer".</p>
+
+    <div class="card">
+      <h3>Think of it like a company</h3>
+      <p>Imagine a company that ships packages. One person designs the box, another puts the item in it, someone else tapes it shut, another sticks the address label, another hands it to the courier, and finally a truck driver takes it on the road. Seven people, seven jobs, one parcel arrives.</p>
+      <p style="margin-top: 0.8rem;">The <b>OSI model</b> does the same thing for <i>data</i> travelling over a network. Each of its 7 layers does one job and passes the work to the next.</p>
+    </div>
+
+    <div class="card">
+      <h3>Why do you need to know it?</h3>
+      <ul>
+        <li>Every networking conversation uses this vocabulary — "L4 load balancer", "L7 firewall", "L3 routing".</li>
+        <li>When something breaks, the first question is: <i>which layer?</i> DNS? TCP? TLS? HTTP?</li>
+        <li>It's asked in almost every backend / SRE / DevOps interview.</li>
+      </ul>
+    </div>
+
+    <div class="callout">
+      <h4>Small heads-up</h4>
+      <p>The real internet doesn't run OSI — it runs the simpler <b>TCP/IP model</b> (4 layers). But OSI is the language everyone speaks. So learn OSI, use its words.</p>
+    </div>
+  </div>
+
+  <!-- ── 2. Mnemonic ── -->
+  <div class="section" id="s2">
+    <span class="section-label purple">Section 2</span>
+    <h2>How to Remember All 7 Layers</h2>
+    <p class="lead">There are two classic sentences people use. Each word starts with the first letter of a layer.</p>
+
+    <div class="mnemonic-row">
+      <div class="mnemonic">
+        <h3>⬇️ From Top to Bottom (L7 → L1)</h3>
+        <div class="sentence">
+          <span class="first-letter">A</span>ll
+          <span class="first-letter">P</span>eople
+          <span class="first-letter">S</span>eem
+          <span class="first-letter">T</span>o
+          <span class="first-letter">N</span>eed
+          <span class="first-letter">D</span>ata
+          <span class="first-letter">P</span>rocessing
+        </div>
+        <div class="breakdown">A  →  Application    (7)
+P  →  Presentation   (6)
+S  →  Session        (5)
+T  →  Transport      (4)
+N  →  Network        (3)
+D  →  Data Link      (2)
+P  →  Physical       (1)</div>
+      </div>
+
+      <div class="mnemonic">
+        <h3>⬆️ From Bottom to Top (L1 → L7)</h3>
+        <div class="sentence">
+          <span class="first-letter">P</span>lease
+          <span class="first-letter">D</span>o
+          <span class="first-letter">N</span>ot
+          <span class="first-letter">T</span>hrow
+          <span class="first-letter">S</span>ausage
+          <span class="first-letter">P</span>izza
+          <span class="first-letter">A</span>way
+        </div>
+        <div class="breakdown">P  →  Physical       (1)
+D  →  Data Link      (2)
+N  →  Network        (3)
+T  →  Transport      (4)
+S  →  Session        (5)
+P  →  Presentation   (6)
+A  →  Application    (7)</div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <h4>Rule of thumb</h4>
+      <p>Layer 1 is closest to the cable. Layer 7 is closest to you. Data travels <i>down</i> the layers on the sender, across the wire, then <i>up</i> the layers on the receiver.</p>
+    </div>
+  </div>
+
+  <!-- ── 3. At a glance ── -->
+  <div class="section" id="s3">
+    <span class="section-label purple">Section 3</span>
+    <h2>All 7 Layers at a Glance</h2>
+    <p class="lead">Each layer works with a specific chunk of data called a <b>PDU</b> (Protocol Data Unit) — just a fancy name for "what the chunk of data is called at this layer".</p>
+
+    <div class="layer-stack">
+      <div class="layer-row l7">
+        <div class="layer-num">7</div>
+        <div class="name">Application</div>
+        <div class="pdu">Data</div>
+        <div class="devices">HTTP · DNS · SMTP · FTP · gRPC</div>
+      </div>
+      <div class="layer-row l6">
+        <div class="layer-num">6</div>
+        <div class="name">Presentation</div>
+        <div class="pdu">Data</div>
+        <div class="devices">TLS/SSL · JPEG · UTF-8 · JSON</div>
+      </div>
+      <div class="layer-row l5">
+        <div class="layer-num">5</div>
+        <div class="name">Session</div>
+        <div class="pdu">Data</div>
+        <div class="devices">NetBIOS · RPC · SOCKS</div>
+      </div>
+      <div class="layer-row l4">
+        <div class="layer-num">4</div>
+        <div class="name">Transport</div>
+        <div class="pdu">Segment / Datagram</div>
+        <div class="devices">TCP · UDP · port numbers</div>
+      </div>
+      <div class="layer-row l3">
+        <div class="layer-num">3</div>
+        <div class="name">Network</div>
+        <div class="pdu">Packet</div>
+        <div class="devices">IP · ICMP · Routers</div>
+      </div>
+      <div class="layer-row l2">
+        <div class="layer-num">2</div>
+        <div class="name">Data Link</div>
+        <div class="pdu">Frame</div>
+        <div class="devices">Ethernet · MAC · Switches</div>
+      </div>
+      <div class="layer-row l1">
+        <div class="layer-num">1</div>
+        <div class="name">Physical</div>
+        <div class="pdu">Bit</div>
+        <div class="devices">Cables · Wi-Fi · Hubs</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════ L1 PHYSICAL ═══════════ -->
+  <div class="section" id="s4">
+    <span class="section-label red">Layer 1</span>
+    <h2>Physical — The Wires and Radio Waves</h2>
+    <p class="lead">The lowest layer. Its only job is to move raw <code>0</code>s and <code>1</code>s from one device to another, as electrical signals, light pulses, or radio waves.</p>
+
+    <div class="layer-card l1">
+      <div class="top">
+        <span class="badge-num">L1</span>
+        <h3>Physical</h3>
+        <span class="pdu-pill">PDU: Bit</span>
+      </div>
+
+      <p>Think of it as the <b>road</b>. It doesn't know what the trucks are carrying — it just has to be smooth enough that things can travel on it.</p>
+
+      <div class="analogy">
+        <strong>Everyday analogy:</strong> Your laptop's Wi-Fi card turning <code>1010...</code> into radio waves is like you speaking out loud — you're just producing signals. What the signals <i>mean</i> is somebody else's problem.
+      </div>
+
+      <div class="mini-grid">
+        <div class="mini-card">
+          <h5>Examples</h5>
+          <div class="val">Ethernet cable, fiber optic cable, Wi-Fi, Bluetooth, USB, coaxial TV cable</div>
+        </div>
+        <div class="mini-card">
+          <h5>Devices</h5>
+          <div class="val">Cables, hubs, repeaters, Wi-Fi antennas, the radio chip in your phone</div>
+        </div>
+        <div class="mini-card">
+          <h5>What it decides</h5>
+          <div class="val">What voltage = 1, what voltage = 0, how fast bits can flow, what connector shape to use</div>
+        </div>
+        <div class="mini-card">
+          <h5>What it doesn't know</h5>
+          <div class="val">Anything about MAC, IP, or HTTP. It's the most clueless layer — on purpose.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ L2 DATA LINK ═══════════ -->
+  <div class="section" id="s5">
+    <span class="section-label gold">Layer 2</span>
+    <h2>Data Link — Talking to Your Neighbours</h2>
+    <p class="lead">Layer 2 groups those raw bits into <b>frames</b> and delivers them between two devices that are <b>directly connected</b> — like your laptop and your home Wi-Fi router.</p>
+
+    <div class="layer-card l2">
+      <div class="top">
+        <span class="badge-num">L2</span>
+        <h3>Data Link</h3>
+        <span class="pdu-pill">PDU: Frame</span>
+      </div>
+
+      <p>It introduces the <b>MAC address</b> — a 12-character ID burnt into every network card at the factory. Think of it as a <b>device's serial number</b>. It never changes.</p>
+
+      <div class="analogy">
+        <strong>Everyday analogy:</strong> You shouting your cousin's name across the room so only they hear you. MAC addresses work the same way — they only matter <i>in the same room</i> (the local network). Once the message has to leave the building, they're useless.
+      </div>
+
+      <div class="mini-grid">
+        <div class="mini-card">
+          <h5>Protocols</h5>
+          <div class="val">Ethernet, Wi-Fi (802.11), ARP, VLAN</div>
+        </div>
+        <div class="mini-card">
+          <h5>Devices</h5>
+          <div class="val">Switches, Wi-Fi access points, network cards</div>
+        </div>
+        <div class="mini-card">
+          <h5>Address it uses</h5>
+          <div class="val">MAC address like <code>00:1A:2B:3C:4D:5E</code> — unique per device, never changes</div>
+        </div>
+        <div class="mini-card">
+          <h5>Its range</h5>
+          <div class="val">Only the local network. A MAC address can't help data cross a router.</div>
+        </div>
+      </div>
+
+      <div class="example">A frame is just bits with a wrapper:
+┌──────────┬─────────┬─────────┬────────┬──────────┬─────┐
+│ Preamble │ Dst MAC │ Src MAC │  Type  │ Payload  │ CRC │
+└──────────┴─────────┴─────────┴────────┴──────────┴─────┘
+  "hey!"      to          from       kind   actual    error
+              whom?       whom?      of     content   check</div>
+    </div>
+  </div>
+
+  <!-- ═══════════ L3 NETWORK ═══════════ -->
+  <div class="section" id="s6">
+    <span class="section-label green">Layer 3</span>
+    <h2>Network — Finding Any House in the World</h2>
+    <p class="lead">Layer 3 is how data gets from your home network to Google's data centre — across cities, countries, oceans. It uses <b>IP addresses</b> and a job called <b>routing</b>.</p>
+
+    <div class="layer-card l3">
+      <div class="top">
+        <span class="badge-num">L3</span>
+        <h3>Network</h3>
+        <span class="pdu-pill">PDU: Packet</span>
+      </div>
+
+      <p>If Layer 2 is "hand the package to your neighbour", Layer 3 is "ship the package to an address anywhere on Earth". Routers at each stop look at the destination IP and pick the next road to put the package on.</p>
+
+      <div class="analogy">
+        <strong>Everyday analogy:</strong> An <b>IP address</b> is like your home's postal address. The post office doesn't know your street personally — it just forwards the letter to the next sorting centre that does. Each router works the same way: "not mine, pass it to the next one closer".
+      </div>
+
+      <div class="mini-grid">
+        <div class="mini-card">
+          <h5>Protocols</h5>
+          <div class="val">IPv4, IPv6, ICMP (used by <code>ping</code>), OSPF, BGP</div>
+        </div>
+        <div class="mini-card">
+          <h5>Devices</h5>
+          <div class="val">Routers, L3 switches</div>
+        </div>
+        <div class="mini-card">
+          <h5>Address it uses</h5>
+          <div class="val">IPv4 like <code>192.168.1.10</code>, IPv6 like <code>2001:db8::1</code>. Can change (e.g., when you connect to a new Wi-Fi).</div>
+        </div>
+        <div class="mini-card">
+          <h5>Key limitation</h5>
+          <div class="val"><b>Best-effort delivery</b> — the packet might get lost, arrive late, or out of order. L3 just tries, no guarantees.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ L4 TRANSPORT ═══════════ -->
+  <div class="section" id="s7">
+    <span class="section-label blue">Layer 4</span>
+    <h2>Transport — Delivering to the Right App</h2>
+    <p class="lead">So the packet arrived at your laptop. But your laptop runs lots of apps — Chrome, Spotify, Slack. Which one gets it? That's Layer 4's job, using <b>port numbers</b>.</p>
+
+    <div class="layer-card l4">
+      <div class="top">
+        <span class="badge-num">L4</span>
+        <h3>Transport</h3>
+        <span class="pdu-pill">PDU: Segment (TCP) / Datagram (UDP)</span>
+      </div>
+
+      <p>Layer 4 also decides <b>how</b> data flows: does every byte need to arrive in order? Or is it OK to lose some? That's the TCP vs UDP choice.</p>
+
+      <div class="analogy">
+        <strong>Everyday analogy:</strong> If the IP address is your home's postal address, the <b>port number</b> is the <i>apartment number</i>. "Building 142 (IP), apartment 443 (HTTPS)". Without it, the mail carrier wouldn't know which apartment to knock on.
+      </div>
+
+      <table class="compare-table" style="margin-top: 1rem;">
+        <thead>
+          <tr><th>Feature</th><th>TCP</th><th>UDP</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Analogy</td><td>Like a phone call — you confirm the other person is there before talking</td><td>Like a text message — send and hope it arrives</td></tr>
+          <tr><td>Reliability</td><td>Guaranteed — lost bits are re-sent</td><td>Not guaranteed — lost bits stay lost</td></tr>
+          <tr><td>Order</td><td>Bytes arrive in order</td><td>No order guarantee</td></tr>
+          <tr><td>Speed</td><td>Slower (more checks)</td><td>Fast (no checks)</td></tr>
+          <tr><td>Used for</td><td>Web (HTTP/HTTPS), email, file transfer, SSH</td><td>Video calls, gaming, DNS, live streaming</td></tr>
+        </tbody>
+      </table>
+
+      <div class="mini-grid">
+        <div class="mini-card">
+          <h5>Ports worth knowing</h5>
+          <div class="val">22 SSH · 53 DNS · 80 HTTP · 443 HTTPS · 3306 MySQL · 6379 Redis · 27017 MongoDB</div>
+        </div>
+        <div class="mini-card">
+          <h5>"L4 load balancer" means</h5>
+          <div class="val">A load balancer that spreads traffic by IP + port. Doesn't read URLs. Fast but less smart. (AWS NLB, HAProxy TCP)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ L5 SESSION ═══════════ -->
+  <div class="section" id="s8">
+    <span class="section-label blue">Layer 5</span>
+    <h2>Session — Starting and Ending Conversations</h2>
+    <p class="lead">A <b>session</b> is one continuous conversation between two apps. This layer opens it, keeps track of it, and closes it when done.</p>
+
+    <div class="layer-card l5">
+      <div class="top">
+        <span class="badge-num">L5</span>
+        <h3>Session</h3>
+        <span class="pdu-pill">PDU: Data</span>
+      </div>
+
+      <p>If the network hiccups for a second, Layer 5 remembers where you were so you don't start from scratch — that's called <b>checkpointing</b>.</p>
+
+      <div class="analogy">
+        <strong>Everyday analogy:</strong> A phone call. You say "Hello" (session starts), chat for a while, and say "Bye" (session ends). If the call drops, you redial and continue from where you left off — that's what session state lets you do.
+      </div>
+
+      <div class="mini-grid">
+        <div class="mini-card">
+          <h5>Examples</h5>
+          <div class="val">Logging into a database, an SSH session, a long file upload that can resume</div>
+        </div>
+        <div class="mini-card">
+          <h5>Protocols</h5>
+          <div class="val">NetBIOS, RPC, SIP (used for VoIP calls), SMB</div>
+        </div>
+        <div class="mini-card">
+          <h5>In real life</h5>
+          <div class="val">Modern apps (HTTP, gRPC) handle session stuff themselves with cookies / tokens / WebSocket connections.</div>
+        </div>
+        <div class="mini-card">
+          <h5>Key idea</h5>
+          <div class="val"><b>Checkpointing</b> — pick up where you left off if the network blips.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ L6 PRESENTATION ═══════════ -->
+  <div class="section" id="s9">
+    <span class="section-label purple">Layer 6</span>
+    <h2>Presentation — The Translator</h2>
+    <p class="lead">Your computer and Google's server might store data in different formats. Layer 6 is the <b>translator</b> — plus it handles <b>encryption</b> (privacy) and <b>compression</b> (size).</p>
+
+    <div class="layer-card l6">
+      <div class="top">
+        <span class="badge-num">L6</span>
+        <h3>Presentation</h3>
+        <span class="pdu-pill">PDU: Data</span>
+      </div>
+
+      <p>Three jobs:</p>
+      <ul style="list-style: none; padding: 0; margin-top: 0.4rem;">
+        <li style="padding-left: 1.3rem; position: relative; margin-bottom: 0.3rem; color: var(--text-muted);"><span style="position: absolute; left: 0; color: var(--accent); font-weight: 600;">→</span> <b>Translate</b> — turn the app's data into a common format (UTF-8 text, JSON, Protobuf).</li>
+        <li style="padding-left: 1.3rem; position: relative; margin-bottom: 0.3rem; color: var(--text-muted);"><span style="position: absolute; left: 0; color: var(--accent); font-weight: 600;">→</span> <b>Encrypt</b> — scramble the data so snoopers in the middle can't read it (TLS / SSL).</li>
+        <li style="padding-left: 1.3rem; position: relative; margin-bottom: 0.3rem; color: var(--text-muted);"><span style="position: absolute; left: 0; color: var(--accent); font-weight: 600;">→</span> <b>Compress</b> — squeeze the data smaller so it moves faster (gzip, Brotli).</li>
+      </ul>
+
+      <div class="analogy">
+        <strong>Everyday analogy:</strong> You're writing a letter in English to a friend in France. Layer 6 is the translator turning your words into French, sealing them in a tamper-proof envelope (encryption), and folding the paper to use a smaller envelope (compression).
+      </div>
+
+      <div class="mini-grid">
+        <div class="mini-card">
+          <h5>Encryption</h5>
+          <div class="val"><b>TLS / SSL</b> — turns HTTP into HTTPS. Keeps passwords / credit cards safe from eavesdroppers.</div>
+        </div>
+        <div class="mini-card">
+          <h5>Compression</h5>
+          <div class="val">gzip, Brotli — a 10 KB JSON response often becomes 2 KB on the wire.</div>
+        </div>
+        <div class="mini-card">
+          <h5>Text encoding</h5>
+          <div class="val">UTF-8 (for emoji, Hindi, Chinese text), ASCII (old English-only format).</div>
+        </div>
+        <div class="mini-card">
+          <h5>Image / media</h5>
+          <div class="val">JPEG, PNG, GIF, MP3 — these are all presentation formats.</div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <h4>Where does TLS actually sit?</h4>
+        <p>Strictly by the book, TLS is Layer 6. In real life, people often say "TLS sits between L4 and L7". Both answers get accepted in interviews — the important part is that TLS encrypts before the data hits transport.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ L7 APPLICATION ═══════════ -->
+  <div class="section" id="s10">
+    <span class="section-label purple">Layer 7</span>
+    <h2>Application — What Your App Speaks</h2>
+    <p class="lead">The top layer. This is where the protocols you already know live — <b>HTTP</b> for web, <b>SMTP</b> for email, <b>DNS</b> for looking up domain names.</p>
+
+    <div class="layer-card l7">
+      <div class="top">
+        <span class="badge-num">L7</span>
+        <h3>Application</h3>
+        <span class="pdu-pill">PDU: Data</span>
+      </div>
+
+      <p>It's the layer your code talks to every day. When you do <code>fetch('https://api.example.com')</code>, you're working at Layer 7. Everything below is invisible.</p>
+
+      <div class="analogy">
+        <strong>Everyday analogy:</strong> You walk into a restaurant and the waiter says "Welcome! What would you like?" That's Layer 7 — the friendly, human-facing conversation. You never see the kitchen (L6), the delivery truck that brought the ingredients (L3), or the farm they came from (L1).
+      </div>
+
+      <div class="mini-grid">
+        <div class="mini-card">
+          <h5>Web &amp; APIs</h5>
+          <div class="val">HTTP, HTTPS, HTTP/2, HTTP/3, WebSocket, gRPC, GraphQL</div>
+        </div>
+        <div class="mini-card">
+          <h5>Email</h5>
+          <div class="val">SMTP (send), IMAP &amp; POP3 (retrieve)</div>
+        </div>
+        <div class="mini-card">
+          <h5>Files &amp; remote access</h5>
+          <div class="val">FTP, SFTP, SSH, Telnet, RDP</div>
+        </div>
+        <div class="mini-card">
+          <h5>Infra protocols</h5>
+          <div class="val">DNS (domain → IP lookup), DHCP (get an IP automatically), NTP (time sync)</div>
+        </div>
+        <div class="mini-card">
+          <h5>L7 devices</h5>
+          <div class="val">API Gateways, L7 load balancers (AWS ALB, Nginx), Web Application Firewalls (WAFs)</div>
+        </div>
+        <div class="mini-card">
+          <h5>Why "L7 routing" is useful</h5>
+          <div class="val">Only at L7 can you say "<code>/api/users</code> goes here, <code>/api/orders</code> goes there". L4 doesn't see URLs.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════ POSTAL ANALOGY ═══════════ -->
+  <div class="section" id="s11">
+    <span class="section-label green">Section 11</span>
+    <h2>The Postal Analogy — Putting It All Together</h2>
+    <p class="lead">Here's the full journey: you're sending a photo to your friend via a web app. Each OSI layer is a step in packing and shipping it.</p>
+
+    <div class="card">
+      <div class="example">SENDING (your laptop)                  RECEIVING (friend's phone)
+─────────────────────                   ────────────────────────
+L7  Write the letter                 ◀── L7  Read the letter
+    (your HTTP request)                     (see the photo)
+
+L6  Translate + seal in envelope      ── L6  Open envelope, translate back
+    (encrypt with TLS, compress)            (decrypt, decompress)
+
+L5  Say "Dear friend, how are you"    ── L5  "Doing great, thanks!"
+    (start a session)                       (continue the session)
+
+L4  Write apartment number             ── L4  Deliver to the right apartment
+    (TCP, port 443)                         (port 443 = Chrome)
+
+L3  Write city + country on envelope  ── L3  Read destination address
+    (IP address)                            (yep, that's me)
+
+L2  Hand to your local mailman        ── L2  Local mailman drops it off
+    (Ethernet frame to router)              (final building's mail room)
+
+L1  Put in mail truck on the road     ── L1  Off the truck, in the bin
+    (bits on the Wi-Fi / cable)             (bits back into the NIC)</div>
+
+      <p style="margin-top: 0.8rem;">By the time your 100-byte HTTP request hits the Wi-Fi, it's wrapped in TLS, TCP, IP, and Ethernet headers — about 220 bytes total. Each layer added its own "envelope" without touching what's inside.</p>
+    </div>
+
+    <div class="callout">
+      <h4>One golden rule</h4>
+      <p>Each layer only cares about its own envelope. Layer 3 routers have no idea what HTTP request is inside the packet — they just forward it. That's why <b>separation of concerns</b> makes the internet work.</p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════ OSI vs TCP/IP ═══════════ -->
+  <div class="section" id="s12">
+    <span class="section-label gold">Section 12</span>
+    <h2>OSI vs TCP/IP — What the Internet Actually Uses</h2>
+    <p class="lead">OSI has 7 layers. The real internet collapses them into <b>4</b>. Same ideas, fewer boxes.</p>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th style="width: 28%;">OSI Layer</th><th style="width: 30%;">TCP/IP Layer</th><th>What Lives There</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>7 · Application</td><td rowspan="3" style="vertical-align: middle; background: var(--surface-alt);">Application</td><td>HTTP, DNS, FTP, SMTP</td></tr>
+        <tr><td>6 · Presentation</td><td>TLS, JPEG, UTF-8</td></tr>
+        <tr><td>5 · Session</td><td>Handled by the app itself (cookies, tokens)</td></tr>
+        <tr><td>4 · Transport</td><td style="background: var(--surface-alt);">Transport</td><td>TCP, UDP, QUIC</td></tr>
+        <tr><td>3 · Network</td><td style="background: var(--surface-alt);">Internet</td><td>IP, ICMP, ARP</td></tr>
+        <tr><td>2 · Data Link</td><td rowspan="2" style="vertical-align: middle; background: var(--surface-alt);">Link</td><td>Ethernet, Wi-Fi</td></tr>
+        <tr><td>1 · Physical</td><td>Cables, radio</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <h4>Simple takeaway</h4>
+      <p>TCP/IP says "L5, L6, L7 — that's all just the app's problem". Modern protocols like HTTPS already handle encryption (TLS), sessions (cookies), and translation (JSON) inside themselves, so separate layers aren't needed.</p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════ INTERVIEW Q&A ═══════════ -->
+  <div class="section" id="s13">
+    <span class="section-label red">Section 13</span>
+    <h2>Interview Q&amp;A</h2>
+    <p class="lead">The most common OSI questions asked in interviews, with short, plain-English answers.</p>
+
+    <div class="qa">
+      <div class="q">List all 7 layers of OSI, top to bottom.</div>
+      <div class="a">Application → Presentation → Session → Transport → Network → Data Link → Physical. Remember with: <i>All People Seem To Need Data Processing</i>.</div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Difference between a switch, a router, and a hub?</div>
+      <div class="a"><b>Hub (L1)</b> — dumb. Blasts every bit to every port. Nobody uses them any more. <b>Switch (L2)</b> — smart. Learns MAC addresses and sends data only to the right port. <b>Router (L3)</b> — connects <i>different</i> networks using IP addresses. Your home Wi-Fi box is usually both a switch and a router in one.</div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Which layer handles encryption?</div>
+      <div class="a">Officially Layer 6 (Presentation) — that's where TLS / SSL lives. In real life people say "TLS sits between L4 and L7". Both answers work.</div>
+    </div>
+
+    <div class="qa">
+      <div class="q">L4 vs L7 load balancer — what's the difference?</div>
+      <div class="a"><b>L4 LB</b> — works with IP + port. Doesn't read URLs. Fast. Examples: AWS NLB, HAProxy in TCP mode. <b>L7 LB</b> — understands HTTP. Can route by URL / header / cookie. Slower but smarter. Examples: AWS ALB, Nginx, Envoy.</div>
+    </div>
+
+    <div class="qa">
+      <div class="q">MAC address vs IP address?</div>
+      <div class="a"><b>MAC</b> — your device's permanent ID, burnt into the network card at the factory. Only useful on the local network. <b>IP</b> — your device's current address on the internet. Changes when you move to a new Wi-Fi. MAC is <i>who you are</i>; IP is <i>where you are right now</i>.</div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Which layer does a firewall work at?</div>
+      <div class="a">Depends on the type. <b>Basic firewalls</b> work at L3/L4 (block by IP + port). <b>Stateful firewalls</b> remember open connections. <b>Web Application Firewalls (WAFs)</b> work at L7 — they read HTTP requests and block stuff like SQL injection.</div>
+    </div>
+
+    <div class="qa">
+      <div class="q">Why does the real internet use only 4 layers instead of 7?</div>
+      <div class="a">Because L5, L6, and L7 do similar things and modern app protocols (HTTPS, gRPC) handle all three themselves. So TCP/IP just combines them into one "Application" layer. Simpler in practice.</div>
+    </div>
+
+    <div class="qa">
+      <div class="q">When should I use UDP instead of TCP?</div>
+      <div class="a">When speed matters more than reliability. Examples: video calls (a lost frame is fine, but a delay is awful), online gaming, DNS lookups, live streams. For anything where every byte must arrive (web pages, payments, file downloads), use TCP.</div>
+    </div>
+
+    <div class="qa">
+      <div class="q">What happens at each layer when you type <code>www.google.com</code>?</div>
+      <div class="a"><b>L7:</b> browser makes an HTTP GET. <b>L6:</b> TLS encrypts it. <b>L5:</b> session started with the server. <b>L4:</b> TCP wraps it, adds port 443, does the 3-way handshake. <b>L3:</b> IP wraps it with Google's IP + yours. <b>L2:</b> your Wi-Fi router wraps it in an Ethernet frame. <b>L1:</b> bits go out over Wi-Fi. The server unwraps in reverse order.</div>
+    </div>
+
+    <div class="qa">
+      <div class="q">What is ARP and which layer is it at?</div>
+      <div class="a">ARP (Address Resolution Protocol) is how your computer asks "hey, whoever has IP <code>192.168.1.1</code> — what's your MAC address?" It bridges L3 (IP) and L2 (MAC). Most books place it at L2; some at L3. Either is accepted.</div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <h4>One-Line Summary</h4>
+    <p>OSI = 7 layers, each with one job: <b>L1</b> moves bits, <b>L2</b> delivers to your neighbour, <b>L3</b> routes across the internet, <b>L4</b> hands it to the right app, <b>L5</b> runs the conversation, <b>L6</b> translates &amp; encrypts, <b>L7</b> is what your app actually speaks.</p>
+  </div>
+
+  <div class="footer">© Shubham Bansal · 2026 · Networking &amp; OSI Interview Deep Dive</div>
+
+  </main>
+</div>
+
+</body>
+</html>

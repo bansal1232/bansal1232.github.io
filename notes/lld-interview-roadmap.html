@@ -91,15 +91,61 @@
     position: relative;
   }
 
-  /* ─── CONTENT ─── */
-  .content {
-    max-width: 860px;
+  /* ─── LAYOUT (laptop = sidebar + content, mobile = stacked) ─── */
+  .layout {
+    max-width: 1920px;
     margin: 0 auto;
-    padding: 2.5rem 1.5rem 5rem;
+    padding: 3rem 4rem 5rem;
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 4.5rem;
+    align-items: start;
   }
+  @media (max-width: 1200px) { .layout { padding: 3rem 2rem 5rem; gap: 3rem; } }
+  @media (max-width: 960px) {
+    .layout { grid-template-columns: 1fr; gap: 1.5rem; padding: 2rem 1.2rem 4rem; }
+  }
+
+  /* ─── SIDEBAR TOC ─── */
+  .sidebar { position: sticky; top: 2rem; font-size: 0.88rem; }
+  @media (max-width: 960px) {
+    .sidebar {
+      position: static; top: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.4rem;
+    }
+  }
+  .sidebar h4 {
+    font-size: 0.72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--text-muted); margin-bottom: 0.85rem;
+    padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);
+  }
+  .sidebar ol { list-style: none; padding: 0; counter-reset: toc; }
+  .sidebar ol li { counter-increment: toc; margin-bottom: 0.35rem; }
+  .sidebar ol li::before {
+    content: counter(toc, decimal-leading-zero);
+    display: inline-block; width: 1.8rem;
+    color: var(--accent); font-weight: 700;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+  }
+  .sidebar a {
+    color: var(--text-muted); text-decoration: none;
+    transition: color 0.15s; font-size: 0.9rem;
+  }
+  .sidebar a:hover { color: var(--accent); }
+  @media (max-width: 960px) {
+    .sidebar ol { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem 1rem; }
+  }
+  @media (max-width: 560px) { .sidebar ol { grid-template-columns: 1fr; } }
+
+  .content { min-width: 0; }
 
   /* ─── SECTION ─── */
   .section {
+    scroll-margin-top: 1.5rem;
     margin-bottom: 3rem;
   }
 
@@ -474,10 +520,26 @@
   <p>A structured approach to cracking LLD rounds — from first principles to mock interviews.</p>
 </div>
 
-<div class="content">
+<div class="layout">
+
+  <!-- ── Sidebar TOC ── -->
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">The 7-Step Approach</a></li>
+      <li><a href="#s2">Design Patterns</a></li>
+      <li><a href="#s3">SOLID Principles</a></li>
+      <li><a href="#s4">Must-Practice Problems</a></li>
+      <li><a href="#s5">4-Week Study Plan</a></li>
+      <li><a href="#s6">Do's &amp; Don'ts</a></li>
+      <li><a href="#s7">Resources</a></li>
+    </ol>
+  </aside>
+
+  <main class="content">
 
 <!-- ═══════════ SECTION 1: THE APPROACH ═══════════ -->
-<div class="section">
+<div class="section" id="s1">
   <span class="section-label red">Phase 1</span>
   <h2>The 7-Step Approach (Use This in Every Interview)</h2>
   <p>Follow this framework for any LLD question. Interviewers evaluate your thought process, not just the final answer.</p>
@@ -629,7 +691,7 @@ Edge cases:
 <div class="divider"></div>
 
 <!-- ═══════════ SECTION 2: DESIGN PATTERNS ═══════════ -->
-<div class="section">
+<div class="section" id="s2">
   <span class="section-label green">Phase 2</span>
   <h2>Design Patterns You Must Know</h2>
   <p>These are the patterns that come up most frequently. Know when and why to use each one.</p>
@@ -696,7 +758,7 @@ Edge cases:
 <div class="divider"></div>
 
 <!-- ═══════════ SECTION 3: SOLID ═══════════ -->
-<div class="section">
+<div class="section" id="s3">
   <span class="section-label blue">Phase 3</span>
   <h2>SOLID Principles — Use Them, Don't Just Recite Them</h2>
   <p>Interviewers don't ask you to define SOLID. They watch whether your design follows it.</p>
@@ -730,7 +792,7 @@ Edge cases:
 <div class="divider"></div>
 
 <!-- ═══════════ SECTION 4: PRACTICE PROBLEMS ═══════════ -->
-<div class="section">
+<div class="section" id="s4">
   <span class="section-label purple">Phase 4</span>
   <h2>Must-Practice LLD Problems</h2>
   <p>Start with easy ones and work your way up. Solve at least 10–12 before your interview.</p>
@@ -762,7 +824,7 @@ Edge cases:
 <div class="divider"></div>
 
 <!-- ═══════════ SECTION 5: STUDY PLAN ═══════════ -->
-<div class="section">
+<div class="section" id="s5">
   <span class="section-label gold">Phase 5</span>
   <h2>4-Week Study Plan</h2>
   <p>A realistic timeline if you're preparing alongside work or college.</p>
@@ -794,7 +856,7 @@ Edge cases:
 <div class="divider"></div>
 
 <!-- ═══════════ SECTION 6: DO/DONT ═══════════ -->
-<div class="section">
+<div class="section" id="s6">
   <span class="section-label red">Final Tips</span>
   <h2>Interview Day: Do's and Don'ts</h2>
 
@@ -835,7 +897,7 @@ Edge cases:
 <div class="divider"></div>
 
 <!-- ═══════════ SECTION 7: RESOURCES ═══════════ -->
-<div class="section">
+<div class="section" id="s7">
   <span class="section-label green">Resources</span>
   <h2>Recommended Learning Path</h2>
 
@@ -875,6 +937,7 @@ Edge cases:
   </div>
 </div>
 
+  </main>
 </div>
 </body>
 </html>

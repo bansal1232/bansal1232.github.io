@@ -34,10 +34,58 @@
     background: var(--bg);
     color: var(--text);
     line-height: 1.7;
-    padding: 2rem 1.5rem 4rem;
-    max-width: 900px;
-    margin: 0 auto;
   }
+
+  /* ─── LAYOUT (laptop = sidebar + content, mobile = stacked) ─── */
+  .layout {
+    max-width: 1920px;
+    margin: 0 auto;
+    padding: 3rem 4rem 5rem;
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 4.5rem;
+    align-items: start;
+  }
+  @media (max-width: 1200px) { .layout { padding: 3rem 2rem 5rem; gap: 3rem; } }
+  @media (max-width: 960px) {
+    .layout { grid-template-columns: 1fr; gap: 1.5rem; padding: 2rem 1.2rem 4rem; }
+  }
+
+  .sidebar { position: sticky; top: 2rem; font-size: 0.88rem; }
+  @media (max-width: 960px) {
+    .sidebar {
+      position: static; top: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.4rem;
+    }
+  }
+  .sidebar h4 {
+    font-size: 0.72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--text-muted); margin-bottom: 0.85rem;
+    padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);
+  }
+  .sidebar ol { list-style: none; padding: 0; counter-reset: toc2; }
+  .sidebar ol li { counter-increment: toc2; margin-bottom: 0.35rem; }
+  .sidebar ol li::before {
+    content: counter(toc2, decimal-leading-zero);
+    display: inline-block; width: 1.8rem;
+    color: var(--accent); font-weight: 700;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+  }
+  .sidebar a {
+    color: var(--text-muted); text-decoration: none;
+    transition: color 0.15s; font-size: 0.9rem;
+  }
+  .sidebar a:hover { color: var(--accent); }
+  @media (max-width: 960px) {
+    .sidebar ol { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem 1rem; }
+  }
+  @media (max-width: 560px) { .sidebar ol { grid-template-columns: 1fr; } }
+
+  .content { min-width: 0; }
 
   header {
     text-align: center;
@@ -77,6 +125,7 @@
     padding: 2rem;
     margin-bottom: 1.75rem;
     transition: border-color 0.2s;
+    scroll-margin-top: 1.5rem;
   }
 
   .feature:hover { border-color: var(--accent); }
@@ -198,7 +247,6 @@
   @media (max-width: 650px) {
     .versus { grid-template-columns: 1fr; }
     header h1 { font-size: 1.8rem; }
-    body { padding: 1rem 1rem 3rem; }
     .feature { padding: 1.5rem; }
   }
 
@@ -243,22 +291,29 @@
 </head>
 <body>
 
-<header>
+<header style="padding: 3rem 1.5rem 2.5rem;">
   <div class="badge">Interview Prep</div>
   <h1>Java 25 Features<br/>with Code Examples</h1>
   <p>LTS Release · September 2025 · 18 JEPs</p>
 </header>
 
-<nav class="toc">
-  <a href="#f1"><span class="n">01</span> Compact Source Files</a>
-  <a href="#f2"><span class="n">02</span> Flexible Constructor Bodies</a>
-  <a href="#f3"><span class="n">03</span> Module Import Declarations</a>
-  <a href="#f4"><span class="n">04</span> Primitive Pattern Matching</a>
-  <a href="#f5"><span class="n">05</span> Scoped Values</a>
-  <a href="#f6"><span class="n">06</span> Structured Concurrency</a>
-  <a href="#f7"><span class="n">07</span> Compact Object Headers</a>
-  <a href="#f8"><span class="n">08</span> Key Derivation Function API</a>
-</nav>
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#f1">Compact Source Files</a></li>
+      <li><a href="#f2">Flexible Constructor Bodies</a></li>
+      <li><a href="#f3">Module Import Declarations</a></li>
+      <li><a href="#f4">Primitive Pattern Matching</a></li>
+      <li><a href="#f5">Scoped Values</a></li>
+      <li><a href="#f6">Structured Concurrency</a></li>
+      <li><a href="#f7">Compact Object Headers</a></li>
+      <li><a href="#f8">Key Derivation Function API</a></li>
+    </ol>
+  </aside>
+
+  <main class="content">
 
 <!-- 1 -->
 <div class="feature" id="f1">
@@ -630,6 +685,9 @@ exec.<span class="fn">shutdown</span>();</pre>
   </div>
 
   <div class="tip">Before Java 25, developers relied on third-party libraries (like Bouncy Castle) for KDF. Now it's part of the standard library. Mention HKDF is used in TLS 1.3, Signal Protocol, and many modern crypto protocols.</div>
+</div>
+
+  </main>
 </div>
 
 </body>

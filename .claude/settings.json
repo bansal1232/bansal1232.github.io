@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "/tmp"
+    ],
+    "allow": [
+      "Bash(awk 'NR==1,NR==634' backend-fundamentals.html)",
+      "Bash(awk 'NR>=1028' backend-fundamentals.html)"
+    ]
+  }
+}

@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Backend Fundamentals — DNS, HTTP, Docker, Circuit Breaker</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;500;600;700;800&family=Newsreader:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #faf9f6;
+    --surface: #ffffff;
+    --surface-alt: #f4f1ec;
+    --border: #e4e0d8;
+    --text: #1a1714;
+    --text-muted: #6b6560;
+    --accent: #c44b24;
+    --accent-light: #fef0eb;
+    --green: #2a7d4f;
+    --green-light: #eef7f0;
+    --blue: #2563a8;
+    --blue-light: #eef4fb;
+    --purple: #6d3caa;
+    --purple-light: #f3eefa;
+    --gold: #a67c00;
+    --gold-light: #fdf8ea;
+    --dark: #1a1714;
+    --dark-surface: #2a2520;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 0;
+  }
+
+  /* ─── HERO ─── */
+  .hero {
+    background: var(--dark);
+    color: #fff;
+    padding: 4rem 2rem 3.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 30% 70%, rgba(37,99,168,0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(42,125,79,0.12) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .hero .tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #6db3f2;
+    background: rgba(37,99,168,0.22);
+    padding: 0.4rem 1.2rem;
+    border-radius: 100px;
+    margin-bottom: 1.2rem;
+    position: relative;
+  }
+
+  .hero h1 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    margin-bottom: 0.6rem;
+    position: relative;
+  }
+
+  .hero p {
+    color: rgba(255,255,255,0.6);
+    font-size: 1.05rem;
+    max-width: 620px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-top: 1.4rem;
+    color: rgba(255,255,255,0.7);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    position: relative;
+    transition: color 0.2s;
+  }
+  .back-link:hover { color: #fff; }
+
+  /* ─── LAYOUT (laptop = sidebar + content, mobile = stacked) ─── */
+  .layout {
+    max-width: 1920px;
+    margin: 0 auto;
+    padding: 3rem 4rem 5rem;
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 4.5rem;
+    align-items: start;
+  }
+  @media (max-width: 1200px) { .layout { padding: 3rem 2rem 5rem; gap: 3rem; } }
+  @media (max-width: 960px) {
+    .layout { grid-template-columns: 1fr; gap: 1.5rem; padding: 2rem 1.2rem 4rem; }
+  }
+
+  /* ─── SIDEBAR TOC ─── */
+  .sidebar {
+    position: sticky;
+    top: 2rem;
+    font-size: 0.88rem;
+  }
+  @media (max-width: 960px) {
+    .sidebar {
+      position: static; top: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.4rem;
+    }
+  }
+  .sidebar h4 {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar ol {
+    list-style: none;
+    padding: 0;
+    counter-reset: toc;
+  }
+  .sidebar ol li { counter-increment: toc; margin-bottom: 0.35rem; }
+  .sidebar ol li::before {
+    content: counter(toc, decimal-leading-zero);
+    display: inline-block;
+    width: 1.8rem;
+    color: var(--accent);
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+  }
+  .sidebar a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.15s;
+    font-size: 0.9rem;
+  }
+  .sidebar a:hover { color: var(--accent); }
+  @media (max-width: 960px) {
+    .sidebar ol { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem 1rem; }
+  }
+  @media (max-width: 560px) { .sidebar ol { grid-template-columns: 1fr; } }
+
+  .content { min-width: 0; }
+
+  /* ─── SECTION ─── */
+  .section {
+    margin-bottom: 3rem;
+    scroll-margin-top: 1.5rem;
+  }
+
+  .section-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.9rem;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+  }
+
+  .section-label.red { background: var(--accent-light); color: var(--accent); }
+  .section-label.green { background: var(--green-light); color: var(--green); }
+  .section-label.blue { background: var(--blue-light); color: var(--blue); }
+  .section-label.purple { background: var(--purple-light); color: var(--purple); }
+  .section-label.gold { background: var(--gold-light); color: var(--gold); }
+
+  .section h2 {
+    font-size: 1.65rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.4rem;
+  }
+
+  .section > p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+    max-width: 680px;
+  }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .card h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.45rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .card h3 .icon {
+    font-size: 1.2rem;
+    line-height: 1;
+  }
+
+  .card p, .card li {
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    line-height: 1.75;
+  }
+
+  .card ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 0.5rem;
+  }
+
+  .card ul li {
+    padding-left: 1.3rem;
+    position: relative;
+    margin-bottom: 0.35rem;
+  }
+
+  .card ul li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .card .example {
+    background: var(--surface-alt);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    margin-top: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.85;
+    color: var(--text);
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  /* ─── STEP FLOW ─── */
+  .steps {
+    position: relative;
+    padding-left: 2.5rem;
+  }
+
+  .steps::before {
+    content: '';
+    position: absolute;
+    left: 0.95rem;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    width: 2px;
+    background: var(--border);
+  }
+
+  .step {
+    position: relative;
+    margin-bottom: 1.75rem;
+  }
+
+  .step::before {
+    content: attr(data-num);
+    position: absolute;
+    left: -2.5rem;
+    top: 0.1rem;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    background: var(--dark);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+  }
+
+  .step h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+  }
+
+  .step p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .step .example {
+    background: var(--surface-alt);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    margin-top: 0.6rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.8;
+    color: var(--text);
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .step .note {
+    margin-top: 0.5rem;
+    font-size: 0.82rem;
+    color: var(--accent);
+    font-weight: 600;
+    font-style: italic;
+  }
+
+  /* ─── GRID ─── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  @media (max-width: 700px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 2rem; }
+    .hero { padding: 3rem 1.5rem 2.5rem; }
+    .content { padding: 2rem 1rem 4rem; }
+    .steps { padding-left: 2.2rem; }
+    .step::before { left: -2.2rem; width: 1.6rem; height: 1.6rem; font-size: 0.65rem; }
+  }
+
+  /* ─── TABLE ─── */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    font-size: 0.88rem;
+  }
+
+  .compare-table th {
+    background: var(--surface-alt);
+    text-align: left;
+    padding: 0.85rem 1rem;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .compare-table td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    vertical-align: top;
+  }
+
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table td:first-child {
+    font-weight: 600;
+    color: var(--text);
+    width: 28%;
+  }
+
+  /* ─── METHOD BADGES ─── */
+  .method-badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+    border-radius: 5px;
+    letter-spacing: 0.04em;
+  }
+  .m-get    { background: #eef7f0; color: #2a7d4f; }
+  .m-post   { background: #eef4fb; color: #2563a8; }
+  .m-put    { background: #fdf8ea; color: #a67c00; }
+  .m-patch  { background: #f3eefa; color: #6d3caa; }
+  .m-delete { background: #fde2e2; color: #b91c1c; }
+  .m-head,
+  .m-opt,
+  .m-trace,
+  .m-connect { background: #f1ede6; color: #6b6560; }
+
+  /* ─── CALLOUTS ─── */
+  .callout {
+    background: var(--gold-light);
+    border: 1px solid rgba(166,124,0,0.2);
+    border-radius: var(--radius);
+    padding: 1.15rem 1.4rem;
+    margin-top: 1rem;
+  }
+
+  .callout h4 {
+    color: var(--gold);
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+  }
+
+  .callout p {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+  }
+
+  /* ─── Q&A ─── */
+  .qa {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .qa .q {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text);
+    margin-bottom: 0.35rem;
+    display: flex;
+    gap: 0.55rem;
+  }
+  .qa .q::before {
+    content: 'Q';
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  .qa .a {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    line-height: 1.7;
+    padding-left: 1.95rem;
+  }
+
+  .qa .a code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    background: var(--surface-alt);
+    padding: 0.12rem 0.4rem;
+    border-radius: 4px;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 3rem 0;
+  }
+
+  .footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    margin-top: 2.5rem;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HERO ═══════════ -->
+<div class="hero">
+  <div class="tag">Backend Fundamentals · Quick Reference</div>
+  <h1>DNS · HTTP · Docker<br/>API Gateway · Circuit Breaker</h1>
+  <p>The backend interview essentials — how DNS resolves &amp; caches, every HTTP verb, Dockerfile anatomy, VM vs container deployment, gateway vs LB, and the circuit breaker pattern.</p>
+  <a class="back-link" href="../design-development.html">← Back to all deep dives</a>
+</div>
+
+<div class="layout">
+
+  <!-- ── Sidebar TOC ── -->
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">How DNS Works</a></li>
+      <li><a href="#s2">HTTP Request Methods</a></li>
+      <li><a href="#s3">DNS Caching</a></li>
+      <li><a href="#s4">Docker &amp; Dockerfile</a></li>
+      <li><a href="#s5">VM vs Docker Deployment</a></li>
+      <li><a href="#s6">API Gateway vs Load Balancer</a></li>
+      <li><a href="#s7">Circuit Breaker Pattern</a></li>
+    </ol>
+  </aside>
+
+  <main class="content">
+
+<!-- ═══════════ SECTION 1: HOW DNS WORKS ═══════════ -->
+<div class="section" id="s1">
+  <span class="section-label blue">Topic 1</span>
+  <h2>How DNS Works — From Typing a URL to TCP Handshake</h2>
+  <p>DNS (Domain Name System) is the internet's phonebook: it translates human-friendly names (<code>www.google.com</code>) into routable IP addresses (<code>142.250.192.46</code>). It is a hierarchical, globally distributed key-value lookup.</p>
+
+  <div class="steps">
+
+    <div class="step" data-num="1">
+      <h3>Browser &amp; OS Cache Check</h3>
+      <p>Before hitting the network, the browser checks its own DNS cache, then the OS resolver cache (<code>nscd</code> / <code>systemd-resolved</code>), then the local <code>/etc/hosts</code> file. If any of these have a fresh answer, DNS resolution ends here.</p>
+    </div>
+
+    <div class="step" data-num="2">
+      <h3>Recursive Resolver (ISP or 8.8.8.8)</h3>
+      <p>On a cache miss, the query goes to a recursive resolver — usually your ISP, or a public one like Google (<code>8.8.8.8</code>) or Cloudflare (<code>1.1.1.1</code>). This resolver does the heavy lifting on behalf of the client.</p>
+    </div>
+
+    <div class="step" data-num="3">
+      <h3>Root Nameserver (.)</h3>
+      <p>If the resolver has no cached answer, it asks one of the 13 root nameservers. The root doesn't know the IP, but it knows who runs each TLD. It replies: "Ask the <code>.com</code> TLD server at this address."</p>
+    </div>
+
+    <div class="step" data-num="4">
+      <h3>TLD Nameserver (.com / .io / .in)</h3>
+      <p>The resolver now asks the TLD server for <code>.com</code>. It replies with the authoritative nameservers for <code>google.com</code> (e.g., <code>ns1.google.com</code>, <code>ns2.google.com</code> — Google runs its own authoritative NS).</p>
+    </div>
+
+    <div class="step" data-num="5">
+      <h3>Authoritative Nameserver</h3>
+      <p>Finally the resolver asks the authoritative server for the specific record. It returns the final answer — an <code>A</code> record (IPv4), <code>AAAA</code> (IPv6), <code>CNAME</code> (alias), or <code>MX</code> (mail).</p>
+      <div class="example">www.google.com.   A    142.250.192.46   TTL 300
+mail.google.com.  CNAME googlemail.l.google.com.  TTL 3600</div>
+    </div>
+
+    <div class="step" data-num="6">
+      <h3>Response &amp; Cache Population</h3>
+      <p>The resolver caches the answer per the record's TTL and returns it to the OS → browser. The browser can now open a TCP connection to the IP and begin the TLS handshake + HTTP request.</p>
+      <div class="note">Typical cold lookup: 20–120 ms. Warm (cached) lookup: sub-millisecond.</div>
+    </div>
+
+  </div>
+
+  <div class="callout">
+    <h4>Interview Tip</h4>
+    <p>DNS uses UDP port 53 by default (fast, connectionless). Falls back to TCP for responses &gt; 512 bytes, zone transfers, and DNSSEC. DoH/DoT wrap it in HTTPS/TLS for privacy.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 2: HTTP METHODS ═══════════ -->
+<div class="section" id="s2">
+  <span class="section-label green">Topic 2</span>
+  <h2>Kinds of HTTP Requests — The 9 Methods</h2>
+  <p>HTTP/1.1 defines 9 standard request methods. Each has well-defined semantics: <b>safe</b> (no side effects), <b>idempotent</b> (same result on retry), and whether a body is allowed.</p>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Method</th>
+        <th>Purpose</th>
+        <th>Safe</th>
+        <th>Idempotent</th>
+        <th>Body</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="method-badge m-get">GET</span></td>
+        <td>Retrieve a resource. Most common read operation.</td>
+        <td>Yes</td>
+        <td>Yes</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td><span class="method-badge m-post">POST</span></td>
+        <td>Create a new resource / submit data for processing.</td>
+        <td>No</td>
+        <td>No</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td><span class="method-badge m-put">PUT</span></td>
+        <td>Replace a resource entirely at a known URI.</td>
+        <td>No</td>
+        <td>Yes</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td><span class="method-badge m-patch">PATCH</span></td>
+        <td>Partial update to an existing resource.</td>
+        <td>No</td>
+        <td>No*</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td><span class="method-badge m-delete">DELETE</span></td>
+        <td>Remove a resource.</td>
+        <td>No</td>
+        <td>Yes</td>
+        <td>Optional</td>
+      </tr>
+      <tr>
+        <td><span class="method-badge m-head">HEAD</span></td>
+        <td>Like GET but returns headers only — used for metadata / existence checks.</td>
+        <td>Yes</td>
+        <td>Yes</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td><span class="method-badge m-opt">OPTIONS</span></td>
+        <td>Describe allowed methods / used in CORS preflight.</td>
+        <td>Yes</td>
+        <td>Yes</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td><span class="method-badge m-trace">TRACE</span></td>
+        <td>Loopback — echoes the request for debugging. Usually disabled.</td>
+        <td>Yes</td>
+        <td>Yes</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td><span class="method-badge m-connect">CONNECT</span></td>
+        <td>Establishes a TCP tunnel — used for HTTPS through a proxy.</td>
+        <td>No</td>
+        <td>No</td>
+        <td>No</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <h4>* PATCH Idempotency</h4>
+    <p>PATCH <i>can</i> be idempotent if it sets absolute values (<code>{"status":"PAID"}</code>) but is <b>not</b> when it sends deltas (<code>{"balance":"+100"}</code>). API design choice, not a protocol rule.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 3: DNS CACHING ═══════════ -->
+<div class="section" id="s3">
+  <span class="section-label purple">Topic 3</span>
+  <h2>How DNS Caching Works — 5 Layers Deep</h2>
+  <p>Every DNS record ships with a <b>TTL</b> (Time To Live) in seconds. Every layer between the client and authoritative server caches the answer until TTL expires. This is why changing an A record takes time to propagate.</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3><span class="icon">🌐</span> Layer 1 — Browser Cache</h3>
+      <p>Chromium caches DNS for ~60 seconds in memory. Inspect at <code>chrome://net-internals/#dns</code>. Cleared on browser restart.</p>
+    </div>
+    <div class="card">
+      <h3><span class="icon">💻</span> Layer 2 — OS Stub Resolver</h3>
+      <p>Linux: <code>systemd-resolved</code> or <code>nscd</code>. macOS: <code>mDNSResponder</code>. Windows: the DNS Client service. Honours the TTL returned by the resolver.</p>
+    </div>
+    <div class="card">
+      <h3><span class="icon">📡</span> Layer 3 — Recursive Resolver</h3>
+      <p>Your ISP / 8.8.8.8 / 1.1.1.1 caches every answer it fetches. This layer absorbs the majority of global DNS load — most queries never hit an authoritative server.</p>
+    </div>
+    <div class="card">
+      <h3><span class="icon">🏢</span> Layer 4 — Authoritative Server</h3>
+      <p>The source of truth. It does not "cache" but it <i>serves</i> the TTL. Setting a record to TTL 60 before a migration makes downstream caches expire faster.</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 1rem;">
+    <h3><span class="icon">🧩</span> Positive vs Negative Caching</h3>
+    <p><b>Positive cache</b> stores successful answers up to the record's TTL. <b>Negative cache</b> (RFC 2308) stores <code>NXDOMAIN</code> / <code>NODATA</code> responses using the SOA minimum TTL — prevents repeatedly hammering nameservers for domains that don't exist.</p>
+    <div class="example">$ dig www.google.com +noall +answer
+www.google.com.   287   IN   A   142.250.192.46
+                  ───
+                  remaining TTL at this resolver (sec)</div>
+  </div>
+
+  <div class="callout">
+    <h4>Cache Invalidation Reality</h4>
+    <p>You can't force-invalidate the entire internet's DNS cache. The lever you have: <b>lower the TTL before a change</b> (e.g., drop from 3600 → 60 a day ahead). After propagation, raise it back to reduce lookup load.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 4: DOCKER (SUMMARY + LINK) ═══════════ -->
+<div class="section" id="s4">
+  <span class="section-label red">Topic 4</span>
+  <h2>What is Docker &amp; Dockerfile?</h2>
+  <p>Docker packages an application with all its dependencies into a lightweight, portable, immutable <b>image</b>, and runs it as an isolated process called a <b>container</b>. A <b>Dockerfile</b> is the plain-text recipe that tells Docker how to build that image — each instruction produces a cached, read-only layer.</p>
+
+  <div class="card">
+    <h3><span class="icon">📦</span> Minimal Node.js Dockerfile</h3>
+    <div class="example">FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+EXPOSE 3000
+USER node
+CMD ["node", "server.js"]</div>
+    <ul>
+      <li><b>Dockerfile</b> = recipe → <b>Image</b> = compiled artifact → <b>Container</b> = running instance</li>
+      <li>Layers are cached — put stable instructions first, frequently-changing ones last</li>
+      <li>Ship only what you need: multi-stage builds + Alpine / distroless base images</li>
+    </ul>
+  </div>
+
+  <div class="callout">
+    <h4>Full Docker Deep Dive</h4>
+    <p>Architecture (dockerd / containerd / runc), union filesystem, every Dockerfile instruction, CMD vs ENTRYPOINT, networking drivers, volumes, namespaces &amp; cgroups, Docker Compose, security, and 12 interview Q&amp;As — see <a href="docker-deep-dive.html" style="color: var(--accent); font-weight: 700;">the Docker interview deep dive →</a></p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 5: VM vs DOCKER ═══════════ -->
+<div class="section" id="s5">
+  <span class="section-label gold">Topic 5</span>
+  <h2>VM Deployment vs Docker Deployment</h2>
+  <p>Both isolate workloads, but at different levels of the stack. VMs virtualize <b>hardware</b>; containers virtualize the <b>OS</b>. That single difference changes startup time, density, and isolation guarantees.</p>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Dimension</th>
+        <th>Virtual Machine</th>
+        <th>Docker Container</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Isolation</td>
+        <td>Full hardware-level via hypervisor (KVM, Xen, Hyper-V)</td>
+        <td>Process-level via Linux namespaces + cgroups</td>
+      </tr>
+      <tr>
+        <td>OS</td>
+        <td>Each VM ships its own guest OS kernel</td>
+        <td>All containers share the host kernel</td>
+      </tr>
+      <tr>
+        <td>Boot time</td>
+        <td>30 sec – minutes</td>
+        <td>&lt; 1 second</td>
+      </tr>
+      <tr>
+        <td>Image size</td>
+        <td>GBs (full OS)</td>
+        <td>MBs (app + deps only)</td>
+      </tr>
+      <tr>
+        <td>Density per host</td>
+        <td>~10s of VMs</td>
+        <td>~100s – 1000s of containers</td>
+      </tr>
+      <tr>
+        <td>Portability</td>
+        <td>Hypervisor-specific (VMDK, VHD, OVA)</td>
+        <td>OCI images run on any Docker/containerd host</td>
+      </tr>
+      <tr>
+        <td>Security blast radius</td>
+        <td>Stronger — kernel exploit confined to one VM</td>
+        <td>Weaker — shared kernel is the trust boundary</td>
+      </tr>
+      <tr>
+        <td>Typical use</td>
+        <td>Legacy apps, strict multi-tenant isolation, Windows workloads on Linux hosts</td>
+        <td>Microservices, CI/CD, elastic scale-out, dev/prod parity</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <h4>In Production — You Usually Run Both</h4>
+    <p>Cloud VMs (EC2, GCE) host Kubernetes nodes, which run containers. VM gives the hard isolation boundary; containers give density and deployment velocity on top.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 6: API GATEWAY vs LB ═══════════ -->
+<div class="section" id="s6">
+  <span class="section-label blue">Topic 6</span>
+  <h2>API Gateway vs Load Balancer</h2>
+  <p>Both sit in front of backend services, but they operate at different layers and solve different problems. A load balancer is about <b>traffic distribution</b>; an API gateway is about <b>API concerns</b>.</p>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Dimension</th>
+        <th>Load Balancer</th>
+        <th>API Gateway</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>OSI Layer</td>
+        <td>L4 (TCP/UDP) or L7 (HTTP)</td>
+        <td>Always L7 (HTTP / gRPC / WebSocket)</td>
+      </tr>
+      <tr>
+        <td>Primary job</td>
+        <td>Spread traffic across identical backend instances</td>
+        <td>Provide a single unified entry point for many microservices</td>
+      </tr>
+      <tr>
+        <td>Routing</td>
+        <td>By host / path / port (simple)</td>
+        <td>By path, headers, method, version, JWT claims, query params</td>
+      </tr>
+      <tr>
+        <td>Authentication</td>
+        <td>Not its job (TLS termination only)</td>
+        <td>Built-in — JWT, OAuth, API keys, mTLS</td>
+      </tr>
+      <tr>
+        <td>Rate limiting</td>
+        <td>Basic (connection limits)</td>
+        <td>Per-client, per-route, tiered plans</td>
+      </tr>
+      <tr>
+        <td>Transformation</td>
+        <td>None — passes bytes through</td>
+        <td>Request/response rewrite, protocol translation (REST↔gRPC), response aggregation</td>
+      </tr>
+      <tr>
+        <td>Health checks</td>
+        <td>Core feature — auto-remove unhealthy nodes</td>
+        <td>Yes (usually via the underlying LB)</td>
+      </tr>
+      <tr>
+        <td>Examples</td>
+        <td>AWS ALB/NLB, HAProxy, Nginx, F5</td>
+        <td>AWS API Gateway, Kong, Apigee, Zuul, Tyk</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="card">
+    <h3><span class="icon">🧭</span> Typical Flow in Production</h3>
+    <div class="example">client
+  │
+  ▼
+DNS (Route53)
+  │
+  ▼
+LOAD BALANCER   ← L4/L7, TLS termination, spreads traffic
+  │
+  ▼
+API GATEWAY     ← auth, rate limit, route, transform
+  │
+  ├─▶ users-service
+  ├─▶ orders-service
+  └─▶ payments-service</div>
+  </div>
+
+  <div class="callout">
+    <h4>Rule of Thumb</h4>
+    <p>Use an <b>LB</b> to scale identical replicas of one service. Add an <b>API gateway</b> when clients need to reach <i>many</i> services behind a single domain, with shared auth/quota/routing logic.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 7: CIRCUIT BREAKER ═══════════ -->
+<div class="section" id="s7">
+  <span class="section-label red">Topic 7</span>
+  <h2>Circuit Breaker Pattern — Interview Questions</h2>
+  <p>The circuit breaker protects a service from cascading failures when a downstream dependency is slow or broken. Like an electrical breaker: after too many "shocks" (errors), it <b>trips open</b> and short-circuits calls instead of letting them pile up.</p>
+
+  <div class="card">
+    <h3><span class="icon">⚡</span> The Three States</h3>
+    <div class="example">             failure threshold hit
+   CLOSED ───────────────────────▶ OPEN
+     ▲                              │
+     │ success in HALF-OPEN         │ cooldown timer
+     │                              ▼
+     └───── HALF-OPEN ◀──────── (trial request)</div>
+    <ul>
+      <li><b>CLOSED</b> — all calls flow through; errors are counted.</li>
+      <li><b>OPEN</b> — calls fail fast without hitting the dependency; return fallback / cached response.</li>
+      <li><b>HALF-OPEN</b> — after cooldown, let a few probe requests through. If they succeed → CLOSED. If they fail → back to OPEN.</li>
+    </ul>
+  </div>
+
+  <div class="qa">
+    <div class="q">Why use a circuit breaker at all — can't I just set a timeout?</div>
+    <div class="a">Timeouts fail each request individually; under load the thread pool still fills up and callers still queue. A breaker <b>fails fast</b> so the upstream thread returns immediately, freeing resources and preventing the failure from propagating through the call graph.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">What triggers the breaker to OPEN?</div>
+    <div class="a">Typically a <b>failure ratio</b> over a sliding window — e.g., &gt; 50% errors in the last 20 calls, or in the last 10 seconds. Resilience4j uses a count-based or time-based sliding window; Hystrix used a 10-second rolling stats bucket.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">What counts as a "failure"?</div>
+    <div class="a">Configurable — usually exceptions, timeouts, and explicit 5xx responses. 4xx from downstream is a <i>client</i> problem, not a dependency problem, and normally should <b>not</b> trip the breaker.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">How do you pick the thresholds?</div>
+    <div class="a">Start from the dependency's SLA. If it's supposed to be 99.9% available and &lt; 200ms p95, set failure threshold at 50% over 20 calls with a 1s timeout. Tune from production telemetry — too tight and you trip on noise; too loose and the breaker never helps.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">What should the fallback return?</div>
+    <div class="a">Depends on the call. Options: <b>(1)</b> cached last-good response (reads), <b>(2)</b> a degraded placeholder (e.g., empty recommendations list), <b>(3)</b> queue the request for later (writes), or <b>(4)</b> a clean error to the client. Never return stale financial/medical data silently.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Circuit breaker vs retry vs bulkhead — how do they compose?</div>
+    <div class="a">They layer. <b>Retry</b> handles transient blips (1–2 attempts with jitter). <b>Bulkhead</b> isolates thread pools / semaphores so one slow dep can't starve others. <b>Circuit breaker</b> wraps both and short-circuits when the dep is clearly down. Typical order in code: <code>Bulkhead → CircuitBreaker → Retry → TimeLimiter → call</code>.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">How is it implemented in a distributed system?</div>
+    <div class="a">Usually <b>per-instance, in-process</b> — each service instance tracks its own stats (Resilience4j, Polly, gobreaker). Sharing state across instances via Redis is rarely worth the added dependency and latency. Service meshes (Istio/Envoy) push this to the sidecar so app code stays clean.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">What metrics do you emit?</div>
+    <div class="a">State transitions (closed→open is a paging event), failure rate, slow-call rate, number of rejected calls, and calls in each state. Alert on <b>repeated open→half-open→open cycles</b> — that means the dep is flapping, not recovering.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Common pitfalls?</div>
+    <div class="a">
+      <ul>
+        <li>Tripping on 4xx — exclude them.</li>
+        <li>No jitter in retries <i>before</i> the breaker — creates thundering herds when OPEN→HALF-OPEN.</li>
+        <li>Sharing one breaker across multiple endpoints of the same host — mask isolated problems. Use per-operation breakers.</li>
+        <li>No fallback — a tripped breaker that throws still propagates errors; give callers a graceful path.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout">
+    <h4>Libraries to Know</h4>
+    <p><b>Java:</b> Resilience4j (current), Hystrix (deprecated 2018). <b>.NET:</b> Polly. <b>Go:</b> gobreaker, sony/gobreaker. <b>Node.js:</b> opossum. <b>Service mesh:</b> Istio outlier detection, Envoy circuit breaking.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="footer">© Shubham Bansal · 2026 · Backend Fundamentals Quick Reference</div>
+
+  </main>
+</div>
+</body>
+</html>
