@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>OTP Validation System — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--muted);font-size:.92rem;margin-bottom:1.5rem;max-width:720px}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.3rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.87rem;color:var(--muted);line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.85rem}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.highlight strong{font-weight:700}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.85rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.85rem;color:var(--text);border:1px solid var(--border)}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.82rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.6rem .85rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--muted)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── CHECK LIST ── */
+.checklist{list-style:none;padding:0;margin:0}
+.checklist li{padding:.55rem 0 .55rem 1.8rem;position:relative;font-size:.88rem;color:var(--text);border-bottom:1px dashed var(--border)}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{content:'✓';position:absolute;left:.2rem;top:.55rem;color:var(--green);font-weight:800;font-size:.95rem}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>OTP Validation <span>System</span></h1>
+  <p class="sub">Production-ready OTP architecture — hashing, 5-layer rate limiting, Redis + Postgres split, replay protection, and every use case from login to payment.</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Clarify Requirements</a></li>
+      <li><a href="#s2">Capacity &amp; Scale</a></li>
+      <li><a href="#s3">Actors &amp; Use Cases</a></li>
+      <li><a href="#s4">High-Level Architecture</a></li>
+      <li><a href="#s5">API Design</a></li>
+      <li><a href="#s6">Data Model (Redis + Postgres)</a></li>
+      <li><a href="#s7">Generate OTP Flow</a></li>
+      <li><a href="#s8">Verify OTP Flow</a></li>
+      <li><a href="#s9">Why Hash OTPs</a></li>
+      <li><a href="#s10">5-Layer Brute Force Defense</a></li>
+      <li><a href="#s11">OTP Lifecycle States</a></li>
+      <li><a href="#s12">Use Case Variants</a></li>
+      <li><a href="#s13">Common Mistakes</a></li>
+      <li><a href="#s14">Monitoring &amp; Alerts</a></li>
+      <li><a href="#s15">Trade-offs</a></li>
+      <li><a href="#s16">Interview Q&amp;A</a></li>
+      <li><a href="#s17">Production Checklist</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: REQUIREMENTS                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>Clarify Requirements</h2>
+  <p>Always open an HLD by aligning on scope. OTP is a single building block — but different products treat it very differently (2FA vs payments vs password reset). Pin these down first.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Generate a random 4–6 digit numeric code</li>
+        <li>Deliver via SMS, email, or authenticator app</li>
+        <li>Store with a short TTL (2–10 min by use case)</li>
+        <li>Verify submitted OTP against stored value</li>
+        <li>Enforce single-use — delete after success</li>
+        <li>Invalidate after N failed attempts</li>
+        <li>Rate-limit generation &amp; verification independently</li>
+        <li>Audit every OTP event (generation, attempt, success, failure)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚡ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Latency:</strong> verify p99 &lt; 50 ms (Redis in-memory)</li>
+        <li><strong>Availability:</strong> 99.95% — auth blocks logins</li>
+        <li><strong>Durability:</strong> audit log must survive Redis loss</li>
+        <li><strong>Security:</strong> plaintext OTP never persisted, never logged</li>
+        <li><strong>Compliance:</strong> PCI-DSS, GDPR, HIPAA, RBI-ready</li>
+        <li><strong>Scale:</strong> handle SMS bombing &amp; brute-force under load</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>Out of scope (confirm with interviewer):</strong> SMS provider failover strategy, push-notification OTP, hardware tokens (YubiKey/TOTP apps are adjacent), OAuth/SSO, and session management after OTP success.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: CAPACITY                           -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-yellow">Step 2</span>
+  <h2>Capacity &amp; Scale Estimates</h2>
+  <p>Back-of-envelope first — it drives storage, rate-limit tiers, and the Redis/Postgres split.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>Metric</th><th>Assumption</th><th>Result</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>MAU</td><td>50 M</td><td>—</td></tr>
+        <tr><td>OTPs / active user / day</td><td>~3 (login + sensitive actions)</td><td>~150 M/day</td></tr>
+        <tr><td>Peak QPS (3× avg)</td><td>150 M ÷ 86 400 × 3</td><td><code>~5 200 QPS</code></td></tr>
+        <tr><td>OTP payload (hash + metadata)</td><td>~200 B per record</td><td>—</td></tr>
+        <tr><td>Peak active OTPs in Redis (5-min TTL)</td><td>5 200 × 300</td><td><code>~1.5 M keys ≈ 300 MB</code></td></tr>
+        <tr><td>Audit rows / year (Postgres)</td><td>150 M × 365</td><td><code>~55 B rows/yr</code> → partition monthly</td></tr>
+        <tr><td>SMS cost (even at ₹0.10/SMS)</td><td>150 M/day</td><td><code>₹15 M/day</code> → rate limits matter economically, not just for security</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-orange"><strong>Takeaways:</strong> Redis easily fits active OTPs in RAM. Postgres audit needs partitioning (or TimescaleDB / Cassandra for very high scale). Rate limiting protects SMS spend as much as it protects users.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: ACTORS & USE CASES                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-green">Step 3</span>
+  <h2>Actors &amp; Use Cases</h2>
+  <p>Who triggers OTP flows and what they're trying to accomplish. Color-coded by actor.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  U([User])
+  PS([Payment Service])
+  AS([Auth Service])
+  SEC([Security Team])
+
+  U --> L[Login / 2FA]
+  U --> PR[Password Reset]
+  U --> AC[Account Change]
+  PS --> PAY[Payment Confirm]
+  AS --> REG[Registration Verify]
+  SEC --> AUD[Audit &amp; Investigate]
+
+  style U fill:#e8743b,stroke:#e8743b,color:#fff
+  style PS fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style AS fill:#38b265,stroke:#38b265,color:#fff
+  style SEC fill:#9b72cf,stroke:#9b72cf,color:#fff
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card"><h3>🟢 Login / 2FA</h3><p>Phone number → OTP → JWT. 5-min TTL, 3 regenerations per 15 min.</p></div>
+    <div class="card"><h3>🔐 Password Reset</h3><p>Email + reset token + OTP. 10-min TTL. Invalidate other sessions on success.</p></div>
+    <div class="card"><h3>💳 Payment Confirm</h3><p>Tied to <code>transaction_id</code>. 2-min TTL (shorter MITM window).</p></div>
+    <div class="card"><h3>✉️ Account Change</h3><p>Sent to the <strong>OLD</strong> contact — defends a compromised account.</p></div>
+    <div class="card"><h3>📝 Registration</h3><p>Verify email/phone ownership before provisioning the account.</p></div>
+    <div class="card"><h3>🛡️ Audit / Investigate</h3><p>Security team queries the audit log by <code>user_id</code> / <code>ip</code> — never sees OTP values.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: HIGH-LEVEL ARCHITECTURE            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-blue">Step 4</span>
+  <h2>High-Level Architecture</h2>
+  <p>Six moving parts. Redis is the hot store, Postgres the cold/audit store, the OTP service owns all hashing and verification.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  CL([Client App])
+  GW[API Gateway<br/>per-IP rate limit<br/>CAPTCHA]
+  OTP[OTP Service<br/>generate / hash / verify]
+  RL[Rate Limiter<br/>Redis counters]
+  R[(Redis<br/>hashed OTP + TTL)]
+  PG[(PostgreSQL<br/>audit log)]
+  SMS[SMS / Email<br/>Provider]
+  MON[Monitoring<br/>anomaly alerts]
+
+  CL -- HTTPS --> GW
+  GW --> OTP
+  OTP --> RL
+  OTP --> R
+  OTP --> SMS
+  OTP -. async write .-> PG
+  OTP -. metrics .-> MON
+  RL --> R
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style GW fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style OTP fill:#38b265,stroke:#38b265,color:#fff
+  style R fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style PG fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style SMS fill:#d4a838,stroke:#d4a838,color:#000
+  style MON fill:#3cbfbf,stroke:#3cbfbf,color:#000
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔷 Why Redis as primary</h3>
+      <ul>
+        <li>Native TTL — no cleanup cron needed</li>
+        <li>Sub-ms verify latency</li>
+        <li>Atomic <code>DECR</code> for attempts-remaining</li>
+        <li>Cluster-shardable by user_id</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🗄️ Why Postgres for audit</h3>
+      <ul>
+        <li>Durability + compliance retention</li>
+        <li>Rich queries for fraud investigation</li>
+        <li>Survives Redis cluster loss</li>
+        <li>Partition by month for B-row scale</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>Key design call:</strong> the write to Postgres is <em>async</em> (Kafka or fire-and-forget). Auth latency cannot wait on an RDBMS round-trip.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: API DESIGN                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-purple">Step 5</span>
+  <h2>API Design</h2>
+  <p>Two endpoints carry 99% of traffic. Keep the surface area small — fewer endpoints = fewer attack vectors.</p>
+
+  <span class="code-label cl-green">POST /v1/otp/generate</span>
+<pre><span class="cmt">// Request</span>
+{
+  <span class="str">"identifier"</span>: <span class="str">"+919876543210"</span>,   <span class="cmt">// phone OR email</span>
+  <span class="str">"purpose"</span>:   <span class="str">"LOGIN"</span>,            <span class="cmt">// LOGIN | RESET | PAYMENT | UPDATE</span>
+  <span class="str">"context"</span>:   { <span class="str">"transaction_id"</span>: <span class="str">"txn_abc"</span> }  <span class="cmt">// optional, binds OTP to a resource</span>
+}
+
+<span class="cmt">// 200 — OTP queued for delivery</span>
+{
+  <span class="str">"otp_id"</span>:       <span class="str">"uuid-v4"</span>,
+  <span class="str">"expires_at"</span>:    <span class="num">1735128300</span>,
+  <span class="str">"attempts_left"</span>: <span class="num">5</span>,
+  <span class="str">"cooldown_sec"</span>:  <span class="num">30</span>    <span class="cmt">// client must wait before "resend"</span>
+}
+
+<span class="cmt">// 429 — rate limited (generic, no user-enumeration)</span>
+{ <span class="str">"error"</span>: <span class="str">"TOO_MANY_REQUESTS"</span>, <span class="str">"retry_after"</span>: <span class="num">120</span> }</pre>
+
+  <span class="code-label cl-orange">POST /v1/otp/verify</span>
+<pre><span class="cmt">// Request</span>
+{
+  <span class="str">"otp_id"</span>: <span class="str">"uuid-v4"</span>,
+  <span class="str">"code"</span>:   <span class="str">"847231"</span>,
+  <span class="str">"context"</span>: { <span class="str">"transaction_id"</span>: <span class="str">"txn_abc"</span> }
+}
+
+<span class="cmt">// 200 — success (one-shot; server deletes OTP immediately)</span>
+{ <span class="str">"verified"</span>: <span class="kw">true</span>, <span class="str">"session_token"</span>: <span class="str">"jwt..."</span> }
+
+<span class="cmt">// 401 — mismatch (generic; no "wrong code" vs "expired" leak)</span>
+{ <span class="str">"verified"</span>: <span class="kw">false</span>, <span class="str">"attempts_left"</span>: <span class="num">3</span> }
+
+<span class="cmt">// 410 — OTP gone (expired, used, or blown through attempt limit)</span>
+{ <span class="str">"error"</span>: <span class="str">"OTP_NOT_ACTIVE"</span> }</pre>
+
+  <div class="highlight hl-yellow"><strong>API hardening notes:</strong> responses are deliberately uniform — the same error shape for "wrong code" and "expired code" prevents probing. <code>otp_id</code> is opaque (UUID, not the phone number) so the client request can be logged without leaking the identifier.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: DATA MODEL                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-cyan">Step 6</span>
+  <h2>Data Model — Redis + Postgres</h2>
+  <p>Two stores, two very different jobs.</p>
+
+  <h3 style="color:var(--heading);margin:1rem 0 .5rem;font-size:1rem">Redis (hot path)</h3>
+  <span class="code-label cl-purple">Key / Value layout</span>
+<pre><span class="cmt"># Active OTP record</span>
+KEY   otp:{otp_id}
+VALUE {
+  <span class="str">"user_id"</span>:       <span class="str">"u_1234"</span>,
+  <span class="str">"identifier_hash"</span>: <span class="str">"sha256(+919876543210)"</span>,
+  <span class="str">"purpose"</span>:       <span class="str">"LOGIN"</span>,
+  <span class="str">"hash"</span>:          <span class="str">"$2b$12$..."</span>,   <span class="cmt"># bcrypt hash of the OTP</span>
+  <span class="str">"attempts_left"</span>: <span class="num">5</span>,
+  <span class="str">"context"</span>:       { <span class="str">"transaction_id"</span>: <span class="str">"txn_abc"</span> },
+  <span class="str">"created_at"</span>:    <span class="num">1735128000</span>
+}
+TTL   300  <span class="cmt"># seconds — auto-deletes, no cron needed</span>
+
+<span class="cmt"># Rate-limit counters (sliding-window via INCR + EXPIRE)</span>
+KEY   rl:gen:user:{user_id}    TTL 900   <span class="cmt"># 3 per 15 min</span>
+KEY   rl:gen:ip:{ip}           TTL 3600  <span class="cmt"># 10 per hour</span>
+KEY   rl:ver:user:{user_id}    TTL 3600  <span class="cmt"># 10 per hour</span>
+KEY   rl:ver:ip:{ip}           TTL 3600  <span class="cmt"># 20 per hour</span></pre>
+
+  <h3 style="color:var(--heading);margin:1.25rem 0 .5rem;font-size:1rem">Postgres (audit, durable)</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  USER ||--o{ OTP_AUDIT : generates
+  OTP_AUDIT ||--o{ OTP_ATTEMPT : "has many"
+
+  USER {
+    uuid user_id PK
+    string email
+    string phone_hash
+    timestamp created_at
+  }
+  OTP_AUDIT {
+    uuid otp_id PK
+    uuid user_id FK
+    string purpose
+    string identifier_hash
+    timestamp created_at
+    timestamp expires_at
+    string outcome "GENERATED|VERIFIED|EXPIRED|EXHAUSTED"
+    string ip_address
+    string user_agent
+  }
+  OTP_ATTEMPT {
+    bigserial attempt_id PK
+    uuid otp_id FK
+    timestamp attempted_at
+    boolean success
+    string ip_address
+    string failure_reason
+  }
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>⚠️ Critical:</strong> neither the OTP code nor its hash is ever written to Postgres. The audit log tells you <em>who tried to verify what and when</em> — not what the secret was. This matters for GDPR/PCI auditors and for insider-threat containment.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: GENERATE FLOW                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-green">Step 7</span>
+  <h2>Generate OTP — Sequence Flow</h2>
+  <p>Happy path + the three places it can fail loudly.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor U as User
+  participant GW as API Gateway
+  participant S as OTP Service
+  participant RL as Rate Limiter
+  participant R as Redis
+  participant SMS as SMS Provider
+  participant Q as Audit Queue
+
+  U->>GW: POST /otp/generate {phone, LOGIN}
+  GW->>GW: per-IP rate limit
+  GW->>S: forward
+  S->>RL: INCR rl:gen:user + rl:gen:ip
+  alt limit exceeded
+    RL-->>S: over limit
+    S-->>U: 429 TOO_MANY_REQUESTS
+  else within limit
+    S->>S: generate 6-digit OTP (SecureRandom)
+    S->>S: bcrypt hash(otp, cost=12)
+    S->>R: SET otp:{uuid} {hash, ...} EX 300
+    S->>SMS: send plain OTP
+    S-)Q: enqueue audit event
+    S-->>U: 200 {otp_id, expires_at}
+  end
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card"><h3>🎲 Randomness</h3><p><code>SecureRandom</code> / <code>crypto.randomInt</code> / <code>secrets.randbelow</code>. Never <code>Math.random()</code>.</p></div>
+    <div class="card"><h3>🔒 Hash cost</h3><p>bcrypt work factor 12 (~250 ms). Slow on purpose — defeats offline GPU cracking.</p></div>
+    <div class="card"><h3>📮 Delivery</h3><p>SMS send is synchronous for UX feedback, but provider timeouts fail fast (2 s budget).</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: VERIFY FLOW                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-blue">Step 8</span>
+  <h2>Verify OTP — Sequence Flow</h2>
+  <p>Constant-time comparison + atomic attempt decrement are the two things people get wrong.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor U as User
+  participant GW as API Gateway
+  participant S as OTP Service
+  participant R as Redis
+  participant Q as Audit Queue
+
+  U->>GW: POST /otp/verify {otp_id, code}
+  GW->>S: forward (rate limited)
+  S->>R: GET otp:{otp_id}
+  alt not found
+    R-->>S: nil
+    S-->>U: 410 OTP_NOT_ACTIVE
+  else found
+    R-->>S: {hash, attempts_left}
+    S->>S: bcrypt.verify(submitted, hash)  %% constant-time
+    alt match
+      S->>R: DEL otp:{otp_id}       %% single-use
+      S-)Q: audit VERIFIED
+      S-->>U: 200 {verified:true, jwt}
+    else mismatch
+      S->>R: HINCRBY attempts_left -1
+      alt attempts_left == 0
+        S->>R: DEL otp:{otp_id}
+        S-)Q: audit EXHAUSTED
+        S-->>U: 410 OTP_NOT_ACTIVE
+      else still alive
+        S-)Q: audit FAILED_ATTEMPT
+        S-->>U: 401 {attempts_left}
+      end
+    end
+  end
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>⭐ The DEL on success is non-negotiable.</strong> If you only mark <code>is_used=true</code> and forget to delete, a race between two concurrent verifies can double-authenticate. Deleting is atomic; flags are not.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: WHY HASH                           -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-red">Step 9</span>
+  <h2>Why Hash OTPs (and Why Plaintext Is a Career-Ender)</h2>
+  <p>This is the single most common OTP mistake in production systems. Here's every way plaintext storage betrays you.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>💣 Database breach</h3>
+      <p>Redis exposed? Every live OTP is instantly usable. No cracking — just read and replay. Account-takeover at wire speed.</p>
+    </div>
+    <div class="card">
+      <h3>👤 Insider access</h3>
+      <p>Any engineer with read access can impersonate any user, and the audit trail looks identical to a legitimate login.</p>
+    </div>
+    <div class="card">
+      <h3>📜 Log leaks</h3>
+      <p>Plaintext OTPs show up in Sentry, Datadog, slow-query logs, CloudWatch, backup dumps. One <code>log.debug(req.body)</code> is all it takes.</p>
+    </div>
+    <div class="card">
+      <h3>📋 Compliance</h3>
+      <p>PCI-DSS, GDPR, HIPAA, RBI all prohibit plaintext authentication data. Audit failure → fines + forced remediation.</p>
+    </div>
+    <div class="card">
+      <h3>🧠 Memory dumps</h3>
+      <p>A core dump of the app server exposes any OTP sitting in RAM.</p>
+    </div>
+    <div class="card">
+      <h3>🌐 Side channels</h3>
+      <p>Metrics and APM traces often capture request payloads. Hashing at the edge closes that leak surface.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>The rule:</strong> the plaintext OTP exists in exactly two places — the SMS message and the user's head. The server persists only the bcrypt/Argon2 hash. Between generation and delivery it sits in memory for milliseconds; after that, only the hash remains.</div>
+
+  <h3 style="color:var(--heading);margin:1.25rem 0 .5rem;font-size:1rem">Hash algorithm choice</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Algorithm</th><th>Verdict</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><code>MD5</code> / <code>SHA-1</code></td><td style="color:var(--red)">❌ Never</td><td>Broken; GPU can brute-force 6-digit space in seconds</td></tr>
+        <tr><td><code>SHA-256</code> (plain)</td><td style="color:var(--red)">❌ Never</td><td>Too fast — 1M combinations cracked in &lt;1 sec</td></tr>
+        <tr><td><code>bcrypt</code></td><td style="color:var(--green)">✅ Fine</td><td>Work factor 10–12 slows attackers; battle-tested</td></tr>
+        <tr><td><code>scrypt</code></td><td style="color:var(--green)">✅ Good</td><td>Memory-hard — resists custom ASIC attacks</td></tr>
+        <tr><td><code>Argon2id</code></td><td style="color:var(--green)">✅ Best</td><td>Modern, tunable memory + time + parallelism</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: BRUTE FORCE DEFENSE               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-red">Step 10</span>
+  <h2>5-Layer Brute Force Defense</h2>
+  <p>A 6-digit OTP has only <strong>1 000 000</strong> combinations. Without layered defense, an attacker scripts 10 req/sec and is in within ~28 hours. Here's the layered wall.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Layer</th><th>Scope</th><th>Limit</th><th>Action on breach</th></tr></thead>
+      <tbody>
+        <tr><td>1 — Per-OTP attempts</td><td>Single <code>otp_id</code></td><td>5 wrong tries</td><td>Invalidate OTP</td></tr>
+        <tr><td>2 — Per-user rate</td><td><code>user_id</code></td><td>10 verifies / hour</td><td>30-min account lock</td></tr>
+        <tr><td>3 — Per-IP rate</td><td>Source IP</td><td>20 verifies / hour</td><td>Temporary IP block</td></tr>
+        <tr><td>4 — Exponential backoff</td><td>Per-user per-OTP</td><td>0s → 5s → 30s → 2m</td><td>Kills scripting speed</td></tr>
+        <tr><td>5 — CAPTCHA</td><td>Gateway</td><td>After 3 failed attempts</td><td>Forces human proof</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-orange"><strong>Defense in depth:</strong> one layer can be bypassed (e.g., rotating IPs defeats Layer 3). All five together make brute force economically infeasible — attackers move on to softer targets.</div>
+
+  <h3 style="color:var(--heading);margin:1.25rem 0 .5rem;font-size:1rem">SMS bombing defense (generation side)</h3>
+  <div class="g3">
+    <div class="card"><h3>🙋 Per user</h3><p>Max 3 OTP generations per 15 minutes.</p></div>
+    <div class="card"><h3>🌐 Per IP</h3><p>Max 10 generations per hour.</p></div>
+    <div class="card"><h3>⏳ Resend cooldown</h3><p>Reject "resend" &lt; 30 s after previous send.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: LIFECYCLE                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-purple">Step 11</span>
+  <h2>OTP Lifecycle — State Machine</h2>
+  <p>Every OTP follows exactly one path from birth to death. Four terminal states.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+stateDiagram-v2
+  [*] --> GENERATED : POST /generate
+  GENERATED --> VERIFIED : code matches
+  GENERATED --> FAILED_ATTEMPT : code mismatches (&gt;0 attempts left)
+  FAILED_ATTEMPT --> GENERATED : still alive
+  FAILED_ATTEMPT --> EXHAUSTED : attempts_left == 0
+  GENERATED --> EXPIRED : TTL elapses
+  VERIFIED --> [*]
+  EXHAUSTED --> [*]
+  EXPIRED --> [*]
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>Why model it explicitly?</strong> Every outcome must map to exactly one audit row — no "in between" states. This is what makes fraud investigation tractable: every OTP that ever existed has a terminal state on record.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: USE CASE VARIANTS                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-cyan">Step 12</span>
+  <h2>Use Case Variants</h2>
+  <p>Same machinery, four different policies. TTL and delivery channel are the main knobs.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Use case</th><th>TTL</th><th>Channel</th><th>Binding</th><th>Special</th></tr></thead>
+      <tbody>
+        <tr><td>Login / 2FA</td><td><code>5 min</code></td><td>SMS</td><td><code>user_id</code></td><td>Issue JWT on success</td></tr>
+        <tr><td>Password reset</td><td><code>10 min</code></td><td>Email</td><td>OTP + reset-token</td><td>Kill all other sessions</td></tr>
+        <tr><td>Payment confirm</td><td><code>2 min</code></td><td>SMS</td><td><code>transaction_id</code></td><td>Lock against replay</td></tr>
+        <tr><td>Account change</td><td><code>3 min</code></td><td>OLD email/phone</td><td><code>user_id</code></td><td>Notify old contact after success</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>💳 Why Payment TTL is shortest</h3>
+      <p>Short window = smaller MITM attack surface. Payment OTPs must also bind to <code>transaction_id</code> — an OTP generated for a ₹500 transfer cannot be replayed on a ₹50 000 one.</p>
+    </div>
+    <div class="card">
+      <h3>✉️ Why Account-Change OTP goes to OLD contact</h3>
+      <p>If the attacker has already taken over the account, they control the current contact. Sending OTP to the previous email/phone forces them to also own that — raising the attack bar significantly.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: COMMON MISTAKES                   -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-red">Step 13</span>
+  <h2>Common Mistakes &amp; How to Dodge Them</h2>
+  <p>Every single one of these has been shipped to production by a real team at some point.</p>
+
+  <div class="g2">
+    <div class="card"><h3>❌ Predictable randomness</h3><p><code>Math.random()</code>, timestamp-seeded PRNGs, or incrementing counters. Use a CSPRNG.</p></div>
+    <div class="card"><h3>❌ Long TTLs</h3><p>Anything &gt; 10 min is an attack window. Match TTL to use case.</p></div>
+    <div class="card"><h3>❌ Same code on resend</h3><p>Regenerate on every resend. Reusing the same OTP halves the rotation benefit.</p></div>
+    <div class="card"><h3>❌ No attempt cap</h3><p>OTP must die after N failures — the attack must not be able to retry forever within the TTL.</p></div>
+    <div class="card"><h3>❌ Logging OTP values</h3><p>Scrub request-body logging for any field named <code>code</code>, <code>otp</code>, <code>pin</code>. Add allow-list logging by default.</p></div>
+    <div class="card"><h3>❌ Fast hash (SHA-256 raw)</h3><p>Use bcrypt/scrypt/Argon2. A 6-digit space falls to fast hashes in milliseconds.</p></div>
+    <div class="card"><h3>❌ Non-constant-time compare</h3><p><code>==</code> on hashes leaks timing. Use <code>crypto.timingSafeEqual</code> or the library's built-in verify.</p></div>
+    <div class="card"><h3>❌ Forgetting single-use</h3><p><code>DEL</code> on success. Otherwise the attacker sniffs the OTP and replays it after the user consumes it.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: MONITORING                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-blue">Step 14</span>
+  <h2>Monitoring &amp; Alerts</h2>
+  <p>OTP systems are where anomalies appear first — monitoring them buys early warning for larger attacks.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📈 Signals worth paging on</h3>
+      <ul>
+        <li>OTP generation rate &gt; 3× baseline → SMS bombing</li>
+        <li>Verify-failure rate &gt; 10% per minute → brute force</li>
+        <li>&gt; 50 OTPs / hour from one IP → bot farm</li>
+        <li>Verification from geography user never logs in from</li>
+        <li>SMS provider 5xx &gt; 2% → rotate to secondary</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>📊 Signals worth dashboarding</h3>
+      <ul>
+        <li>Verify p50 / p99 latency</li>
+        <li>Generate → verify conversion funnel</li>
+        <li>Median time-to-verify (UX proxy)</li>
+        <li>Attempts-left histogram (brute-force smell test)</li>
+        <li>SMS cost per DAU</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 15: TRADE-OFFS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s15">
+  <span class="sec-tag tag-yellow">Step 15</span>
+  <h2>Trade-offs &amp; Interview Talking Points</h2>
+  <p>The bits an interviewer wants to hear you reason about out loud.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Decision</th><th>Alternative</th><th>Why this choice</th></tr></thead>
+      <tbody>
+        <tr><td>Redis as primary store</td><td>Postgres only</td><td>Sub-ms latency + native TTL; audit still goes to Postgres async</td></tr>
+        <tr><td>Hash (bcrypt)</td><td>Plaintext / fast hash</td><td>Limits blast radius of any leak; slow hash beats GPU brute force</td></tr>
+        <tr><td>6-digit numeric</td><td>Alphanumeric</td><td>UX on phone keypads; brute-force mitigated by rate limits, not entropy</td></tr>
+        <tr><td>UUID <code>otp_id</code></td><td>Use phone as key</td><td>Opaque ID — safer to log, no user enumeration</td></tr>
+        <tr><td>DEL on success</td><td><code>is_used = true</code> flag</td><td>Atomic; avoids double-verify race</td></tr>
+        <tr><td>Async audit write</td><td>Sync write</td><td>Keeps verify off the RDBMS critical path</td></tr>
+        <tr><td>Short TTL (2–10 min)</td><td>24-hour validity</td><td>Dramatically smaller attack window; fine for UX</td></tr>
+        <tr><td>Generic error responses</td><td>Distinguish wrong/expired</td><td>Prevents user &amp; state enumeration attacks</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 16: INTERVIEW Q&A                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s16">
+  <span class="sec-tag tag-purple">Step 16</span>
+  <h2>Interview Q&amp;A</h2>
+  <p>The follow-ups that actually come up on system-design loops.</p>
+
+  <div class="iq">Why can't we just use HMAC(user_id, timestamp) as the OTP?</div>
+  <div class="ans"><strong>TOTP-style works</strong> when the client has a shared secret (Google Authenticator). For SMS delivery the user has no secret, so any formula visible on the server is also guessable from observed OTPs. Random + hash + TTL is the right primitive for SMS/email.</div>
+
+  <div class="iq">How do you handle Redis going down?</div>
+  <div class="ans">Run Redis in <strong>cluster mode with replicas</strong>; use <code>WAIT</code> to require replica ack before replying. On total cluster loss: fail-closed (reject new verifies) and rotate existing users through password re-verification — <strong>never fall back to Postgres as primary</strong>, because the audit store doesn't have hashes by design.</div>
+
+  <div class="iq">An attacker keeps generating OTPs for a victim's phone. What do you do?</div>
+  <div class="ans">Layered: (a) Layer-1 per-user 3-per-15-min cap, (b) client-side CAPTCHA after the 2nd request, (c) progressive cooldowns (30s → 2m → 10m) between resends, (d) trust-score on the IP — block IPs with high OTP-request/verify ratios.</div>
+
+  <div class="iq">Why bcrypt and not just PBKDF2-SHA256 with 100k iterations?</div>
+  <div class="ans">Functionally close, but bcrypt's algorithm is memory-bound (4KB working set) which raises the cost of custom ASICs. Argon2id is even better — memory-hard by design. PBKDF2 is fine if it's what your stack already uses; don't rewrite.</div>
+
+  <div class="iq">Single Redis or multi-region?</div>
+  <div class="ans">OTPs are short-lived and tied to a user's active session — <strong>region-local is fine</strong>. Don't pay cross-region replication cost. If a user roams mid-flow (rare), force regeneration in the new region.</div>
+
+  <div class="iq">What prevents an insider from extracting bcrypt hashes and brute-forcing offline?</div>
+  <div class="ans">bcrypt cost-12 ≈ 250 ms/attempt → 1M guesses ≈ 3 days on a single GPU, <em>if</em> you got a dump within the 5-min TTL. The TTL is the dominant defense here, not the hash. Combine with: access audits on Redis, at-rest encryption, and alerting on <code>KEYS otp:*</code> scans.</div>
+
+  <div class="iq">How do you support "voice call" OTP delivery as an option?</div>
+  <div class="ans">Same generate/verify flow — only the delivery adapter changes. Add a channel field (<code>SMS | EMAIL | VOICE | WHATSAPP</code>) and a <strong>Strategy</strong> interface per channel. Rate limits may need per-channel tuning (voice is expensive).</div>
+
+  <div class="iq">What about TOTP (Google Authenticator)?</div>
+  <div class="ans">Different trust model — shared secret installed at enrollment, no server-side per-request state. Typically offered <em>alongside</em> SMS OTP as a stronger option. Our system handles both by routing verification to different modules based on the factor the user has configured.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 17: PRODUCTION CHECKLIST              -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s17">
+  <span class="sec-tag tag-green">Step 17</span>
+  <h2>Production Checklist</h2>
+  <p>Before shipping any OTP system — tick every box.</p>
+
+  <div class="card">
+    <ul class="checklist">
+      <li>OTPs hashed with bcrypt (cost 12) or Argon2id — never plaintext</li>
+      <li>TTL tuned per use case: login 5m, reset 10m, payment 2m, update 3m</li>
+      <li>5-layer rate limiting: per-OTP, per-user, per-IP, backoff, CAPTCHA</li>
+      <li>Constant-time hash comparison (<code>crypto.timingSafeEqual</code> or library verify)</li>
+      <li>Audit log written to Postgres (without OTP values) via async queue</li>
+      <li>Single-use enforcement via <code>DEL</code> immediately on success</li>
+      <li>Attempt counter drains via atomic <code>HINCRBY</code>; OTP dies at 0</li>
+      <li>Exponential backoff between failed attempts</li>
+      <li>CAPTCHA triggered after 3 failures</li>
+      <li>Redis with TLS in transit + AUTH enabled + at-rest encryption</li>
+      <li>Notifications to user's old contact on sensitive changes</li>
+      <li>Zero OTP values in app logs, APM, error trackers, slow-query logs</li>
+      <li>Monitoring on generation spikes, failure rates, geography drift</li>
+      <li>SMS provider health checks + automatic failover to secondary</li>
+      <li>Generic error responses — no user/state enumeration leaks</li>
+      <li>CSPRNG for OTP generation — never <code>Math.random()</code></li>
+    </ul>
+  </div>
+
+  <div class="highlight hl-green"><strong>The principle:</strong> OTP security isn't about cleverness — it's about discipline. Hash everything. Rate-limit everywhere. Keep TTLs short. Delete on success. The gap between a secure OTP system and a vulnerable one is usually 50 lines of careful code.</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>
