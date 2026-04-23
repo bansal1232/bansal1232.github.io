@@ -9,6 +9,10 @@
     <meta property="og:description" content="Curated deep dives on system design, LLD, Kafka, and backend engineering.">
     <title>Design &amp; Development — Shubham Bansal</title>
     <link rel="icon" href="favicon.ico">
+    <script>
+      // Force dark so shared palette/toast/progress styles match this page's aesthetic
+      document.documentElement.classList.add('dark-mode');
+    </script>
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/style.css">
     <style>
@@ -24,9 +28,18 @@
         margin: 0 auto;
         padding: 48px 24px 64px;
       }
-      .dd-back {
-        display: inline-block;
+      .dd-topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
         margin-bottom: 18px;
+        flex-wrap: wrap;
+      }
+      .dd-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
         color: #4dfeee;
         text-decoration: none;
         font-weight: 600;
@@ -35,6 +48,39 @@
       }
       .dd-back:hover {
         transform: translateX(-3px);
+      }
+      .dd-topbar-right {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .dd-kbd-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: rgba(77, 254, 238, 0.08);
+        border: 1px solid rgba(77, 254, 238, 0.3);
+        color: #4dfeee;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+      }
+      .dd-kbd-btn:hover {
+        background: rgba(77, 254, 238, 0.16);
+        border-color: #4dfeee;
+      }
+      .dd-kbd-btn kbd {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 10px;
+        padding: 1px 5px;
+        border-radius: 4px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: #aab3c0;
       }
       .dd-title {
         font-size: 36px;
@@ -45,9 +91,115 @@
       .dd-sub {
         color: #7b8599;
         font-size: 16px;
-        margin: 0 0 32px;
+        margin: 0 0 24px;
         max-width: 720px;
         line-height: 1.5;
+      }
+      .dd-stats {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 28px;
+        padding: 16px 22px;
+        background: rgba(77, 254, 238, 0.04);
+        border: 1px solid #232b38;
+        border-radius: 12px;
+        flex-wrap: wrap;
+      }
+      .dd-stat {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .dd-stat__value {
+        font-size: 20px;
+        font-weight: 800;
+        color: #4dfeee;
+      }
+      .dd-stat__label {
+        font-size: 11px;
+        color: #7b8599;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+      }
+      .dd-toolbar {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 22px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .dd-search-wrap {
+        position: relative;
+        flex: 1;
+        min-width: 220px;
+      }
+      .dd-search {
+        width: 100%;
+        padding: 10px 14px 10px 38px;
+        background: #141a22;
+        border: 1px solid #232b38;
+        color: #f0f2f7;
+        border-radius: 10px;
+        font-size: 14px;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        box-sizing: border-box;
+      }
+      .dd-search:focus {
+        border-color: #4dfeee;
+        box-shadow: 0 0 0 3px rgba(77, 254, 238, 0.12);
+      }
+      .dd-search::placeholder { color: #545d6e; }
+      .dd-search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #7b8599;
+        font-size: 15px;
+        pointer-events: none;
+      }
+      .dd-search-kbd {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid #232b38;
+        color: #7b8599;
+        pointer-events: none;
+      }
+      .dd-chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .dd-chip {
+        padding: 6px 12px;
+        border-radius: 16px;
+        border: 1px solid #232b38;
+        background: transparent;
+        color: #aab3c0;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: inherit;
+        transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+      }
+      .dd-chip:hover {
+        border-color: #4dfeee;
+        color: #4dfeee;
+        transform: translateY(-1px);
+      }
+      .dd-chip.is-active {
+        background: #4dfeee;
+        border-color: #4dfeee;
+        color: #0b0f14;
       }
       .dd-grid {
         display: grid;
@@ -62,9 +214,18 @@
         background-color: #141a22;
         color: #d4dae5;
         text-decoration: none;
-        transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+        transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, opacity 0.3s ease;
         position: relative;
         overflow: hidden;
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      .dd-card.is-visible {
+        opacity: 1;
+        transform: none;
+      }
+      .dd-card.is-hidden {
+        display: none !important;
       }
       .dd-card::before {
         content: "";
@@ -83,6 +244,23 @@
       }
       .dd-card:hover::before {
         transform: scaleY(1);
+      }
+      .dd-card.is-visited {
+        border-color: rgba(77, 254, 238, 0.22);
+      }
+      .dd-card.is-visited::after {
+        content: "✓ visited";
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        font-size: 10px;
+        font-weight: 700;
+        color: #4dfeee;
+        letter-spacing: 0.5px;
+        background: rgba(77, 254, 238, 0.12);
+        border: 1px solid rgba(77, 254, 238, 0.3);
+        padding: 2px 8px;
+        border-radius: 10px;
       }
       .dd-tag {
         display: inline-block;
@@ -106,10 +284,46 @@
         line-height: 1.55;
         margin: 0 0 14px;
       }
+      .dd-card-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
       .dd-card-cta {
         font-size: 13px;
         font-weight: 600;
         color: #4dfeee;
+      }
+      .dd-copy-btn {
+        opacity: 0;
+        background: transparent;
+        border: 1px solid #232b38;
+        color: #7b8599;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: opacity 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+      }
+      .dd-card:hover .dd-copy-btn {
+        opacity: 1;
+      }
+      .dd-copy-btn:hover {
+        color: #4dfeee;
+        border-color: #4dfeee;
+      }
+      .dd-empty {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 60px 20px;
+        color: #7b8599;
+        font-size: 15px;
+      }
+      .dd-empty b {
+        color: #f0f2f7;
       }
       .dd-footer {
         margin-top: 48px;
@@ -120,81 +334,199 @@
       @media (max-width: 600px) {
         .dd-title { font-size: 28px; }
         .dd-wrap { padding: 32px 18px 48px; }
+        .dd-stats { gap: 18px; padding: 14px 18px; }
+        .dd-search-kbd { display: none; }
+      }
+
+      /* Dark overrides for the shared command palette on this page */
+      .cmd-palette__panel {
+        background: #141a22;
+        border-color: #232b38;
+      }
+      .cmd-palette__input { color: #f0f2f7; }
+      .cmd-palette__item { color: #d4dae5; }
+      .cmd-palette__item.is-active,
+      .cmd-palette__item:hover {
+        background: rgba(77, 254, 238, 0.12);
+        color: #4dfeee;
+      }
+      .cmd-palette__footer {
+        background: #0f141c;
+        border-top-color: #232b38;
+      }
+      .scroll-progress {
+        background: linear-gradient(90deg, #4dfeee 0%, #6ee0d5 100%);
       }
     </style>
   </head>
   <body>
+
+    <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+
     <div class="dd-wrap">
-      <a class="dd-back" href="index.html">← Back to home</a>
+      <div class="dd-topbar">
+        <a class="dd-back" href="index.html">← Back to home</a>
+        <div class="dd-topbar-right">
+          <button class="dd-kbd-btn" id="cmdPaletteTrigger" title="Command palette">
+            <span>⌘</span><kbd>K</kbd>
+          </button>
+        </div>
+      </div>
+
       <h1 class="dd-title">Design &amp; Development</h1>
       <p class="dd-sub">A curated set of deep dives on system design, low-level design, and backend engineering — written for interview prep, case studies, and battle-tested production patterns.</p>
 
-      <div class="dd-grid">
-        <a class="dd-card" href="notes/java25-interview.html" target="_blank">
+      <div class="dd-stats">
+        <div class="dd-stat">
+          <span class="dd-stat__value" id="statTotal">9</span>
+          <span class="dd-stat__label">Deep Dives</span>
+        </div>
+        <div class="dd-stat">
+          <span class="dd-stat__value" id="statTopics">6</span>
+          <span class="dd-stat__label">Topics</span>
+        </div>
+        <div class="dd-stat">
+          <span class="dd-stat__value" id="statVisited">0</span>
+          <span class="dd-stat__label">Visited by You</span>
+        </div>
+        <div class="dd-stat">
+          <span class="dd-stat__value" id="statShown">9</span>
+          <span class="dd-stat__label">Showing</span>
+        </div>
+      </div>
+
+      <div class="dd-toolbar">
+        <div class="dd-search-wrap">
+          <span class="dd-search-icon">🔍</span>
+          <input type="text" id="ddSearch" class="dd-search" placeholder="Search articles — title, topic, description…" autocomplete="off" spellcheck="false" />
+          <kbd class="dd-search-kbd">/</kbd>
+        </div>
+        <div class="dd-chips" id="ddChips" role="tablist">
+          <button class="dd-chip is-active" data-tag="all">All</button>
+          <button class="dd-chip" data-tag="java">Java</button>
+          <button class="dd-chip" data-tag="kafka">Kafka</button>
+          <button class="dd-chip" data-tag="lld">LLD</button>
+          <button class="dd-chip" data-tag="docker">Docker</button>
+          <button class="dd-chip" data-tag="networking">Networking</button>
+          <button class="dd-chip" data-tag="backend">Backend</button>
+        </div>
+      </div>
+
+      <div class="dd-grid" id="ddGrid">
+        <a class="dd-card" href="design-dev/java25-interview.html" target="_blank" data-tags="java interview">
           <span class="dd-tag">Java</span>
           <h3 class="dd-card-title">Java 25 Interview Cheat Sheet</h3>
           <p class="dd-card-desc">Compact source files, flexible constructor bodies, module import declarations, primitive pattern matching, scoped values, and more — everything new in Java 25 for interviews.</p>
-          <span class="dd-card-cta">Read the cheat sheet →</span>
+          <div class="dd-card-footer">
+            <span class="dd-card-cta">Read the cheat sheet →</span>
+            <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+          </div>
         </a>
 
-        <a class="dd-card" href="notes/kafka-payment-idempotency.html" target="_blank">
+        <a class="dd-card" href="design-dev/kafka-payment-idempotency.html" target="_blank" data-tags="kafka payments backend">
           <span class="dd-tag">Kafka · Payments</span>
           <h3 class="dd-card-title">Kafka &amp; Payment Idempotency</h3>
           <p class="dd-card-desc">Deep dive on exactly-once semantics, idempotent producers, transactional outbox, and safely handling payment workflows under retries and partial failures.</p>
-          <span class="dd-card-cta">Read the deep dive →</span>
+          <div class="dd-card-footer">
+            <span class="dd-card-cta">Read the deep dive →</span>
+            <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+          </div>
         </a>
 
-        <a class="dd-card" href="notes/lld-interview-roadmap.html" target="_blank">
+        <a class="dd-card" href="design-dev/LLD/lld-interview-roadmap.html" target="_blank" data-tags="lld system-design interview">
           <span class="dd-tag">System Design · LLD</span>
           <h3 class="dd-card-title">LLD Interview Roadmap</h3>
           <p class="dd-card-desc">Structured path to master low-level design interviews — SOLID, design patterns, concurrency building blocks, and the 20 problems you actually see in rounds.</p>
-          <span class="dd-card-cta">View the roadmap →</span>
+          <div class="dd-card-footer">
+            <span class="dd-card-cta">View the roadmap →</span>
+            <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+          </div>
         </a>
 
-        <a class="dd-card" href="notes/vending-machine-lld.html" target="_blank">
+        <a class="dd-card" href="design-dev/LLD/vending-machine-lld.html" target="_blank" data-tags="lld case-study">
           <span class="dd-tag">LLD · Case Study</span>
           <h3 class="dd-card-title">Vending Machine — LLD Design</h3>
           <p class="dd-card-desc">End-to-end object model, state machine, and class design for the classic LLD question — from requirements to code, with trade-off discussions at each step.</p>
-          <span class="dd-card-cta">See the case study →</span>
+          <div class="dd-card-footer">
+            <span class="dd-card-cta">See the case study →</span>
+            <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+          </div>
         </a>
 
-        <a class="dd-card" href="notes/makemytrip-lld.html" target="_blank">
+        <a class="dd-card" href="design-dev/LLD/makemytrip-lld.html" target="_blank" data-tags="lld case-study interview">
           <span class="dd-tag">LLD · Case Study</span>
           <h3 class="dd-card-title">MakeMyTrip — LLD Interview Design</h3>
           <p class="dd-card-desc">Full interview-grade design: requirements, entities, 10 design patterns mapped to real variability, booking state machine, concurrency, and 15 follow-up cross-questions with model answers.</p>
-          <span class="dd-card-cta">Read the deep dive →</span>
+          <div class="dd-card-footer">
+            <span class="dd-card-cta">Read the deep dive →</span>
+            <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+          </div>
         </a>
 
-        <a class="dd-card" href="LLD/hotel-management-lld.html" target="_blank">
+        <a class="dd-card" href="design-dev/LLD/hotel-management-lld.html" target="_blank" data-tags="lld case-study mysql">
           <span class="dd-tag">LLD · Case Study</span>
           <h3 class="dd-card-title">Hotel Management — LLD Design</h3>
           <p class="dd-card-desc">End-to-end hotel system design: actors &amp; use cases, class/ER diagrams, full MySQL DDL with composite indexes, booking concurrency with pessimistic locks, sequence flows, and interview Q&amp;A.</p>
-          <span class="dd-card-cta">Read the deep dive →</span>
+          <div class="dd-card-footer">
+            <span class="dd-card-cta">Read the deep dive →</span>
+            <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+          </div>
         </a>
 
-        <a class="dd-card" href="notes/backend-fundamentals.html" target="_blank">
+        <a class="dd-card" href="design-dev/backend-fundamentals.html" target="_blank" data-tags="backend networking docker">
           <span class="dd-tag">Backend · Quick Reference</span>
           <h3 class="dd-card-title">Backend Fundamentals — DNS, HTTP, Docker, Circuit Breaker</h3>
           <p class="dd-card-desc">How DNS resolves &amp; caches, the 9 HTTP methods, Dockerfile anatomy, VM vs container deployment, API Gateway vs Load Balancer, and circuit breaker interview Q&amp;A.</p>
-          <span class="dd-card-cta">Read the quick reference →</span>
+          <div class="dd-card-footer">
+            <span class="dd-card-cta">Read the quick reference →</span>
+            <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+          </div>
         </a>
 
-        <a class="dd-card" href="notes/docker-deep-dive.html" target="_blank">
+        <a class="dd-card" href="design-dev/docker-deep-dive.html" target="_blank" data-tags="docker backend interview">
           <span class="dd-tag">Docker · Interview Deep Dive</span>
           <h3 class="dd-card-title">Docker — Complete Interview Deep Dive</h3>
           <p class="dd-card-desc">Architecture (dockerd / containerd / runc), image layers &amp; union FS, every Dockerfile instruction, CMD vs ENTRYPOINT, networking, volumes, namespaces &amp; cgroups, Compose, and 12 Q&amp;As.</p>
-          <span class="dd-card-cta">Read the deep dive →</span>
+          <div class="dd-card-footer">
+            <span class="dd-card-cta">Read the deep dive →</span>
+            <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+          </div>
         </a>
 
-        <a class="dd-card" href="notes/osi-networking.html" target="_blank">
+        <a class="dd-card" href="design-dev/osi-networking.html" target="_blank" data-tags="networking interview">
           <span class="dd-tag">Networking · OSI Model</span>
           <h3 class="dd-card-title">Networking — The OSI 7-Layer Model</h3>
           <p class="dd-card-desc">Every OSI layer explained in detail — PDUs, protocols, devices — plus a mnemonic to remember the order, data encapsulation flow, OSI vs TCP/IP, and 10 interview Q&amp;As.</p>
-          <span class="dd-card-cta">Read the deep dive →</span>
+          <div class="dd-card-footer">
+            <span class="dd-card-cta">Read the deep dive →</span>
+            <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+          </div>
         </a>
       </div>
 
       <div class="dd-footer">&copy; Shubham Bansal · 2026</div>
     </div>
+
+    <button class="scroll-top" id="scrollTop" aria-label="Scroll to top" title="Scroll to top">↑</button>
+
+    <div class="cmd-palette" id="cmdPalette" role="dialog" aria-modal="true" aria-label="Command palette" hidden>
+      <div class="cmd-palette__panel">
+        <div class="cmd-palette__header">
+          <span class="cmd-palette__icon">⌘</span>
+          <input type="text" id="cmdPaletteInput" class="cmd-palette__input" placeholder="Jump to any article, search, or action…" autocomplete="off" spellcheck="false" />
+          <kbd class="cmd-palette__hint">Esc</kbd>
+        </div>
+        <ul class="cmd-palette__list" id="cmdPaletteList" role="listbox"></ul>
+        <div class="cmd-palette__footer">
+          <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+          <span><kbd>↵</kbd> select</span>
+          <span><kbd>Esc</kbd> close</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="js/dd.js"></script>
   </body>
 </html>

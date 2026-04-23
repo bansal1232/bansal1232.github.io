@@ -1,409 +1,483 @@
 <!DOCTYPE html>
-<html class="no-js" lang="">
+<html class="no-js" lang="en">
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="description" content="Shubham Bansal — Senior Software Engineer with 7+ years building high-throughput distributed systems across fintech, healthtech & e-commerce. Node.js, Java, AWS.">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- Facebook Open Graph meta -->
     <meta property="og:title" content="Shubham Bansal — Senior Software Engineer">
     <meta property="og:description" content="7+ years building high-throughput distributed systems. Node.js, Java microservices, event-driven architectures, AWS cloud-native backends.">
     <meta name="msapplication-TileColor" content="#ffffff">
-    <title>Shubham Bansal</title>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-    <script type="text/javascript">
-    $(document).ready(function(){
-    $('a').attr('target', '_blank');
-    });
+    <title>Shubham Bansal — Senior Software Engineer</title>
+    <script>
+      // Force dark mode as the default theme
+      document.documentElement.classList.add('dark-mode');
     </script>
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/style.css">
   </head>
   <body>
-    <a class="top-cta" href="design-development.html" target="_blank">
-      <span class="top-cta__icon">🛠️</span>
-      <span class="top-cta__text">Design &amp; Development</span>
-    </a>
-    <section class="main-container">
-      <div class="blocks">
-        <div class="block block--left" >
-          <div class="block__inner">
-            <div class="block-content">
-            <div class="upper">
-            <div align="center"><img class="mine_img" src="img/photo-new.jpg" ></div>
-            <b><p style="font-size: 20px; text-align: center;">Building high-throughput distributed systems that scale — one latency-saving optimisation at a time.</p></b>
-            </div>
-            <div class="lower">
-              <h1 class="block__title main-name">
-              <span class="name relative">
-                SHUBHAM BANSAL
-                <span class="half-border"></span>
-              </span>
-              </h1>
-              <h1 class="block__title">
-              <span>Senior Software Engineer · Distributed Systems · Backend</span>
-              </h1>
-              <div class="block__social">
-                <a href="mailto:shubhambansal1232@gmail.com" class="btn_email">shubhambansal1232@gmail.com</a>
-                <div class="connect-icon"><br />
-                  <a href="https://www.linkedin.com/in/bansal1232/" class = "linkedin" target="_blank">
-                    <img class="haha" src = "img/linked.png" width="32"/></a>
-                  <a href="http://github.com/bansal1232" class = "github" target="_blank" />
-                    <img class="haha" src = "img/github.png" width="32" />
-                  </a>
 
-                    <a href="https://www.quora.com/profile/Shubham-Bansal-209" class = "quora" target="_blank">
-                      <img class = "haha" src = "img/quora.svg" width="32" />
-                    </a>
-               </div>
-             </div>
+    <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+
+    <nav class="site-nav" id="siteNav">
+      <div class="site-nav__inner">
+        <a class="site-nav__brand" href="#top" id="brandLogo" title="Click me">SB.</a>
+        <div class="site-nav__links">
+          <a href="#about" class="nav-link">About</a>
+          <a href="#experience" class="nav-link">Work</a>
+          <a href="#notes" class="nav-link">Notes</a>
+          <a href="#projects" class="nav-link">Projects</a>
+          <a href="#skills" class="nav-link">Skills</a>
+          <a href="#achievements" class="nav-link">Awards</a>
+          <a href="#contact" class="nav-link">Contact</a>
+        </div>
+        <div class="site-nav__actions">
+          <button class="cmd-palette-trigger" id="cmdPaletteTrigger" aria-label="Open command palette" title="Command palette (Cmd+K)">
+            <span>⌘</span><kbd>K</kbd>
+          </button>
+          <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme" title="Toggle theme">
+            <span class="theme-toggle__icon">🌙</span>
+          </button>
+          <a class="site-nav__cta internal-link" href="design-development.html">
+            <span>🛠️</span><span class="site-nav__cta-text">Design &amp; Development</span>
+          </a>
+        </div>
+        <button class="nav-burger" id="navBurger" aria-label="Open menu">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </nav>
+
+    <header class="resume-header" id="top">
+      <div class="resume-header__inner">
+        <img class="profile-photo" src="img/photo-new.jpg" alt="Shubham Bansal" />
+        <div class="resume-header__info">
+          <p class="greeting" id="greeting"></p>
+          <h1 class="resume-name">
+            <span class="name relative">
+              SHUBHAM BANSAL
+              <span class="half-border"></span>
+            </span>
+          </h1>
+          <p class="resume-title">Senior Software Engineer · Distributed Systems · Backend</p>
+          <p class="resume-tagline">
+            <span id="typewriter"></span><span class="tw-cursor" aria-hidden="true">▍</span>
+          </p>
+          <div class="status-pill" title="Open to interesting conversations">
+            <span class="status-dot"></span> Open to talk
+          </div>
+          <div class="contact-row">
+            <a class="contact-item contact-item--email" href="mailto:shubhambansal1232@gmail.com" id="emailLink" data-email="shubhambansal1232@gmail.com">
+              <span class="email-label">✉ shubhambansal1232@gmail.com</span>
+              <span class="email-copy" aria-hidden="true">click to copy</span>
+            </a>
+            <a class="contact-item" href="https://www.linkedin.com/in/bansal1232/" target="_blank" rel="noopener">
+              <img src="img/linked.png" width="20" alt="" /> LinkedIn
+            </a>
+            <a class="contact-item" href="http://github.com/bansal1232" target="_blank" rel="noopener">
+              <img src="img/github.png" width="20" alt="" /> GitHub
+            </a>
+            <a class="contact-item" href="https://www.quora.com/profile/Shubham-Bansal-209" target="_blank" rel="noopener">
+              <img src="img/quora.svg" width="20" alt="" /> Quora
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="stats-strip reveal" aria-label="Key numbers">
+      <div class="stat">
+        <div class="stat__value"><span class="counter" data-target="7" data-suffix="+">0</span></div>
+        <div class="stat__label">Years Experience</div>
+      </div>
+      <div class="stat">
+        <div class="stat__value"><span class="counter" data-target="80" data-suffix="+">0</span></div>
+        <div class="stat__label">Technical Articles</div>
+      </div>
+      <div class="stat">
+        <div class="stat__value"><span class="counter" data-target="100" data-suffix="K/day">0</span></div>
+        <div class="stat__label">Invoices Generated</div>
+      </div>
+      <div class="stat">
+        <div class="stat__value"><span class="counter" data-target="40" data-suffix="%">0</span></div>
+        <div class="stat__label">p95 Latency Cut</div>
+      </div>
+    </section>
+
+    <main class="resume-main">
+
+      <section class="content content--about reveal" id="about">
+        <h2 class="content__tag">
+          <span class="title relative">
+            ABOUT ME
+            <span class="half-border"></span>
+          </span>
+        </h2>
+        <div class="content__inner">
+          <p>Senior Software Engineer with <b>7+ years</b> of experience building high-throughput distributed systems across <b>fintech, healthtech, and e-commerce</b>. I specialise in Node.js and Java microservices, event-driven architectures, API security, and cloud-native backends on AWS — with a consistent track record of improving system performance, reducing latency, and leading end-to-end platform migrations at scale.</p>
+          <p>Outside of work, I share what I learn through <b>80+ technical articles</b> on GeeksforGeeks, play badminton, and travel whenever I can.</p>
+        </div>
+      </section>
+
+      <section class="content content--exp reveal" id="experience">
+        <h2 class="content__tag">
+          <span class="title relative">
+            👨‍💻 WORK EXPERIENCE
+            <span class="half-border"></span>
+          </span>
+        </h2>
+
+        <div class="tech-filter" id="techFilter" role="tablist" aria-label="Filter by technology">
+          <button class="tech-pill is-active" data-tech="all">All</button>
+          <button class="tech-pill" data-tech="node">Node.js</button>
+          <button class="tech-pill" data-tech="java">Java</button>
+          <button class="tech-pill" data-tech="redis">Redis</button>
+          <button class="tech-pill" data-tech="mongodb">MongoDB</button>
+          <button class="tech-pill" data-tech="elasticsearch">Elasticsearch</button>
+          <button class="tech-pill" data-tech="aws">AWS</button>
+          <button class="tech-pill" data-tech="spring">Spring</button>
+        </div>
+
+        <div class="timeline">
+
+          <div class="experience" data-tech="node mongodb postgresql redis elasticsearch aws">
+            <div class="meta-title"><a href="https://www.onsurity.com/" target="_blank" rel="noopener">Onsurity</a></div>
+            <div class="experience__role">Senior Software Engineer</div>
+            <div class="experience__time">Jan 2023 – Present · Bengaluru, India</div>
+            <ul>
+              <li>Architected and shipped end-to-end B2B insurance membership APIs for the <b>CRED integration</b>, serving <b>~10K API calls/day</b> at 99.9% uptime — secured against replay attacks via timestamp validation + HMAC-SHA256 signing and Redis locking for idempotency.</li>
+              <li>Slashed employer dashboard API <b>p95 latency by ~40%</b> by introducing an Elasticsearch caching layer absorbing <b>~5000 queries/min</b> at peak, eliminating high-frequency MongoDB round-trips.</li>
+              <li>Led migration of the onboarding module from a monolith to microservices, cutting end-to-end onboarding time from <b>1 hour to 15 minutes</b> and enabling each service to scale independently.</li>
+              <li>Built a multi-tenant Node.js (Fastify) backend with MongoDB for transactional data, PostgreSQL (Sequelize) for relational queries, and OpenSearch/Elasticsearch for full-text search and analytics.</li>
+              <li>Decoupled post-onboarding workflows using <b>Agenda</b> (MongoDB-backed) for scheduled jobs and <b>Bull</b> (Redis-backed) for durable queues — reliable delivery of email campaigns, beneficiary triggers, and billing notifications.</li>
+              <li>Rewrote slow admin MongoDB aggregations with <b>$lookup</b>, batching, projection, and compound indexing — reducing execution time on large collections by <b>~60%</b>.</li>
+              <li>Designed a collision-free distributed invoice generation service producing unique <b>16-digit invoice numbers</b> via Redis atomic counters — handling <b>~100K invoices/day</b> with zero duplicates.</li>
+            </ul>
+          </div>
+
+          <div class="experience" data-tech="java spring redis">
+            <div class="meta-title"><a href="https://pharmeasy.in/" target="_blank" rel="noopener">PharmEasy</a></div>
+            <div class="experience__role">Senior Software Engineer</div>
+            <div class="experience__time">Oct 2021 – Jan 2023 · Mumbai, India</div>
+            <ul>
+              <li>Designed and launched the <b>PLD (Product Level Discount)</b> module delivering targeted, real-time promotions to <b>millions of users</b> — ingested bulk discount data via CSV, processing <b>~100K records/batch</b> in configurable chunks using <b>Spring Batch</b> without memory pressure.</li>
+              <li>Eliminated per-request round-trip overhead on high-traffic read APIs using <b>Redis pipelining</b> — cut average response time from <b>10ms to 3ms (~70% improvement)</b>; exposed discounts via paginated REST APIs with filtering support.</li>
+            </ul>
+          </div>
+
+          <div class="experience" data-tech="java couchbase">
+            <div class="meta-title"><a href="https://www.samsung.com/" target="_blank" rel="noopener">Samsung R&amp;D Institute</a></div>
+            <div class="experience__role">Senior Software Engineer</div>
+            <div class="experience__time">Aug 2019 – Oct 2021 · Bengaluru, India</div>
+            <ul>
+              <li>Engineered the <b>LSS (Locked Screen Stories)</b> platform serving targeted partner ads to <b>millions of Samsung devices</b> — built an automated Partner DB → Samsung DB sync pipeline with eligibility filtering and monitoring scripts that cut incident detection time by <b>~50%</b>.</li>
+              <li>Contributed core features to <b>Samsung Pay</b> (NFC/MST contactless payments): TTL-based Couchbase caching cut DB calls by <b>20%</b>; built a centralised notification handler with per-hour/per-day <b>rate limiting</b> to protect CMN infrastructure from traffic spikes.</li>
+              <li>Implemented secure certificate exchange using the <b>Cryptographic Message Syntax (CMS)</b> standard for the Auth Service; recognised company-wide for the Samsung Pay Mini Cloud Auth solution.</li>
+              <li>Developed Auth Service REST APIs covering customer onboarding, Send/Collect Money flows, and full wallet lifecycle management.</li>
+            </ul>
+          </div>
+
+          <div class="experience" data-tech="java">
+            <div class="meta-title"><a href="https://www.paytmmoney.com/" target="_blank" rel="noopener">Paytm Money</a></div>
+            <div class="experience__role">Software Engineer</div>
+            <div class="experience__time">Jul 2018 – Jul 2019 · Noida, India</div>
+            <ul>
+              <li>Architected a <b>master-slave database setup</b> to distribute read-heavy API traffic across replicas — improved throughput and reduced primary DB load for India's largest retail stock-trading platform.</li>
+              <li>Prevented race conditions on critical write paths by implementing <b>HazelCast distributed locks</b>, ensuring data consistency under high concurrency.</li>
+            </ul>
+          </div>
+
+        </div>
+      </section>
+
+      <section class="content content--notes highlight-section reveal" id="notes">
+        <h2 class="content__tag">
+          <span class="title relative">
+            🛠️ DESIGN &amp; DEVELOPMENT
+            <span class="half-border"></span>
+          </span>
+        </h2>
+        <div class="content__inner">
+          <p>A curated set of deep dives on system design, LLD, and backend engineering — interview prep, case studies, and production patterns.</p>
+          <a class="notes-link-btn internal-link" href="design-development.html">Explore all projects →</a>
+        </div>
+      </section>
+
+      <section class="content content--projects reveal" id="projects">
+        <h2 class="content__tag">
+          <span class="title relative">
+            PROJECTS
+            <span class="half-border"></span>
+          </span>
+        </h2>
+        <div class="content__inner">
+          <div class="project">
+            <div class="meta-title"><a href="https://github.com/bansal1232/Codechef-Crawler" target="_blank" rel="noopener">Web Crawler</a></div>
+            <ul>
+              <li>Built a web crawler which fetches solutions of a user from Codechef.com.</li>
+              <li>Further made crawler multithreaded to fetch data fast.</li>
+            </ul>
+          </div>
+          <div class="project">
+            <div class="meta-title"><a href="https://github.com/bansal1232/Chat-Bot" target="_blank" rel="noopener">Chat Bot</a></div>
+            <ul>
+              <li>Automated Chat Bot designed in Python that uses the NLP approach to chat with the clients. Users can directly ask a question and the bot will answer after considering all entities in the text.</li>
+              <li>Used Facebook Messenger platform as interface, and Google Wit.ai API for NLP.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="content content--exp reveal">
+        <h2 class="content__tag">
+          <span class="title relative">
+            Internship
+            <span class="half-border"></span>
+          </span>
+        </h2>
+        <div class="content__inner">
+          <div class="experience">
+            <div class="meta-title"><a href="https://geeksforgeeks.org/" target="_blank" rel="noopener">GeeksforGeeks</a></div>
+            <div class="experience__time">Feb 2017 – Jun 2017</div>
+            <ul>
+              <li>Wrote technical articles on algorithms and data structures.</li>
+              <li>Explained various challenge questions with relevant code samples.</li>
+              <li><a href="https://www.geeksforgeeks.org/wp-content/uploads/Shubham-Bansal.jpg" target="_blank" rel="noopener">See Certificate</a></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="content content--skills reveal" id="skills">
+        <h2 class="content__tag">
+          <span class="title relative">
+            SKILLS
+            <span class="half-border"></span>
+          </span>
+        </h2>
+        <div class="content__inner">
+          <div class="skill-row"><b>Languages</b>
+            <span class="skills skill">Java</span>
+            <span class="skills skill">JavaScript / Node.js</span>
+            <span class="skills skill">Python</span>
+            <span class="skills skill">C++</span>
+          </div>
+          <div class="skill-row"><b>Frameworks</b>
+            <span class="skills skill">Fastify</span>
+            <span class="skills skill">Spring Boot</span>
+            <span class="skills skill">Spring Batch</span>
+            <span class="skills skill">Sequelize ORM</span>
+          </div>
+          <div class="skill-row"><b>Databases</b>
+            <span class="skills skill">MongoDB</span>
+            <span class="skills skill">MySQL</span>
+            <span class="skills skill">PostgreSQL</span>
+            <span class="skills skill">CouchbaseDB</span>
+            <span class="skills skill">OpenSearch / Elasticsearch</span>
+          </div>
+          <div class="skill-row"><b>Caching &amp; Queues</b>
+            <span class="skills skill">Redis</span>
+            <span class="skills skill">Apache Kafka</span>
+            <span class="skills skill">HazelCast</span>
+            <span class="skills skill">Bull</span>
+            <span class="skills skill">Agenda</span>
+          </div>
+          <div class="skill-row"><b>AWS</b>
+            <span class="skills skill">SQS</span>
+            <span class="skills skill">SNS</span>
+            <span class="skills skill">S3</span>
+            <span class="skills skill">ElastiCache</span>
+            <span class="skills skill">Elastic Beanstalk</span>
+            <span class="skills skill">Secrets Manager</span>
+          </div>
+          <div class="skill-row"><b>Auth &amp; Security</b>
+            <span class="skills skill">JWT</span>
+            <span class="skills skill">HMAC-SHA256</span>
+            <span class="skills skill">RBAC</span>
+            <span class="skills skill">Replay-Attack Prevention</span>
+          </div>
+          <div class="skill-row"><b>API Design</b>
+            <span class="skills skill">REST</span>
+            <span class="skills skill">OpenAPI / Swagger</span>
+            <span class="skills skill">Idempotency</span>
+            <span class="skills skill">Rate Limiting</span>
+          </div>
+          <div class="skill-row"><b>DevOps &amp; Observability</b>
+            <span class="skills skill">Docker</span>
+            <span class="skills skill">Linux</span>
+            <span class="skills skill">ELK Stack</span>
+            <span class="skills skill">Elastic APM</span>
+            <span class="skills skill">GitHub Actions</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="content content--exp reveal" id="achievements">
+        <h2 class="content__tag">
+          <span class="title relative">
+            🏆 ACHIEVEMENTS
+            <span class="half-border"></span>
+          </span>
+        </h2>
+        <div class="content__inner">
+          <ul>
+            <li><b>Performance Cyclone — Q1</b> at Onsurity — awarded to the top 5% of engineers each quarter for exceptional delivery impact.</li>
+            <li><b>Value Creator Award</b> at Samsung R&amp;D — recognised for sustained contribution to product quality and team velocity.</li>
+            <li>Recognised across <b>Samsung Bangalore</b> for leading the Samsung Pay Mini Cloud Auth solution, a critical security component shipped to production.</li>
+            <li>Published <b>80+ technical articles</b> on <a href="https://auth.geeksforgeeks.org/user/Shubham%20Bansal%2013/articles" target="_blank" rel="noopener">GeeksforGeeks</a> covering data structures, algorithms, and backend systems.</li>
+            <li>Secured <b>Rank 76 in TCS CodeVita 2018</b> (Round 2) — top 0.1% among 300,000+ participants globally.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="content reveal">
+        <h2 class="content__tag">
+          <span class="title relative">
+            PUBLICATIONS
+            <span class="half-border"></span>
+          </span>
+        </h2>
+        <div class="content__inner">
+          <div class="meta-title">GeeksforGeeks</div>
+          <ol>
+            <li><a href="https://www.geeksforgeeks.org/overcome-time-limit-exceedtle/" target="_blank" rel="noopener">How to overcome Time Limit Exceed (TLE)</a></li>
+            <li><a href="https://www.geeksforgeeks.org/time-wrong-answer-wa/" target="_blank" rel="noopener">What to do at the time of Wrong Answer (WA)?</a></li>
+            <li><a href="http://www.geeksforgeeks.org/amazing-hacks-python/" target="_blank" rel="noopener">Amazing hacks of Python</a></li>
+            <li><a href="https://www.geeksforgeeks.org/writing-cc-code-efficiently-in-competitive-programming/" target="_blank" rel="noopener">Writing C/C++ code efficiently in Competitive programming</a></li>
+            <li><a href="https://www.geeksforgeeks.org/advanced-c-boost-library/" target="_blank" rel="noopener">Advanced C++ with boost library</a></li>
+            <li><a href="https://www.geeksforgeeks.org/sorting-big-integers/" target="_blank" rel="noopener">Sorting Big Integers</a></li>
+          </ol>
+          <p><i>For more technical articles, <a href="https://auth.geeksforgeeks.org/user/Shubham%20Bansal%2013/articles" target="_blank" rel="noopener">click here</a>.</i></p>
+        </div>
+      </section>
+
+      <section class="content content--interests reveal" id="contact">
+        <h2 class="content__tag">
+          <span class="title relative">
+            CODING PROFILES
+            <span class="half-border"></span>
+          </span>
+        </h2>
+        <div class="content__inner interests">
+          <div class="chip">
+            <img src="img/LeetCode_logo.png" alt="LeetCode" />
+            <a href="https://leetcode.com/bansal1232/" target="_blank" rel="noopener">bansal1232</a>
+          </div>
+          <div class="chip">
+            <img src="img/codechef_logo.png" alt="CodeChef" />
+            <a href="https://www.codechef.com/users/bansal1232" target="_blank" rel="noopener">bansal1232</a>
+          </div>
+          <div class="chip">
+            <img src="img/hackerearth_logo.png" alt="HackerEarth" />
+            <a href="https://www.hackerearth.com/@bansal1232" target="_blank" rel="noopener">bansal1232</a>
+          </div>
+          <div class="chip">
+            <img src="img/hackerrank_logo.png" alt="HackerRank" />
+            <a href="https://www.hackerrank.com/shu1232" target="_blank" rel="noopener">shu1232</a>
+          </div>
+          <div class="chip">
+            <img src="img/codeforces_logo.png" alt="Codeforces" />
+            <a href="http://codeforces.com/profile/bansal1232" target="_blank" rel="noopener">bansal1232</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="content content--interests reveal" id="life">
+        <h2 class="content__tag">
+          <span class="title relative">
+            🌍 LIFE BEYOND CODE
+            <span class="half-border"></span>
+          </span>
+        </h2>
+        <div class="content__inner">
+          <div class="interests interest-chips">
+            <div class="interest">
+              <img src="img/badminton.svg" height="60" alt="Badminton" />
+              <span class="interest__level">Badminton</span>
             </div>
-              </div>
+            <div class="interest">
+              <img src="img/traveller.svg" height="60" alt="Travel" />
+              <span class="interest__level">Avid Traveller</span>
+            </div>
+            <div class="interest">
+              <img src="img/writing.svg" height="60" alt="Tech Writing" />
+              <span class="interest__level">Tech Writing</span>
             </div>
           </div>
-          <div class="block block--right">
-            <div class="wrapper" id="wrapper" >
-              <div class="block__inner">
-                <div class="contents">
-                  <div class="content content--about">
-                    <h2 class="content__tag">
-                    <span class="title relative">
-                      ABOUT ME.
-                      <span class="half-border"></span>
-                    </span>
-                    </h2>
-                    <div class="content__inner">
-                      <p>Senior Software Engineer with <b>7+ years</b> of experience building high-throughput distributed systems across <b>fintech, healthtech, and e-commerce</b>. I specialise in Node.js and Java microservices, event-driven architectures, API security, and cloud-native backends on AWS — with a consistent track record of improving system performance, reducing latency, and leading end-to-end platform migrations at scale.</p>
-                      <p>Outside of work, I share what I learn through <b>80+ technical articles</b> on GeeksforGeeks, play badminton, and travel whenever I can.</p>
-                      </div>
-                    </div>
 
-                    <div class="content content--exp">
-                      <h2 class="content__tag">
-                         <span class="title relative">
-                          👨‍💻 WORK Experience
-                         <span class="half-border"></span>
-                         </span>
-                      </h2>
-                      <div class="content__inner">
+          <!-- Replace these picsum.photos placeholders with your own photos dropped into img/. -->
+          <div class="gallery">
+            <figure class="gallery__item">
+              <img src="https://picsum.photos/seed/shubham-hills/800/600" alt="Weekend in the hills" loading="lazy" />
+              <figcaption>Weekend in the hills</figcaption>
+            </figure>
+            <figure class="gallery__item">
+              <img src="https://picsum.photos/seed/shubham-court/800/600" alt="On the badminton court" loading="lazy" />
+              <figcaption>On the court · Sunday doubles</figcaption>
+            </figure>
+            <figure class="gallery__item">
+              <img src="https://picsum.photos/seed/shubham-coast/800/600" alt="Coastal escape" loading="lazy" />
+              <figcaption>Coastal escape</figcaption>
+            </figure>
+            <figure class="gallery__item">
+              <img src="https://picsum.photos/seed/shubham-city/800/600" alt="City lights" loading="lazy" />
+              <figcaption>City lights, late night</figcaption>
+            </figure>
+            <figure class="gallery__item">
+              <img src="https://picsum.photos/seed/shubham-trail/800/600" alt="Hiking trail" loading="lazy" />
+              <figcaption>Thin air, high places</figcaption>
+            </figure>
+            <figure class="gallery__item">
+              <img src="https://picsum.photos/seed/shubham-cafe/800/600" alt="Slow Sunday" loading="lazy" />
+              <figcaption>Slow Sunday · coffee &amp; code</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
 
-                        <div class="experience">
-                          <div class="meta-title"><a href="https://www.onsurity.com/" target = "_blank">Onsurity</a></div>
-                          <div class="experience__role">Senior Software Engineer</div>
-                          <div class="experience__time">Jan 2023 - Present</div>
-                          <div class="experience__location">Bengaluru, India</div>
-                          <ul>
-                             <li>Architected and shipped end-to-end B2B insurance membership APIs for the <b>CRED integration</b>, serving <b>~10K API calls/day</b> at 99.9% uptime — secured against replay attacks via timestamp validation + HMAC-SHA256 signing and Redis locking for idempotency.</li>
-                             <li>Slashed employer dashboard API <b>p95 latency by ~40%</b> by introducing an Elasticsearch caching layer absorbing <b>~5000 queries/min</b> at peak, eliminating high-frequency MongoDB round-trips.</li>
-                             <li>Led migration of the onboarding module from a monolith to microservices, cutting end-to-end onboarding time from <b>1 hour to 15 minutes</b> and enabling each service to scale independently.</li>
-                             <li>Built a multi-tenant Node.js (Fastify) backend with MongoDB for transactional data, PostgreSQL (Sequelize) for relational queries, and OpenSearch/Elasticsearch for full-text search and analytics.</li>
-                             <li>Decoupled post-onboarding workflows using <b>Agenda</b> (MongoDB-backed) for scheduled jobs and <b>Bull</b> (Redis-backed) for durable queues — reliable delivery of email campaigns, beneficiary triggers, and billing notifications.</li>
-                             <li>Rewrote slow admin MongoDB aggregations with <b>$lookup</b>, batching, projection, and compound indexing — reducing execution time on large collections by <b>~60%</b>.</li>
-                             <li>Designed a collision-free distributed invoice generation service producing unique <b>16-digit invoice numbers</b> via Redis atomic counters — handling <b>~100K invoices/day</b> with zero duplicates.</li>
-                          </ul>
-                       </div>
+    </main>
 
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer" hidden>
+      <button class="lightbox__close" id="lightboxClose" aria-label="Close">×</button>
+      <button class="lightbox__nav lightbox__nav--prev" id="lightboxPrev" aria-label="Previous photo">‹</button>
+      <img class="lightbox__img" id="lightboxImg" alt="" />
+      <div class="lightbox__caption" id="lightboxCap"></div>
+      <button class="lightbox__nav lightbox__nav--next" id="lightboxNext" aria-label="Next photo">›</button>
+    </div>
 
-                         <div class="experience">
-                            <div class="meta-title"><a href="https://pharmeasy.in/" target = "_blank">PharmEasy</a></div>
-                            <div class="experience__role">Senior Software Engineer</div>
-                            <div class="experience__time">Oct 2021 - Jan 2023</div>
-                            <div class="experience__location">Mumbai, India</div>
-                            <ul>
-                               <li>Designed and launched the <b>PLD (Product Level Discount)</b> module delivering targeted, real-time promotions to <b>millions of users</b> — ingested bulk discount data via CSV, processing <b>~100K records/batch</b> in configurable chunks using <b>Spring Batch</b> without memory pressure.</li>
-                               <li>Eliminated per-request round-trip overhead on high-traffic read APIs using <b>Redis pipelining</b> — cut average response time from <b>10ms to 3ms (~70% improvement)</b>; exposed discounts via paginated REST APIs with filtering support.</li>
-                            </ul>
-                         </div>
-                         <div class="experience">
-                            <div class="meta-title"><a href="https://www.samsung.com/" target = "_blank">Samsung R&amp;D Institute</a></div>
-                            <div class="experience__role">Senior Software Engineer</div>
-                            <div class="experience__time">Aug 2019 - Oct 2021</div>
-                            <div class="experience__location">Bengaluru, India</div>
-                            <ul>
-                              <li>Engineered the <b>LSS (Locked Screen Stories)</b> platform serving targeted partner ads to <b>millions of Samsung devices</b> — built an automated Partner DB → Samsung DB sync pipeline with eligibility filtering and monitoring scripts that cut incident detection time by <b>~50%</b>.</li>
-                              <li>Contributed core features to <b>Samsung Pay</b> (NFC/MST contactless payments): TTL-based Couchbase caching cut DB calls by <b>20%</b>; built a centralised notification handler with per-hour/per-day <b>rate limiting</b> to protect CMN infrastructure from traffic spikes.</li>
-                              <li>Implemented secure certificate exchange using the <b>Cryptographic Message Syntax (CMS)</b> standard for the Auth Service; recognised company-wide for the Samsung Pay Mini Cloud Auth solution.</li>
-                              <li>Developed Auth Service REST APIs covering customer onboarding, Send/Collect Money flows, and full wallet lifecycle management.</li>
-                           </ul>
-                         </div>
-                         <div>
-                            <div class="meta-title"><a href="https://www.paytmmoney.com/" target = "_blank">Paytm Money</a></div>
-                            <div class="experience__role">Software Engineer</div>
-                            <div class="experience__time">Jul 2018 - Jul 2019</div>
-                            <div class="experience__location">Noida, India</div>
+    <div class="cmd-palette" id="cmdPalette" role="dialog" aria-modal="true" aria-label="Command palette" hidden>
+      <div class="cmd-palette__panel">
+        <div class="cmd-palette__header">
+          <span class="cmd-palette__icon">⌘</span>
+          <input type="text" id="cmdPaletteInput" class="cmd-palette__input" placeholder="Jump to… try 'skills', 'dark', 'email', 'confetti'" autocomplete="off" spellcheck="false" />
+          <kbd class="cmd-palette__hint">Esc</kbd>
+        </div>
+        <ul class="cmd-palette__list" id="cmdPaletteList" role="listbox"></ul>
+        <div class="cmd-palette__footer">
+          <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+          <span><kbd>↵</kbd> select</span>
+          <span><kbd>Esc</kbd> close</span>
+        </div>
+      </div>
+    </div>
 
-                            <ul>
-                               <li>Architected a <b>master-slave database setup</b> to distribute read-heavy API traffic across replicas — improved throughput and reduced primary DB load for India's largest retail stock-trading platform.</li>
-                               <li>Prevented race conditions on critical write paths by implementing <b>HazelCast distributed locks</b>, ensuring data consistency under high concurrency.</li>
-                            </ul>
-                         </div>
-                      </div>
-                   </div>
+    <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
 
-                    <div class="content content--exp">
-                      <h2 class="content__tag">
-                      <span class="title relative">
-                        Internship
-                        <span class="half-border"></span>
-                      </span>
-                      </h2>
-                      <div class="content__inner">
-                        <div class="experience">
-                          <div class="meta-title"><a href="https://geeksforgeeks.org/" target = "_blank">GeeksforGeeks</a></div>
-                          <div>
-                            <ul>
-                              <li>
-                                Wrote Technical articles on Algorithm and Data Structure
-                              </li>
-                              <li>
-                                Explained various challenge questions with relevant codes
-                              </li>
-                              <li>
-                                <b>Duration</b>: 8-Feb-2017 to 20-June-2017
-                              </li>
-                              <li>
-                                <a href="https://www.geeksforgeeks.org/wp-content/uploads/Shubham-Bansal.jpg">See Certificate</a>
-                              </li>
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="content content--projects">
-                      <h2 class="content__tag">
-                      <span class="title relative">
-                        PROJECTS
-                        <span class="half-border"></span>
-                      </span>
-                      </h2>
-                      <div class="content__inner">
-                        <div class="project">
-                          <div class="meta-title"><a href="https://github.com/bansal1232/Codechef-Crawler" target="_blank">Web Crawler</a></div>
-                          <ul>
-                            <li>
-                              Built a web crawler which fetches solutions of a user from Codechef.com
-                            </li>
-                            <li>
-                              Further made crawler multithreaded to fetch data fast.
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
-                      <div class="project">
-                        <div class="meta-title"><a href="https://github.com/bansal1232/Chat-Bot" >Chat Bot</a></div>
-                        <ul>
-                          <li>Automated Chat Bot designed in Python that uses the NLP approach to chat with the clients. Users can directly ask question and bot will answer after considering all entities in the text</li>
-                          <li>
-                            Used facebook messenger platform as interface, and Google Wit.ai API for NLP
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                    
-                    
-                    <div class="content content--notes">
-                      <h2 class="content__tag">
-                      <span class="title relative">
-                        🛠️ DESIGN &amp; DEVELOPMENT
-                        <span class="half-border"></span>
-                      </span>
-                      </h2>
-                      <div class="content__inner">
-                        <p>A curated set of deep dives on system design, LLD, and backend engineering — interview prep, case studies, and production patterns.</p>
-                        <a class="notes-link-btn" href="design-development.html" target="_blank">Explore all projects →</a>
-                      </div>
-                    </div>
+    <button class="scroll-top" id="scrollTop" aria-label="Scroll to top" title="Scroll to top">↑</button>
 
-                      <div class="Publications">
-                        <h2 class="content__tag">
-                        <span class="title relative">
-                          PUBLICATIONS
-                          <span class="half-border"></span>
-                        </span></h2>
-                        <div class="content__inner">
-                        <div class="meta-title">GeeksforGeeks</div>
-                        <ol>
-                          <li>
-                            <a href="https://www.geeksforgeeks.org/overcome-time-limit-exceedtle/">How to overcome Time Limit Exceed(TLE)</a></li>
-                            <li>
-                              <a href="https://www.geeksforgeeks.org/time-wrong-answer-wa/">What to do at the time of Wrong Answer (WA)?</a>
-                            </li>
-                            <li>
-                              <a href="http://www.geeksforgeeks.org/amazing-hacks-python/">Amazing hacks of Python</a>
-                            </li>
-                            <li>
-                              <a href="https://www.geeksforgeeks.org/writing-cc-code-efficiently-in-competitive-programming/">Writing C/C++ code efficiently in Competitive programming</a>
-                            </li>
-                            <li><a href="https://www.geeksforgeeks.org/advanced-c-boost-library/">Advanced C++ with boost library</a></li>
-                            <LI>
-                              <a href="https://www.geeksforgeeks.org/sorting-big-integers/">Sorting Big Integers</a>
-                            </LI>
-                          </ol>
-                          <I><B>For More Technical Articles, click <a href="https://auth.geeksforgeeks.org/user/Shubham%20Bansal%2013/articles">here</a></B></I>
-                          <br><br>
-                        </div>
-                      </div>
-                      
-                      <div class="content content--skills">
-                        <h2 class="content__tag">
-                        <span class="title relative">
-                          SKILLS.
-                          <span class="half-border"></span>
-                        </span>
-                        </h2>
-                        <div class="content__inner">
-                          <b>Languages: </b>&nbsp;
-                          <span class="skills skill">Java</span>
-                          <span class="skills skill">JavaScript / Node.js</span>
-                          <span class="skills skill">Python</span>
-                          <span class="skills skill">C++</span>
-                          <br>
-                          <b>Frameworks: </b>&nbsp;
-                          <span class="skills skill">Fastify</span>
-                          <span class="skills skill">Spring Boot</span>
-                          <span class="skills skill">Spring Batch</span>
-                          <span class="skills skill">Sequelize ORM</span>
-                          <br>
-                          <b>Databases: </b>&nbsp;
-                          <span class="skills skill">MongoDB</span>
-                          <span class="skills skill">MySQL</span>
-                          <span class="skills skill">PostgreSQL</span>
-                          <span class="skills skill">CouchbaseDB</span>
-                          <span class="skills skill">OpenSearch / Elasticsearch</span>
-                          <br>
-                          <b>Caching &amp; Queues: </b>&nbsp;
-                          <span class="skills skill">Redis</span>
-                          <span class="skills skill">ElastiCache</span>
-                          <span class="skills skill">Apache Kafka</span>
-                          <span class="skills skill">AWS SQS</span>
-                          <span class="skills skill">Bull</span>
-                          <span class="skills skill">Agenda</span>
-                          <br>
-                          <b>AWS: </b>&nbsp;
-                          <span class="skills skill">SQS</span>
-                          <span class="skills skill">S3</span>
-                          <span class="skills skill">SNS</span>
-                          <span class="skills skill">ElastiCache</span>
-                          <span class="skills skill">Elastic Beanstalk</span>
-                          <span class="skills skill">Secrets Manager</span>
-                          <br>
-                          <b>Auth &amp; Security: </b>&nbsp;
-                          <span class="skills skill">JWT</span>
-                          <span class="skills skill">HMAC-SHA256</span>
-                          <span class="skills skill">RBAC</span>
-                          <span class="skills skill">Replay-Attack Prevention</span>
-                          <span class="skills skill">HazelCast</span>
-                          <br>
-                          <b>API Design: </b>&nbsp;
-                          <span class="skills skill">REST</span>
-                          <span class="skills skill">OpenAPI / Swagger</span>
-                          <span class="skills skill">Idempotency</span>
-                          <span class="skills skill">Rate Limiting</span>
-                          <br>
-                          <b>DevOps &amp; Observability: </b>&nbsp;
-                          <span class="skills skill">Docker</span>
-                          <span class="skills skill">Linux</span>
-                          <span class="skills skill">ELK Stack</span>
-                          <span class="skills skill">Elastic APM</span>
-                          <span class="skills skill">GitHub Actions</span>
-                        </div>
-                        <!-- </div> -->
-                      </div>
+    <footer class="copyright">
+      &copy; Shubham Bansal — 2026
+    </footer>
 
-                      <div class="content content--exp">
-                        <h2 class="content__tag">
-                        <span class="title relative">
-                          🏆 ACHIEVEMENTS
-                          <span class="half-border"></span>
-                        </span>
-                        </h2>
-                        <div class="content__inner">
-                          <ul>
-                            <li><b>Performance Cyclone — Q1</b> at Onsurity — awarded to the top 5% of engineers each quarter for exceptional delivery impact.</li>
-                            <li><b>Value Creator Award</b> at Samsung R&amp;D — recognised for sustained contribution to product quality and team velocity.</li>
-                            <li>Recognised across <b>Samsung Bangalore</b> for leading the Samsung Pay Mini Cloud Auth solution, a critical security component shipped to production.</li>
-                            <li>Published <b>80+ technical articles</b> on <a href="https://auth.geeksforgeeks.org/user/Shubham%20Bansal%2013/articles" target="_blank">GeeksforGeeks</a> covering data structures, algorithms, and backend systems.</li>
-                            <li>Secured <b>Rank 76 in TCS CodeVita 2018</b> (Round 2) — top 0.1% among 300,000+ participants globally.</li>
-                          </ul>
-                        </div>
-                      </div>
-                      <div class="content content--interests">
-                        <h2 class="content__tag">
-                        <span class="title relative">
-                          Links
-                          <span class="half-border"></span>
-                        </span>
-                        </h2>
-                        <div class="content__inner interests">
-                          <div class="chip">
-                            <img src = "img/LeetCode_logo.png"  />
-                            <a href="https://leetcode.com/bansal1232/"> bansal1232</a>
-                          </div>
-                          <div class="chip">
-                            <img src = "img/codechef_logo.png"  />
-                            <a href="https://www.codechef.com/users/bansal1232"> bansal1232</a>
-                          </div>
-                          <div class="chip">
-                            <img src="img/hackerearth_logo.png">
-                            <a href="https://www.hackerearth.com/@bansal1232">bansal1232</a>
-                          </div>
-                          <div class="chip">
-                            <img src="img/hackerrank_logo.png">
-                            <a href="https://www.hackerrank.com/shu1232">shu1232</a>
-                          </div>
-                          <div class="chip">
-                            <img src="img/codeforces_logo.png">
-                            <a href="http://codeforces.com/profile/bansal1232">bansal1232</a>
-                          </div>
-                        </div>
-                      </div>
-
-                     <div class="content content--interests">
-                        <h2 class="content__tag">
-                           <span class="title relative">
-                            🫠 INTERESTS.
-                           <span class="half-border"></span>
-                           </span>
-                        </h2>
-                        <div class="content__inner interests">
-                           <div class="interest">
-                              <img src = "img/badminton.svg" height="70" />
-                              <span class="interest__level">Badminton</span>
-                           </div>
-    
-                           <div class="interest">
-                              <img src = "img/traveller.svg"  height="70" />
-                              <span class="interest__level">Avid Traveller</span>
-                           </div>
-                        </div>
-                        <!-- </div> -->
-                     </div>
-
-
-                    </div>
-                    <div class="copyright" align = "center">
-                      &copy; Shubham Bansal - 2026 .
-                    </div>
-                  </div>
-                </div>
-              </section>
-              <script>
-              function myFunction() {
-              var x = document.getElementById('myDIV');
-              if (x.style.display === 'none') {
-              x.style.display = 'block';
-              } else {
-              x.style.display = 'none';
-              }
-              }
-              </script>
-              <script>
-              (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-              (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-              m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-              })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-              ga('create', 'UA-104208013-1', 'auto');
-              ga('send', 'pageview');
-              </script>
-            </body>
-          </html>
+    <script src="js/site.js"></script>
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+      ga('create', 'UA-104208013-1', 'auto');
+      ga('send', 'pageview');
+    </script>
+  </body>
+</html>

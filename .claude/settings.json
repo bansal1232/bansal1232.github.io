@@ -1,11 +1,14 @@
 {
   "permissions": {
-    "additionalDirectories": [
-      "/tmp"
-    ],
     "allow": [
       "Bash(awk 'NR==1,NR==634' backend-fundamentals.html)",
-      "Bash(awk 'NR>=1028' backend-fundamentals.html)"
+      "Bash(awk 'NR>=1028' backend-fundamentals.html)",
+      "Bash(node -e ' *)",
+      "Bash(open -a \"Google Chrome\" /Users/Shubham/Documents/onsurity-all-repo/bansal1232.github.io/index.html)",
+      "Bash(open /Users/Shubham/Documents/onsurity-all-repo/bansal1232.github.io/index.html)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
     ]
   }
 }
