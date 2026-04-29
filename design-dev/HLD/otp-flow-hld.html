@@ -64,7 +64,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);lin
 @media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
 .sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
 .sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
-.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li{margin-bottom:.35rem}
+.sidebar ol li.v1-only{counter-increment:sbtoc}
+body.show-v2 .sidebar ol li.v1-only{counter-increment:none}
+body.show-v2 .sidebar ol li.v2-only{counter-increment:sbtoc}
 .sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
 .sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
 .sidebar a:hover{color:var(--orange)}
@@ -127,6 +130,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 .hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}
 .hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}
 .hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--cyan)}
 .highlight strong{font-weight:700}
 
 .divider{height:1px;background:var(--border);margin:3rem 0}
@@ -150,6 +154,25 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 .checklist li{padding:.55rem 0 .55rem 1.8rem;position:relative;font-size:.88rem;color:var(--text);border-bottom:1px dashed var(--border)}
 .checklist li:last-child{border-bottom:none}
 .checklist li::before{content:'✓';position:absolute;left:.2rem;top:.55rem;color:var(--green);font-weight:800;font-size:.95rem}
+
+/* ── VERSION TOGGLE ── */
+.version-toggle{display:inline-flex;background:rgba(17,22,30,.7);border:1px solid var(--border);border-radius:100px;padding:.3rem;margin-top:1.6rem;backdrop-filter:blur(6px);position:relative;z-index:1;gap:.2rem}
+.version-toggle button{background:transparent;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;padding:.55rem 1.2rem;border-radius:100px;cursor:pointer;transition:all .2s;letter-spacing:.02em;display:inline-flex;align-items:center;gap:.4rem}
+.version-toggle button.active{background:var(--orange);color:#fff;box-shadow:0 2px 10px rgba(232,116,59,.35)}
+.version-toggle button:hover:not(.active){color:var(--text)}
+.version-toggle .v2-tag{display:inline-block;padding:.1rem .42rem;background:rgba(155,114,207,.3);color:#d4bff0;border-radius:4px;font-size:.6rem;font-weight:700;letter-spacing:.08em}
+.version-toggle button.active .v2-tag{background:rgba(255,255,255,.22);color:#fff}
+
+/* ── VERSION VISIBILITY (mutually exclusive) ── */
+.v2-only{display:none}
+body.show-v2 .v2-only{display:block}
+body.show-v2 li.v2-only{display:list-item}
+body.show-v2 .v1-only{display:none}
+.sec.v2-only{border-left:3px solid var(--purple);padding-left:1.6rem;margin-left:-1.6rem}
+@media(max-width:960px){.sec.v2-only{padding-left:1rem;margin-left:-1rem}}
+.v2-mode-banner{display:none;background:linear-gradient(135deg,rgba(155,114,207,.14),rgba(74,144,217,.1));border:1px solid rgba(155,114,207,.35);border-radius:var(--r);padding:.85rem 1.2rem;margin-bottom:1.5rem;font-size:.83rem;color:#c9b1ee}
+body.show-v2 .v2-mode-banner{display:block}
+.v2-mode-banner strong{color:#e0cef5}
 </style>
 </head>
 <body>
@@ -159,6 +182,10 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
   <div class="pill">High-Level Design</div>
   <h1>OTP Validation <span>System</span></h1>
   <p class="sub">Production-ready OTP architecture — hashing, 5-layer rate limiting, Redis + Postgres split, replay protection, and every use case from login to payment.</p>
+  <div class="version-toggle" role="tablist" aria-label="Design version">
+    <button id="btn-v1" class="active" onclick="setVersion('v1')" role="tab">Basic Infra</button>
+    <button id="btn-v2" onclick="setVersion('v2')" role="tab">+ AI Layer</button>
+  </div>
 </div>
 
 <div class="layout">
@@ -166,32 +193,39 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
   <aside class="sidebar">
     <h4>On This Page</h4>
     <ol>
-      <li><a href="#s1">Clarify Requirements</a></li>
-      <li><a href="#s2">Capacity &amp; Scale</a></li>
-      <li><a href="#s3">Actors &amp; Use Cases</a></li>
-      <li><a href="#s4">High-Level Architecture</a></li>
-      <li><a href="#s5">API Design</a></li>
-      <li><a href="#s6">Data Model (Redis + Postgres)</a></li>
-      <li><a href="#s7">Generate OTP Flow</a></li>
-      <li><a href="#s8">Verify OTP Flow</a></li>
-      <li><a href="#s9">Why Hash OTPs</a></li>
-      <li><a href="#s10">5-Layer Brute Force Defense</a></li>
-      <li><a href="#s11">OTP Lifecycle States</a></li>
-      <li><a href="#s12">Use Case Variants</a></li>
-      <li><a href="#s13">Common Mistakes</a></li>
-      <li><a href="#s14">Monitoring &amp; Alerts</a></li>
-      <li><a href="#s15">Trade-offs</a></li>
-      <li><a href="#s16">Interview Q&amp;A</a></li>
-      <li><a href="#s17">Production Checklist</a></li>
+      <li class="v1-only"><a href="#s1">Clarify Requirements</a></li>
+      <li class="v1-only"><a href="#s2">Capacity &amp; Scale</a></li>
+      <li class="v1-only"><a href="#s3">Actors &amp; Use Cases</a></li>
+      <li class="v1-only"><a href="#s4">High-Level Architecture</a></li>
+      <li class="v1-only"><a href="#s5">API Design</a></li>
+      <li class="v1-only"><a href="#s6">Data Model (Redis + Postgres)</a></li>
+      <li class="v1-only"><a href="#s7">Generate OTP Flow</a></li>
+      <li class="v1-only"><a href="#s8">Verify OTP Flow</a></li>
+      <li class="v1-only"><a href="#s9">Why Hash OTPs</a></li>
+      <li class="v1-only"><a href="#s10">5-Layer Brute Force Defense</a></li>
+      <li class="v1-only"><a href="#s11">OTP Lifecycle States</a></li>
+      <li class="v1-only"><a href="#s12">Use Case Variants</a></li>
+      <li class="v1-only"><a href="#s13">Common Mistakes</a></li>
+      <li class="v1-only"><a href="#s14">Monitoring &amp; Alerts</a></li>
+      <li class="v2-only"><a href="#s-v2">AI Layer · Risk Scoring</a></li>
+      <li class="v2-only"><a href="#s-v2-rl">AI Layer · Adaptive Rate Limit</a></li>
+      <li class="v2-only"><a href="#s-v2-why">AI Layer · Use Cases &amp; Value</a></li>
+      <li class="v1-only"><a href="#s15">Trade-offs</a></li>
+      <li class="v1-only"><a href="#s16">Interview Q&amp;A</a></li>
+      <li class="v1-only"><a href="#s17">Production Checklist</a></li>
     </ol>
   </aside>
 
   <div class="wrap">
 
+<div class="v2-mode-banner">
+  <strong>AI layer view —</strong> showing only the AI integration points (risk scoring + adaptive rate limiting). The base OTP design is hidden — toggle back to <em>Basic Infra</em> to read it.
+</div>
+
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 1: REQUIREMENTS                       -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s1">
+<div class="sec v1-only" id="s1">
   <span class="sec-tag tag-orange">Step 1</span>
   <h2>Clarify Requirements</h2>
   <p>Always open an HLD by aligning on scope. OTP is a single building block — but different products treat it very differently (2FA vs payments vs password reset). Pin these down first.</p>
@@ -226,12 +260,12 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
   <div class="highlight hl-red"><strong>Out of scope (confirm with interviewer):</strong> SMS provider failover strategy, push-notification OTP, hardware tokens (YubiKey/TOTP apps are adjacent), OAuth/SSO, and session management after OTP success.</div>
 </div>
 
-<div class="divider"></div>
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 2: CAPACITY                           -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s2">
+<div class="sec v1-only" id="s2">
   <span class="sec-tag tag-yellow">Step 2</span>
   <h2>Capacity &amp; Scale Estimates</h2>
   <p>Back-of-envelope first — it drives storage, rate-limit tiers, and the Redis/Postgres split.</p>
@@ -256,12 +290,12 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
   <div class="highlight hl-orange"><strong>Takeaways:</strong> Redis easily fits active OTPs in RAM. Postgres audit needs partitioning (or TimescaleDB / Cassandra for very high scale). Rate limiting protects SMS spend as much as it protects users.</div>
 </div>
 
-<div class="divider"></div>
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 3: ACTORS & USE CASES                 -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s3">
+<div class="sec v1-only" id="s3">
   <span class="sec-tag tag-green">Step 3</span>
   <h2>Actors &amp; Use Cases</h2>
   <p>Who triggers OTP flows and what they're trying to accomplish. Color-coded by actor.</p>
@@ -298,12 +332,12 @@ flowchart LR
   </div>
 </div>
 
-<div class="divider"></div>
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 4: HIGH-LEVEL ARCHITECTURE            -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s4">
+<div class="sec v1-only" id="s4">
   <span class="sec-tag tag-blue">Step 4</span>
   <h2>High-Level Architecture</h2>
   <p>Six moving parts. Redis is the hot store, Postgres the cold/audit store, the OTP service owns all hashing and verification.</p>
@@ -363,12 +397,12 @@ flowchart LR
   <div class="highlight hl-blue"><strong>Key design call:</strong> the write to Postgres is <em>async</em> (Kafka or fire-and-forget). Auth latency cannot wait on an RDBMS round-trip.</div>
 </div>
 
-<div class="divider"></div>
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 5: API DESIGN                         -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s5">
+<div class="sec v1-only" id="s5">
   <span class="sec-tag tag-purple">Step 5</span>
   <h2>API Design</h2>
   <p>Two endpoints carry 99% of traffic. Keep the surface area small — fewer endpoints = fewer attack vectors.</p>
@@ -412,12 +446,12 @@ flowchart LR
   <div class="highlight hl-yellow"><strong>API hardening notes:</strong> responses are deliberately uniform — the same error shape for "wrong code" and "expired code" prevents probing. <code>otp_id</code> is opaque (UUID, not the phone number) so the client request can be logged without leaking the identifier.</div>
 </div>
 
-<div class="divider"></div>
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 6: DATA MODEL                         -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s6">
+<div class="sec v1-only" id="s6">
   <span class="sec-tag tag-cyan">Step 6</span>
   <h2>Data Model — Redis + Postgres</h2>
   <p>Two stores, two very different jobs.</p>
@@ -481,12 +515,12 @@ erDiagram
   <div class="highlight hl-red"><strong>⚠️ Critical:</strong> neither the OTP code nor its hash is ever written to Postgres. The audit log tells you <em>who tried to verify what and when</em> — not what the secret was. This matters for GDPR/PCI auditors and for insider-threat containment.</div>
 </div>
 
-<div class="divider"></div>
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 7: GENERATE FLOW                      -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s7">
+<div class="sec v1-only" id="s7">
   <span class="sec-tag tag-green">Step 7</span>
   <h2>Generate OTP — Sequence Flow</h2>
   <p>Happy path + the three places it can fail loudly.</p>
@@ -527,12 +561,12 @@ sequenceDiagram
   </div>
 </div>
 
-<div class="divider"></div>
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 8: VERIFY FLOW                        -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s8">
+<div class="sec v1-only" id="s8">
   <span class="sec-tag tag-blue">Step 8</span>
   <h2>Verify OTP — Sequence Flow</h2>
   <p>Constant-time comparison + atomic attempt decrement are the two things people get wrong.</p>
@@ -577,12 +611,12 @@ sequenceDiagram
   <div class="highlight hl-purple"><strong>⭐ The DEL on success is non-negotiable.</strong> If you only mark <code>is_used=true</code> and forget to delete, a race between two concurrent verifies can double-authenticate. Deleting is atomic; flags are not.</div>
 </div>
 
-<div class="divider"></div>
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 9: WHY HASH                           -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s9">
+<div class="sec v1-only" id="s9">
   <span class="sec-tag tag-red">Step 9</span>
   <h2>Why Hash OTPs (and Why Plaintext Is a Career-Ender)</h2>
   <p>This is the single most common OTP mistake in production systems. Here's every way plaintext storage betrays you.</p>
@@ -631,12 +665,12 @@ sequenceDiagram
   </div>
 </div>
 
-<div class="divider"></div>
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 10: BRUTE FORCE DEFENSE               -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s10">
+<div class="sec v1-only" id="s10">
   <span class="sec-tag tag-red">Step 10</span>
   <h2>5-Layer Brute Force Defense</h2>
   <p>A 6-digit OTP has only <strong>1 000 000</strong> combinations. Without layered defense, an attacker scripts 10 req/sec and is in within ~28 hours. Here's the layered wall.</p>
@@ -664,12 +698,12 @@ sequenceDiagram
   </div>
 </div>
 
-<div class="divider"></div>
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 11: LIFECYCLE                         -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s11">
+<div class="sec v1-only" id="s11">
   <span class="sec-tag tag-purple">Step 11</span>
   <h2>OTP Lifecycle — State Machine</h2>
   <p>Every OTP follows exactly one path from birth to death. Four terminal states.</p>
@@ -692,12 +726,12 @@ stateDiagram-v2
   <div class="highlight hl-blue"><strong>Why model it explicitly?</strong> Every outcome must map to exactly one audit row — no "in between" states. This is what makes fraud investigation tractable: every OTP that ever existed has a terminal state on record.</div>
 </div>
 
-<div class="divider"></div>
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 12: USE CASE VARIANTS                 -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s12">
+<div class="sec v1-only" id="s12">
   <span class="sec-tag tag-cyan">Step 12</span>
   <h2>Use Case Variants</h2>
   <p>Same machinery, four different policies. TTL and delivery channel are the main knobs.</p>
@@ -726,12 +760,12 @@ stateDiagram-v2
   </div>
 </div>
 
-<div class="divider"></div>
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 13: COMMON MISTAKES                   -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s13">
+<div class="sec v1-only" id="s13">
   <span class="sec-tag tag-red">Step 13</span>
   <h2>Common Mistakes &amp; How to Dodge Them</h2>
   <p>Every single one of these has been shipped to production by a real team at some point.</p>
@@ -748,12 +782,12 @@ stateDiagram-v2
   </div>
 </div>
 
-<div class="divider"></div>
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 14: MONITORING                        -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s14">
+<div class="sec v1-only" id="s14">
   <span class="sec-tag tag-blue">Step 14</span>
   <h2>Monitoring &amp; Alerts</h2>
   <p>OTP systems are where anomalies appear first — monitoring them buys early warning for larger attacks.</p>
@@ -782,12 +816,369 @@ stateDiagram-v2
   </div>
 </div>
 
-<div class="divider"></div>
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION V2-A: RISK-BASED AUTHENTICATION       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec v2-only" id="s-v2">
+  <span class="sec-tag tag-purple">AI Layer ①</span>
+  <h2>Risk-Based Authentication — Skip-OTP Intelligence</h2>
+  <p>Before sending an OTP, first ask: <em>is this login trustworthy?</em> Trusted users skip the OTP entirely. Normal users get the standard OTP. Suspicious ones get extra checks (biometric + OTP). The OTP system itself stays exactly the same — we just put a smart filter in front of it.</p>
+
+  <div class="highlight hl-cyan"><strong>💡 Think of it like a smart bouncer at a club.</strong> Today, everyone walking in has to show ID — even regulars (= an OTP for every login). A smart bouncer would: <em>wave through known regulars</em> (skip OTP), <em>ask normal customers for ID</em> (standard OTP), and <em>demand extra proof from anyone who looks off</em> (force step-up). The "AI" here is just a pattern-matcher that learned from past logins to score how risky each new one looks (0 = trusted, 100 = very suspicious).</div>
+
+  <div class="highlight hl-yellow"><strong>🎓 New to AI? Plain-English glossary of terms used across all three AI sections:</strong>
+    <ul style="margin-top:.6rem;padding-left:1.2rem;list-style:disc;line-height:1.85">
+      <li><strong>AI / ML model</strong> — a really good pattern-matcher trained on past data. Show it thousands of real vs. fraudulent logins; it learns to tell them apart.</li>
+      <li><strong>XGBoost / LightGBM</strong> — popular AI techniques that work like a giant decision flowchart with hundreds of branches. Fast and easy to debug — that's why we use them here.</li>
+      <li><strong>Feature store</strong> (Feast / Tecton) — a database holding all the signals we collect about users: device, location, login history, typing patterns. The AI reads from here to make a decision.</li>
+      <li><strong>Inference</strong> — fancy word for "running the AI to get a prediction." Each call takes ~20–30 ms.</li>
+      <li><strong>SHAP values</strong> — the AI's <em>reasoning</em> for a decision. Like: <em>"flagged because new country (40%) + new device (35%) + unusual time (25%)."</em> Helps debug AND satisfies regulators who require explainability.</li>
+      <li><strong>Isolation Forest</strong> — an AI technique great at finding "odd ones out" — unusual data points hidden among normal traffic.</li>
+      <li><strong>Prophet</strong> — AI that predicts what normal traffic should look like (think weather forecasting). Alerts when reality deviates from the forecast.</li>
+      <li><strong>Drift</strong> — when user behavior changes over time and the AI's old understanding becomes outdated. We monitor for it and retrain.</li>
+      <li><strong>Shadow mode</strong> — running the AI silently in the background for 2–4 weeks before turning it on for real, to confirm its decisions would have been good.</li>
+      <li><strong>p99 &lt; 30 ms</strong> — 99% of AI decisions complete in under 30 milliseconds. Fast enough that users won't notice the AI is even there.</li>
+      <li><strong>Behavioral biometrics</strong> — how a person types, swipes, holds their phone. Every person has a unique pattern, hard to fake.</li>
+      <li><strong>Device fingerprint</strong> — a "digital signature" of a device made from browser, OS, screen size, timezone, fonts, etc. Lets us recognize the same device across sessions without a cookie.</li>
+    </ul>
+  </div>
+
+  <div class="highlight hl-purple"><strong>🪡 Where AI plugs in — at the front door (API gateway).</strong> Every login request passes through the gateway first. We add one new step there: ask the AI <em>"how risky is this login?"</em> Based on the answer (a number from 0 to 100), the gateway routes the request:
+    <ul style="margin-top:.5rem;padding-left:1.2rem;list-style:disc">
+      <li><code>score &lt; 30</code> (looks safe) → log the user in directly, <strong>no OTP needed</strong></li>
+      <li><code>30 – 70</code> (medium) → send the usual OTP, business as usual</li>
+      <li><code>score ≥ 70</code> (looks suspicious) → demand more proof (OTP <em>plus</em> fingerprint or face)</li>
+    </ul>
+  </div>
+
+  <h3 style="color:var(--heading);margin:1.4rem 0 .5rem;font-size:1rem">Big picture — the AI sits between the user and the OTP service</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  CL([Client])
+  GW[API Gateway]
+  RS[Risk Scoring<br/>XGBoost · p99 &lt; 30ms]
+  FS[(Feature Store<br/>Feast / Tecton)]
+  OTP[OTP Service]
+  SESS[Issue Session<br/>skip OTP]
+  STEP[Step-up<br/>Biometric + OTP]
+  PG[(Postgres<br/>+ training labels)]
+
+  CL --> GW
+  GW --> RS
+  RS --> FS
+  RS -- score &lt; 30 --> SESS
+  RS -- 30 - 70 --> OTP
+  RS -- &gt; 70 --> STEP
+  OTP -. async .-> PG
+  PG -. daily retrain .-> FS
+
+  style RS fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style FS fill:#3cbfbf,stroke:#3cbfbf,color:#000
+  style OTP fill:#38b265,stroke:#38b265,color:#fff
+    </div>
+  </div>
+
+  <h3 style="color:var(--heading);margin:1.4rem 0 .5rem;font-size:1rem">Step-by-step — what happens during a login (with AI added)</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor U as User
+  participant GW as API Gateway
+  participant RS as Risk Service
+  participant FS as Feature Store
+  participant OTP as OTP Service
+  participant SESS as Session Svc
+  participant STEP as Step-up Svc
+
+  U->>GW: POST /auth/start {phone, device, ctx}
+  GW->>RS: score(user, device, ip, ua)
+  RS->>FS: fetch features
+  FS-->>RS: ~80 features (≤10ms)
+  RS->>RS: XGBoost inference (≤20ms)
+  RS-->>GW: {risk_score, shap}
+
+  alt risk_score < 30 (trusted)
+    GW->>SESS: issueSession(user_id)
+    SESS-->>U: 200 {jwt} — OTP skipped
+  else 30 ≤ score < 70 (medium)
+    GW->>OTP: forward to /otp/generate
+    Note over OTP: standard generate · hash · store
+    OTP-->>U: 200 {otp_id, expires_at}
+  else score ≥ 70 (high)
+    GW->>STEP: requireStepUp([OTP, BIOMETRIC])
+    STEP-->>U: 401 {challenge_id, factors}
+  end
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📥 What signals the AI looks at</h3>
+      <ul>
+        <li><strong>Device fingerprint</strong> — a digital signature of the user's phone or laptop</li>
+        <li><strong>Where they're coming from</strong> — IP address, network, distance from where they usually log in</li>
+        <li><strong>How fast they're trying</strong> — number of logins in the last hour from this user / device / IP</li>
+        <li><strong>Is the time normal?</strong> — e.g., 3 am login when they usually log in at 9 am is suspicious</li>
+        <li><strong>How they type and tap</strong> — every person has a unique rhythm; very hard to fake</li>
+        <li><strong>Where they're logging in from</strong> — web, mobile app, or external partner</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🧠 What kind of AI we use</h3>
+      <ul>
+        <li><strong>XGBoost</strong> — a popular, fast, accurate AI model that can explain its own decisions</li>
+        <li>Trained on <strong>3 months of past login data</strong> — labelled as real or fraudulent</li>
+        <li>Output: a <strong>risk score from 0 to 100</strong> (higher = more suspicious)</li>
+        <li>Hosted on AI-serving infrastructure — 99% of decisions in under 30 ms</li>
+        <li>Reads user signals from the <strong>feature store</strong> in under 10 ms</li>
+      </ul>
+    </div>
+  </div>
+
+  <span class="code-label cl-purple">Decision policy</span>
+<pre><span class="cmt">// Risk-tiered auth routing</span>
+<span class="kw">async function</span> <span class="fn">startAuth</span>(req) {
+  <span class="kw">const</span> features = <span class="kw">await</span> featureStore.fetch(req.user_id, req.device_id);
+  <span class="kw">const</span> { risk_score, shap } = <span class="kw">await</span> riskService.score(features, { timeout: <span class="num">30</span> });
+
+  <span class="cmt">// audit the decision (without leaking raw features)</span>
+  audit.emit({ user_id: req.user_id, risk_score, shap_top3: shap.slice(<span class="num">0</span>, <span class="num">3</span>) });
+
+  <span class="kw">if</span> (risk_score &lt; <span class="num">30</span>) <span class="kw">return</span> issueSession(req.user_id);            <span class="cmt">// trusted → skip OTP</span>
+  <span class="kw">if</span> (risk_score &lt; <span class="num">70</span>) <span class="kw">return</span> generateOtp(req.user_id, <span class="str">"LOGIN"</span>);     <span class="cmt">// medium → standard OTP</span>
+  <span class="kw">return</span> requireStepUp({ factors: [<span class="str">"OTP"</span>, <span class="str">"BIOMETRIC"</span>] });            <span class="cmt">// high → step-up</span>
+}</pre>
+
+  <div class="highlight hl-purple"><strong>🔁 The AI keeps learning over time.</strong> Every login outcome (succeeded, failed, user gave up, later reported as fraud) is fed back to the AI as a labelled example. Once a day, the model retrains so it stays sharp as attackers change their tactics.</div>
+
+  <div class="highlight hl-yellow"><strong>🛟 What if the AI breaks?</strong> If the AI service is slow or down, we don't lock users out — we just fall back to <em>send OTP to everyone</em> (the basic flow). Rule: never let a broken AI block legitimate users, but also never let it pretend everything's safe when it isn't. Hard timeout — if the AI doesn't answer in 30 ms, we skip it for that login.</div>
+</div>
+
+<div class="divider v2-only"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION V2-B: ADAPTIVE RATE LIMITING          -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec v2-only" id="s-v2-rl">
+  <span class="sec-tag tag-purple">AI Layer ②</span>
+  <h2>Adaptive Rate Limiting — Beyond Static Thresholds</h2>
+  <p>Smart rate limiting that learns what normal traffic looks like at every hour of every day. Catches sneaky attacks (1000 different IPs each making 1 attempt — invisible to per-IP limits) and stays quiet during real traffic spikes like Black Friday or a viral app launch.</p>
+
+  <div class="highlight hl-cyan"><strong>💡 Think of it like a smart spam filter.</strong> Old email rules say <em>"block any sender who emails you 100 times."</em> Spammers got smart — now they send 1 email each from 1000 different addresses, slipping under the limit. A modern spam filter spots the <em>overall pattern</em> (writing style, suspicious links, sending behavior) even when no single sender breaks the rule. Same idea here: the AI watches the shape of incoming OTP traffic and catches attacks even when no individual user crosses a static threshold.</div>
+
+  <div class="highlight hl-purple"><strong>🪡 Where AI plugs in — at two places.</strong>
+    <ul style="margin-top:.5rem;padding-left:1.2rem;list-style:disc">
+      <li><strong>Place 1 — at the front door (API gateway):</strong> right next to the existing rule that limits how many requests come from one IP. The AI looks at the bigger picture and says <em>"allow / show captcha / slow down / block."</em> The gateway uses both the old rule AND the AI's view.</li>
+      <li><strong>Place 2 — inside the OTP service's rate limiter:</strong> right next to the per-user counters that say "this user has tried 3 times in 15 minutes." The AI's score is added as a second opinion.</li>
+    </ul>
+    Both places are <em>additive</em> — the old simple rules stay as a safety floor (always work, easy to debug). The AI catches the sneaky stuff the simple rules miss.
+  </div>
+
+  <h3 style="color:var(--heading);margin:1.4rem 0 .5rem;font-size:1rem">Step-by-step — what happens during an OTP request (with AI added)</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor U as User
+  participant GW as API Gateway
+  participant AE as Anomaly Engine
+  participant OTP as OTP Service
+  participant RL as Rate Limiter
+  participant R as Redis
+
+  U->>GW: POST /otp/generate
+  Note over GW: Hook A
+  GW->>GW: static per-IP check (5-layer floor)
+  GW->>AE: score(req/min, IP entropy, UA diversity, fail ratio)
+  AE-->>GW: {anomaly_score, action}
+  GW->>GW: combine(static, anomaly) → verdict
+
+  alt verdict = allow
+    GW->>OTP: forward
+    Note over OTP,RL: Hook B
+    OTP->>RL: INCR rl:gen:user + rl:gen:ip
+    OTP->>AE: score(per-user features)
+    AE-->>OTP: {user_anomaly}
+    OTP->>OTP: combine → admit
+    OTP->>R: SET otp:{id} {hash} EX 300
+    OTP-->>U: 200 {otp_id, expires_at}
+  else verdict = captcha
+    GW-->>U: 401 + captcha challenge
+  else verdict = throttle / block
+    GW-->>U: 429 / 403 + SOC alert
+  end
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔍 Real-time "odd one out" detection</h3>
+      <ul>
+        <li>Uses <strong>Isolation Forest</strong> — an AI good at spotting unusual patterns</li>
+        <li>Watches signals like: requests per minute, how many different IPs / browsers, success vs failure ratio</li>
+        <li>Catches sneaky attacks where 1000 different IPs each try once — invisible to per-IP rules</li>
+        <li>Looks at the last 5 minutes of traffic, refreshing every 30 seconds</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>📈 "What's normal traffic right now?" forecasting</h3>
+      <ul>
+        <li>Uses <strong>Prophet</strong> — an AI that predicts traffic patterns (like weather forecasting)</li>
+        <li>Knows a Black Friday 8 pm spike is <em>normal</em> — won't trigger an alarm</li>
+        <li>Knows a Tuesday 3 am spike is <em>not normal</em> — flags it</li>
+        <li>Stops the chronic "3 am false alarm that wakes the on-call engineer"</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="color:var(--heading);margin:1rem 0 .5rem;font-size:1rem">Decision pipeline</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  REQ([Request]) --> SR[Static Rules<br/>deterministic floor]
+  REQ --> AE[Anomaly Engine<br/>Isolation Forest<br/>+ Prophet baseline]
+  SR --> JOIN{Combine}
+  AE --> JOIN
+  JOIN -- score &lt; 0.3 --> ALLOW[Allow]
+  JOIN -- 0.3 - 0.7 --> CAP[Invisible CAPTCHA]
+  JOIN -- 0.7 - 0.9 --> THR[Throttle<br/>+ MFA prompt]
+  JOIN -- &gt; 0.9 --> BLK[Block + SOC alert]
+
+  style AE fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style SR fill:#38b265,stroke:#38b265,color:#fff
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>📌 Important — the AI <em>adds to</em> the old rules, it doesn't replace them.</strong> The simple static rules stay as a safety floor: predictable, easy to debug, easy to explain to auditors. The AI sits on top and catches the things simple rules miss. If the AI breaks, the floor still works — nothing falls through.</div>
+
+  <h3 style="color:var(--heading);margin:1.5rem 0 .5rem;font-size:1rem">Things to watch out for in production</h3>
+  <div class="g3">
+    <div class="card"><h3>📊 Watch for "drift"</h3><p>User behavior changes over time, so the AI's old understanding can get stale. Alert if signals drift too far from what the AI learned. Run A/B tests every week comparing the live model to a newer one.</p></div>
+    <div class="card"><h3>🧪 Run silently first ("shadow mode")</h3><p>Before letting the AI block real users, run it for 2 weeks just <em>watching</em> — logging what it would have done. Then compare with what actually happened.</p></div>
+    <div class="card"><h3>🔐 Protect user privacy</h3><p>Never store sensitive info in plain text. Hash IPs and personal data before saving. Keep recent data 30 days, archived data 6 months — GDPR rules.</p></div>
+    <div class="card"><h3>⚖️ Be able to explain decisions</h3><p>For every high-risk block, log <em>why</em> the AI made that call (e.g., "new country + new device + odd time"). Required by GDPR if a user asks "why was I blocked?"</p></div>
+    <div class="card"><h3>🧯 Have an off switch</h3><p>One feature flag must instantly turn the AI off and fall back to the simple rules. Test this disaster scenario regularly so you know it works.</p></div>
+    <div class="card"><h3>💰 Cost vs. benefit</h3><p>Each AI decision costs ~₹0.05. At 5,200 requests per second, that's ~₹22 K/day. But cutting SMS volume by 30–50% saves <strong>millions</strong> per day. Pays for itself many times over.</p></div>
+  </div>
+
+  <div class="highlight hl-green"><strong>📝 The whole AI layer in one line:</strong> one AI decides <em>"should we even send an OTP?"</em>, another AI decides <em>"how aggressively should we block this traffic?"</em> Both sit on top of the existing OTP system — nothing about the OTP itself (how it's generated, hashed, stored, used once) changes. Needs about 3 months of past login data to train initially.</div>
+</div>
+
+<div class="divider v2-only"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION V2-C: USE CASES & VALUE               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec v2-only" id="s-v2-why">
+  <span class="sec-tag tag-purple">AI Layer ③</span>
+  <h2>Why Add It — Use Cases &amp; Security Wins</h2>
+  <p>A 6-digit OTP is a thin line of defense. Once a user is tricked into reading their OTP to an attacker, it's already over. Static rate limits are easy to map and bypass. The AI layer turns OTP from "challenge everyone the same way" into "challenge intelligently."</p>
+
+  <div class="highlight hl-cyan"><strong>💡 In plain words:</strong> the basic OTP system is like a single locked front door — fine against casual intruders. The AI layer adds a security camera, a smart doorbell that recognizes regulars, and a doorman who notices when someone's casing the place. Each one alone helps; together they stop attackers your front door can't.</div>
+
+  <h3 style="color:var(--heading);margin:1.4rem 0 .6rem;font-size:1.05rem">🛡️ Attacks defeated that base OTP cannot stop</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>🎣 OTP Phishing / Vishing</h3>
+      <p>User is socially engineered into reading the OTP to an attacker on a fake support call. Plain OTP only checks "code matches?" and lets it through. Risk scoring catches the surrounding signal — new device, unusual geo, screen-share active, abnormal session timing — and demands step-up.</p>
+    </div>
+    <div class="card">
+      <h3>📱 SIM Swap</h3>
+      <p>Attacker convinces the carrier to port the user's number. OTP delivers right into their hand. The AI layer notices: device fingerprint changed, IP from a new ASN, behavioral biometrics don't match → blocks the login and alerts the user via the old contact.</p>
+    </div>
+    <div class="card">
+      <h3>🌍 Credential Stuffing</h3>
+      <p>Attacker has 1000 leaked passwords from another site and tries them all on your login from 500 rotating IPs. No single IP makes enough attempts to trigger the static limit. But the AI notices the bigger picture: way too many <em>different</em> IPs / devices, low success rate → blocks the whole pattern.</p>
+    </div>
+    <div class="card">
+      <h3>💣 Distributed SMS Bombing</h3>
+      <p>Attacker hammers the "resend OTP" button from many rotating IPs — to drain your SMS budget or harass a specific user. Per-IP rules don't catch it. The AI's traffic forecast spots the unusual spike compared to normal hours → blocks and alerts the security team.</p>
+    </div>
+    <div class="card">
+      <h3>🐢 Slow-and-Low Brute Force</h3>
+      <p>A patient attacker spreads guesses over many days to fly under any static "X attempts per hour" rule. The AI's forecast model knows that "20 attempts per hour at 3 am from this country" isn't normal — even when no single time window technically breaks any rule.</p>
+    </div>
+    <div class="card">
+      <h3>🤖 Bot Signup Fraud</h3>
+      <p>Bots register thousands of fake accounts to claim signup bonuses or referral payouts. Behavioral biometrics catch them — the typing rhythm of a bot looks robotic and identical across accounts. Device fingerprints reveal the same cluster of fake "phones" being reused.</p>
+    </div>
+  </div>
+
+  <h3 style="color:var(--heading);margin:1.5rem 0 .6rem;font-size:1.05rem">💡 Where the AI layer pays off most</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>🏦 Banking / Fintech</h3>
+      <p>High-value transfers force step-up; small recurring ones skip OTP. Cuts SMS spend ~40% while reducing fraud losses. Aligns with the <strong>RBI</strong> risk-based AFA mandate.</p>
+    </div>
+    <div class="card">
+      <h3>🛒 E-commerce</h3>
+      <p>Trusted devices skip OTP at checkout → fewer cart abandonments. Suspicious order velocity (gift cards, multiple shipping addresses) auto-escalates.</p>
+    </div>
+    <div class="card">
+      <h3>🏥 Healthcare</h3>
+      <p>PHI access from unfamiliar devices/IPs gets stronger verification automatically — meeting the HIPAA "context-aware access" expectation.</p>
+    </div>
+    <div class="card">
+      <h3>💼 B2B SaaS</h3>
+      <p>Admin actions and bulk-export operations get stepped up. Service-account login from a new IP triggers alert, not just OTP.</p>
+    </div>
+    <div class="card">
+      <h3>₿ Crypto / Exchanges</h3>
+      <p>Withdrawals to a new address, above-threshold amounts, or first-time external wallets demand step-up — regardless of OTP success.</p>
+    </div>
+    <div class="card">
+      <h3>📞 Telco / Number Portability</h3>
+      <p>SIM-swap defense for the carrier flow itself. Catches fraudsters attempting to take over the carrier account that delivers OTPs.</p>
+    </div>
+  </div>
+
+  <h3 style="color:var(--heading);margin:1.5rem 0 .6rem;font-size:1.05rem">📊 Measured impact at scale</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Base OTP only</th><th>+ AI layer</th><th>Delta</th></tr></thead>
+      <tbody>
+        <tr><td>SMS volume / day</td><td>150 M</td><td>~75–105 M</td><td style="color:var(--green)"><strong>−30 to −50%</strong></td></tr>
+        <tr><td>SMS spend (@ ₹0.10/msg)</td><td>₹15 M/day</td><td>₹7.5–10.5 M/day</td><td style="color:var(--green)"><strong>−₹4.5–7.5 M/day</strong></td></tr>
+        <tr><td>Account takeover incidents</td><td>baseline</td><td>0.2–0.4× baseline</td><td style="color:var(--green)"><strong>−60 to −80%</strong></td></tr>
+        <tr><td>OTP screens per active session</td><td>1.0</td><td>0.5–0.7</td><td style="color:var(--green)"><strong>~40% less friction</strong></td></tr>
+        <tr><td>False-positive rate-limit pages</td><td>baseline</td><td>0.1–0.3× baseline</td><td style="color:var(--green)"><strong>−70 to −90%</strong></td></tr>
+        <tr><td>ML inference cost</td><td>—</td><td>~₹22 K/day @ 5 200 QPS</td><td style="color:var(--muted)">capex</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-green"><strong>ROI in one line:</strong> ~₹22 K/day inference cost vs ~₹4.5–7.5 M/day SMS savings → the AI layer pays for itself <strong>200×</strong> on SMS alone, <em>before</em> counting reduced fraud losses, lower support volume, and higher conversion from less friction.</div>
+
+  <h3 style="color:var(--heading);margin:1.5rem 0 .6rem;font-size:1.05rem">📋 Regulatory tailwinds — risk-based auth is becoming required</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>Laws &amp; standards already requiring this</h3>
+      <ul>
+        <li><strong>PCI-DSS 4.0</strong> — payment card security standard. Now requires risk-based auth for online card payments.</li>
+        <li><strong>PSD2 SCA</strong> — Europe's payment law. Allows skipping a step <em>only if</em> the bank can show it's a low-risk transaction.</li>
+        <li><strong>RBI</strong> — India's central bank. Mandates risk-based auth for digital payments.</li>
+        <li><strong>NIST 800-63B</strong> — US government's authentication guidelines. Recommends "context-aware" (= risk-based) authentication.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Built-in support for audits &amp; user rights</h3>
+      <ul>
+        <li>For every high-risk block, log <em>why</em> the AI made that call (using SHAP — the AI's reasoning)</li>
+        <li>Track when the AI's accuracy starts drifting and retrain regularly — keeps auditors happy</li>
+        <li>If a user asks "why was I blocked?" (a right under GDPR), we can answer in plain language</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The bottom line:</strong> the base OTP system protects against opportunistic attackers using common tools. The AI layer protects against motivated attackers who've studied your system — phishers, SIM-swappers, credential-stuffing operators, SMS-bombing fraudsters, and patient slow-burn brute-forcers. If your product handles money, identity, or PHI, this layer is no longer optional.</div>
+</div>
+
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 15: TRADE-OFFS                        -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s15">
+<div class="sec v1-only" id="s15">
   <span class="sec-tag tag-yellow">Step 15</span>
   <h2>Trade-offs &amp; Interview Talking Points</h2>
   <p>The bits an interviewer wants to hear you reason about out loud.</p>
@@ -809,12 +1200,12 @@ stateDiagram-v2
   </div>
 </div>
 
-<div class="divider"></div>
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 16: INTERVIEW Q&A                     -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s16">
+<div class="sec v1-only" id="s16">
   <span class="sec-tag tag-purple">Step 16</span>
   <h2>Interview Q&amp;A</h2>
   <p>The follow-ups that actually come up on system-design loops.</p>
@@ -844,12 +1235,12 @@ stateDiagram-v2
   <div class="ans">Different trust model — shared secret installed at enrollment, no server-side per-request state. Typically offered <em>alongside</em> SMS OTP as a stronger option. Our system handles both by routing verification to different modules based on the factor the user has configured.</div>
 </div>
 
-<div class="divider"></div>
+<div class="divider v1-only"></div>
 
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 17: PRODUCTION CHECKLIST              -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s17">
+<div class="sec v1-only" id="s17">
   <span class="sec-tag tag-green">Step 17</span>
   <h2>Production Checklist</h2>
   <p>Before shipping any OTP system — tick every box.</p>
@@ -880,6 +1271,38 @@ stateDiagram-v2
 
   </div><!-- /.wrap -->
 </div><!-- /.layout -->
+
+<script>
+function setVersion(v) {
+  const isV2 = v === 'v2';
+  document.body.classList.toggle('show-v2', isV2);
+  document.getElementById('btn-v1').classList.toggle('active', !isV2);
+  document.getElementById('btn-v2').classList.toggle('active', isV2);
+  try { localStorage.setItem('hld-otp-version', v); } catch (e) {}
+  // Re-render mermaid diagrams that were hidden on initial load
+  if (isV2 && window.mermaid && !document.body.dataset.v2Rendered) {
+    document.querySelectorAll('.v2-only .mermaid').forEach(el => {
+      el.removeAttribute('data-processed');
+    });
+    try {
+      window.mermaid.run({ querySelector: '.v2-only .mermaid' });
+      document.body.dataset.v2Rendered = '1';
+    } catch (e) { console.warn('mermaid v2 render', e); }
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  // URL param wins (e.g., ?view=ai when arriving from the design-dev index)
+  const params = new URLSearchParams(window.location.search);
+  const fromUrl = params.get('view');
+  if (fromUrl === 'ai' || fromUrl === 'v2') { setVersion('v2'); return; }
+  if (fromUrl === 'basic' || fromUrl === 'v1') { setVersion('v1'); return; }
+
+  // Otherwise restore last preference, default to V1
+  let saved = 'v1';
+  try { saved = localStorage.getItem('hld-otp-version') || 'v1'; } catch (e) {}
+  if (saved === 'v2') setVersion('v2');
+});
+</script>
 
 </body>
 </html>
