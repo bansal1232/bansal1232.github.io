@@ -1,0 +1,2165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Browser Storage — Cookies, localStorage &amp; sessionStorage Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;500;600;700;800&family=Newsreader:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #faf9f6;
+    --surface: #ffffff;
+    --surface-alt: #f4f1ec;
+    --border: #e4e0d8;
+    --text: #1a1714;
+    --text-muted: #6b6560;
+    --accent: #c44b24;
+    --accent-light: #fef0eb;
+    --green: #2a7d4f;
+    --green-light: #eef7f0;
+    --blue: #2563a8;
+    --blue-light: #eef4fb;
+    --purple: #6d3caa;
+    --purple-light: #f3eefa;
+    --gold: #a67c00;
+    --gold-light: #fdf8ea;
+    --red: #b91c1c;
+    --red-light: #fde2e2;
+    --dark: #1a1714;
+    --dark-surface: #2a2520;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 0;
+  }
+
+  /* ─── HERO ─── */
+  .hero {
+    background: var(--dark);
+    color: #fff;
+    padding: 4rem 2rem 3.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 30% 70%, rgba(196,75,36,0.18) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(166,124,0,0.15) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .hero .tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #f4b89c;
+    background: rgba(196,75,36,0.22);
+    padding: 0.4rem 1.2rem;
+    border-radius: 100px;
+    margin-bottom: 1.2rem;
+    position: relative;
+  }
+
+  .hero h1 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    margin-bottom: 0.6rem;
+    position: relative;
+  }
+
+  .hero p {
+    color: rgba(255,255,255,0.6);
+    font-size: 1.05rem;
+    max-width: 640px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .hero p code {
+    background: rgba(255,255,255,0.1);
+    color: #f4b89c;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-top: 1.4rem;
+    color: rgba(255,255,255,0.7);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    position: relative;
+    transition: color 0.2s;
+  }
+  .back-link:hover { color: #fff; }
+
+  /* ─── LAYOUT ─── */
+  .layout {
+    max-width: 1920px;
+    margin: 0 auto;
+    padding: 3rem 4rem 5rem;
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 4.5rem;
+    align-items: start;
+  }
+  @media (max-width: 1200px) { .layout { padding: 3rem 2rem 5rem; gap: 3rem; } }
+  @media (max-width: 960px) {
+    .layout { grid-template-columns: 1fr; gap: 1.5rem; padding: 2rem 1.2rem 4rem; }
+  }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    position: sticky;
+    top: 2rem;
+    font-size: 0.88rem;
+  }
+  @media (max-width: 960px) {
+    .sidebar {
+      position: static; top: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.4rem;
+    }
+  }
+  .sidebar h4 {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar ol {
+    list-style: none;
+    padding: 0;
+    counter-reset: toc;
+  }
+  .sidebar ol li { counter-increment: toc; margin-bottom: 0.35rem; }
+  .sidebar ol li::before {
+    content: counter(toc, decimal-leading-zero);
+    display: inline-block;
+    width: 1.8rem;
+    color: var(--accent);
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+  }
+  .sidebar a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.15s;
+    font-size: 0.9rem;
+  }
+  .sidebar a:hover { color: var(--accent); }
+  @media (max-width: 960px) {
+    .sidebar ol { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem 1rem; }
+  }
+  @media (max-width: 560px) { .sidebar ol { grid-template-columns: 1fr; } }
+
+  .content { min-width: 0; }
+
+  /* ─── SECTION ─── */
+  .section {
+    margin-bottom: 3rem;
+    scroll-margin-top: 1.5rem;
+  }
+
+  .section-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.9rem;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+  }
+
+  .section-label.red { background: var(--accent-light); color: var(--accent); }
+  .section-label.green { background: var(--green-light); color: var(--green); }
+  .section-label.blue { background: var(--blue-light); color: var(--blue); }
+  .section-label.purple { background: var(--purple-light); color: var(--purple); }
+  .section-label.gold { background: var(--gold-light); color: var(--gold); }
+
+  .section h2 {
+    font-size: 1.65rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.4rem;
+  }
+
+  .section > p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+    max-width: 720px;
+  }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .card h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.45rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .card h3 .icon { font-size: 1.2rem; line-height: 1; }
+
+  .card p, .card li {
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    line-height: 1.75;
+  }
+
+  .card ul { list-style: none; padding: 0; margin-top: 0.5rem; }
+  .card ul li {
+    padding-left: 1.3rem;
+    position: relative;
+    margin-bottom: 0.35rem;
+  }
+  .card ul li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .card .example, .example {
+    background: var(--surface-alt);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    margin-top: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.85;
+    color: var(--text);
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  /* ─── STEP FLOW ─── */
+  .steps { position: relative; padding-left: 2.5rem; }
+  .steps::before {
+    content: '';
+    position: absolute;
+    left: 0.95rem;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    width: 2px;
+    background: var(--border);
+  }
+  .step { position: relative; margin-bottom: 1.75rem; }
+  .step::before {
+    content: attr(data-num);
+    position: absolute;
+    left: -2.5rem;
+    top: 0.1rem;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    background: var(--dark);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+  }
+  .step h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .step p { color: var(--text-muted); font-size: 0.9rem; }
+
+  /* ─── GRID ─── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+
+  @media (max-width: 700px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 2rem; }
+    .hero { padding: 3rem 1.5rem 2.5rem; }
+    .steps { padding-left: 2.2rem; }
+    .step::before { left: -2.2rem; width: 1.6rem; height: 1.6rem; font-size: 0.65rem; }
+  }
+
+  /* ─── TABLE ─── */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    font-size: 0.88rem;
+  }
+  .compare-table th {
+    background: var(--surface-alt);
+    text-align: left;
+    padding: 0.85rem 1rem;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+  }
+  .compare-table td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    vertical-align: top;
+  }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table td:first-child {
+    font-weight: 600;
+    color: var(--text);
+    width: 22%;
+  }
+  .compare-table code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    background: var(--surface-alt);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+  }
+
+  /* ─── BADGE ─── */
+  .badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.18rem 0.5rem;
+    border-radius: 5px;
+    letter-spacing: 0.04em;
+  }
+  .b-yes  { background: var(--green-light); color: var(--green); }
+  .b-no   { background: var(--red-light); color: var(--red); }
+  .b-soft { background: var(--gold-light); color: var(--gold); }
+
+  /* ─── CALLOUT ─── */
+  .callout {
+    background: var(--gold-light);
+    border: 1px solid rgba(166,124,0,0.2);
+    border-radius: var(--radius);
+    padding: 1.15rem 1.4rem;
+    margin-top: 1rem;
+  }
+  .callout h4 {
+    color: var(--gold);
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+  }
+  .callout p { font-size: 0.88rem; color: var(--text-muted); }
+
+  .callout.danger { background: var(--red-light); border-color: rgba(185,28,28,0.2); }
+  .callout.danger h4 { color: var(--red); }
+
+  /* ─── Q&A ─── */
+  .qa {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 0.8rem;
+  }
+  .qa .q {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text);
+    margin-bottom: 0.35rem;
+    display: flex;
+    gap: 0.55rem;
+  }
+  .qa .q::before {
+    content: 'Q';
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+  .qa .a {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    line-height: 1.7;
+    padding-left: 1.95rem;
+  }
+  .qa .a code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    background: var(--surface-alt);
+    padding: 0.12rem 0.4rem;
+    border-radius: 4px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 3rem 0; }
+  .footer { text-align: center; color: var(--text-muted); font-size: 0.82rem; margin-top: 2.5rem; }
+
+  /* ─── DEMO ─── */
+  .demo {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0;
+    overflow: hidden;
+  }
+  .demo-head {
+    background: var(--dark);
+    color: #fff;
+    padding: 0.9rem 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+  }
+  .demo-head .dot {
+    width: 0.65rem; height: 0.65rem; border-radius: 50%;
+  }
+  .demo-head .dot.r { background: #ff5f57; }
+  .demo-head .dot.y { background: #febc2e; }
+  .demo-head .dot.g { background: #28c840; }
+  .demo-head .lbl { margin-left: 0.7rem; color: rgba(255,255,255,0.85); }
+
+  .demo-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  @media (max-width: 880px) { .demo-body { grid-template-columns: 1fr; } }
+
+  .demo-pane {
+    padding: 1.4rem 1.5rem;
+    border-right: 1px solid var(--border);
+  }
+  .demo-pane:last-child { border-right: none; }
+  @media (max-width: 880px) {
+    .demo-pane { border-right: none; border-bottom: 1px solid var(--border); }
+    .demo-pane:last-child { border-bottom: none; }
+  }
+
+  .demo-pane h4 {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: 0.6rem;
+    align-items: center;
+    margin-bottom: 0.7rem;
+  }
+  .form-row label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .form-row input[type="text"],
+  .form-row input[type="number"],
+  .form-row select {
+    width: 100%;
+    padding: 0.5rem 0.7rem;
+    font-size: 0.85rem;
+    font-family: 'JetBrains Mono', monospace;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-row input:focus, .form-row select:focus { border-color: var(--accent); }
+
+  .checks { display: flex; gap: 1rem; flex-wrap: wrap; padding-left: 0; }
+  .checks label {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.82rem; font-weight: 600;
+    color: var(--text); cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .checks input { accent-color: var(--accent); }
+
+  .btn-row {
+    display: flex; gap: 0.5rem; margin-top: 0.9rem; flex-wrap: wrap;
+  }
+  button.btn {
+    border: 1px solid var(--border);
+    background: var(--bg);
+    padding: 0.55rem 1rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    transition: all 0.15s;
+  }
+  button.btn:hover { background: var(--surface-alt); }
+  button.btn.primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  button.btn.primary:hover { background: #a83d1c; }
+  button.btn.ghost {
+    background: transparent;
+    color: var(--text-muted);
+  }
+  button.btn.danger {
+    background: var(--red);
+    color: #fff;
+    border-color: var(--red);
+  }
+  button.btn.danger:hover { background: #8b1414; }
+
+  .header-out {
+    background: #1a1714;
+    color: #f4b89c;
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.7;
+    margin-top: 0.9rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .header-out .key { color: #6db3f2; }
+  .header-out .attr { color: #f4b89c; }
+  .header-out .muted { color: rgba(255,255,255,0.45); }
+
+  .cookie-list { display: flex; flex-direction: column; gap: 0.55rem; }
+  .cookie-empty {
+    padding: 1.4rem;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    background: var(--surface-alt);
+    border-radius: 8px;
+    border: 1px dashed var(--border);
+  }
+  .cookie-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.7rem;
+    align-items: center;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+  }
+  .cookie-row .name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .cookie-row .val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--text);
+    word-break: break-all;
+  }
+  .cookie-row button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--red);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.3rem 0.6rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+  }
+  .cookie-row button:hover { background: var(--red-light); }
+
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: var(--dark);
+    color: #fff;
+    padding: 0.75rem 1.1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+    transform: translateY(120%);
+    opacity: 0;
+    transition: all 0.25s ease-out;
+    z-index: 50;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* ─── DIAGRAM ─── */
+  .req-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.75rem 1.5rem;
+    margin-top: 1rem;
+    overflow-x: auto;
+  }
+  .seq {
+    max-width: 640px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .seq-actors {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    margin-bottom: 0.75rem;
+  }
+  .seq-actor {
+    background: var(--accent-light);
+    border: 1.5px solid var(--accent);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text);
+  }
+  .seq-body {
+    position: relative;
+    padding: 0.5rem 0;
+  }
+  .seq-body::before,
+  .seq-body::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .seq-body::before { left: calc(25% - 1px); }
+  .seq-body::after  { right: calc(25% - 1px); }
+  .seq-row {
+    position: relative;
+    margin: 0.7rem 0;
+    min-height: 2rem;
+    z-index: 1;
+  }
+  .seq-msg {
+    position: relative;
+    width: 56%;
+    margin: 0 auto;
+    background: var(--surface);
+    border: 1.5px solid var(--accent);
+    border-radius: 6px;
+    padding: 0.5rem 0.85rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--text);
+    text-align: center;
+    box-shadow: 0 1px 2px rgba(26,23,20,0.05);
+  }
+  .seq-row[data-dir="right"] .seq-msg::after {
+    content: '';
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0; height: 0;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-left: 8px solid var(--accent);
+  }
+  .seq-row[data-dir="left"] .seq-msg::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0; height: 0;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-right: 8px solid var(--accent);
+  }
+  .seq-row[data-dir="left"] .seq-msg {
+    border-style: dashed;
+  }
+  .seq-note {
+    background: var(--gold-light);
+    border: 1px solid rgba(166,124,0,0.35);
+    border-radius: 6px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-style: italic;
+    width: fit-content;
+    max-width: 42%;
+  }
+  .seq-row[data-side="right"] .seq-note { margin-left: auto; margin-right: 4%; }
+  .seq-row[data-side="left"]  .seq-note { margin-left: 4%; }
+  .seq-msg .seq-num {
+    display: inline-block;
+    margin-right: 0.4rem;
+    font-family: 'Outfit', sans-serif;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .flow-card .step-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem; height: 1.6rem;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 0.8rem;
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+  }
+  .flow-card .step-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.3rem;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    background: var(--surface-alt);
+    padding: 0.12rem 0.4rem;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HERO ═══════════ -->
+<div class="hero">
+  <div class="tag">Tech Deep Dive · Browser Storage + Live Demos</div>
+  <h1>Browser Storage —<br/>Cookies, localStorage &amp; sessionStorage</h1>
+  <p>The three places a browser can hold data — when to pick which, the security trade-offs, and three live playgrounds on this page.</p>
+  <a class="back-link" href="../../design-development.html">← Back to all deep dives</a>
+</div>
+
+<div class="layout">
+
+  <!-- ── Sidebar TOC ── -->
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Why Browser Storage Exists</a></li>
+      <li><a href="#s5">The Three Mechanisms</a></li>
+      <li><a href="#s2">Cookies — Anatomy &amp; Attributes</a></li>
+      <li><a href="#s-flow">Cookies in Flight — Login Flow</a></li>
+      <li><a href="#s4">Cookie Playground</a></li>
+      <li><a href="#s5b">Web Storage Playgrounds</a></li>
+      <li><a href="#s5a">Real-World Use Cases</a></li>
+      <li><a href="#s6">Security Pitfalls</a></li>
+      <li><a href="#s7">Privacy &amp; Modern Web</a></li>
+      <li><a href="#s8">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <main class="content">
+
+<!-- ═══════════ SECTION 1: WHY ═══════════ -->
+<div class="section" id="s1">
+  <span class="section-label red">Topic 1</span>
+  <h2>Why Browser Storage Exists — Two Problems, Three Solutions</h2>
+  <p>Browsers ship with three different places to keep data: <b>cookies</b>, <b>localStorage</b>, and <b>sessionStorage</b>. They exist because the web needed to solve two different problems — and the solutions arrived fifteen years apart.</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3><span class="icon">🌐</span> Problem 1 — HTTP is stateless</h3>
+      <p>Every HTTP request is independent. The server has no memory that you logged in five seconds ago. <b>Cookies</b> (Netscape, 1994) patched this: the server hands the browser a small piece of paper, and the browser shows that paper on every subsequent request to the same site.</p>
+      <div class="example">Set-Cookie: sid=abc123; HttpOnly; Secure</div>
+    </div>
+    <div class="card">
+      <h3><span class="icon">📦</span> Problem 2 — JS apps need local memory</h3>
+      <p>Modern apps need to remember things <i>without</i> bothering the server: theme, draft text, wizard state, cached data. The <b>Web Storage API</b> (HTML5, 2009) gave JS two key-value stores — <code>localStorage</code> (persistent) and <code>sessionStorage</code> (per-tab).</p>
+      <div class="example">localStorage.setItem('theme', 'dark');
+sessionStorage.setItem('step', '2');</div>
+    </div>
+  </div>
+
+  <p style="margin-top:1.4rem; color: var(--text-muted); font-size: 0.95rem;">The flow is fundamentally different. Cookies <b>travel with every HTTP request</b> the browser makes — they're a server concern. Web Storage stays inside the browser, only visible to JS — pure client concern. We'll see exactly how cookies move between browser and server in <a href="#s-flow" style="color:var(--accent); text-decoration:underline;">Topic 4</a>.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 2: THE THREE MECHANISMS (moved up) ═══════════ -->
+<div class="section" id="s5">
+  <span class="section-label green">Topic 2</span>
+  <h2>The Three Mechanisms — Side by Side</h2>
+  <p>Before we dive into each, here's the whole landscape on one page. Every property that matters when you're picking which storage to use.</p>
+
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Property</th>
+        <th>Cookies</th>
+        <th>localStorage</th>
+        <th>sessionStorage</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Sent on every request</td>
+        <td><span class="badge b-yes">YES</span></td>
+        <td><span class="badge b-no">NO</span></td>
+        <td><span class="badge b-no">NO</span></td>
+      </tr>
+      <tr>
+        <td>Capacity</td>
+        <td>~4 KB / cookie</td>
+        <td>~5–10 MB / origin</td>
+        <td>~5–10 MB / tab</td>
+      </tr>
+      <tr>
+        <td>Hidden from JS</td>
+        <td>With <code>HttpOnly</code></td>
+        <td><span class="badge b-no">NO</span></td>
+        <td><span class="badge b-no">NO</span></td>
+      </tr>
+      <tr>
+        <td>Lifetime</td>
+        <td>Configurable (Expires / session)</td>
+        <td>Until cleared</td>
+        <td>Until tab closes</td>
+      </tr>
+      <tr>
+        <td>Cross-tab sharing</td>
+        <td>Yes (same origin)</td>
+        <td>Yes (same origin)</td>
+        <td><span class="badge b-no">No — tab scoped</span></td>
+      </tr>
+      <tr>
+        <td>API</td>
+        <td><code>document.cookie</code> + <code>Set-Cookie</code> header</td>
+        <td><code>localStorage.setItem(k, v)</code></td>
+        <td><code>sessionStorage.setItem(k, v)</code></td>
+      </tr>
+      <tr>
+        <td>Best for</td>
+        <td>Auth sessions, CSRF tokens, server-rendered prefs</td>
+        <td>Theme, draft text, app caches</td>
+        <td>Single-flow wizards, OAuth state</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <h4>Rule of thumb</h4>
+    <p>If the server needs to read it on every request → <b>cookie</b>. If only the JS app needs it → <code>localStorage</code> (persistent) or <code>sessionStorage</code> (one-tab). Never store JWTs in <code>localStorage</code> unless your XSS posture is zero — and assume it isn't.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 3: COOKIES — ANATOMY + ATTRIBUTES ═══════════ -->
+<div class="section" id="s2">
+  <span class="section-label blue">Topic 3</span>
+  <h2>Cookies — Set-Cookie Anatomy &amp; Every Attribute</h2>
+  <p>A <code>Set-Cookie</code> header is one <code>name=value</code> pair followed by semicolon-separated attributes. Each attribute changes how the cookie is stored, sent, or restricted. To set multiple cookies, the server sends multiple <code>Set-Cookie</code> headers — never comma-separated.</p>
+
+  <div class="example">Set-Cookie: <b>sid</b>=<b>abc123XYZ</b>;
+            Domain=<b>.example.com</b>;
+            Path=<b>/</b>;
+            Expires=<b>Wed, 09 Jun 2027 10:18:14 GMT</b>;
+            Max-Age=<b>3600</b>;
+            <b>Secure</b>;
+            <b>HttpOnly</b>;
+            SameSite=<b>Lax</b>;
+            Priority=<b>High</b></div>
+
+  <div class="callout">
+    <h4>Size limits</h4>
+    <p>Per RFC 6265, browsers must support at least 4096 bytes per cookie and 50 cookies per domain. Modern browsers usually allow ~180 cookies per domain. The total <code>Cookie</code> header is capped at ~8 KB by most servers — blow that and you get HTTP 431.</p>
+  </div>
+
+  <h3 style="margin-top:2rem; font-size:1.2rem; font-weight:800; letter-spacing:-0.01em;">📋 Every attribute, explained</h3>
+  <p style="color: var(--text-muted); font-size:0.95rem; margin-top:0.4rem;">The browser uses these to decide <b>where</b> a cookie is sent, <b>how long</b> it lives, and <b>who</b> can read it.</p>
+
+  <table class="compare-table" style="margin-top:0.75rem;">
+    <thead>
+      <tr>
+        <th>Attribute</th>
+        <th>What it does</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>Domain</code></td>
+        <td>Which host(s) receive the cookie. <code>example.com</code> sends to <code>example.com</code> + all subdomains. Omitting it locks the cookie to the exact origin host (no subdomains).</td>
+        <td>exact host</td>
+      </tr>
+      <tr>
+        <td><code>Path</code></td>
+        <td>URL path prefix the cookie is sent on. <code>Path=/api</code> means it ships only on <code>/api</code> and below. Use <code>/</code> for app-wide cookies.</td>
+        <td>current path</td>
+      </tr>
+      <tr>
+        <td><code>Expires</code></td>
+        <td>Absolute UTC date string. After this moment the browser discards the cookie. Omit both Expires and Max-Age and you get a <b>session cookie</b> (cleared when the browser closes).</td>
+        <td>session</td>
+      </tr>
+      <tr>
+        <td><code>Max-Age</code></td>
+        <td>Lifetime in seconds, relative to the server's response. Wins over <code>Expires</code> when both are present. Set <code>Max-Age=0</code> to delete a cookie.</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td><code>Secure</code></td>
+        <td>Cookie is only sent over HTTPS. Without it, an attacker on the same Wi-Fi can sniff your session ID. <b>Always</b> set this in production.</td>
+        <td>off</td>
+      </tr>
+      <tr>
+        <td><code>HttpOnly</code></td>
+        <td>Hides the cookie from JavaScript (<code>document.cookie</code> can't see it). Mandatory for session cookies — prevents XSS from stealing the auth token.</td>
+        <td>off</td>
+      </tr>
+      <tr>
+        <td><code>SameSite</code></td>
+        <td><code>Strict</code> = never sent cross-site. <code>Lax</code> = sent on top-level GET navigations only (the modern default). <code>None</code> = sent everywhere, but requires <code>Secure</code>.</td>
+        <td>Lax</td>
+      </tr>
+      <tr>
+        <td><code>Priority</code></td>
+        <td>Chrome-only hint (<code>Low</code> / <code>Medium</code> / <code>High</code>) for which cookies to evict first when the per-domain limit is hit.</td>
+        <td>Medium</td>
+      </tr>
+      <tr>
+        <td><code>Partitioned</code></td>
+        <td>CHIPS — opt into per-top-site partitioned storage for third-party cookies. Replaces unrestricted cross-site tracking.</td>
+        <td>off</td>
+      </tr>
+      <tr>
+        <td><code>__Host- prefix</code></td>
+        <td>Magic name prefix that forces <code>Secure</code>, <code>Path=/</code>, and no <code>Domain</code>. Strongest origin-locked cookie.</td>
+        <td>—</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout danger">
+    <h4>SameSite=None without Secure → silently dropped</h4>
+    <p>Since Chrome 80 (Feb 2020), any cookie marked <code>SameSite=None</code> <b>must</b> also be <code>Secure</code> or the browser refuses to store it. If you're embedding into a third-party iframe and your session breaks in production, this is almost always why.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION: COOKIE FLOW ═══════════ -->
+<div class="section" id="s-flow">
+  <span class="section-label red">Topic 4</span>
+  <h2>Cookies in Flight — A Login Flow Walkthrough</h2>
+  <p>The anatomy section showed <i>what</i> a cookie looks like. This one shows <i>how</i> one actually travels between browser and server during a real login → authenticated-request cycle.</p>
+
+  <div class="req-diagram">
+    <div class="seq">
+      <div class="seq-actors">
+        <div class="seq-actor">🌐 Browser</div>
+        <div class="seq-actor">🖥️ Server</div>
+      </div>
+      <div class="seq-body">
+        <div class="seq-row" data-dir="right">
+          <div class="seq-msg"><span class="seq-num">①</span> POST /login &nbsp;{user, pass}</div>
+        </div>
+        <div class="seq-row" data-side="right">
+          <div class="seq-note">validate credentials · create session</div>
+        </div>
+        <div class="seq-row" data-dir="left">
+          <div class="seq-msg"><span class="seq-num">②</span> Set-Cookie: sid=abc123; HttpOnly; Secure</div>
+        </div>
+        <div class="seq-row" data-side="left">
+          <div class="seq-note">browser stores cookie in jar</div>
+        </div>
+        <div class="seq-row" data-dir="right">
+          <div class="seq-msg"><span class="seq-num">③</span> GET /dashboard &nbsp;·&nbsp; Cookie: sid=abc123</div>
+        </div>
+        <div class="seq-row" data-side="right">
+          <div class="seq-note">look up session</div>
+        </div>
+        <div class="seq-row" data-dir="left">
+          <div class="seq-msg"><span class="seq-num">④</span> 200 OK</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP-BY-STEP WALKTHROUGH ── -->
+  <h3 style="margin-top:2.5rem; font-size:1.25rem; font-weight:800; letter-spacing:-0.01em;">🍪 The cookie flow, arrow by arrow</h3>
+  <p style="margin-top:0.4rem; color: var(--text-muted); font-size:0.95rem;">One card per arrow in the diagram above. Read them in order ① → ④ to follow the cookie's full life-cycle from the login POST to the next auto-authenticated request.</p>
+
+  <div class="grid-2" style="margin-top:1rem;">
+    <div class="card flow-card">
+      <div class="step-meta">Browser → Server</div>
+      <h3><span class="step-chip">①</span> POST /login &nbsp;{user, pass}</h3>
+      <p>Plain HTTP POST. No session exists yet — just credentials in the body. The browser sends nothing special; the server is about to do the magic.</p>
+      <div class="example">POST /login HTTP/1.1
+Host: example.com
+Content-Type: application/json
+
+{ "user": "alice", "pass": "..." }</div>
+      <p style="margin-top:0.6rem; font-size:0.86rem;">After receiving this, the server validates the password and creates a session record server-side (Redis / DB). The browser only gets a tiny opaque <b>session ID</b> back — never the real state.</p>
+      <div class="example">// server-side
+const sid = crypto.randomUUID();
+await redis.set(`session:${sid}`,
+  { userId, createdAt }, 'EX', 28800);</div>
+    </div>
+
+    <div class="card flow-card">
+      <div class="step-meta">Server → Browser</div>
+      <h3><span class="step-chip">②</span> Set-Cookie: sid=abc123; HttpOnly; Secure</h3>
+      <p>What makes this a <i>cookie</i> is the response <b>header</b>, not the body. The browser parses <code>Set-Cookie</code> and writes an entry into its cookie jar, indexed by <b>Domain</b> + <b>Path</b> + <b>Name</b>.</p>
+      <div class="example">HTTP/1.1 200 OK
+Set-Cookie: sid=abc123xyz; HttpOnly;
+  Secure; SameSite=Lax; Path=/;
+  Max-Age=28800</div>
+      <p style="margin-top:0.6rem; font-size:0.86rem;">Each attribute changes how it's stored:</p>
+      <ul style="margin:0.3rem 0 0 1.1rem; line-height:1.8; font-size:0.85rem;">
+        <li><code>HttpOnly</code> — hidden from <code>document.cookie</code>, JS can't read it (defeats XSS exfiltration)</li>
+        <li><code>Secure</code> — only attached on <code>https://</code></li>
+        <li><code>SameSite=Lax</code> — won't ship on cross-site POSTs (CSRF defense)</li>
+        <li><code>Max-Age=28800</code> — expires in 8 h; without it, dies on browser close</li>
+      </ul>
+    </div>
+
+    <div class="card flow-card">
+      <div class="step-meta">Browser → Server (later request)</div>
+      <h3><span class="step-chip">③</span> GET /dashboard &nbsp;·&nbsp; Cookie: sid=abc123</h3>
+      <p>Frontend code does <b>nothing</b>. The browser auto-attaches the <code>Cookie</code> header on every subsequent request to the same site, as long as Domain / Path / Secure / SameSite all match.</p>
+      <div class="example">GET /dashboard HTTP/1.1
+Host: example.com
+Cookie: sid=abc123xyz</div>
+      <p style="margin-top:0.6rem; font-size:0.86rem;">This is the entire reason cookies exist. Compare with <code>localStorage</code> — there you'd have to manually attach a token to every <code>fetch()</code>, and any XSS payload would steal it.</p>
+    </div>
+
+    <div class="card flow-card">
+      <div class="step-meta">Server → Browser</div>
+      <h3><span class="step-chip">④</span> 200 OK &nbsp;(session valid)</h3>
+      <p>Server pulls the cookie, looks up the session record, recovers <code>userId</code>, and serves the response. Opaque ID → server-side record → user identity.</p>
+      <div class="example">const sid = req.cookies.sid;
+const session = await redis.get(
+  `session:${sid}`);
+if (!session) return res.status(401).send();
+req.user = session.userId;
+// ... handle /dashboard for req.user</div>
+      <p style="margin-top:0.6rem; font-size:0.86rem;">If the session expired or was revoked server-side (logout, password change, admin kick), the lookup returns nothing and the user gets <b>401</b> — even though they still have the cookie. The server is always the source of truth.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <h4>Three properties that make this work</h4>
+    <ul style="margin:0.4rem 0 0 1.1rem; line-height:1.85;">
+      <li><b><code>HttpOnly</code> defeats XSS exfiltration.</b> JS can <i>cause</i> the cookie to be sent (via <code>fetch(..., { credentials: 'include' })</code>) but cannot <i>read</i> its value. A malicious script on your page can't steal the session ID and replay it elsewhere.</li>
+      <li><b>The cookie value is opaque.</b> No user data, no JWT, no email — just a random ID. Putting data in the cookie itself ships it on every request and makes tampering a real problem.</li>
+      <li><b>The response writes the cookie, not the request.</b> Frontend never calls <code>document.cookie = ...</code> for auth. The server header is the source of truth.</li>
+    </ul>
+  </div>
+
+  <div class="callout danger">
+    <h4>The cross-subdomain trap</h4>
+    <p>Frontend on <code>app.example.com</code>, API on <code>api.example.com</code>? You must do <b>all three</b>:</p>
+    <ol style="margin:0.4rem 0 0 1.4rem; line-height:1.85;">
+      <li>Set the cookie's <code>Domain=.example.com</code> so both subdomains see it.</li>
+      <li>Frontend uses <code>fetch(url, { credentials: 'include' })</code>.</li>
+      <li>Server responds with <code>Access-Control-Allow-Credentials: true</code> and an explicit <code>Access-Control-Allow-Origin</code> (not <code>*</code>).</li>
+    </ol>
+    <p style="margin-top:0.6rem;">Miss any one — browser silently drops the cookie. This is the classic "why isn't auth working in production" first-day bug.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 4: LIVE DEMO ═══════════ -->
+<div class="section" id="s4">
+  <span class="section-label gold">Topic 5 · Hands-on</span>
+  <h2>Cookie Playground — Set, Inspect, Delete</h2>
+  <p>This demo runs entirely on this page. Set a cookie below, watch the equivalent <code>Set-Cookie</code> header generated, see it appear in the cookie jar on the right, then inspect what <code>document.cookie</code> exposes. <b>HttpOnly</b> cookies cannot be created from JS by design — that flag only works when the server sets the cookie. The form lets you tick it so you can see the resulting header, but the browser won't actually store an HttpOnly cookie set this way.</p>
+
+  <div class="demo">
+    <div class="demo-head">
+      <span class="dot r"></span>
+      <span class="dot y"></span>
+      <span class="dot g"></span>
+      <span class="lbl">cookies-playground · live on this page</span>
+    </div>
+    <div class="demo-body">
+
+      <!-- ── LEFT PANE: FORM ── -->
+      <div class="demo-pane">
+        <h4>Build a Set-Cookie</h4>
+
+        <div class="form-row">
+          <label for="ck-name">name</label>
+          <input id="ck-name" type="text" value="demo_pref" maxlength="64"/>
+        </div>
+        <div class="form-row">
+          <label for="ck-value">value</label>
+          <input id="ck-value" type="text" value="dark-mode" maxlength="200"/>
+        </div>
+        <div class="form-row">
+          <label for="ck-path">Path</label>
+          <input id="ck-path" type="text" value="/"/>
+        </div>
+        <div class="form-row">
+          <label for="ck-maxage">Max-Age</label>
+          <input id="ck-maxage" type="number" value="3600" min="0"/>
+        </div>
+        <div class="form-row">
+          <label for="ck-samesite">SameSite</label>
+          <select id="ck-samesite">
+            <option value="Lax" selected>Lax</option>
+            <option value="Strict">Strict</option>
+            <option value="None">None</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label>flags</label>
+          <div class="checks">
+            <label><input type="checkbox" id="ck-secure"/> Secure</label>
+            <label><input type="checkbox" id="ck-httponly"/> HttpOnly</label>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn primary" id="btn-set">Set cookie</button>
+          <button class="btn ghost" id="btn-reset">Reset form</button>
+          <button class="btn danger" id="btn-clear">Clear all demo cookies</button>
+        </div>
+
+        <h4 style="margin-top:1.5rem;">Equivalent header</h4>
+        <div class="header-out" id="header-out">Set-Cookie: <span class="key">demo_pref</span>=dark-mode; <span class="attr">Path</span>=/; <span class="attr">Max-Age</span>=3600; <span class="attr">SameSite</span>=Lax</div>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.6rem;">This is what a server would send. The button on the left writes it client-side via <code>document.cookie</code>.</p>
+      </div>
+
+      <!-- ── RIGHT PANE: COOKIE JAR ── -->
+      <div class="demo-pane">
+        <h4>Cookie Jar (this document)</h4>
+        <div id="cookie-list" class="cookie-list">
+          <div class="cookie-empty">No demo cookies set yet. Use the form on the left.</div>
+        </div>
+
+        <h4 style="margin-top:1.5rem;">Raw <code>document.cookie</code></h4>
+        <div class="header-out" id="raw-cookie"><span class="muted">// nothing visible to JS yet</span></div>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.6rem;">
+          Notice anything missing? Cookies set with <code>HttpOnly</code> by your real server <b>won't appear here</b>. That's the entire point of the flag — JS-borne XSS can't read them.
+        </p>
+
+        <div class="btn-row">
+          <button class="btn" id="btn-refresh">Refresh jar</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="callout">
+    <h4>Try this</h4>
+    <ol style="margin:0; padding-left:1.4rem; line-height:1.8;">
+      <li>Set <code>demo_pref=dark-mode</code> with default flags.</li>
+      <li>Refresh this page — the cookie persists for an hour.</li>
+      <li>Open DevTools → Application → Cookies and you'll see it there too.</li>
+      <li>Set the same name with <code>Max-Age=0</code> to delete it.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 5b: STORAGE PLAYGROUNDS ═══════════ -->
+<div class="section" id="s5b">
+  <span class="section-label gold">Topic 6 · Hands-on</span>
+  <h2>Web Storage Playgrounds — localStorage &amp; sessionStorage</h2>
+  <p style="color:var(--text-muted); font-size:0.95rem; margin-bottom:1.5rem;">The Web Storage API gives you a tiny surface — <code>setItem(k, v)</code>, <code>getItem(k)</code>, <code>removeItem(k)</code>, <code>clear()</code>, plus a <code>storage</code> event that fires in <i>other</i> tabs when you change something. Both demos below speak that exact API; only the lifetime differs.</p>
+  <p>Set values, refresh the page, open a new tab — and watch how each store behaves. Both demos prefix keys with <code>demo_</code> so they don't collide with anything else this site stores.</p>
+
+  <!-- ───── localStorage demo ───── -->
+  <h3 style="margin-top:1.5rem; font-size:1.2rem; font-weight:800; letter-spacing:-0.01em;">💾 localStorage — survives refreshes, restarts, and reboots</h3>
+
+  <div class="demo" style="margin-top:0.75rem;">
+    <div class="demo-head">
+      <span class="dot r"></span>
+      <span class="dot y"></span>
+      <span class="dot g"></span>
+      <span class="lbl">localStorage · same origin · ~5 MB · persists forever</span>
+    </div>
+    <div class="demo-body">
+
+      <!-- ── form ── -->
+      <div class="demo-pane">
+        <h4>Set / update an item</h4>
+
+        <div class="form-row">
+          <label for="ls-key">key</label>
+          <input id="ls-key" type="text" value="theme" maxlength="64"/>
+        </div>
+        <div class="form-row" style="grid-template-columns: 7rem 1fr; align-items:flex-start;">
+          <label for="ls-value" style="margin-top:0.55rem;">value</label>
+          <textarea id="ls-value" rows="3" style="width:100%; padding:0.5rem 0.7rem; font-size:0.85rem; font-family:'JetBrains Mono', monospace; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); outline:none; resize:vertical;">dark</textarea>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn primary" id="ls-set">Set</button>
+          <button class="btn" id="ls-get">Get</button>
+          <button class="btn" id="ls-remove">Remove</button>
+          <button class="btn ghost" id="ls-fill">Fill with sample data</button>
+          <button class="btn danger" id="ls-clear">Clear all demo keys</button>
+        </div>
+
+        <h4 style="margin-top:1.5rem;">Equivalent JS</h4>
+        <div class="header-out" id="ls-snippet"><span class="key">localStorage</span>.setItem(<span class="attr">'demo_theme'</span>, <span class="attr">'dark'</span>);</div>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.6rem;">
+          Open a <b>new tab</b> on this same site after setting a key, then click "Refresh view" in that tab — same data shows up. That's same-origin sharing.
+        </p>
+      </div>
+
+      <!-- ── jar ── -->
+      <div class="demo-pane">
+        <h4 id="ls-jar-title">Stored items <span style="float:right; font-family:'JetBrains Mono', monospace; font-size:0.72rem; color:var(--text-muted);" id="ls-meta">0 keys · 0 B</span></h4>
+        <div id="ls-list" class="cookie-list">
+          <div class="cookie-empty">Nothing in localStorage yet (under <code>demo_</code> prefix).</div>
+        </div>
+
+        <h4 style="margin-top:1.5rem;">Raw <code>JSON.stringify(localStorage)</code></h4>
+        <div class="header-out" id="ls-raw"><span class="muted">// empty</span></div>
+
+        <div class="btn-row">
+          <button class="btn" id="ls-refresh">Refresh view</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="callout">
+    <h4>Try this — persistence proof</h4>
+    <ol style="margin:0; padding-left:1.4rem; line-height:1.8;">
+      <li>Set <code>theme=dark</code>.</li>
+      <li>Hit <code>Cmd+R</code> — still there.</li>
+      <li>Quit your browser entirely.</li>
+      <li>Reopen and come back to this page. <b>Still there</b>.</li>
+    </ol>
+    <p style="margin-top:0.6rem;">That's the whole point of localStorage.</p>
+  </div>
+
+  <!-- ───── sessionStorage demo ───── -->
+  <h3 style="margin-top:2.5rem; font-size:1.2rem; font-weight:800; letter-spacing:-0.01em;">🪟 sessionStorage — dies when this tab closes</h3>
+
+  <div class="demo" style="margin-top:0.75rem;">
+    <div class="demo-head">
+      <span class="dot r"></span>
+      <span class="dot y"></span>
+      <span class="dot g"></span>
+      <span class="lbl">sessionStorage · per-tab · ~5 MB · cleared on tab close</span>
+    </div>
+    <div class="demo-body">
+
+      <!-- ── form ── -->
+      <div class="demo-pane">
+        <h4>Set / update an item</h4>
+
+        <div class="form-row">
+          <label for="ss-key">key</label>
+          <input id="ss-key" type="text" value="step" maxlength="64"/>
+        </div>
+        <div class="form-row" style="grid-template-columns: 7rem 1fr; align-items:flex-start;">
+          <label for="ss-value" style="margin-top:0.55rem;">value</label>
+          <textarea id="ss-value" rows="3" style="width:100%; padding:0.5rem 0.7rem; font-size:0.85rem; font-family:'JetBrains Mono', monospace; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); outline:none; resize:vertical;">2</textarea>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn primary" id="ss-set">Set</button>
+          <button class="btn" id="ss-get">Get</button>
+          <button class="btn" id="ss-remove">Remove</button>
+          <button class="btn ghost" id="ss-fill">Fill with checkout state</button>
+          <button class="btn danger" id="ss-clear">Clear all demo keys</button>
+        </div>
+
+        <h4 style="margin-top:1.5rem;">Equivalent JS</h4>
+        <div class="header-out" id="ss-snippet"><span class="key">sessionStorage</span>.setItem(<span class="attr">'demo_step'</span>, <span class="attr">'2'</span>);</div>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.6rem;">
+          Click the button below to open this same page in a brand-new tab. The new tab will show an <b>empty jar</b> — that's per-tab scoping.
+        </p>
+        <div class="btn-row">
+          <button class="btn primary" id="ss-newtab">Open this page in new tab ↗</button>
+        </div>
+      </div>
+
+      <!-- ── jar ── -->
+      <div class="demo-pane">
+        <h4 id="ss-jar-title">Stored items <span style="float:right; font-family:'JetBrains Mono', monospace; font-size:0.72rem; color:var(--text-muted);" id="ss-meta">0 keys · 0 B</span></h4>
+        <div id="ss-list" class="cookie-list">
+          <div class="cookie-empty">Nothing in sessionStorage for this tab yet.</div>
+        </div>
+
+        <h4 style="margin-top:1.5rem;">Raw <code>JSON.stringify(sessionStorage)</code></h4>
+        <div class="header-out" id="ss-raw"><span class="muted">// empty</span></div>
+
+        <div class="btn-row">
+          <button class="btn" id="ss-refresh">Refresh view</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="callout">
+    <h4>Try this — per-tab scoping proof</h4>
+    <ol style="margin:0; padding-left:1.4rem; line-height:1.8;">
+      <li>Click "Fill with checkout state" — a multi-step checkout object appears.</li>
+      <li>Click "Open this page in new tab" — the jar in the new tab is empty.</li>
+      <li>Refresh <i>this</i> tab — your data is still here.</li>
+      <li>Close this tab and reopen the URL — gone.</li>
+    </ol>
+    <p style="margin-top:0.6rem;">That's the contract.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 5a: REAL-WORLD USE CASES ═══════════ -->
+<div class="section" id="s5a">
+  <span class="section-label purple">Topic 7</span>
+  <h2>Real-World Use Cases — When To Pick Which</h2>
+  <p>The comparison table tells you <i>what</i>; this section tells you <i>when</i>. Two strong examples per storage, with the code you'd actually ship — plus the anti-pattern that gets people fired.</p>
+
+  <div class="callout">
+    <h4>The 10-second decision tree</h4>
+    <p style="font-family:'JetBrains Mono', monospace; font-size:0.82rem; line-height:1.9;">
+      Server needs it on every request? &nbsp;→&nbsp; <b>Cookie</b><br/>
+      Only JS, must survive browser restart? &nbsp;→&nbsp; <b>localStorage</b><br/>
+      Only JS, must die when tab closes? &nbsp;→&nbsp; <b>sessionStorage</b>
+    </p>
+  </div>
+
+  <!-- ── COOKIES ── -->
+  <h3 style="margin-top:2rem; font-size:1.25rem; font-weight:800; letter-spacing:-0.01em;">🍪 Cookies — when the server needs to know</h3>
+
+  <div class="grid-2" style="margin-top:0.75rem;">
+    <div class="card">
+      <h3><span class="icon">🔐</span> Login session</h3>
+      <p>The server creates a session row, hands the browser an opaque ID. Every subsequent request auto-attaches it; middleware looks up "who is this?" — no frontend code needed.</p>
+      <div class="example">// Server (Express)
+res.cookie('sid', sessionId, {
+  httpOnly: true,   // XSS can't read it
+  secure:   true,   // HTTPS only
+  sameSite: 'lax',  // CSRF defense
+  maxAge:   8 * 60 * 60 * 1000
+});</div>
+      <p style="margin-top:0.6rem; font-size:0.86rem;"><b>Why not localStorage?</b> You'd have to attach a token manually to every fetch, and any XSS payload steals it instantly. <code>HttpOnly</code> is the only setup where JS can <i>send</i> credentials without being able to <i>read</i> them.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="icon">🧪</span> A/B test bucket at the edge</h3>
+      <p>You want server-rendered HTML to come back with the right variant baked in — no flicker, no client-side hydration swap.</p>
+      <div class="example">// Edge worker / CDN
+const bucket = req.cookies.ab_home
+  ?? (Math.random() &lt; 0.5 ? 'A' : 'B');
+res.cookie('ab_home', bucket, {
+  maxAge: 30 * 24 * 3600 * 1000
+});
+// render template based on `bucket`</div>
+      <p style="margin-top:0.6rem; font-size:0.86rem;">The cookie ships with every request, so the same user sees the same variant on a hard refresh, an SSR cache hit, or an offline-then-reconnected reload.</p>
+    </div>
+  </div>
+
+  <div class="callout danger">
+    <h4>Cookie anti-pattern</h4>
+    <p>Storing a 4 KB JWT with the user's full profile in a cookie. It ships on <i>every</i> request — images, fonts, API calls, analytics beacons. That's wasted bandwidth on every page load. Keep cookies tiny (an opaque session ID); put the profile in <code>localStorage</code> or fetch on demand.</p>
+  </div>
+
+  <!-- ── LOCALSTORAGE ── -->
+  <h3 style="margin-top:2.5rem; font-size:1.25rem; font-weight:800; letter-spacing:-0.01em;">💾 localStorage — only the browser cares, forever</h3>
+
+  <div class="grid-2" style="margin-top:0.75rem;">
+    <div class="card">
+      <h3><span class="icon">🌗</span> Theme preference</h3>
+      <p>User toggles dark mode at 11 pm. Closes laptop. Comes back Monday morning. Site should still be dark — without a server round-trip just to know that.</p>
+      <div class="example">// On toggle
+localStorage.setItem('theme', 'dark');
+document.documentElement.dataset.theme = 'dark';
+
+// On page load (sync, before paint)
+const t = localStorage.getItem('theme') || 'light';
+document.documentElement.dataset.theme = t;</div>
+      <p style="margin-top:0.6rem; font-size:0.86rem;">Persists across tabs, restarts, machine reboots. Server doesn't care, doesn't need to.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="icon">📝</span> Draft text auto-save</h3>
+      <p>User is writing a long comment. Browser crashes. Without auto-save, work is gone. With four lines of code, it isn't.</p>
+      <div class="example">// Restore on load
+editor.value = localStorage.getItem('draft') || '';
+
+// Save while typing (debounced)
+let t;
+editor.addEventListener('input', () =&gt; {
+  clearTimeout(t);
+  t = setTimeout(() =&gt; {
+    localStorage.setItem('draft', editor.value);
+  }, 300);
+});
+
+// Clear on successful submit
+form.addEventListener('submit', () =&gt;
+  localStorage.removeItem('draft'));</div>
+      <p style="margin-top:0.6rem; font-size:0.86rem;">5–10 MB ceiling means you can hold a <i>lot</i> of text. The <code>storage</code> event lets two open tabs sync as the user types — feature or bug, depending on UX.</p>
+    </div>
+  </div>
+
+  <div class="callout danger">
+    <h4>localStorage anti-pattern</h4>
+    <p>Storing a JWT or session token here. Any XSS = token exfiltrated, instantly, with no audit trail. The industry burned itself on this in 2017–2019; there's a reason every modern auth library now defaults to HttpOnly cookies for the access path.</p>
+  </div>
+
+  <!-- ── SESSIONSTORAGE ── -->
+  <h3 style="margin-top:2.5rem; font-size:1.25rem; font-weight:800; letter-spacing:-0.01em;">🪟 sessionStorage — state that should die with the tab</h3>
+
+  <div class="grid-2" style="margin-top:0.75rem;">
+    <div class="card">
+      <h3><span class="icon">🧭</span> Multi-step wizard / checkout</h3>
+      <p>User is 4 steps into checkout. They open a product detail in a new tab. That new tab should <b>not</b> see step-4 state — it's a different shopping intent.</p>
+      <div class="example">// Step 1
+sessionStorage.setItem('checkout',
+  JSON.stringify({ cart, shipping }));
+
+// Step 4
+const s = JSON.parse(
+  sessionStorage.getItem('checkout'));
+s.payment = paymentDetails;
+sessionStorage.setItem('checkout',
+  JSON.stringify(s));
+
+// Final submit clears
+sessionStorage.removeItem('checkout');</div>
+      <p style="margin-top:0.6rem; font-size:0.86rem;">If you used <code>localStorage</code>, two open tabs would step on each other's checkout. If you used a cookie, you'd ship 2 KB of cart state with every API call including unrelated ones.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="icon">🔁</span> OAuth state &amp; PKCE verifier</h3>
+      <p>You redirect to Google. Google redirects back to <code>/callback?state=xyz&amp;code=...</code>. You need to verify <code>state</code> matches what you sent — but <i>only in this tab</i>.</p>
+      <div class="example">// Before redirect
+const state = crypto.randomUUID();
+const verifier = crypto.randomUUID();
+sessionStorage.setItem('oauth_state', state);
+sessionStorage.setItem('pkce_verifier', verifier);
+location.href = `https://accounts.google.com/...
+  &amp;state=${state}&amp;code_challenge=...`;
+
+// On /callback
+const expected =
+  sessionStorage.getItem('oauth_state');
+const got = new URL(location.href)
+  .searchParams.get('state');
+if (expected !== got)
+  throw new Error('CSRF: state mismatch');</div>
+      <p style="margin-top:0.6rem; font-size:0.86rem;">Per-tab scoping kills the attack where a victim opens two simultaneous OAuth flows and an attacker tricks the callback into validating against the wrong one.</p>
+    </div>
+  </div>
+
+  <div class="callout danger">
+    <h4>sessionStorage anti-pattern</h4>
+    <p>Putting "user is logged in" state in <code>sessionStorage</code>. Closing the tab should not log you out — that's surprising UX, and it's the wrong tool. For "remember me", use a cookie. For "log out when I close the browser", use a session cookie (no <code>Max-Age</code>) — not <code>sessionStorage</code>.</p>
+  </div>
+
+  <!-- ── CHEAT SHEET ── -->
+  <h3 style="margin-top:2.5rem; font-size:1.25rem; font-weight:800; letter-spacing:-0.01em;">📋 Decide by question</h3>
+
+  <table class="compare-table" style="margin-top:0.75rem;">
+    <thead>
+      <tr>
+        <th>Ask yourself</th>
+        <th>Pick</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Do I need this on the server?</td>
+        <td>Yes → <b>cookie</b></td>
+      </tr>
+      <tr>
+        <td>Should it survive closing the tab?</td>
+        <td>Yes → <b>localStorage</b> &nbsp;·&nbsp; No → <b>sessionStorage</b></td>
+      </tr>
+      <tr>
+        <td>Is it sensitive (auth token, PII)?</td>
+        <td>Cookie + <code>HttpOnly</code>. Never <code>localStorage</code>.</td>
+      </tr>
+      <tr>
+        <td>Do two tabs need to share it?</td>
+        <td>Yes → <b>localStorage</b> &nbsp;·&nbsp; No → <b>sessionStorage</b></td>
+      </tr>
+      <tr>
+        <td>Is each new tab a fresh attempt? (wizard, OAuth, draft you don't want re-loaded)</td>
+        <td><b>sessionStorage</b></td>
+      </tr>
+      <tr>
+        <td>Will it be &gt; 4 KB?</td>
+        <td>Not a cookie. <b>localStorage</b> or <b>IndexedDB</b>.</td>
+      </tr>
+      <tr>
+        <td>Will it be &gt; 5 MB?</td>
+        <td>Not Web Storage. Use <b>IndexedDB</b>.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 6: SECURITY ═══════════ -->
+<div class="section" id="s6">
+  <span class="section-label red">Topic 8</span>
+  <h2>Security Pitfalls — Across All Three Stores</h2>
+  <p>The threat model differs per storage. Cookies face CSRF; <code>localStorage</code> faces XSS exfiltration; <code>sessionStorage</code> faces tab-takeover variants. Below: the four most common ways each one bites teams in production.</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>🪤 XSS → Cookie theft</h3>
+      <p>An attacker injects <code>&lt;script&gt;fetch('/x?c='+document.cookie)&lt;/script&gt;</code>. If your session cookie is missing <code>HttpOnly</code>, the attacker now owns the session. Mitigation: <b>HttpOnly</b> on every auth cookie + CSP + escape on output.</p>
+    </div>
+    <div class="card">
+      <h3>🎯 CSRF → forged requests</h3>
+      <p>The browser auto-attaches cookies, so a malicious site can submit a form to your bank with the user's session attached. Mitigation: <b>SameSite=Lax</b> (now default) blocks cross-site POSTs, plus a CSRF token bound to the session.</p>
+    </div>
+    <div class="card">
+      <h3>🔓 MITM → cookie sniffing</h3>
+      <p>Without <code>Secure</code>, the cookie ships over plain HTTP — any router on the path reads it. Mitigation: <b>HSTS</b> + <code>Secure</code> + <code>__Host-</code> prefix on session cookies.</p>
+    </div>
+    <div class="card">
+      <h3>♻️ Session fixation</h3>
+      <p>Attacker tricks the user into authenticating with a session ID the attacker already knows. Mitigation: <b>rotate the session ID on login</b> (issue a new <code>Set-Cookie</code> the moment auth succeeds).</p>
+    </div>
+  </div>
+
+  <div class="callout danger">
+    <h4>Production session cookie checklist</h4>
+    <ul style="margin:0; padding-left:0; list-style:none; line-height:1.9;">
+      <li>✓ <code>HttpOnly</code></li>
+      <li>✓ <code>Secure</code></li>
+      <li>✓ <code>SameSite=Lax</code> (or <code>Strict</code> for high-value apps)</li>
+      <li>✓ <code>__Host-</code> prefix</li>
+      <li>✓ Short <code>Max-Age</code> with sliding expiry</li>
+      <li>✓ Rotate on login &amp; on privilege change</li>
+      <li>✓ Server-side revocation (sessions are real records, not just signed JWTs)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 7: PRIVACY ═══════════ -->
+<div class="section" id="s7">
+  <span class="section-label gold">Topic 9</span>
+  <h2>The End of Third-Party Cookies (and What's Replacing Them)</h2>
+  <p>For two decades, ad networks tracked users across sites by relying on cookies set by an iframe to <code>doubleclick.net</code> being readable on every other site that embedded a DoubleClick pixel. Browsers have been progressively shutting this down.</p>
+
+  <div class="steps">
+
+    <div class="step" data-num="1">
+      <h3>Safari ITP (2017)</h3>
+      <p>Apple's Intelligent Tracking Prevention started capping third-party cookie lifetimes — first to 30 days, then 24 hours, then full block by 2020.</p>
+    </div>
+
+    <div class="step" data-num="2">
+      <h3>Firefox ETP (2019)</h3>
+      <p>Enhanced Tracking Protection blocks third-party cookies from a known-tracker list by default, then expanded to total cookie isolation per top-level site.</p>
+    </div>
+
+    <div class="step" data-num="3">
+      <h3>Chrome SameSite=Lax default (2020)</h3>
+      <p>Cookies without an explicit <code>SameSite</code> attribute are treated as <code>Lax</code>. This alone broke a lot of cross-site flows that quietly relied on the old default.</p>
+    </div>
+
+    <div class="step" data-num="4">
+      <h3>CHIPS — Partitioned cookies (2024+)</h3>
+      <p>The <code>Partitioned</code> attribute lets a third-party cookie still be set, but it's keyed by <i>(top-level site, third-party origin)</i> — so an embedded chat widget gets one bucket on <code>siteA.com</code> and a totally separate bucket on <code>siteB.com</code>. Tracking dies; legit embeds still work.</p>
+    </div>
+
+    <div class="step" data-num="5">
+      <h3>Privacy Sandbox / Topics API</h3>
+      <p>Chrome's replacement for ad targeting: the browser categorizes the user locally into a few interest topics and exposes only those — no cross-site identifier.</p>
+    </div>
+
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════ SECTION 8: Q&A ═══════════ -->
+<div class="section" id="s8">
+  <span class="section-label blue">Topic 10</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="qa">
+    <div class="q">Difference between session and persistent cookies?</div>
+    <div class="a">A <b>session cookie</b> has no <code>Expires</code> or <code>Max-Age</code> — the browser drops it when the window closes (modulo "restore tabs"). A <b>persistent cookie</b> has an explicit lifetime and survives restarts. Server-side "session" usually uses a persistent cookie holding a session ID, separate from the HTTP-cookie meaning of "session".</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Can JavaScript read an HttpOnly cookie?</div>
+    <div class="a">No — that's the whole point. <code>document.cookie</code> filters out HttpOnly entries. The cookie still rides on every fetch the browser makes, just not in the JS API. This is the single biggest XSS mitigation for session tokens.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">How do you delete a cookie?</div>
+    <div class="a">You can't directly delete it — you set the same <code>name</code>, <code>Domain</code>, and <code>Path</code> with <code>Max-Age=0</code> (or an Expires date in the past). The browser overwrites the existing entry and immediately discards it. Mismatched Domain or Path = a new cookie alongside the old one.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">SameSite=Lax vs Strict — when to pick which?</div>
+    <div class="a"><b>Lax</b> sends the cookie on top-level navigation GETs (clicking a link to your site keeps you logged in) but blocks cross-site POST/PUT/DELETE. <b>Strict</b> never sends cross-site, period — even if the user clicks a link from email, they arrive logged out. Pick Strict for banking-grade flows; Lax is the right default everywhere else.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">What's a first-party vs third-party cookie?</div>
+    <div class="a">First-party = the cookie's domain matches the site in the address bar. Third-party = the cookie's domain belongs to an embedded resource (iframe, image, script) from a different origin. Browsers are aggressively killing third-party cookies; CHIPS is the migration path for legit cross-site embeds.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Why is the <code>__Host-</code> prefix considered the strongest cookie config?</div>
+    <div class="a">It enforces three rules at the browser level: cookie must be <code>Secure</code>, must have <code>Path=/</code>, and must <i>not</i> have a <code>Domain</code> attribute. That guarantees the cookie is bound to one exact origin and can't be set by, or leak to, any subdomain. A subdomain takeover can no longer overwrite it.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Cookies vs JWT in localStorage — which is "more secure"?</div>
+    <div class="a">Trick question — neither is universally better, the threat models differ. <b>Cookie + HttpOnly + SameSite</b>: safe from XSS theft, but you need CSRF defenses. <b>JWT in localStorage</b>: no CSRF risk (you must explicitly attach it), but any XSS = full token exfiltration. The industry trend: HttpOnly cookies for the access path + opaque server-side sessions for revocation.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">What happens if I set a cookie with <code>Domain=.google.com</code> from <code>evil.com</code>?</div>
+    <div class="a">The browser rejects it. Cookies can only be set for the request's origin or one of its parent domains <i>that isn't a public suffix</i>. <code>evil.com</code> can set <code>.evil.com</code> but never <code>.google.com</code>. The Public Suffix List prevents <code>.com</code> or <code>.co.uk</code> from being set as a domain.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">A cookie disappears in production but works locally — what's the most likely cause?</div>
+    <div class="a">In order of likelihood: <b>(1)</b> Missing <code>Secure</code> + the prod site is HTTPS but a redirect path drops it, <b>(2)</b> <code>SameSite=None</code> without <code>Secure</code> → silently dropped by Chrome, <b>(3)</b> <code>Domain</code> mismatch (set on <code>www.x.com</code>, request goes to <code>x.com</code>), <b>(4)</b> a CDN strips Set-Cookie on cacheable responses, <b>(5)</b> Path scoping too narrow.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">How big is the cookie header allowed to be?</div>
+    <div class="a">Per cookie: 4 KB minimum support, ~4096 bytes is the practical cap. Per request <code>Cookie</code> header: most servers cap at 8 KB total — exceed it and you get HTTP 431 Request Header Fields Too Large or a silent connection drop. Big tokens belong in <code>Authorization</code> (or in opaque server sessions), not in cookies.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">localStorage is synchronous — does that actually matter?</div>
+    <div class="a">It does. Every <code>getItem</code>/<code>setItem</code> blocks the main thread. For a few KB it's invisible, but a 4 MB JSON blob being parsed on every page load is a measurable jank source. If you're storing structured app state &gt; 100 KB, switch to <code>IndexedDB</code> (async) — same persistence, no main-thread cost.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">If I open the same site in two tabs, do they share sessionStorage?</div>
+    <div class="a">No — that's the entire point of <code>sessionStorage</code>. Each <i>top-level browsing context</i> gets its own. The exception: a tab opened via <code>window.open</code> (or a target=_blank link without <code>noopener</code>) inherits a copy of the opener's <code>sessionStorage</code> at creation time, then diverges. <code>localStorage</code> always shares across tabs of the same origin.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">What's the <code>storage</code> event and when does it fire?</div>
+    <div class="a">It fires in <i>other</i> tabs/windows of the same origin when <code>localStorage</code> changes. Useful for cross-tab sync — log a user out in one tab, all other open tabs notice. <b>Caveat:</b> it does <i>not</i> fire in the tab that made the change, and does <i>not</i> fire for <code>sessionStorage</code>. Try it: open this page in two tabs and change a <code>demo_*</code> key — the other tab will toast.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">When should I reach for IndexedDB instead of localStorage?</div>
+    <div class="a">Three triggers: <b>(1)</b> data &gt; 5 MB, <b>(2)</b> structured queries (you want indexes, ranges), <b>(3)</b> the synchronous parse cost of <code>localStorage</code> is showing up in your performance budget. IndexedDB is async, transactional, and pretty much unlimited (within disk quota). Libraries like <code>idb-keyval</code> give you a localStorage-shaped API on top of IndexedDB if you don't need the full power.</div>
+  </div>
+
+  <div class="qa">
+    <div class="q">Are cookies, localStorage, and sessionStorage origin-scoped or domain-scoped?</div>
+    <div class="a"><code>localStorage</code> and <code>sessionStorage</code> are <b>origin-scoped</b> — scheme + host + port all must match. <code>http://x.com</code> and <code>https://x.com</code> get separate buckets. Cookies are <b>domain-scoped</b> by default and don't differentiate between schemes (a cookie set over HTTPS is sent over HTTP unless <code>Secure</code> is set). This mismatch is a recurring source of bugs.</div>
+  </div>
+
+</div>
+
+<div class="footer">© Shubham Bansal · 2026 · Browser Storage Deep Dive — Cookies, localStorage &amp; sessionStorage</div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast">Cookie set</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // All demo cookies start with this prefix so we don't touch unrelated cookies on the domain
+  var DEMO_PREFIX = 'demo_';
+
+  var els = {
+    name:     document.getElementById('ck-name'),
+    value:    document.getElementById('ck-value'),
+    path:     document.getElementById('ck-path'),
+    maxage:   document.getElementById('ck-maxage'),
+    samesite: document.getElementById('ck-samesite'),
+    secure:   document.getElementById('ck-secure'),
+    httponly: document.getElementById('ck-httponly'),
+    btnSet:   document.getElementById('btn-set'),
+    btnReset: document.getElementById('btn-reset'),
+    btnClear: document.getElementById('btn-clear'),
+    btnRefresh: document.getElementById('btn-refresh'),
+    headerOut: document.getElementById('header-out'),
+    list:     document.getElementById('cookie-list'),
+    raw:      document.getElementById('raw-cookie'),
+    toast:    document.getElementById('toast')
+  };
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function ensurePrefix(name) {
+    name = (name || '').trim();
+    if (!name) name = 'cookie';
+    name = name.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    if (name.indexOf(DEMO_PREFIX) !== 0) name = DEMO_PREFIX + name;
+    return name;
+  }
+
+  function buildHeader() {
+    var name = ensurePrefix(els.name.value);
+    var value = els.value.value || '';
+    var path = els.path.value || '/';
+    var maxage = els.maxage.value;
+    var samesite = els.samesite.value;
+    var secure = els.secure.checked;
+    var httponly = els.httponly.checked;
+
+    var parts = ['<span class="key">' + escapeHtml(name) + '</span>=' + escapeHtml(value)];
+    parts.push('<span class="attr">Path</span>=' + escapeHtml(path));
+    if (maxage !== '' && !isNaN(Number(maxage))) {
+      parts.push('<span class="attr">Max-Age</span>=' + escapeHtml(maxage));
+    }
+    parts.push('<span class="attr">SameSite</span>=' + escapeHtml(samesite));
+    if (secure) parts.push('<span class="attr">Secure</span>');
+    if (httponly) parts.push('<span class="attr">HttpOnly</span> <span class="muted">// only effective when set by server</span>');
+
+    return 'Set-Cookie: ' + parts.join('; ');
+  }
+
+  function renderHeader() {
+    els.headerOut.innerHTML = buildHeader();
+  }
+
+  function setCookie() {
+    var name = ensurePrefix(els.name.value);
+    var value = encodeURIComponent(els.value.value || '');
+    var path = els.path.value || '/';
+    var maxage = els.maxage.value;
+    var samesite = els.samesite.value;
+    var secure = els.secure.checked;
+
+    var parts = [name + '=' + value];
+    parts.push('path=' + path);
+    if (maxage !== '' && !isNaN(Number(maxage))) {
+      parts.push('max-age=' + Number(maxage));
+    }
+    if (samesite === 'None') {
+      parts.push('SameSite=None');
+      parts.push('Secure');
+    } else {
+      parts.push('SameSite=' + samesite);
+      if (secure) parts.push('Secure');
+    }
+
+    document.cookie = parts.join('; ');
+    showToast('Cookie set: ' + name);
+    renderJar();
+  }
+
+  function getDemoCookies() {
+    var raw = document.cookie || '';
+    if (!raw) return [];
+    return raw.split(';')
+      .map(function(s) { return s.trim(); })
+      .filter(function(s) { return s.indexOf(DEMO_PREFIX) === 0; })
+      .map(function(s) {
+        var idx = s.indexOf('=');
+        var n = idx === -1 ? s : s.substring(0, idx);
+        var v = idx === -1 ? '' : s.substring(idx + 1);
+        try { v = decodeURIComponent(v); } catch (e) { /* leave as-is */ }
+        return { name: n, value: v };
+      });
+  }
+
+  function deleteCookie(name) {
+    var paths = [els.path.value || '/', '/'];
+    paths.forEach(function(p) {
+      document.cookie = name + '=; max-age=0; path=' + p;
+    });
+    showToast('Deleted ' + name);
+    renderJar();
+  }
+
+  function clearAll() {
+    var demo = getDemoCookies();
+    demo.forEach(function(c) { deleteCookie(c.name); });
+    if (demo.length === 0) showToast('Nothing to clear');
+  }
+
+  function renderJar() {
+    var demo = getDemoCookies();
+    if (demo.length === 0) {
+      els.list.innerHTML = '<div class="cookie-empty">No demo cookies set yet. Use the form on the left.</div>';
+    } else {
+      els.list.innerHTML = demo.map(function(c) {
+        return '<div class="cookie-row">' +
+                 '<div>' +
+                   '<div class="name">' + escapeHtml(c.name) + '</div>' +
+                   '<div class="val">' + escapeHtml(c.value) + '</div>' +
+                 '</div>' +
+                 '<button data-name="' + escapeHtml(c.name) + '">Delete</button>' +
+               '</div>';
+      }).join('');
+      Array.prototype.forEach.call(els.list.querySelectorAll('button[data-name]'), function(btn) {
+        btn.addEventListener('click', function() { deleteCookie(btn.getAttribute('data-name')); });
+      });
+    }
+
+    var raw = document.cookie;
+    if (!raw) {
+      els.raw.innerHTML = '<span class="muted">// nothing visible to JS yet</span>';
+    } else {
+      els.raw.textContent = raw;
+    }
+  }
+
+  var toastTimer;
+  function showToast(msg) {
+    els.toast.textContent = msg;
+    els.toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() {
+      els.toast.classList.remove('show');
+    }, 1800);
+  }
+
+  // wire up
+  ['input', 'change'].forEach(function(evt) {
+    [els.name, els.value, els.path, els.maxage, els.samesite, els.secure, els.httponly].forEach(function(el) {
+      el.addEventListener(evt, renderHeader);
+    });
+  });
+
+  // SameSite=None auto-forces Secure in the UI
+  els.samesite.addEventListener('change', function() {
+    if (els.samesite.value === 'None') {
+      els.secure.checked = true;
+      els.secure.disabled = true;
+    } else {
+      els.secure.disabled = false;
+    }
+    renderHeader();
+  });
+
+  els.btnSet.addEventListener('click', setCookie);
+  els.btnClear.addEventListener('click', clearAll);
+  els.btnRefresh.addEventListener('click', renderJar);
+  els.btnReset.addEventListener('click', function() {
+    els.name.value = 'demo_pref';
+    els.value.value = 'dark-mode';
+    els.path.value = '/';
+    els.maxage.value = '3600';
+    els.samesite.value = 'Lax';
+    els.secure.checked = false;
+    els.secure.disabled = false;
+    els.httponly.checked = false;
+    renderHeader();
+  });
+
+  // initial paint
+  renderHeader();
+  renderJar();
+})();
+
+/* ─────────────────────────────────────────────────
+   localStorage & sessionStorage playgrounds
+   ───────────────────────────────────────────────── */
+(function() {
+  'use strict';
+
+  var DEMO_PREFIX = 'demo_';
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function bytesOf(s) {
+    // UTF-8 byte length approximation
+    return new Blob([s]).size;
+  }
+
+  function ensurePrefix(key) {
+    key = (key || '').trim();
+    if (!key) key = 'item';
+    key = key.replace(/[^a-zA-Z0-9_\-\.]/g, '_');
+    if (key.indexOf(DEMO_PREFIX) !== 0) key = DEMO_PREFIX + key;
+    return key;
+  }
+
+  function listDemoEntries(storage) {
+    var out = [];
+    for (var i = 0; i < storage.length; i++) {
+      var k = storage.key(i);
+      if (k && k.indexOf(DEMO_PREFIX) === 0) {
+        out.push({ key: k, value: storage.getItem(k) });
+      }
+    }
+    out.sort(function(a, b) { return a.key.localeCompare(b.key); });
+    return out;
+  }
+
+  function fmtBytes(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function() { t.classList.remove('show'); }, 1800);
+  }
+
+  function makeDemo(opts) {
+    var storage = opts.storage;
+    var p = opts.prefix; // id prefix: 'ls' or 'ss'
+    var name = opts.name; // 'localStorage' | 'sessionStorage'
+
+    var els = {
+      key:     document.getElementById(p + '-key'),
+      value:   document.getElementById(p + '-value'),
+      btnSet:  document.getElementById(p + '-set'),
+      btnGet:  document.getElementById(p + '-get'),
+      btnRm:   document.getElementById(p + '-remove'),
+      btnFill: document.getElementById(p + '-fill'),
+      btnClear:document.getElementById(p + '-clear'),
+      btnRefresh: document.getElementById(p + '-refresh'),
+      snippet: document.getElementById(p + '-snippet'),
+      list:    document.getElementById(p + '-list'),
+      raw:     document.getElementById(p + '-raw'),
+      meta:    document.getElementById(p + '-meta')
+    };
+
+    function renderSnippet() {
+      var k = ensurePrefix(els.key.value);
+      var v = els.value.value || '';
+      var jsVal = JSON.stringify(v);
+      els.snippet.innerHTML =
+        '<span class="key">' + name + '</span>.setItem(' +
+        '<span class="attr">' + escapeHtml("'" + k + "'") + '</span>, ' +
+        '<span class="attr">' + escapeHtml(jsVal) + '</span>);';
+    }
+
+    function setItem() {
+      var k = ensurePrefix(els.key.value);
+      var v = els.value.value || '';
+      try {
+        storage.setItem(k, v);
+        showToast('Set ' + k);
+        render();
+      } catch (e) {
+        showToast('Quota exceeded');
+      }
+    }
+
+    function getItem() {
+      var k = ensurePrefix(els.key.value);
+      var v = storage.getItem(k);
+      if (v === null) {
+        showToast(k + ' is null');
+      } else {
+        els.value.value = v;
+        showToast('Got ' + k);
+      }
+      renderSnippet();
+    }
+
+    function removeItem() {
+      var k = ensurePrefix(els.key.value);
+      storage.removeItem(k);
+      showToast('Removed ' + k);
+      render();
+    }
+
+    function clearAll() {
+      var entries = listDemoEntries(storage);
+      entries.forEach(function(e) { storage.removeItem(e.key); });
+      showToast(entries.length === 0 ? 'Nothing to clear' : 'Cleared ' + entries.length);
+      render();
+    }
+
+    function fill() {
+      if (p === 'ls') {
+        storage.setItem(DEMO_PREFIX + 'theme', 'dark');
+        storage.setItem(DEMO_PREFIX + 'lang', 'en-IN');
+        storage.setItem(DEMO_PREFIX + 'recent', JSON.stringify(['cookies','docker','kafka']));
+      } else {
+        storage.setItem(DEMO_PREFIX + 'step', '2');
+        storage.setItem(DEMO_PREFIX + 'cart', JSON.stringify([
+          { sku: 'BOOK-42', qty: 1, price: 499 },
+          { sku: 'PEN-X',   qty: 3, price: 89  }
+        ]));
+        storage.setItem(DEMO_PREFIX + 'shipping', 'standard');
+      }
+      showToast('Filled with sample data');
+      render();
+    }
+
+    function render() {
+      var entries = listDemoEntries(storage);
+
+      // list
+      if (entries.length === 0) {
+        els.list.innerHTML = '<div class="cookie-empty">' +
+          (p === 'ls'
+            ? 'Nothing in localStorage yet (under <code>demo_</code> prefix).'
+            : 'Nothing in sessionStorage for this tab yet.') +
+          '</div>';
+      } else {
+        els.list.innerHTML = entries.map(function(e) {
+          return '<div class="cookie-row">' +
+                   '<div>' +
+                     '<div class="name">' + escapeHtml(e.key) + '</div>' +
+                     '<div class="val">' + escapeHtml(e.value) + '</div>' +
+                   '</div>' +
+                   '<button data-key="' + escapeHtml(e.key) + '">Delete</button>' +
+                 '</div>';
+        }).join('');
+        Array.prototype.forEach.call(els.list.querySelectorAll('button[data-key]'), function(btn) {
+          btn.addEventListener('click', function() {
+            storage.removeItem(btn.getAttribute('data-key'));
+            showToast('Removed ' + btn.getAttribute('data-key'));
+            render();
+          });
+        });
+      }
+
+      // raw
+      var dump = {};
+      entries.forEach(function(e) { dump[e.key] = e.value; });
+      if (entries.length === 0) {
+        els.raw.innerHTML = '<span class="muted">// empty</span>';
+      } else {
+        els.raw.textContent = JSON.stringify(dump, null, 2);
+      }
+
+      // meta
+      var totalBytes = entries.reduce(function(acc, e) {
+        return acc + bytesOf(e.key) + bytesOf(e.value);
+      }, 0);
+      els.meta.textContent = entries.length + (entries.length === 1 ? ' key · ' : ' keys · ') + fmtBytes(totalBytes);
+
+      renderSnippet();
+    }
+
+    // wire
+    ['input', 'change'].forEach(function(evt) {
+      els.key.addEventListener(evt, renderSnippet);
+      els.value.addEventListener(evt, renderSnippet);
+    });
+    els.btnSet.addEventListener('click', setItem);
+    els.btnGet.addEventListener('click', getItem);
+    els.btnRm.addEventListener('click', removeItem);
+    els.btnFill.addEventListener('click', fill);
+    els.btnClear.addEventListener('click', clearAll);
+    els.btnRefresh.addEventListener('click', function() {
+      render();
+      showToast('Refreshed view');
+    });
+
+    render();
+  }
+
+  makeDemo({ storage: localStorage,   prefix: 'ls', name: 'localStorage' });
+  makeDemo({ storage: sessionStorage, prefix: 'ss', name: 'sessionStorage' });
+
+  // sessionStorage: open this page in a new tab
+  var newTabBtn = document.getElementById('ss-newtab');
+  if (newTabBtn) {
+    newTabBtn.addEventListener('click', function() {
+      window.open(window.location.href, '_blank', 'noopener');
+    });
+  }
+
+  // localStorage cross-tab sync indicator
+  window.addEventListener('storage', function(e) {
+    if (!e.key || e.key.indexOf(DEMO_PREFIX) !== 0) return;
+    if (e.storageArea === localStorage) {
+      // re-render the localStorage demo
+      var btn = document.getElementById('ls-refresh');
+      if (btn) btn.click();
+      showToast('Cross-tab change: ' + e.key);
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
