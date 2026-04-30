@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Browser Storage — LinkedIn Card</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#181c24;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'DM Sans',sans-serif;padding:20px}
+
+.card{
+  width:1200px;height:630px;
+  background:linear-gradient(135deg,#0f1520 0%,#161e2e 50%,#12171f 100%);
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+  padding:54px 70px;
+  border:1px solid #232b38;
+  border-radius:8px;
+  box-shadow:0 10px 60px rgba(0,0,0,.5);
+}
+
+.card::before{
+  content:'';position:absolute;top:-220px;right:-220px;
+  width:700px;height:700px;
+  background:radial-gradient(circle,rgba(232,116,59,.16) 0%,transparent 60%);
+  pointer-events:none;
+}
+.card::after{
+  content:'';position:absolute;bottom:-180px;left:-180px;
+  width:600px;height:600px;
+  background:radial-gradient(circle,rgba(56,178,101,.10) 0%,transparent 60%);
+  pointer-events:none;
+}
+
+.grid-bg{
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  background-image:
+    linear-gradient(rgba(123,133,153,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(123,133,153,.04) 1px,transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;
+}
+
+.top-row{
+  display:flex;align-items:center;justify-content:space-between;
+  position:relative;z-index:2;
+}
+
+.pill{
+  display:inline-flex;align-items:center;gap:.55rem;
+  font-family:'JetBrains Mono',monospace;
+  font-size:.78rem;font-weight:700;
+  letter-spacing:.16em;text-transform:uppercase;
+  color:#f4b89c;
+  background:rgba(232,116,59,.15);
+  padding:.55rem 1.3rem;
+  border-radius:100px;
+  border:1px solid rgba(232,116,59,.35);
+}
+.pill::before{
+  content:'';width:7px;height:7px;border-radius:50%;
+  background:#e8743b;
+  box-shadow:0 0 10px #e8743b;
+}
+
+.part{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.7rem;font-weight:700;
+  letter-spacing:.18em;text-transform:uppercase;
+  color:#7b8599;
+}
+.part .num{color:#e8743b}
+
+.headline{
+  font-family:'Playfair Display',serif;
+  font-weight:900;
+  font-size:4.6rem;
+  color:#f0f2f7;
+  letter-spacing:-.035em;
+  line-height:1.04;
+  margin-top:1.4rem;
+  position:relative;z-index:2;
+  max-width:92%;
+}
+.headline .accent{color:#e8743b;font-style:italic;font-weight:700}
+.headline .strike{
+  color:#7b8599;
+  text-decoration:line-through;
+  text-decoration-color:#e05252;
+  text-decoration-thickness:5px;
+  font-weight:700;
+}
+
+.subline{
+  font-size:1.1rem;line-height:1.55;
+  color:#a8b0bf;
+  margin-top:1rem;
+  max-width:80%;
+  position:relative;z-index:2;
+}
+.subline strong{color:#f0f2f7;font-weight:700}
+
+.flow{
+  margin-top:auto;
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  align-items:stretch;
+  gap:1rem;
+  position:relative;z-index:2;
+}
+
+.tier{
+  background:rgba(17,22,30,.75);
+  border:1px solid #232b38;
+  border-radius:10px;
+  padding:1rem 1.2rem;
+  backdrop-filter:blur(8px);
+  display:flex;flex-direction:column;
+}
+.tier .head{
+  display:flex;align-items:center;gap:.55rem;
+  margin-bottom:.5rem;
+}
+.tier .icon{font-size:1.4rem;line-height:1}
+.tier .label{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.72rem;font-weight:700;
+  letter-spacing:.13em;text-transform:uppercase;
+  color:var(--c);
+}
+.tier .desc{
+  font-size:.95rem;font-weight:600;
+  color:#f0f2f7;line-height:1.35;
+}
+.tier .sub{
+  font-size:.78rem;color:#7b8599;
+  margin-top:.35rem;font-weight:500;
+  font-family:'JetBrains Mono',monospace;
+}
+.tier.green{--c:#38b265;border-left:3px solid #38b265}
+.tier.blue{--c:#4a9fe8;border-left:3px solid #4a9fe8}
+.tier.purple{--c:#9b72cf;border-left:3px solid #9b72cf}
+
+.lock-badge{
+  position:absolute;top:42px;right:70px;
+  width:96px;height:96px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(232,116,59,.25) 0%,rgba(232,116,59,.05) 70%);
+  border:2px solid rgba(232,116,59,.4);
+  display:flex;align-items:center;justify-content:center;
+  font-size:3rem;
+  z-index:2;
+  box-shadow:0 0 40px rgba(232,116,59,.25);
+}
+
+.tag-corner{
+  position:absolute;bottom:22px;left:70px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:.7rem;color:#5d6678;
+  letter-spacing:.08em;
+  z-index:2;
+}
+.tag-corner .dot{color:#e8743b;margin:0 .5rem}
+
+.helper{
+  margin-top:24px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:.85rem;color:#7b8599;
+  text-align:center;max-width:1200px;
+  line-height:1.7;
+}
+.helper code{
+  background:#0b0f14;color:#e8743b;
+  padding:.15rem .5rem;border-radius:4px;
+  border:1px solid #232b38;
+}
+</style>
+</head>
+<body>
+
+<div>
+<div class="card">
+  <div class="grid-bg"></div>
+
+  <div class="top-row">
+    <span class="pill">Browser Storage · Deep Dive</span>
+    <div class="part">FRONTEND <span class="num">·</span> SECURITY</div>
+  </div>
+
+  <h1 class="headline">
+    Same API. <span class="strike">Same risk.</span><br/>
+    <span class="accent">Three threat models.</span>
+  </h1>
+
+  <p class="subline">
+    Cookies, <strong>localStorage</strong>, and <strong>sessionStorage</strong> all look like a key-value bag — but one ships with the request, one survives forever, one dies with the tab. Pick wrong and you ship XSS or CSRF.
+  </p>
+
+  <div class="flow">
+    <div class="tier green">
+      <div class="head">
+        <span class="icon">🍪</span>
+        <span class="label">Cookie</span>
+      </div>
+      <div class="desc">Server needs it every request</div>
+      <div class="sub">HttpOnly · Secure · SameSite</div>
+    </div>
+    <div class="tier blue">
+      <div class="head">
+        <span class="icon">💾</span>
+        <span class="label">localStorage</span>
+      </div>
+      <div class="desc">JS-only, must survive restart</div>
+      <div class="sub">never store JWTs here</div>
+    </div>
+    <div class="tier purple">
+      <div class="head">
+        <span class="icon">🪟</span>
+        <span class="label">sessionStorage</span>
+      </div>
+      <div class="desc">JS-only, dies when tab closes</div>
+      <div class="sub">per-tab · ephemeral</div>
+    </div>
+  </div>
+
+  <div class="lock-badge">🔐</div>
+  <div class="tag-corner">XSS<span class="dot">·</span>CSRF<span class="dot">·</span>3 LIVE PLAYGROUNDS</div>
+</div>
+
+<div class="helper">
+  📸 To export: zoom browser to 100%, take a screenshot of just the card (1200 × 630).<br/>
+  Or use Chrome DevTools → device toolbar → set 1200 × 630 → screenshot.
+</div>
+</div>
+
+</body>
+</html>

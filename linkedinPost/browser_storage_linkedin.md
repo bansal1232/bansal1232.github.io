@@ -19,14 +19,10 @@ Here's how to pick the right one — and stop shipping XSS bugs 👇
 
 Same key-value API. Three completely different threat models.
 
-The full breakdown — every cookie flag, the login flow arrow-by-arrow,
-XSS/CSRF defenses — ships with 3 live playgrounds where you set,
-inspect, and delete cookies / localStorage / sessionStorage right
-in your own browser.
+You'll see every cookie flag, how login works step by step, and
+how to block XSS and CSRF. There are also 3 live demos — set,
+check, and delete data yourself, right in the browser.
 
-Try one: tick HttpOnly on a cookie, then watch document.cookie
-pretend it doesn't exist. That single demo is the whole article
-in 5 seconds.
 
 👇 Full article + playgrounds in the comments — go try it now,
 don't bookmark it for "later" (we both know how that ends).
