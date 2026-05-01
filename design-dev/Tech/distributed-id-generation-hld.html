@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Distributed Unique ID Generation — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:760px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:#fff;font-size:.95rem;margin-bottom:1.5rem;max-width:760px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.3rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.88rem;color:#fff;line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.85rem}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.highlight strong{font-weight:700}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.85rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.85rem;color:var(--text);border:1px solid var(--border)}
+.ans strong{color:var(--heading)}
+
+.tbl{width:100%;border-collapse:collapse;font-size:.84rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.6rem .85rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:#fff}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+.checklist{list-style:none;padding:0;margin:0}
+.checklist li{padding:.55rem 0 .55rem 1.8rem;position:relative;font-size:.88rem;color:var(--text);border-bottom:1px dashed var(--border)}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{content:'✓';position:absolute;left:.2rem;top:.55rem;color:var(--green);font-weight:800;font-size:.95rem}
+
+.bitlayout{font-family:'JetBrains Mono',monospace;font-size:.78rem;background:#090d12;border:1px solid var(--border);border-radius:var(--r);padding:1.4rem;overflow-x:auto;margin-bottom:1rem}
+.bitlayout .row{display:grid;grid-template-columns:1fr 41fr 10fr 12fr;gap:2px;margin-bottom:.4rem}
+.bitlayout .cell{padding:.55rem .6rem;text-align:center;border-radius:4px;font-weight:600}
+.bitlayout .b-sign{background:#2a2f38;color:var(--muted)}
+.bitlayout .b-time{background:var(--orange-d);color:var(--orange)}
+.bitlayout .b-machine{background:var(--blue-d);color:var(--blue)}
+.bitlayout .b-seq{background:var(--green-d);color:var(--green)}
+.bitlayout .lbl{font-size:.7rem;color:var(--muted);font-weight:400;margin-top:.2rem}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">Tech · Deep Dive</div>
+  <h1>Distributed Unique <span>ID Generation</span></h1>
+  <p class="sub">Generating unique IDs at scale across distributed servers — a practical guide to UUIDs, Snowflake, UUIDv7, and how to choose between them.</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">The Problem</a></li>
+      <li><a href="#s2">What Is a UUID?</a></li>
+      <li><a href="#s3">UUIDs — Pros &amp; Cons</a></li>
+      <li><a href="#s4">Snowflake — Twitter's Solution</a></li>
+      <li><a href="#s5">How Servers Stay Unique</a></li>
+      <li><a href="#s6">UUIDv7 — Easy Modern Choice</a></li>
+      <li><a href="#s7">Other Variants</a></li>
+      <li><a href="#s8">Common Mistakes</a></li>
+      <li><a href="#s9">When to Use What</a></li>
+      <li><a href="#s10">Quick Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: THE PROBLEM                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+
+  <p style="font-size:1.08rem;line-height:1.75;color:#fff;font-weight:500;margin-bottom:1.5rem;padding:1.1rem 1.3rem;border-left:4px solid var(--orange);background:linear-gradient(90deg,rgba(232,116,59,.08) 0%,transparent 100%);border-radius:0 var(--r) var(--r) 0">
+    <strong style="color:var(--orange);font-size:1.15rem">Twitter mints 6,000 IDs every second.</strong> Discord routes <strong>4 billion messages a day</strong> — each with a unique ID. <em style="color:var(--orange)">None of them ask a database for these IDs.</em> Why? And what do they do instead?
+  </p>
+
+  <h3 style="color:var(--heading);margin:1.5rem 0 .5rem;font-size:1rem">The naive way (and why it breaks)</h3>
+  <p>The simplest way to give every row a unique number is a database <code>AUTO_INCREMENT</code> column. The database keeps a counter and hands out 1, 2, 3, … It works perfectly when there's <strong>one</strong> database.</p>
+  <p>Now imagine your app grows. You add a second server. A third. Maybe a second region. Two questions appear:</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🐢 One central counter</h3>
+      <p>Every server pings the database for the next ID. Easy to understand, but the database becomes a bottleneck — every write waits its turn. At a few thousand writes per second, this falls apart. Database goes down → no one can write anything.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Each server counts on its own</h3>
+      <p>No coordination needed, but Server A and Server B will both eventually pick the number "1234". You silently corrupt your data and don't notice for months.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>What we actually need:</strong> every server, in every region, can hand out IDs <em>locally</em> — without asking anyone — and we still get zero collisions, forever.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: WHAT IS A UUID                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>What Is a UUID?</h2>
+  <p>A <strong>UUID</strong> (Universally Unique Identifier) is a 128-bit number, written as 32 hex characters with hyphens. You've seen them everywhere:</p>
+
+  <div class="bitlayout" style="grid-template-columns:1fr">
+<pre style="background:transparent;border:none;padding:0;margin:0"><span class="str">550e8400-e29b-41d4-a716-446655440000</span>
+<span class="cmt">// 32 hex chars = 128 bits = a really, really big number</span></pre>
+  </div>
+
+  <p>The trick: 128 bits is so large (about 5 followed by 36 zeros) that if you generate one at random, the odds of generating the same one twice — anywhere on Earth, by anyone — are essentially zero. <strong>No coordination needed.</strong> That's the whole pitch.</p>
+
+  <h3 style="color:var(--heading);margin:1.5rem 0 .5rem;font-size:1rem">Two flavors you'll actually meet</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>🎲 UUIDv4 — Pure random</h3>
+      <p>128 bits of randomness. The default everywhere. What <code>crypto.randomUUID()</code> in your browser gives you. Used for session tokens, idempotency keys, anything that just needs to be unique and unguessable.</p>
+    </div>
+    <div class="card">
+      <h3>🕒 UUIDv7 — Time-ordered</h3>
+      <p>Same size, but the first 48 bits are a timestamp. So when you sort UUIDv7s, they come out in the order they were created. Best of both worlds — unique <em>and</em> sortable.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>Quick mental model:</strong> a UUID is a 128-bit number that's "random enough that it'll never collide". v4 is fully random. v7 starts with a timestamp so you can sort by creation time.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: UUID PROS AND CONS                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>UUIDs — Where They Win, Where They Hurt</h2>
+  <p>UUIDs are great. But they're not <em>always</em> the right answer. Here's a clean breakdown.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Use UUIDs when…</h3>
+      <ul>
+        <li><strong>Tokens &amp; API keys</strong> — need unguessable + unique</li>
+        <li><strong>Idempotency keys</strong> — client makes one, server dedupes on it</li>
+        <li><strong>Mobile / offline apps</strong> — generate IDs without a server</li>
+        <li><strong>Trace IDs across services</strong> — created at the edge, no coordinator</li>
+        <li><strong>Public/external IDs</strong> — don't want to leak your row counts</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>❌ Avoid UUIDv4 when…</h3>
+      <ul>
+        <li><strong>You need them sorted</strong> — v4 is random, can't sort by creation time</li>
+        <li><strong>Storage cost matters</strong> — 16 bytes vs 8 for a regular integer</li>
+        <li><strong>Database write speed matters</strong> — random IDs fragment the index, slowing inserts</li>
+        <li><strong>You need to debug "when was this created?"</strong> — v4 carries no timestamp</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>The verdict:</strong> UUIDv4 is great for tokens and external IDs. For database primary keys at scale, you want something better — either UUIDv7 (sortable) or Snowflake (compact 64-bit + sortable). Both come up next.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: SNOWFLAKE                          -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-orange">Step 4</span>
+  <h2>Snowflake — Twitter's Solution</h2>
+  <p>In 2010, Twitter hit a wall: their database couldn't keep up with assigning tweet IDs. They invented <strong>Snowflake</strong> — a way for any server to mint a unique 64-bit ID locally, without asking anyone.</p>
+
+  <h3 style="color:var(--heading);margin:1.5rem 0 .5rem;font-size:1rem">The idea: split 64 bits into 3 parts</h3>
+
+  <div class="bitlayout">
+    <div class="row">
+      <div class="cell b-sign">1<div class="lbl">sign</div></div>
+      <div class="cell b-time">41 bits — timestamp (ms)<div class="lbl">when</div></div>
+      <div class="cell b-machine">10 bits — machine ID<div class="lbl">where</div></div>
+      <div class="cell b-seq">12 bits — sequence<div class="lbl">how many in this ms</div></div>
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🕒 Timestamp</h3>
+      <p>Milliseconds since some chosen start date. Two IDs from the same server <em>can't</em> collide unless they're in the same millisecond.</p>
+    </div>
+    <div class="card">
+      <h3>🏷️ Machine ID</h3>
+      <p>Each server gets a unique number (0–1023). Two different servers <em>can't</em> collide because their machine IDs differ.</p>
+    </div>
+    <div class="card">
+      <h3>🔢 Sequence</h3>
+      <p>If a server mints multiple IDs in the same millisecond, the counter goes 0, 1, 2, … up to 4096. Then it waits for the next ms.</p>
+    </div>
+  </div>
+
+  <p>Put it together: <strong>same server + same millisecond + same counter is impossible</strong>. By construction, two Snowflake IDs can never be equal. No coordination on the hot path — every server just stamps its own clock + machine + counter.</p>
+
+  <div class="highlight hl-green"><strong>Why this is brilliant:</strong> uniqueness comes from <em>structure</em>, not luck. UUIDs say "the odds are insanely low." Snowflake says "it's mathematically impossible." Plus the IDs sort by creation time for free, and they fit in 8 bytes instead of 16.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: HOW SERVERS STAY UNIQUE            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-purple">Step 5</span>
+  <h2>How Each Server Gets a Unique Machine Number</h2>
+  <p>The whole Snowflake design rests on one assumption: <em>every server has a different machine ID</em>. So how do we hand out 1024 unique numbers across servers — including new ones spinning up, old ones dying — without collisions?</p>
+
+  <h3 style="color:var(--heading);margin:1.5rem 0 .5rem;font-size:1rem">The pattern: a tiny coordinator, used only at boot</h3>
+  <p>When a server starts up, it asks a small coordinator service (<strong>ZooKeeper, etcd, or Redis</strong>) for an unused machine number. The coordinator picks one, marks it taken, and returns it. The server caches that number and uses it for the rest of its life.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  S[New server starts] --> ZK[Coordinator<br/>ZooKeeper / Redis]
+  ZK -->|"lend you<br/>machine #42"| S
+  S --> G[Generates IDs forever<br/>using machine #42]
+  G -.->|never talks to coordinator again| ZK
+
+  style S fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style ZK fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style G fill:#38b265,stroke:#38b265,color:#fff
+    </div>
+  </div>
+
+  <p>The key: <strong>the coordinator is only on the boot path</strong>. Once a server has its machine number, it never talks to the coordinator again. So if the coordinator goes down, existing servers keep minting IDs just fine — only new server startups are blocked.</p>
+
+  <div class="highlight hl-blue"><strong>The simple rule:</strong> coordinate once at boot, never on the hot path. This is the trick that makes Snowflake fast at any scale.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: UUIDv7                             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-cyan">Step 6</span>
+  <h2>UUIDv7 — The Easy Modern Choice</h2>
+  <p>Snowflake is brilliant but it has a cost: you need a coordinator. If you don't want to run one, <strong>UUIDv7</strong> is the modern answer.</p>
+
+  <p>The shape: take a regular UUID, but force the first 48 bits to be a Unix-millisecond timestamp. The remaining bits are random. Because the timestamp leads, sorting UUIDv7s sorts them by creation time — fixing the #1 weakness of UUIDv4.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ What you get</h3>
+      <ul>
+        <li><strong>Sortable</strong> — leading timestamp orders correctly</li>
+        <li><strong>No coordinator</strong> — pure local generation</li>
+        <li><strong>Index-friendly</strong> — sequential inserts, no fragmentation</li>
+        <li><strong>Drop-in replacement for UUIDv4</strong></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚠️ What you give up</h3>
+      <ul>
+        <li><strong>16 bytes vs 8</strong> — twice the size of Snowflake</li>
+        <li><strong>No machine ID embedded</strong> — can't decode "which server made this"</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>The pragmatic take:</strong> UUIDv7 is the default for new systems unless you specifically need 64-bit integer IDs. Snowflake wins when storage cost matters at billions of rows or you need machine-of-origin debugging.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: VARIANTS                           -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-yellow">Step 7</span>
+  <h2>Other Variants Worth Knowing</h2>
+  <p>Many big companies have their own Snowflake-flavored ID scheme. Same idea, different bit splits, tuned for their constraints.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Name</th><th>Size</th><th>Used by</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Twitter Snowflake</strong></td><td>64 bits</td><td>Twitter (original)</td><td>The reference design</td></tr>
+        <tr><td><strong>Discord</strong></td><td>64 bits</td><td>Discord</td><td>Sortable IDs for fast debug</td></tr>
+        <tr><td><strong>Instagram</strong></td><td>64 bits</td><td>Instagram</td><td>Embeds shard ID for sharded DB</td></tr>
+        <tr><td><strong>MongoDB ObjectId</strong></td><td>96 bits</td><td>MongoDB</td><td>Built into Mongo, no setup</td></tr>
+        <tr><td><strong>UUIDv7</strong></td><td>128 bits</td><td>RFC 9562 (modern std)</td><td>No coordinator, sortable</td></tr>
+        <tr><td><strong>ULID</strong></td><td>128 bits</td><td>Many startups</td><td>Like UUIDv7 but base32-encoded (26 char string)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-purple"><strong>Pattern:</strong> they all do the same thing — combine a timestamp with some randomness or a machine ID, so each server can mint locally and still avoid collisions.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: COMMON MISTAKES                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-red">Step 8</span>
+  <h2>Common Mistakes</h2>
+  <p>Each of these has shipped to production at a real company.</p>
+
+  <div class="g2">
+    <div class="card"><h3>❌ Same machine ID on two servers</h3><p>You set the machine ID via an env var, deploy two pods, both get "1". Now they collide. Always use a coordinator (ZooKeeper / Redis) to hand out machine IDs at boot.</p></div>
+    <div class="card"><h3>❌ Server clock jumps backwards</h3><p>NTP corrects the clock and time goes back by 1 ms. The server may mint an ID it already minted. Fix: track the last timestamp used; refuse to issue IDs until the clock catches up.</p></div>
+    <div class="card"><h3>❌ Using <code>Math.random()</code> for UUIDs</h3><p>It's not cryptographically secure. Use <code>crypto.randomUUID()</code> in JS, <code>UUID.randomUUID()</code> in Java, <code>uuid.uuid4()</code> in Python.</p></div>
+    <div class="card"><h3>❌ Putting Snowflake IDs in public URLs</h3><p>Sequential IDs leak business volume — competitors can infer your QPS. Use a hashed external ID for public URLs, Snowflake internally.</p></div>
+    <div class="card"><h3>❌ UUIDv4 as PK on a billion-row table</h3><p>Random inserts fragment the B-tree index. Inserts that took 5 ms start taking 50 ms. Switch to UUIDv7 or Snowflake.</p></div>
+    <div class="card"><h3>❌ Storing UUIDs as <code>VARCHAR(36)</code></h3><p>You're storing 36 bytes when 16 will do. Use <code>BINARY(16)</code> in MySQL or the native <code>uuid</code> type in Postgres.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: WHEN TO USE WHAT                   -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-green">Step 9</span>
+  <h2>Decision Guide — When to Use What</h2>
+  <p>If you remember nothing else, remember this table.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Use case</th><th>Pick</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Session tokens, API keys</td><td><strong>UUIDv4</strong></td><td>Unique + unguessable, sorting not needed</td></tr>
+        <tr><td>Idempotency keys</td><td><strong>UUIDv4</strong></td><td>Client-generated, no coordinator</td></tr>
+        <tr><td>External / public IDs</td><td><strong>UUIDv4</strong></td><td>Don't want to leak row counts</td></tr>
+        <tr><td>New project's primary keys</td><td><strong>UUIDv7</strong></td><td>Sortable + no coordinator + drop-in for v4</td></tr>
+        <tr><td>Existing system, billions of rows</td><td><strong>Snowflake</strong></td><td>Storage matters; you can run a coordinator</td></tr>
+        <tr><td>Mobile / offline-first writes</td><td><strong>UUIDv7</strong></td><td>Phone has no coordinator; still want sortable</td></tr>
+        <tr><td>Just learning, simple app</td><td>DB <code>AUTO_INCREMENT</code></td><td>Simplest thing that works at low scale</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TD
+  A{Will it be a<br/>database primary key?} -->|No - token, idempotency,<br/>external ID| V4[UUIDv4]
+  A -->|Yes| B{High write volume?<br/>billions of rows}
+  B -->|No| V7a[UUIDv7]
+  B -->|Yes| C{Can you run<br/>a coordinator?}
+  C -->|No| V7b[UUIDv7]
+  C -->|Yes, want compact 64-bit| SF[Snowflake]
+
+  style V4 fill:#38b265,stroke:#38b265,color:#fff
+  style V7a fill:#3cbfbf,stroke:#3cbfbf,color:#fff
+  style V7b fill:#3cbfbf,stroke:#3cbfbf,color:#fff
+  style SF fill:#e8743b,stroke:#e8743b,color:#fff
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: Q&A                               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-blue">Step 10</span>
+  <h2>Quick Q&amp;A</h2>
+
+  <div class="iq">Why not just use a database to give out IDs?</div>
+  <div class="ans">It works fine for small apps. But every write has to wait for the database, which becomes a bottleneck around a few thousand writes per second. And if the database goes down, no one can write anything.</div>
+
+  <div class="iq">If UUIDs are random, can two ever be the same?</div>
+  <div class="ans">Mathematically yes, practically no. There are 2¹²² possible UUIDv4 values. To even <em>start</em> seeing collisions, you'd need to generate billions per second for 70+ years.</div>
+
+  <div class="iq">What's the difference between Snowflake and UUIDv7?</div>
+  <div class="ans">Both are sortable. Snowflake is 8 bytes, UUIDv7 is 16. Snowflake needs a coordinator (to hand out machine IDs). UUIDv7 needs nothing — just a clock and a random number generator. Pick Snowflake if size matters, UUIDv7 if simplicity matters.</div>
+
+  <div class="iq">What happens if the server's clock jumps backwards?</div>
+  <div class="ans">If you don't handle it, you can mint duplicate IDs — bad. The fix: track the last timestamp you used, and if the current clock reads earlier, refuse to issue IDs until the clock catches up.</div>
+
+  <div class="iq">Why is sortability such a big deal?</div>
+  <div class="ans">Two reasons. (1) Database indexes love sorted inserts — they append to the end, no fragmentation. (2) Debugging: if IDs are sortable, you can decode "when was this created?" from the ID itself, no extra column needed.</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

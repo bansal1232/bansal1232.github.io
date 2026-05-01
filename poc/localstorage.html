@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>POC — Draft Auto-Save with localStorage</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --ok: #22c55e;
+      --pending: #eab308;
+      --info: #38bdf8;
+      --idle: #94a3b8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 720px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    }
+    h1 {
+      margin: 0 0 4px;
+      font-size: 20px;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    .banner {
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--accent);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      background: #0f172a;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      resize: vertical;
+      outline: none;
+    }
+    textarea:focus { border-color: var(--accent); }
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 14px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .status {
+      font-size: 13px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .status[data-tone="ok"] { color: var(--ok); }
+    .status[data-tone="pending"] { color: var(--pending); }
+    .status[data-tone="info"] { color: var(--info); }
+    .status[data-tone="idle"] { color: var(--idle); }
+    .actions { display: flex; gap: 8px; }
+    button {
+      font: inherit;
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover { background: rgba(255,255,255,0.05); }
+    button.primary {
+      background: var(--accent);
+      color: #0f172a;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    button.primary:hover { background: #7dd3fc; }
+    .hint {
+      margin-top: 16px;
+      padding: 12px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .hint code {
+      background: rgba(255,255,255,0.08);
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Draft auto-save POC</h1>
+    <div class="sub">Type below — drafts persist across reloads via <code style="color:var(--accent)">localStorage</code>.</div>
+
+    <div id="restoredBanner" class="banner" hidden>
+      A previous draft was restored from your last session.
+    </div>
+
+    <form id="draftForm">
+      <label for="editor">Message</label>
+      <textarea id="editor" placeholder="Start typing… your draft is saved automatically."></textarea>
+
+      <div class="row">
+        <div id="status" class="status" data-tone="idle">Empty draft</div>
+        <div class="actions">
+          <button type="button" id="clearBtn">Clear draft</button>
+          <button type="submit" class="primary">Submit</button>
+        </div>
+      </div>
+    </form>
+
+    <div class="hint">
+      <strong>Try it:</strong> type some text, wait ~300ms for the save, then reload the page —
+      content comes back. Submit clears the saved draft via <code>localStorage.removeItem</code>.
+    </div>
+  </div>
+
+  <script src="localstorage.js"></script>
+</body>
+</html>
