@@ -1,0 +1,180 @@
+{
+  "info": {
+    "name": "Likes Service — counterapi.dev",
+    "_postman_id": "bansal1232-likes-service",
+    "description": "All HTTP calls made by /js/likes.js (the anonymous per-page like-counter on bansal1232.github.io).\n\nBackend: counterapi.dev v1 (free, public, no auth). Each page on the blog has its own counter, keyed off a sanitized version of `location.pathname`. Namespaces and counters auto-create on the first `/up` call.\n\nWhy v1 and not v2:\n- v1 → namespaces + counters auto-create on first request. Fits a static site with N pages.\n- v2 → counters must be pre-created in the dashboard. Public workspaces still allow anonymous reads/writes, but the per-page auto-creation pattern needs v1.\n- v2 endpoints are included at the bottom of this collection FOR REFERENCE only; they are not called by /js/likes.js.\n\nVariables:\n- base_url   → https://api.counterapi.dev\n- namespace  → bansal1232-blog (the namespace registered for this site)\n- page_key   → sanitized pathname, e.g. design-dev_hld_dropbox_dropbox-hld_html\n- workspace_slug → bansal1232-blog (only used for v2 reference requests)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",        "value": "https://api.counterapi.dev",            "type": "string" },
+    { "key": "namespace",       "value": "bansal1232-blog",                       "type": "string" },
+    { "key": "page_key",        "value": "design-dev_hld_dropbox_dropbox-hld_html","type": "string" },
+    { "key": "workspace_slug",  "value": "bansal1232-blog",                       "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "v1 — used by likes.js",
+      "description": "These two requests are the entire surface area used by /js/likes.js.",
+      "item": [
+        {
+          "name": "Read count (likes.js → readCount)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/{{namespace}}/{{page_key}}/",
+              "host": [ "{{base_url}}" ],
+              "path": [ "v1", "{{namespace}}", "{{page_key}}", "" ]
+            },
+            "description": "Returns the current count for the page. The trailing slash is required for v1.\n\nCalled on page load by likes.js to show the current count next to the heart.\n\nIf the counter does not exist yet, v1 returns 404; likes.js then displays '—' until the first /up creates it."
+          },
+          "response": [
+            {
+              "name": "200 OK — counter exists",
+              "originalRequest": {
+                "method": "GET",
+                "url": { "raw": "{{base_url}}/v1/{{namespace}}/{{page_key}}/" }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "content-type", "value": "application/json" }],
+              "body": "{\n  \"id\": 172097,\n  \"name\": \"design-dev_hld_dropbox_dropbox-hld_html\",\n  \"count\": 3,\n  \"created_at\": \"2026-05-03T10:33:51.444888Z\",\n  \"updated_at\": \"2026-05-03T10:34:17.89267Z\",\n  \"namespace_id\": 12752,\n  \"namespace\": {\n    \"id\": 12752,\n    \"name\": \"bansal1232-blog\",\n    \"created_at\": \"2026-05-03T10:22:59.598643Z\",\n    \"updated_at\": \"2026-05-03T10:22:59.598643Z\"\n  }\n}"
+            },
+            {
+              "name": "404 Not Found — counter never incremented",
+              "originalRequest": {
+                "method": "GET",
+                "url": { "raw": "{{base_url}}/v1/{{namespace}}/never-clicked/" }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "content-type", "value": "application/json" }],
+              "body": "{\n  \"error\": \"counter not found\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Increment count (likes.js → bumpCount)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/{{namespace}}/{{page_key}}/up",
+              "host": [ "{{base_url}}" ],
+              "path": [ "v1", "{{namespace}}", "{{page_key}}", "up" ]
+            },
+            "description": "Increments the counter by 1 and returns the new value. Auto-creates the counter (and namespace) if either does not exist — this is why likes.js can use it on first click without any pre-registration step.\n\nCalled on heart-button click. likes.js writes a `liked:<page_key>` flag to localStorage so the same browser cannot bump the count twice."
+          },
+          "response": [
+            {
+              "name": "200 OK — incremented",
+              "originalRequest": {
+                "method": "GET",
+                "url": { "raw": "{{base_url}}/v1/{{namespace}}/{{page_key}}/up" }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "content-type", "value": "application/json" }],
+              "body": "{\n  \"id\": 172105,\n  \"name\": \"probe-test\",\n  \"count\": 1,\n  \"created_at\": \"2026-05-03T11:02:29.424033503Z\",\n  \"updated_at\": \"2026-05-03T11:02:29.428711795Z\",\n  \"namespace_id\": 12752,\n  \"namespace\": {\n    \"id\": 12752,\n    \"name\": \"bansal1232-blog\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "v1 — available but NOT used by likes.js",
+      "description": "Documented for completeness; the like-button code does not call these.",
+      "item": [
+        {
+          "name": "Decrement count (down)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/{{namespace}}/{{page_key}}/down",
+              "host": [ "{{base_url}}" ],
+              "path": [ "v1", "{{namespace}}", "{{page_key}}", "down" ]
+            },
+            "description": "Decrement the counter by 1. We do not expose an unlike action in the UI, but this endpoint is the recovery path for moderation (e.g. you spotted a click-spammer and want to roll the count back).\n\nResponse shape is identical to /up."
+          }
+        },
+        {
+          "name": "Reset count (set to 0) — admin recovery",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/{{namespace}}/{{page_key}}/?count=0",
+              "host": [ "{{base_url}}" ],
+              "path": [ "v1", "{{namespace}}", "{{page_key}}", "" ],
+              "query": [{ "key": "count", "value": "0" }]
+            },
+            "description": "Counterapi.dev v1 has no public reset endpoint. Reset is achieved by repeated /down calls until the count hits 0, OR by abandoning the namespace and migrating to a new one. This request is a placeholder so the collection lists every operation a maintainer might need."
+          }
+        }
+      ]
+    },
+    {
+      "name": "v2 — reference only (not called)",
+      "description": "v2 endpoints we evaluated and rejected — kept here so future maintainers don't re-test the same dead-end. v2 is a real upgrade if you can pre-register every counter in the dashboard, but that doesn't fit a static-site auto-per-page pattern.",
+      "item": [
+        {
+          "name": "Read count (v2)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v2/{{workspace_slug}}/{{page_key}}",
+              "host": [ "{{base_url}}" ],
+              "path": [ "v2", "{{workspace_slug}}", "{{page_key}}" ]
+            },
+            "description": "v2 read. Note: no trailing slash. Returns 404 if the counter has not been pre-created in the dashboard."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "content-type", "value": "application/json" }],
+              "body": "{\n  \"code\": 200,\n  \"message\": \"ok\",\n  \"data\": {\n    \"id\": \"...\",\n    \"name\": \"design-dev_hld_dropbox_dropbox-hld_html\",\n    \"slug\": \"design-dev_hld_dropbox_dropbox-hld_html\",\n    \"up_count\": 0,\n    \"down_count\": 0\n  }\n}"
+            },
+            {
+              "name": "404 — workspace not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "content-type", "value": "application/json" }],
+              "body": "{\"code\":\"404\",\"message\":\"Workspace not found\"}"
+            },
+            {
+              "name": "404 — counter not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "content-type", "value": "application/json" }],
+              "body": "{\"code\":\"404\",\"message\":\"Counter not found\"}"
+            },
+            {
+              "name": "401 — workspace is private",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "content-type", "value": "application/json" }],
+              "body": "{\"code\":\"401\",\"message\":\"Authorization header is required for private workspaces\"}"
+            }
+          ]
+        },
+        {
+          "name": "Increment count (v2)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v2/{{workspace_slug}}/{{page_key}}/up",
+              "host": [ "{{base_url}}" ],
+              "path": [ "v2", "{{workspace_slug}}", "{{page_key}}", "up" ]
+            },
+            "description": "v2 increment. Will 404 with 'Counter not found' until the counter is created in the dashboard — unlike v1, there is no public auto-create endpoint."
+          }
+        }
+      ]
+    }
+  ]
+}

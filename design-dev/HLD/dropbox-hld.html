@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dropbox / Google Drive — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<link rel="stylesheet" href="../../css/likes.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script src="../../js/likes.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --pink:#ec5d8a;--pink-d:rgba(236,93,138,.12);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--blue);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--blue);color:#7eb1e3}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--heading)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:760px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.92rem;margin-bottom:1.5rem;max-width:740px}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.3rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.87rem;color:var(--text);line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+.card code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.05rem .35rem;border-radius:3px}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── Numbered component badge (matches diagram numbering ①②③…) ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.85rem}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--cyan)}
+.highlight strong{font-weight:700}
+.highlight code{font-family:'JetBrains Mono',monospace;font-size:.78rem;background:rgba(0,0,0,.25);padding:.05rem .35rem;border-radius:3px;color:inherit}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.85rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.85rem;color:var(--text);border:1px solid var(--border)}
+.ans strong{color:var(--heading)}
+.ans code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.05rem .35rem;border-radius:3px}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.82rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.6rem .85rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--muted)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── CHECK LIST ── */
+.checklist{list-style:none;padding:0;margin:0}
+.checklist li{padding:.55rem 0 .55rem 1.8rem;position:relative;font-size:.88rem;color:var(--text);border-bottom:1px dashed var(--border)}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{content:'✓';position:absolute;left:.2rem;top:.55rem;color:var(--green);font-weight:800;font-size:.95rem}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Dropbox / Google <span>Drive</span></h1>
+  <p class="sub">A globally consistent file sync service — chunked uploads, in-line dedup, metadata sharding, cloud block storage, and a long-poll notification fabric that keeps every device in step.</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Clarify Requirements</a></li>
+      <li><a href="#s2">Capacity &amp; Scale</a></li>
+      <li><a href="#s3">Actors &amp; Use Cases</a></li>
+      <li><a href="#s4">High-Level Architecture</a></li>
+      <li><a href="#s5">Why Chunking Wins</a></li>
+      <li><a href="#s6">Client Components</a></li>
+      <li><a href="#s7">Metadata Schema</a></li>
+      <li><a href="#s8">Upload Flow (Sequence)</a></li>
+      <li><a href="#s9">Sync &amp; Notifications</a></li>
+      <li><a href="#s10">Data Deduplication</a></li>
+      <li><a href="#s11">Metadata Partitioning</a></li>
+      <li><a href="#s12">Caching &amp; Load Balancing</a></li>
+      <li><a href="#s13">Security &amp; Sharing</a></li>
+      <li><a href="#s14">Trade-offs</a></li>
+      <li><a href="#s15">Interview Q&amp;A</a></li>
+      <li><a href="#s16">Production Checklist</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: REQUIREMENTS                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>Clarify Requirements</h2>
+  <p>Sync isn't one feature — it's a contract between every device a user owns and the cloud. Pin the contract first. The interesting design constraint isn't "store files," it's "make any change visible everywhere within seconds while never losing data."</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Upload, download, view files from any device</li>
+        <li>Auto-sync changes across all of a user's devices</li>
+        <li>Share files / folders with other users (read or write)</li>
+        <li>Support large files — single file up to multiple GB</li>
+        <li>Offline edits queue and reconcile on reconnect</li>
+        <li>Version history / snapshots — rollback to a prior revision</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚡ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Durability:</strong> 11 nines — files <em>cannot</em> be lost</li>
+        <li><strong>Consistency:</strong> ACID for metadata; eventual is fine for cross-device push</li>
+        <li><strong>Availability:</strong> 99.95% — auth + metadata path must stay up</li>
+        <li><strong>Bandwidth:</strong> minimize — ship only changed bytes (delta sync)</li>
+        <li><strong>Latency:</strong> small-file save → visible on other device &lt; 5 s</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>Out of scope (confirm with interviewer):</strong> client-side encryption (E2EE), real-time collaborative editing (that's a different problem — operational transforms / CRDTs), media transcoding, search inside file contents, mobile background-sync battery optimization.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: CAPACITY                           -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-yellow">Step 2</span>
+  <h2>Capacity &amp; Scale Estimates</h2>
+  <p>The numbers drive every later choice — chunk size, shard count, and whether metadata fits on one box (it doesn't).</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>Metric</th><th>Assumption</th><th>Result</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Total users</td><td>500 M</td><td>—</td></tr>
+        <tr><td>Daily active users</td><td>100 M</td><td>—</td></tr>
+        <tr><td>Devices per user</td><td>~3 (laptop + phone + tablet)</td><td>—</td></tr>
+        <tr><td>Files per user (avg)</td><td>200</td><td><code>~100 B files total</code></td></tr>
+        <tr><td>Avg file size</td><td>100 KB</td><td>—</td></tr>
+        <tr><td>Total file storage</td><td>100 B × 100 KB</td><td><code>~10 PB</code></td></tr>
+        <tr><td>Concurrent open connections (long-poll)</td><td>1 M / minute</td><td>—</td></tr>
+        <tr><td>Chunk size (design choice)</td><td>fixed 4 MB</td><td>balances IOPS vs delta overhead</td></tr>
+        <tr><td>Metadata per file</td><td>~1 KB (path, chunks, hashes, ACL)</td><td><code>~100 TB metadata</code> → must shard</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-orange"><strong>Takeaways:</strong> File bytes go to object storage (S3-class). Metadata is small but high-QPS — sits in a sharded RDBMS or NoSQL with a Memcache hot tier. Chunking @ 4 MB means a 1 GB file is 250 chunks — failures retry one chunk, not a gigabyte. And 1 M open long-poll connections means we need a lot of small, sticky front-end servers — or we move to WebSockets.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: ACTORS & USE CASES                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-green">Step 3</span>
+  <h2>Actors &amp; Use Cases</h2>
+  <p>Three actor types drive every flow. Color-coded so you can map them onto the architecture diagram below.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  U([User])
+  CO([Collaborator])
+  AD([Admin])
+
+  U --> UP[Upload File]
+  U --> DL[Download File]
+  U --> ED[Edit / Save]
+  U --> OFF[Offline Edit]
+  U --> SH[Share Folder]
+  CO --> VW[View Shared]
+  CO --> EDS[Edit Shared]
+  AD --> ACL[Manage ACL]
+  AD --> AUD[Audit Logs]
+
+  style U fill:#e8743b,stroke:#e8743b,color:#fff
+  style CO fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style AD fill:#9b72cf,stroke:#9b72cf,color:#fff
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card"><h3>📤 Upload</h3><p>Chunk → hash → dedupe check → upload missing chunks → commit metadata. Failures retry per-chunk.</p></div>
+    <div class="card"><h3>📥 Download</h3><p>Read metadata → fetch chunks (cached at CDN/edge) → reassemble locally.</p></div>
+    <div class="card"><h3>✏️ Edit / Save</h3><p>Watcher detects diff → only changed chunks upload → metadata bumps version → notification fanout.</p></div>
+    <div class="card"><h3>📵 Offline Edit</h3><p>Local DB queues changes. On reconnect, conflict resolver runs — last-writer-wins or "Conflict copy".</p></div>
+    <div class="card"><h3>🔗 Share</h3><p>ACL row written to metadata. Collaborators see the folder in their next sync tick.</p></div>
+    <div class="card"><h3>🛡️ Audit</h3><p>Admins query who-did-what — a separate compliance store; the hot path never sees these queries.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: HIGH-LEVEL ARCHITECTURE            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-blue">Step 4</span>
+  <h2>High-Level Architecture</h2>
+  <p>This is the section most candidates rush. Don't. The architecture isn't five boxes connected by arrows — it's the answer to <em>"what would the naive design get wrong, and how do we fix it without making the system unmaintainable?"</em> We'll build it up in three passes: the naive version, why it breaks, and the production shape.</p>
+
+  <!-- ── Pass 1: the naive design ── -->
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.2rem;margin:1.4rem 0 .8rem">Pass 1 — the naive design (and why it dies)</h3>
+  <p>Imagine the simplest thing that could work: one app server, one database, one disk. The client POSTs the file, the server writes bytes to disk, writes a row to the DB, returns OK.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C([Client]) -- POST file --> A[App Server]
+  A -- write bytes --> D[(Local Disk<br/>file content)]
+  A -- write row --> DB[(Database<br/>file metadata)]
+
+  style C fill:#e8743b,stroke:#e8743b,color:#fff
+  style A fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style D fill:#d4a838,stroke:#d4a838,color:#000
+  style DB fill:#9b72cf,stroke:#9b72cf,color:#fff
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>Why two stores even in the naive design?</strong> Files have <em>two kinds of data</em> with totally different access patterns. The <strong>bytes</strong> (a 12 MB doc, a 5 GB video) belong on a filesystem — disks stream big blobs well but can't answer "list every file Sarah owns starting with R." The <strong>metadata</strong> (file_id, owner, path, size, created_at — a few hundred bytes) belongs in a database — DBs do indexed lookups, joins, and ACL checks instantly but choke if you stuff terabytes of BLOBs into them (backups balloon, replication lags, queries accidentally stream gigabytes). So even the simplest sane design already splits storage by data shape: bytes → disk, structured records → DB. <em>The production design just supercharges each side</em> — bytes go to S3 + CDN (instead of one disk), metadata goes to sharded SQL + cache + queue (instead of one DB). The split itself is the same idea.</div>
+
+  <div class="g3">
+    <div class="card"><h3>💥 Bandwidth cliff</h3><p>One million users uploading 1 GB videos pumps every byte through your app servers. A 10 Gbps link saturates at ~80 concurrent uploads. App servers die first.</p></div>
+    <div class="card"><h3>💥 Stateful servers</h3><p>Files live on local disk → server X has the file, server Y doesn't. Load balancer must pin requests to the "right" server. Lose that disk, lose the file.</p></div>
+    <div class="card"><h3>💥 No multi-device sync</h3><p>How does the user's phone learn that the laptop just saved a new version? The naive design has no answer — there's no push channel, no event log, nothing.</p></div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The lesson:</strong> the moment files get big and devices get many, "one server does everything" stops working. Each problem above pushes us toward a specific component in the production design.</div>
+
+  <!-- ── Pass 2: the two-plane mental model ── -->
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.2rem;margin:2rem 0 .8rem">Pass 2 — split into two planes</h3>
+  <p>The single most important architectural decision in this design: <strong>file bytes and file metadata travel on different paths through the system.</strong> Not just different databases — entirely different network paths, different scaling profiles, different failure modes.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📦 Data plane — bytes</h3>
+      <p style="margin-bottom:.6rem">Carries the actual file content. Big, slow, dumb. Optimized for <em>throughput and durability</em>, not latency.</p>
+      <ul>
+        <li>Object storage (S3-class) — designed for petabyte scale &amp; 11-nines durability</li>
+        <li>CDN edge cache for hot reads</li>
+        <li>Client talks <strong>directly</strong> to S3 via short-lived presigned URLs — our app servers are out of the byte path entirely</li>
+        <li>Scales horizontally by buying more storage, not more app servers</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🧠 Control plane — metadata</h3>
+      <p style="margin-bottom:.6rem">Carries "what files exist, what versions, who owns them, who can access them, which chunks make them up." Tiny payloads, high QPS. Optimized for <em>latency and consistency</em>.</p>
+      <ul>
+        <li>Sharded SQL DB for ACID guarantees on the chunk-list invariant</li>
+        <li>In-memory cache (Memcache/Redis) for the hot-read path</li>
+        <li>Message queue + notification servers to push changes to other devices</li>
+        <li>Scales by sharding on <code>user_id</code> / <code>workspace_id</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>Why this split matters:</strong> a 1 GB upload is the data plane's problem (1 GB of bytes to S3). The act of "telling other devices the file changed" is the control plane's problem (a few KB of metadata + a fanout). They scale independently because they have nothing in common except a chunk hash. You can throw a viral 5 GB video at this system and it never threatens the metadata path.</div>
+
+  <!-- ── Pass 3: the production shape ── -->
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.2rem;margin:2rem 0 .8rem">Pass 3 — the production shape</h3>
+  <p>Now expand each plane to its real components. Read this diagram <em>twice</em> — once following the orange "data plane" lines (chunks → S3), once following the blue "control plane" lines (metadata → sync → notify).</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  CL([① Client App<br/>Watcher · Chunker · Indexer])
+  LB[② Load Balancer]
+  MS[③ Metadata Service<br/>API + business logic]
+  SS[④ Sync Service<br/>diff resolver]
+  MQ[⑤ Message Queue<br/>Kafka / SQS]
+  NS[⑥ Notification Server<br/>long-poll / WS]
+  MDB[(⑦ Metadata DB<br/>sharded SQL / NoSQL)]
+  CACHE[(⑧ Metadata Cache<br/>Memcache / Redis)]
+  BS[⑨ Block Storage<br/>S3 / object store]
+  CDN[⑩ CDN / Edge Cache]
+
+  CL == chunks ==> CDN
+  CL == chunks ==> BS
+  CL -- metadata ops --> LB --> MS
+  MS --> CACHE
+  MS --> MDB
+  MS --> SS
+  SS --> MQ
+  MQ --> NS
+  NS == push updates ==> CL
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style MS fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style SS fill:#38b265,stroke:#38b265,color:#fff
+  style MDB fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style CACHE fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style BS fill:#d4a838,stroke:#d4a838,color:#000
+  style MQ fill:#3cbfbf,stroke:#3cbfbf,color:#000
+  style NS fill:#3cbfbf,stroke:#3cbfbf,color:#000
+  style CDN fill:#d4a838,stroke:#d4a838,color:#000
+    </div>
+  </div>
+
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.05rem;margin:1.6rem 0 .8rem">Component-by-component — what each numbered box does</h3>
+  <p style="color:var(--text);font-size:.88rem;margin-bottom:1rem">Use the numbers in the diagram above to find the matching card below. For each component we cover <em>what it does</em> and — more importantly — <em>what problem it solves</em>: if you can't say what would break without it, it doesn't belong in the design.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client App</h3>
+      <p>The desktop/mobile binary running on every user device. Not a thin shell — it carries real software: a <strong>Watcher</strong> that hooks into OS file-system events, a <strong>Chunker</strong> that splits files into 4 MB chunks and computes SHA-256 hashes, an <strong>Indexer</strong> backed by a local SQLite DB that mirrors the server's view of the user's tree, and a <strong>Network Layer</strong> that talks to both planes (S3 for bytes, metadata service for control).</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> offline edits, delta sync, and resumable uploads. Without local state, every save would round-trip to the server just to compute a diff.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num blue">②</span> Load Balancer</h3>
+      <p>Sits in front of the stateless metadata service tier. L7 (HTTP-aware), sticky-hashed on <code>user_id</code> so the same user's requests warm the same caches and reuse TCP connections. Doesn't touch byte uploads — those bypass it entirely via presigned S3 URLs.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> horizontal scale + zero-downtime deploys. Without it, you can't add or remove app servers under load and a single server failure surfaces to users.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num blue">③</span> Metadata Service</h3>
+      <p>Stateless application servers — the only tier that <em>writes</em> to the metadata DB. Owns all business logic: "is this user allowed to see this file?", "does this chunk hash already exist?", "what's the current version?", "is this within quota?" Three core APIs: <code>BeginUpload</code> (dedup interrogation), <code>CommitUpload</code> (atomic version flip), <code>GetChangesSince</code> (diff fetch).</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> single source of truth. Every metadata read &amp; write funnels through here so invariants — ACLs, versioning, dedup, quotas — are enforced in one place. If clients wrote directly to the DB, you'd have N flavors of "almost correct."</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num green">④</span> Sync Service</h3>
+      <p>Computes the <strong>diff</strong> between what a device last knew and what the server knows now. Triggered both ways: on a device poll ("what changed since v_99?") and on a server commit ("publish this change to subscribers"). Internally walks a per-workspace change log keyed by version number, so answering "what's new?" is O(changes), not O(files).</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> efficient sync. Without it, every reconnect would have to enumerate every file in the tree to find what changed — pathological for users with 100k+ files.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num cyan">⑤</span> Message Queue (Kafka / SQS)</h3>
+      <p>Buffers change events between the sync service (producer) and notification servers (consumers). Each <code>ChangeEvent</code> carries <code>{ws_id, version_id, kind}</code> — small, fast, ordered per workspace. Why insert a queue here? Because fanout is <em>fundamentally async</em> — a single commit may need to notify 50 000 subscribers; the upload should not wait for that fanout.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> decoupling + back-pressure. Producer and consumers scale independently. A notification-server slowdown can't block the upload commit.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num cyan">⑥</span> Notification Server</h3>
+      <p>Holds long-poll (or WebSocket) connections from every online device. When the queue delivers a <code>ChangeEvent</code> for a workspace, it pushes to all subscribers of that workspace. Sticky-LB'd on <code>workspace_id</code> so subscribers consolidate on a few nodes per workspace — easier and cheaper to fan out. Mobile usually opts out and uses APNs/FCM pushes instead, for battery and data reasons.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> real-time multi-device sync. Polling every few seconds is wasteful (most polls return nothing) and laggy. Push delivers near-instantly.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num purple">⑦</span> Metadata DB</h3>
+      <p>Sharded relational DB — Postgres / MySQL / Spanner. Stores <code>users</code>, <code>files</code>, <code>file_versions</code>, <code>file_chunks</code>, <code>chunks</code>, <code>acl</code> tables. Sharded by <code>user_id</code> / <code>workspace_id</code> using consistent hashing so a user's entire tree co-locates on one shard — folder listings and ACL checks hit one box.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> consistent state with ACID guarantees. The chunk-list-of-a-version invariant must be atomic — a half-written version is a corrupted file. NoSQL would force application-level reconciliation we don't need.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num purple">⑧</span> Metadata Cache</h3>
+      <p>Memcache/Redis sitting in front of the metadata DB. Caches the read-heavy hot rows: open folders, ACL rows, recent file-version pointers, dedup-check results. Writes invalidate: when the metadata service commits a new version, it punches the cached file row. ACL TTLs are kept short (≤ 60 s) because stale shares are a security bug, not just a perf bug.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> read amplification. Every "open folder" or "list workspace" call would hit the DB without a cache. At 95%+ hit rate the DB only sees writes + cache misses.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num yellow">⑨</span> Block Storage (S3)</h3>
+      <p>The actual chunk bytes live here, content-addressed by <code>chunk_hash</code> (SHA-256 of the chunk content). Same hash → same object → automatic dedup at the storage layer. Replication, erasure coding, cross-region failover, 11-nines durability — all handled by S3-class systems. Critically: clients upload <em>directly</em> via presigned URLs — bytes never traverse our app servers.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> durability + petabyte scale. Building this ourselves would cost years and a whole org. We offload the hard problems and keep our own service tier small and stateless.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num yellow">⑩</span> CDN / Edge Cache</h3>
+      <p>Caches popular chunks at the network edge close to the user. Cache key is the immutable <code>chunk_hash</code>, so cache invalidation is a non-problem. Especially powerful for shared files: a viral "all-hands.mp4" downloaded by 50 000 employees → after the first few requests, every other download is served from a POP near the user.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> origin pressure + global latency. Without a CDN, every download from Sydney round-trips to us-east. With it, the origin sees ~K requests instead of M, and users get sub-100 ms downloads regardless of geography.</p>
+    </div>
+  </div>
+
+  <!-- ── A concrete walkthrough ── -->
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.05rem;margin:2rem 0 .7rem">Putting it together — a concrete walkthrough</h3>
+  <p>Sarah edits <code>roadmap.docx</code> on her laptop. It's a 12 MB file; she changed two paragraphs. Here's exactly which components touch the request, and why each one is on the path.</p>
+
+  <div class="card">
+    <ol style="list-style:decimal;padding-left:1.4rem;color:var(--text);font-size:.88rem;line-height:2">
+      <li><strong>Watcher</strong> sees the FS event on the laptop and notifies the chunker.</li>
+      <li><strong>Chunker</strong> splits the new file into 3 × 4 MB chunks, hashes each, and compares against the local index. Two hashes match (unchanged); one is new.</li>
+      <li>Client calls <code>BeginUpload</code> on the <strong>Metadata Service</strong> through the <strong>Load Balancer</strong> — sends all 3 hashes.</li>
+      <li>Metadata Service hits the <strong>Metadata Cache</strong> first to dedup-check. Two hashes are present; one is missing. Returns "upload chunk #2 only."</li>
+      <li>Client uploads <em>just chunk #2</em> directly to <strong>Block Storage</strong> via a presigned URL. Bytes never touch our app servers.</li>
+      <li>Client calls <code>CommitUpload</code>. <strong>Metadata Service</strong> writes a new <code>FileVersion</code> row + 3 <code>FileChunk</code> rows to the <strong>Metadata DB</strong>, atomically bumps <code>current_version</code>.</li>
+      <li>On commit, Metadata Service hands the changeset to the <strong>Sync Service</strong>, which publishes a <code>ChangeEvent</code> to the <strong>Message Queue</strong>.</li>
+      <li>The <strong>Notification Server</strong> holding Sarah's phone's long-poll connection receives the event from the queue and pushes "ws_42 changed."</li>
+      <li>Sarah's phone calls <code>GetChangesSince</code> on the Metadata Service, gets back "version v100, missing chunk #2."</li>
+      <li>Phone fetches chunk #2 from <strong>CDN</strong> (which pulls from Block Storage on cache miss), assembles the file locally. Done.</li>
+    </ol>
+  </div>
+
+  <div class="highlight hl-green"><strong>Trace the planes:</strong> steps 5 and 10 are the only times bytes move — that's the data plane. Steps 1–4 and 6–9 are all metadata + events — that's the control plane. The 12 MB upload contributed exactly one S3 PUT (4 MB) and a handful of small DB writes. That's the whole architectural payoff.</div>
+
+  <div class="highlight hl-blue"><strong>Key design call:</strong> separation of data and control. A large upload is "stream the missing chunks to S3 + write a few rows to the metadata DB" — never "POST 1 GB to our app server." Our service stays small and stateless; the storage tier does the heavy lifting; the queue absorbs notification spikes. Every component earns its place by solving a problem the naive design couldn't.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: WHY CHUNKING                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-purple">Step 5</span>
+  <h2>Why Chunking is the Whole Game</h2>
+  <p>If you remember one thing from this design: <strong>files are stored as a list of chunks, not as a single object</strong>. Every benefit of the design — dedup, delta sync, resumability — falls out of this single decision.</p>
+
+  <div class="g4">
+    <div class="card"><h3>🔁 Resumability</h3><p>1 GB upload drops at chunk 198/250 → resume from 198, not from zero.</p></div>
+    <div class="card"><h3>📡 Delta sync</h3><p>Edit one paragraph in a 50 MB doc → re-upload one 4 MB chunk, not 50 MB.</p></div>
+    <div class="card"><h3>♻️ Dedup</h3><p>Same chunk hash already exists? Skip the upload. Two users uploading the same movie pay storage once.</p></div>
+    <div class="card"><h3>🚀 Parallelism</h3><p>Upload 10 chunks in parallel. Saturate the user's uplink instead of TCP-streaming one big request.</p></div>
+  </div>
+
+  <span class="code-label cl-purple">Chunk-size trade-off</span>
+<pre><span class="cmt"># Smaller chunks (e.g., 256 KB):</span>
++  Better delta sync — finer granularity for edits
++  Faster retry on transient failures
+-  More metadata rows per file (250 chunks/MB vs 0.25)
+-  More object-store API calls → higher cost &amp; latency
+
+<span class="cmt"># Larger chunks (e.g., 16 MB):</span>
++  Less metadata, fewer S3 calls
++  Better throughput per request
+-  Re-uploading on tiny edits is wasteful
+-  Failed chunk costs more bandwidth to retry
+
+<span class="cmt"># Industry-standard sweet spot: 4 MB</span>
+<span class="cmt"># Dropbox uses 4 MB. Google Drive uses variable rolling-hash chunking</span>
+<span class="cmt"># (rabin fingerprinting) so identical content remains aligned across edits.</span></pre>
+
+  <div class="highlight hl-purple"><strong>Advanced:</strong> fixed-size chunking has a famous weakness — insert one byte at the start of a file and every chunk boundary shifts, defeating dedup. Production systems use <strong>content-defined chunking</strong> (Rabin fingerprinting) where boundaries are determined by content hash, not byte offset. That way an insert only changes the chunks around the edit point.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: CLIENT COMPONENTS                  -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-cyan">Step 6</span>
+  <h2>Client Components — More Than a Folder Watcher</h2>
+  <p>The desktop client is a real piece of software with four cooperating modules. Understanding it earns you a lot of credit in interviews because most candidates wave their hands at "the client" and skip to the server.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  W[Watcher<br/>fs events]
+  CH[Chunker<br/>split + hash]
+  IDX[Indexer<br/>local SQLite]
+  NET[Network Layer<br/>HTTP / long-poll]
+
+  W -- file changed --> CH
+  CH -- chunks + hashes --> IDX
+  IDX -- diff vs server --> NET
+  NET -- upload chunks --> BS[(Block Storage)]
+  NET -- update metadata --> MS[Metadata Svc]
+  NET -. listen for remote changes .-> NS[Notification Server]
+  NS -. push notifies .-> IDX
+
+  style W fill:#e8743b,stroke:#e8743b,color:#fff
+  style CH fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style IDX fill:#38b265,stroke:#38b265,color:#fff
+  style NET fill:#9b72cf,stroke:#9b72cf,color:#fff
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>👁️ Watcher</h3>
+      <p>Hooks into OS file-system events (<code>inotify</code> on Linux, <code>FSEvents</code> on macOS, <code>ReadDirectoryChangesW</code> on Windows). Debounces — a "save" can fire 5 events in 100 ms, we coalesce.</p>
+    </div>
+    <div class="card">
+      <h3>✂️ Chunker</h3>
+      <p>Splits files into 4 MB chunks. Computes SHA-256 per chunk. <strong>Compares against the local index first</strong> — if the chunk hash matches the previous version, skip it. This is delta sync.</p>
+    </div>
+    <div class="card">
+      <h3>🗂️ Indexer (local SQLite)</h3>
+      <p>The client's local "metadata DB" — file path, version, chunk list, last-synced timestamp. Survives restarts. Used to compute diffs and to support offline edits.</p>
+    </div>
+    <div class="card">
+      <h3>🌐 Network Layer</h3>
+      <p>Three responsibilities: (1) upload chunks via presigned URLs, (2) call metadata APIs, (3) hold a long-poll connection to the notification server. Exponential back-off on failures.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>Why the client carries a real database:</strong> without local state, every save would round-trip to the server to ask "what's the current version?" — that's both slow and broken offline. The local SQLite is the source of truth for "what this device thinks the world looks like" — sync is the act of reconciling that view with the server's view.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: METADATA SCHEMA                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-cyan">Step 7</span>
+  <h2>Metadata Schema — Five Core Entities</h2>
+  <p>Keep the schema small. The trick is recognizing that <strong>file</strong> and <strong>chunk</strong> are separate first-class entities — chunks have their own lifecycle, hash-keyed identity, and dedup story.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  USER ||--o{ FILE : owns
+  USER ||--o{ DEVICE : registers
+  USER ||--o{ WORKSPACE : has
+  WORKSPACE ||--o{ FILE : contains
+  FILE ||--o{ FILE_VERSION : "history of"
+  FILE_VERSION ||--o{ FILE_CHUNK : "made of"
+  CHUNK ||--o{ FILE_CHUNK : "referenced by"
+  FILE ||--o{ ACL : "shared via"
+
+  USER {
+    string user_id PK
+    string email
+    timestamp created_at
+  }
+  DEVICE {
+    string device_id PK
+    string user_id FK
+    string platform
+    timestamp last_seen
+  }
+  WORKSPACE {
+    string ws_id PK
+    string user_id FK
+    string root_path
+  }
+  FILE {
+    string file_id PK
+    string ws_id FK
+    string path
+    string current_version FK
+    bigint size
+    timestamp updated_at
+  }
+  FILE_VERSION {
+    string version_id PK
+    string file_id FK
+    int rev_number
+    string user_id FK
+    timestamp created_at
+  }
+  CHUNK {
+    string chunk_hash PK
+    bigint size
+    string storage_url
+    int ref_count
+  }
+  FILE_CHUNK {
+    string version_id FK
+    int chunk_index
+    string chunk_hash FK
+  }
+  ACL {
+    string file_id FK
+    string user_id FK
+    string permission
+  }
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔑 Why <code>chunk_hash</code> is the primary key</h3>
+      <p>Identical content collapses to one row. Two users uploading the same PDF reuse the same chunks — storage cost is paid once. The <code>ref_count</code> field is what lets us safely garbage-collect chunks when no version references them anymore.</p>
+    </div>
+    <div class="card">
+      <h3>📜 Why versions are first-class</h3>
+      <p>"Restore to yesterday" becomes a metadata-only operation: point <code>FILE.current_version</code> at an older row. No bytes move. Same trick powers undo, time-machine, and ransomware recovery.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: UPLOAD FLOW                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-green">Step 8</span>
+  <h2>Upload Flow — End to End</h2>
+  <p>Walk through what happens when User A saves a 1 GB file. The sequence below is the single most important diagram in the design — every chunk-skip and dedup choice is visible here.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor A as Client A
+  participant CH as Chunker
+  participant MS as Metadata Svc
+  participant BS as Block Storage
+  participant SS as Sync Svc
+  participant Q as Queue
+  participant NS as Notification Svc
+  actor B as Client B
+
+  A->>CH: file changed (1 GB)
+  CH->>CH: split into 250 × 4 MB chunks<br/>compute SHA-256 per chunk
+  CH->>MS: BeginUpload(file_id, version_id, [250 hashes])
+  MS->>MS: lookup chunks by hash<br/>(dedup check)
+  MS-->>A: missing_chunks = [12, 47, 198] (only 3 are new)
+  loop for each missing chunk
+    A->>BS: PUT chunk (via presigned URL)
+    BS-->>A: 200 OK
+  end
+  A->>MS: CommitUpload(version_id, all 250 hashes)
+  MS->>MS: write FileVersion + FileChunk rows<br/>bump current_version
+  MS->>SS: changeset for ws_id
+  SS->>Q: publish ChangeEvent
+  Q->>NS: deliver to subscribers of ws_id
+  NS->>B: long-poll response: "ws_id changed"
+  B->>MS: GetChangesSince(last_synced)
+  MS-->>B: new version + chunk list
+  B->>BS: GET only the chunks B doesn't have
+  B->>B: assemble &amp; write to local FS
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card">
+      <h3>1️⃣ Why <em>BeginUpload</em> first</h3>
+      <p>Asking the server "which of these 250 hashes do you already have?" lets us skip 247 chunk uploads in the common edit-one-paragraph case. This is the dedup interrogation step.</p>
+    </div>
+    <div class="card">
+      <h3>2️⃣ Why presigned URLs</h3>
+      <p>Bytes go client → S3 directly. Our app servers never proxy a gigabyte. Dramatically cheaper bandwidth and statelessness — any app server can handle the next request.</p>
+    </div>
+    <div class="card">
+      <h3>3️⃣ Why <em>CommitUpload</em> at the end</h3>
+      <p>The version row is only written after every chunk is durable. A crash mid-upload leaves orphan chunks (cleaned up by a sweeper job) but never a corrupt visible version.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>Atomicity trick:</strong> the new version isn't visible to other devices until <code>CommitUpload</code> bumps <code>FILE.current_version</code>. Until that single row update, B keeps reading the old version. This is how we get atomic file replacement on top of an eventually-consistent blob store.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: SYNC & NOTIFICATIONS               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-yellow">Step 9</span>
+  <h2>Sync &amp; Notifications — How Devices Hear About Changes</h2>
+  <p>Polling every 5 seconds wastes bandwidth and lags by 5 seconds in the worst case. Push is faster but harder. Production systems use <strong>HTTP long-polling</strong> (or WebSockets) — the client opens a connection that the server holds open until something happens.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant B as Client B
+  participant LB as Load Balancer
+  participant NS as Notification Svc
+  participant Q as Queue
+
+  B->>LB: GET /v1/changes/poll?ws=ws_42&amp;since=v_99
+  LB->>NS: route (sticky by ws_id)
+  NS->>NS: register subscriber for ws_42<br/>start 30s timer
+  Note over NS: holds the request open
+  Q->>NS: ChangeEvent ws_42 v_100
+  NS-->>B: 200 { changes: [...] }
+  B->>B: process changes
+  B->>LB: GET /v1/changes/poll?ws=ws_42&amp;since=v_100
+  Note over B,NS: cycle repeats
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card">
+      <h3>📥 Pull / Polling</h3>
+      <p><strong>Simple</strong> — just retry on a timer. <strong>Wasteful</strong> — most polls return nothing. Latency upper-bounded by poll interval. Fine for low-priority sync (mobile on cellular).</p>
+    </div>
+    <div class="card">
+      <h3>📤 Long-poll</h3>
+      <p>Server holds the request until data is available or 30 s elapses. Near-instant push without the operational complexity of WebSockets. Works through corporate proxies. <strong>Default for desktop sync.</strong></p>
+    </div>
+    <div class="card">
+      <h3>🔌 WebSockets</h3>
+      <p>Persistent bidirectional. Lower per-message overhead than long-poll. Right answer when notification volume is high (e.g., active collab session). Cost: stateful connection management.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>Mobile twist:</strong> mobile clients usually don't long-poll — battery and data cost too much. They subscribe to <strong>APNs / FCM</strong> push channels and only sync on user action or system push. The notification service publishes to APNs/FCM in addition to its own long-poll listeners.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: DEDUPLICATION                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-cyan">Step 10</span>
+  <h2>Data Deduplication — Where to Do It</h2>
+  <p>Deduplication is "don't store the same chunk twice." The <em>where</em> matters: doing it on the client saves bandwidth; doing it on the server saves only storage.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📡 In-line (client-side, recommended)</h3>
+      <p>Client hashes every chunk first, asks the server "got this hash?", uploads only the misses. Saves <strong>storage + bandwidth + battery</strong>. The cost: one extra round-trip before each upload.</p>
+      <ul>
+        <li>Used by Dropbox, OneDrive</li>
+        <li>Wins big for backups and shared docs</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🧹 Post-process (server-side)</h3>
+      <p>Client uploads everything. A background job scans hashes and merges duplicates. Simpler client; wastes upload bandwidth.</p>
+      <ul>
+        <li>Used when bandwidth is cheap and clients are dumb</li>
+        <li>Lets the upload path stay synchronous &amp; trivial</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>Real-world payoff:</strong> on a corporate Dropbox account, &gt; 50% of "uploaded" bytes are skipped because the chunks already exist somewhere in the global pool. The dedup table is one of the most cost-leveraged data structures in the entire stack.</div>
+
+  <div class="highlight hl-red"><strong>Privacy footnote:</strong> chunk-hash dedup across <em>different users</em> has a subtle attack — knowing a hash exists in the system tells you someone, somewhere, has that file. Production systems either dedup only within a single user/team, or use convergent encryption to make hashes per-tenant.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: METADATA PARTITIONING             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-purple">Step 11</span>
+  <h2>Metadata Partitioning — When 100 TB Doesn't Fit on One Box</h2>
+  <p>Three sharding strategies, each with a failure mode. Pick the one whose failure mode you can live with.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>Scheme</th><th>How it works</th><th>Wins</th><th>Loses</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Vertical</strong></td>
+          <td>Tables on different DBs (users on DB1, files on DB2)</td>
+          <td>Easy first step; isolates feature load</td>
+          <td>Cross-table joins now go cross-network. Hits a ceiling fast.</td>
+        </tr>
+        <tr>
+          <td><strong>Range</strong> (by path prefix)</td>
+          <td>All paths starting with <code>A</code> on shard 1, <code>B</code> on shard 2…</td>
+          <td>Predictable; range queries fast</td>
+          <td>Hot shards (everyone has <code>/Documents</code>); rebalancing painful.</td>
+        </tr>
+        <tr>
+          <td><strong>Hash</strong> (consistent hashing on <code>file_id</code>)</td>
+          <td>Hash function maps each file to a shard</td>
+          <td>Uniform load; easy to add shards (consistent hashing)</td>
+          <td>Listing a folder now hits multiple shards — needs scatter-gather.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-purple"><strong>Pragmatic answer:</strong> shard by <code>user_id</code> (or <code>workspace_id</code>). Co-locates a user's whole tree on one shard so folder listings and ACL checks hit one box. Use <strong>consistent hashing</strong> so adding shards moves only ~1/N of the keys, not all of them. This is the same trick Cassandra and DynamoDB use under the hood.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: CACHING & LOAD BALANCING          -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-blue">Step 12</span>
+  <h2>Caching &amp; Load Balancing</h2>
+  <p>Two caches do almost all the work. Three load-balancing layers cover the rest.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>⚡ Block Cache (CDN / edge)</h3>
+      <p>Hot chunks served from CDN — never touch our origin S3. Especially powerful for shared files and "training_video.mp4" that 50 K employees download in the same week.</p>
+      <ul>
+        <li>LRU eviction by chunk popularity</li>
+        <li>~144 GB on a commodity node ≈ 36 K chunks @ 4 MB</li>
+        <li>Cache key = <code>chunk_hash</code> (immutable, never invalidated)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🧠 Metadata Cache (Memcache)</h3>
+      <p>Caches <code>FILE</code> + <code>FILE_VERSION</code> + ACL rows. Read-heavy: every folder open is a metadata read. Writes go through to the DB; cache invalidates on commit.</p>
+      <ul>
+        <li>Hit rate target: &gt; 95%</li>
+        <li>TTL short (e.g., 60 s) for ACL — stale shares are a security bug</li>
+        <li>Pin hot folders (root + recents)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card"><h3>LB · client → metadata svc</h3><p>L7 load balancer; sticky on <code>user_id</code> hash for connection reuse.</p></div>
+    <div class="card"><h3>LB · client → notification svc</h3><p>Sticky on <code>ws_id</code> so a workspace's subscribers consolidate on a few nodes — easier fanout.</p></div>
+    <div class="card"><h3>LB · client → block storage</h3><p>Usually the CDN itself. Origin S3 sits behind global anycast.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: SECURITY & SHARING                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-red">Step 13</span>
+  <h2>Security, Permissions &amp; Sharing</h2>
+  <p>The interesting question isn't "how do we encrypt?" — it's "what does shared mean when the file lives as 250 chunks scattered across an object store?"</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔐 Permissions model</h3>
+      <ul>
+        <li><strong>ACL row per (file_id, user_id)</strong> with permission level (read / write / admin)</li>
+        <li>Folder-level ACLs propagate down at query time (denormalize for hot reads)</li>
+        <li>Public links = ACL with a tokenized "anonymous" principal + optional expiry</li>
+        <li>Every metadata read does an ACL check; cached but with short TTL</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🛡️ Encryption layers</h3>
+      <ul>
+        <li><strong>In transit:</strong> TLS 1.3 client ↔ everything</li>
+        <li><strong>At rest (server-side):</strong> S3 SSE-KMS — keys per workspace</li>
+        <li><strong>Block-level integrity:</strong> SHA-256 verified on download</li>
+        <li><strong>Optional E2EE</strong> tier — keys never leave client; loses dedup &amp; preview</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>Sharing gotcha:</strong> when you "unshare" a folder, you must invalidate any cached ACL <em>and</em> any signed download URL the user might still hold. Short URL expiries (≤ 5 min) make this tractable — long-lived URLs become a revocation nightmare.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: TRADE-OFFS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-orange">Step 14</span>
+  <h2>Trade-offs &amp; Talking Points</h2>
+  <p>What you'd say in the interview when asked "why did you do X and not Y?"</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Decision</th><th>Alternative</th><th>Why this choice</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Fixed 4 MB chunks</td>
+          <td>Variable (Rabin-fingerprint) chunks</td>
+          <td>Simpler client; "good enough" dedup. Variable adds CPU cost on every save and complicates the chunk store.</td>
+        </tr>
+        <tr>
+          <td>In-line (client) dedup</td>
+          <td>Post-process server dedup</td>
+          <td>Saves bandwidth on the upload, not just storage. Costs one extra RTT but it's tiny.</td>
+        </tr>
+        <tr>
+          <td>HTTP long-poll for notifications</td>
+          <td>WebSockets / SSE</td>
+          <td>Long-poll traverses corporate proxies cleanly and is easier to load-balance. WS is better for high-frequency push but overkill for sync.</td>
+        </tr>
+        <tr>
+          <td>Sharded SQL for metadata</td>
+          <td>Single Cassandra cluster</td>
+          <td>Metadata invariants (chunk lists, version pointers) want ACID. Cassandra would force application-level reconciliation we don't need.</td>
+        </tr>
+        <tr>
+          <td>Direct client → S3 uploads</td>
+          <td>Proxy through app servers</td>
+          <td>Saves a full bandwidth hop. Lets app tier stay stateless. Presigned URLs handle the auth handoff.</td>
+        </tr>
+        <tr>
+          <td>Eventual consistency for cross-device sync</td>
+          <td>Strong (Spanner-style) consistency</td>
+          <td>Few-second sync delay is fine for a file sync product. Strong consistency would 10× the cost for no perceivable user benefit.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 15: INTERVIEW Q&A                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s15">
+  <span class="sec-tag tag-blue">Step 15</span>
+  <h2>Interview Q&amp;A — The Follow-up Round</h2>
+  <p>If you nail the architecture, the next 15 minutes are these. Have answers ready.</p>
+
+  <div class="iq">Two devices edit the same file offline. Both come online. What happens?</div>
+  <div class="ans"><strong>Conflict resolution.</strong> Server's metadata service detects two versions claiming to derive from the same parent revision. Strategy: <em>last-writer-wins</em> for the canonical name, and the loser is renamed to <code>file (Conflict copy from device-X 2026-05-02).ext</code>. Surface the conflict to the user — never silently lose data. Real CRDT-style merge requires content-aware logic (text vs image vs binary) and is out of scope for plain file sync.</div>
+
+  <div class="iq">A user uploads a 5 GB file and their connection drops at 60%.</div>
+  <div class="ans"><strong>Resume from chunk 750/1250.</strong> The chunker re-hashes from where the upload paused. The <code>BeginUpload</code> call returns "missing" only for chunks 750+, since 0–749 are durable in S3. Client uploads the remaining 500. Total wasted bandwidth: zero — and crucially, no full restart. This is why chunking exists.</div>
+
+  <div class="iq">How do you garbage-collect orphan chunks (uploaded but never committed)?</div>
+  <div class="ans"><strong>Reference counting + a sweeper.</strong> Each chunk row tracks <code>ref_count</code>, incremented when a <code>FileVersion</code> references it and decremented when the version is deleted or rolled back. A nightly job lists chunks with <code>ref_count = 0</code> AND <code>created_at &lt; now() - 24h</code> and deletes them from S3. The 24-hour grace handles in-progress uploads.</div>
+
+  <div class="iq">A celebrity uploads a viral video — 1 M users download it in the same hour. How does your system survive?</div>
+  <div class="ans"><strong>The CDN absorbs it.</strong> All chunks for that file get pulled to edge caches on the first few requests; the remaining 999 K download from the user's nearest POP, never our origin. Origin S3 sees ~1 K requests, not 1 M. Metadata is cached in Memcache so the <code>GetFileVersion</code> calls are mostly hot reads. The bottleneck shifts to <em>our notification fanout</em> if those 1 M users are all subscribed to the same shared workspace — which is why workspaces should be sharded across notification servers, not pinned to one.</div>
+
+  <div class="iq">How do you prevent a malicious user from uploading 100 TB to fill our quota and DOS others?</div>
+  <div class="ans"><strong>Per-user quota + per-IP rate limit + chunk-level dedup.</strong> Quota is enforced on <code>CommitUpload</code> — counts the <em>committed</em> bytes of new (non-deduped) chunks against the user's plan. Rate limiting at the API gateway caps RPS. Dedup ironically helps DOS resistance — uploading the same chunk 1000× costs the attacker 1000 round-trips but us only one row update.</div>
+
+  <div class="iq">Why don't you use Kafka for everything instead of having a separate metadata DB?</div>
+  <div class="ans"><strong>Different consistency needs.</strong> "What chunks make up the current version of file X" is an <em>invariant</em> we need to atomically commit and read consistently — that's a relational write. Kafka is great for "tell every device that file X changed" — that's a fan-out event. Mixing them puts your invariants behind eventual consistency and makes the API surface confused. Use the right tool: SQL for invariants, Kafka for events.</div>
+
+  <div class="iq">You said metadata is sharded by user_id. What about shared folders?</div>
+  <div class="ans"><strong>Owner of the folder owns the shard.</strong> Collaborator's metadata service reads the folder by routing to the owner's shard. Cached aggressively. Yes, this means a viral shared folder creates a hotspot on its owner's shard — mitigated by cache, and by promoting truly large shared spaces (companies, communities) to their own dedicated shards via consistent-hashing virtual nodes.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 16: PRODUCTION CHECKLIST              -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s16">
+  <span class="sec-tag tag-green">Step 16</span>
+  <h2>Production Checklist</h2>
+  <p>What you'd verify before shipping. Order roughly maps to severity.</p>
+
+  <div class="card">
+    <ul class="checklist">
+      <li>Chunks immutable and content-addressed by SHA-256 — never mutated in place</li>
+      <li><code>CommitUpload</code> is the only operation that bumps <code>current_version</code> — atomic single-row write</li>
+      <li>Reference counting on chunks + nightly orphan sweeper with 24 h grace window</li>
+      <li>Presigned upload URLs expire in ≤ 15 min; download URLs in ≤ 5 min</li>
+      <li>Per-user quota enforced at commit time, not at upload time (dedup-aware)</li>
+      <li>ACL cache TTL ≤ 60 s — stale shares are a security bug, not a perf bug</li>
+      <li>Metadata DB sharded with consistent hashing on <code>user_id</code> / <code>workspace_id</code></li>
+      <li>Notification servers consolidate subscribers per <code>workspace_id</code> (sticky LB)</li>
+      <li>Mobile uses APNs/FCM, not long-poll — battery + data discipline</li>
+      <li>CDN warm-up for shared "team announcement" content via origin pre-fetch</li>
+      <li>End-to-end SHA-256 verification on download — corrupted chunks fail loud</li>
+      <li>Conflict copies surfaced to the user, never silently overwritten</li>
+      <li>Audit log on a separate store (Cassandra / S3+Athena) — never on the hot metadata path</li>
+      <li>Disaster recovery: cross-region async replication of both metadata and block storage</li>
+    </ul>
+  </div>
+
+  <div class="highlight hl-green"><strong>The principle:</strong> every "feature" of Dropbox — resumable uploads, rollback, sharing, dedup, offline edits — falls out of two design choices: <em>files-as-chunks</em> and <em>data plane separated from control plane</em>. Get those two right and the rest is plumbing. Get them wrong and no amount of caching will save you.</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+<div class="likes-row">
+  <p class="like-prompt">
+    <strong>Did this flip your perspective on Dropbox?</strong>
+    If it clicked, tap the ❤️ — <em>that's how I know it hit.</em>
+  </p>
+  <div id="likes"></div>
+</div>
+
+</body>
+</html>

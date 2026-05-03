@@ -208,6 +208,87 @@ Every new LLD HTML file MUST follow this exact structural pattern for consistenc
 }
 ```
 
+**Text-color rule (readability):** Body copy must use `var(--text)` (#d4dae5), NOT `var(--muted)` (#7b8599). The muted color is reserved for de-emphasized chrome (sidebar links, hero subtitle, table-cell labels) — never for prose the reader is expected to read. Apply this specifically to:
+- `.sec > p` — the intro paragraph under each section's `<h2>`
+- `.card p`, `.card li` — text inside cards
+- Any `<p>` that contains an explanation or "this is the design rationale" sentence
+
+Example of what NOT to do (rejected): a section-intro paragraph like *"Sync isn't one feature — it's a contract between every device a user owns and the cloud..."* rendered in `--muted` is too dim against the dark background. Use `--text` so it reads at normal weight.
+
+```css
+/* CORRECT */
+.sec > p{ color: var(--text); ... }
+.card p, .card li{ color: var(--text); ... }
+
+/* WRONG — too low-contrast for prose */
+.sec > p{ color: var(--muted); ... }
+```
+
+### 1b. Explanation style — "Story arc, not diagram dump" (mandatory)
+
+For any HLD/LLD architectural section (especially "High-Level Architecture", "System Design", "Component Design", "Deep Dive on X"), present the design as a **story arc** that builds intuition, not a list of boxes connected by arrows. A diagram alone never explains *why* — readers ask "why is this component here? why this split? what would break without it?" The story arc answers those questions in order.
+
+**The mandatory arc — three passes plus a walkthrough:**
+
+1. **Pass 1 — The naive design (and why it breaks).** Start with the simplest thing that could plausibly work (one server, one DB, one disk). Show a Mermaid diagram of it. Then list 2–3 concrete failure modes — what specifically breaks at scale, with numbers if possible (e.g., "10 Gbps link saturates at 80 concurrent uploads"). Each failure should map to a component in the production design.
+
+2. **Pass 2 — The mental model / split.** Introduce the central architectural idea (e.g., "data plane vs control plane", "read path vs write path", "hot tier vs cold tier"). Two side-by-side cards explaining each side. Make it crystal clear *what travels where* and *why they scale differently*.
+
+3. **Pass 3 — The production shape.** Show the full Mermaid architecture diagram. Then a component-by-component grid where **every component has two parts**:
+   - *What it does* — one sentence.
+   - **What problem it solves** — one sentence. This is the part most candidates skip and it's the most important one. If you can't explain what would break without this component, it doesn't belong in the design.
+
+4. **Concrete walkthrough.** End with a numbered, real-world scenario ("Sarah edits roadmap.docx", "User clicks Buy", "Driver location updates") that traces the request through every component you just introduced. Reference component names in **bold** so the reader maps the story back to the diagram. Close with a callout that points out which steps were data-plane vs control-plane (or whatever your central split was).
+
+**Why this works:** the reader is taken from "I'd build it this naive way" → "oh, that breaks because of X" → "so we split it like this" → "and now each piece earns its keep" → "and here's how a real request flows through all of it." By the end, every box in the diagram has a justification grounded in a concrete failure the reader has already seen.
+
+**Reference implementation:** [design-dev/HLD/dropbox-hld.html § 4 — High-Level Architecture](design-dev/HLD/dropbox-hld.html). Read that section's structure as the canonical template before writing your own architectural section.
+
+**Rules of thumb:**
+- For every component, ask "what would break without this?" If you can't answer in a sentence, cut it.
+- Anchor every abstraction with a concrete number, scenario, or example.
+- Use callouts (`.highlight`) to summarize each pass — one callout per pass.
+- Component grids should use `.g3` or `.g2` and color the card border / icon by which plane/tier the component lives in.
+- The walkthrough should reference at least 6 components — if it touches fewer, you have unused components.
+
+---
+
+### 1c. Storytelling tone — write for the newbie reader (mandatory)
+
+Every explanation on every HLD/LLD page must read like a **story being told to a beginner**, not a reference manual being skimmed by an expert. A newbie has never heard of "control plane", "consistent hashing", or "write-ahead log" — they need to be walked there. Architecture sections in particular must be **descriptive and informative**: a reader who has never seen this system before should finish the section knowing not just *what* the boxes are, but *why each one exists*, *what came before it*, and *what life would be like without it*.
+
+**The storytelling rules:**
+
+1. **Open every section with a scene, not a definition.** Don't start with "The Metadata Service is a stateless service that handles…". Start with "Imagine Sarah opens her Dropbox folder on her laptop. Before any file appears on screen, *something* has to answer: what's in this folder? who's allowed to see it? what version is current? That something is the Metadata Service." The scene gives the reader a hook before the jargon arrives.
+
+2. **Introduce one idea at a time, in the order a beginner would discover it.** Don't drop the full architecture diagram and then label boxes. Build it up: "First, you'd just put everything on one server. That breaks because… So you split off the metadata. That breaks because… So you add a cache in front. Now we have three boxes — and each one earned its place." This is the story arc from §1b, but the *prose between the diagrams* must also follow it.
+
+3. **Name the human in every flow.** Use real names — Sarah, Raj, the driver, the receptionist — not "User1" or "the client". A flow that says "Sarah edits roadmap.docx on her laptop, and 8 seconds later her phone shows the change" is concrete; "the client modifies a resource and the second client receives the update" is sterile and forgettable.
+
+4. **Translate every acronym and jargon term the first time it appears.** Write "ACL (Access Control List — the table that says who can read/write each file)" the first time, then just "ACL" after. Same for CDN, WAL, MVCC, CAP, etc. Assume the reader has never seen the term, even if they have — it costs nothing and helps everyone.
+
+5. **For every component, answer four newbie questions in plain prose:**
+   - What is this thing, in one sentence a non-engineer would understand?
+   - Why does it exist? (What pain forced us to add it?)
+   - What would break if we removed it tomorrow?
+   - Where does it sit in the request flow? (What talks to it, and what does it talk to?)
+
+6. **Use analogies aggressively for the architecture.** "The load balancer is like the host at a busy restaurant — they don't cook, they don't serve, they just decide which table (server) gets the next group (request)." "The metadata DB is the library catalog; the block store is the actual shelf of books." Analogies are how beginners build intuition fastest. Architecture sections without at least 2–3 analogies are too dry.
+
+7. **Show the "before and after" for every architectural decision.** "Before we added the cache, every folder open hit the database — at 10K users that was 50K queries/sec on a box rated for 20K. After the cache, 95% of opens never reach the DB." Numbers + the contrast make the decision land.
+
+8. **End each architectural section with a "so what" line.** One sentence in plain English: "So in short — Dropbox keeps your files fast because it never moves the bytes through the same path as the answers to 'what files do I have?'." This is the takeaway the newbie repeats back to themselves.
+
+**Architecture descriptiveness rule:** the production-shape Mermaid diagram (Pass 3) must be followed by **at least one full paragraph of prose per component** in the numbered grid — not a bullet list, not a one-liner. The paragraph must answer the four newbie questions from rule 5 above. A two-line card is too thin. If a card looks like a label, expand it into a story.
+
+**Tone test before shipping any section:** read it out loud and ask — "could a curious college student with no industry experience follow this from start to finish without opening another tab to look something up?" If the answer is no, the gaps you'd have to fill in for them belong *in* the prose. Put them there. Specifically watch for: undefined acronyms, components introduced without motivation, and sentences that assume the reader already knows why a particular trade-off matters.
+
+**Anti-patterns to avoid:**
+- ❌ "The system uses a sharded Postgres cluster with logical replication." → ✅ "We split the database across 16 machines (called shards) so no single one gets overloaded. Postgres is the database engine. Logical replication just means: when one shard's data changes, copies of it are streamed to a backup machine in near-real-time, so we don't lose data if a shard crashes."
+- ❌ Listing components without saying *why each was added*.
+- ❌ Diagrams without a narrative paragraph above them setting the scene.
+- ❌ Using the same generic phrase ("handles requests", "manages state", "processes data") for every component — it tells the reader nothing.
+
 ### 2. Fonts (Google Fonts CDN)
 - `JetBrains Mono` → code blocks
 - `DM Sans` → body text
@@ -354,6 +435,110 @@ erDiagram
 
 ---
 
+### 6b. Diagram zoom (mandatory on any page with Mermaid)
+
+Mermaid SVGs render too small to read on dense diagrams (sequence diagrams especially). Every HLD/LLD page that embeds Mermaid MUST include the shared zoom modal so users can click a diagram to open it fullscreen with pan/zoom controls.
+
+Two lines, both in `<head>`, right next to the Mermaid CDN. **Use relative paths**, not absolute (`/css/...`) — absolute paths break when the file is opened directly via `file://` because `/` resolves to the filesystem root. From a page at depth 3 (e.g. `design-dev/HLD/foo.html`), use `../../`:
+
+```html
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+```
+
+The shared script auto-injects the modal markup, wires every `.diagram-box` for click-to-zoom, and provides:
+- 1.6× initial zoom on open
+- Mouse wheel zoom (range 0.4× – 6×)
+- Click-and-drag panning
+- Toolbar: `−` `⟲` `+` `✕`
+- Keyboard: `+` / `−` / `0` / `Esc`
+- Backdrop click closes
+
+Do NOT inline-copy the modal CSS, HTML, or JS into individual pages — keep it shared at `/css/diagram-zoom.css` and `/js/diagram-zoom.js` so a single edit propagates.
+
+---
+
+### 6c. Numbered architecture diagram + numbered explanation grid (mandatory)
+
+For the production-shape diagram in any architectural section (the Pass-3 diagram from section 1b), follow this exact pattern: **number every box in the diagram with circled Unicode digits ①②③… and then explain them inline below in a numbered card grid where each card carries the matching number badge.** This beats both a plain grid (no visual link to the diagram) and click-popups (require interaction, easy to miss).
+
+**Why this works best:**
+- Diagram and explanation are visible together — no hidden state
+- Numbers form an explicit cross-reference: "see ⑤ in the diagram" maps trivially to card ⑤
+- Reader can scan-skip components they already understand without losing place
+- No JS required for the explanation — pure HTML/CSS, prints cleanly, screen-reader friendly
+
+**Step 1 — Add circled numbers to each Mermaid node label.** Use Unicode characters ①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮ (basic Unicode supports up to ⑳). Number nodes in the diagram's source order:
+
+```
+flowchart LR
+  CL([① Client App<br/>Watcher · Chunker · Indexer])
+  LB[② Load Balancer]
+  MS[③ Metadata Service]
+  ...
+```
+
+**Step 2 — Add the badge CSS to the page's inline `<style>` block.** Once added, this is reusable across every section that has numbered cards:
+
+```css
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+```
+
+**Step 3 — Add the numbered explanation grid below the diagram.** Each card has a numbered badge (`<span class="comp-num COLOR">①</span>`) in its `<h3>`, a "what it does" paragraph, and a "what problem it solves" line. Use `g2` (two columns) — body text per card is too dense for `g3`.
+
+```html
+<h3 style="…">Component-by-component — what each numbered box does</h3>
+<p>Use the numbers in the diagram above to find the matching card below. ...</p>
+
+<div class="g2">
+  <div class="card">
+    <h3><span class="comp-num orange">①</span> Client App</h3>
+    <p>Description of what the component does ...</p>
+    <p style="margin-top:.55rem"><strong>Solves:</strong> what would break without this ...</p>
+  </div>
+  <!-- one card per number, badge color matches the box fill in the diagram -->
+</div>
+```
+
+**Color-matching rule:** the badge color on each card must match the box fill in the diagram. So if `style CL fill:#e8743b` (orange), the card uses `<span class="comp-num orange">①</span>`. This is the visual cross-reference users rely on when scanning back to the diagram.
+
+**Reference implementation:** [design-dev/HLD/dropbox-hld.html § 4 Pass 3](design-dev/HLD/dropbox-hld.html) — see the architecture diagram with ①–⑩ and the matching `g2` card grid below it.
+
+---
+
+### 6d. Anonymous likes (counterapi.dev, optional)
+
+To add an anonymous "like" button to a page, opt in via the shared loader. No sign-in, no commenter UI — just a per-page click counter.
+
+**Includes (in `<head>`, relative paths from a depth-3 page like `design-dev/HLD/dropbox/foo.html`):**
+```html
+<link rel="stylesheet" href="../../../css/likes.css"/>
+<script src="../../../js/likes.js" defer></script>
+```
+
+**Markup (just before `</body>`):**
+```html
+<div class="likes-row"><div id="likes"></div></div>
+```
+
+**How it works:** `/js/likes.js` mounts a heart button inside `#likes` and talks to `https://api.counterapi.dev/v1/<workspace>/<key>/up` (free, anonymous, no auth). The `key` is derived from `location.pathname`, so each page gets its own counter. Repeat-clicks are blocked per-browser via `localStorage` — not bulletproof, but sufficient for casual engagement.
+
+To swap the backend, replace `readCount` / `bumpCount` in `/js/likes.js` — the markup and CSS stay the same.
+
+Do NOT inline-copy the loader code or CSS into individual pages. Keep both shared so a single edit propagates.
+
+**Reference implementation:** [design-dev/HLD/dropbox/dropbox-hld.html](design-dev/HLD/dropbox/dropbox-hld.html) — likes row sits just below `</div><!-- /.layout -->`, before `</body>`.
+
+---
+
 ### 7. Register the new page in `design-development.html`
 After creating the LLD file, ALWAYS add a card to `design-development.html` inside `.dd-grid`:
 ```html
@@ -370,10 +555,15 @@ After creating the LLD file, ALWAYS add a card to `design-development.html` insi
 ## Checklist Before Declaring Done
 - [ ] File at `LLD/<system-name>-lld.html` (or `notes/` for non-LLD deep dives)
 - [ ] Dark theme CSS variables + Playfair/DM Sans/JetBrains Mono fonts
+- [ ] **Body copy uses `var(--text)`, never `var(--muted)`** for `.sec > p`, `.card p`, `.card li`, or any explanatory `<p>` (see "Text-color rule" above)
+- [ ] **Architecture sections follow the "story arc" pattern** — Pass 1 (naive design + failure modes) → Pass 2 (mental model / split) → Pass 3 (production shape with component-by-component "what it does + what problem it solves") → numbered concrete walkthrough. See section 1b "Explanation style" for the canonical template (Dropbox § 4 is the reference implementation).
+- [ ] **Storytelling tone for newbies (section 1c)** — every section opens with a scene (not a definition), names a human in every flow (Sarah, Raj — not "User1"), translates jargon on first use, uses 2+ analogies in the architecture, shows before/after for decisions, and ends each architectural section with a "so what" plain-English takeaway. Each component card in the Pass-3 grid carries a full descriptive paragraph (not a label) answering: what is it / why it exists / what breaks without it / where it sits in the flow.
 - [ ] Hero with `.back-btn` linking to `../design-development.html`
 - [ ] Sidebar TOC with numbered list matching `id="s1"…"sN"` section anchors
 - [ ] `.layout` grid (280px sidebar + content), NOT a single-column `.wrap`
 - [ ] Mermaid CDN **+ dark-theme `mermaid.initialize({...})` block** in `<head>`
+- [ ] **Diagram zoom assets included with RELATIVE paths** — `<link rel="stylesheet" href="../../css/diagram-zoom.css"/>` + `<script src="../../js/diagram-zoom.js" defer></script>` in `<head>` next to the Mermaid CDN. Absolute paths (`/css/...`) silently 404 when the file is opened via `file://`. Do NOT inline-copy the modal CSS/HTML/JS.
+- [ ] **Architecture diagram is numbered ①②③… and followed by a numbered explanation grid** — every node in the production-shape Mermaid diagram carries a circled Unicode digit, and a `g2` card grid below it has one card per number with a colored `<span class="comp-num COLOR">N</span>` badge whose color matches the box fill in the diagram. See section 6c.
 - [ ] Every diagram wrapped in `.diagram-box > .mermaid`
 - [ ] Actors ↔ Use Cases rendered as `flowchart LR` with color-coded actor nodes (NOT just cards)
 - [ ] ER diagram, class diagram, sequence diagrams, and state diagram all present as Mermaid

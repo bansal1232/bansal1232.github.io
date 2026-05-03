@@ -1,0 +1,93 @@
+/* ──────────────────────────────────────────────────────────
+   Diagram zoom — shared across all HLD/LLD pages with Mermaid.
+   Loaded via:  <link rel="stylesheet" href="/css/diagram-zoom.css">
+   Pairs with:  /js/diagram-zoom.js
+   ────────────────────────────────────────────────────────── */
+
+/* Hint badge on each diagram-box.
+   Doubled .diagram-box selector raises specificity to (0,2,0) so it can't
+   be overridden by a same-specificity inline-stylesheet rule. */
+.diagram-box.diagram-box{ position:relative !important; cursor:zoom-in }
+.diagram-box.diagram-box::after{
+  content:'🔍 click to zoom';
+  position:absolute; top:.65rem; right:.85rem;
+  z-index:5;
+  font-size:.65rem; font-weight:600; letter-spacing:.04em;
+  color:#d4dae5;
+  background:rgba(11,15,20,.85);
+  padding:.3rem .7rem;
+  border-radius:100px;
+  border:1px solid #e8743b;
+  pointer-events:none;
+  opacity:.7;                           /* always faintly visible */
+  transition:opacity .2s, transform .2s;
+}
+.diagram-box.diagram-box:hover::after{ opacity:1; transform:scale(1.05) }
+
+/* Modal */
+.zoom-modal{
+  position:fixed; inset:0;
+  background:rgba(7,11,16,.94);
+  z-index:9999;
+  display:none;
+  backdrop-filter:blur(4px);
+}
+.zoom-modal.open{ display:block }
+
+.zoom-stage{
+  position:absolute; inset:0;
+  overflow:auto;
+  cursor:grab;
+  padding:5rem 2rem 2rem;
+}
+.zoom-stage.grabbing{ cursor:grabbing }
+.zoom-stage svg{ display:block; margin:0 auto; max-width:none }
+
+.zoom-controls{
+  position:fixed; top:1.2rem; right:1.5rem;
+  display:flex; gap:.5rem;
+  z-index:10000;
+}
+
+.zoom-hint{
+  position:fixed; top:1.4rem; left:1.5rem;
+  color:#7b8599;
+  font-family:'DM Sans',-apple-system,sans-serif;
+  font-size:.75rem; font-weight:500;
+  z-index:10000;
+  background:rgba(17,22,30,.7);
+  padding:.5rem .9rem;
+  border-radius:100px;
+  border:1px solid #232b38;
+  backdrop-filter:blur(4px);
+}
+.zoom-hint kbd{
+  font-family:'JetBrains Mono',ui-monospace,monospace;
+  font-size:.68rem;
+  color:#e8743b;
+  background:rgba(232,116,59,.12);
+  padding:.05rem .4rem;
+  border-radius:4px;
+  border:1px solid rgba(232,116,59,.25);
+  margin:0 .15rem;
+}
+
+.zoom-btn{
+  background:#11161e;
+  border:1px solid #232b38;
+  color:#d4dae5;
+  font-size:1.1rem; font-weight:700;
+  width:2.6rem; height:2.6rem;
+  border-radius:8px;
+  cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',ui-monospace,monospace;
+  transition:border-color .2s,color .2s,transform .15s;
+}
+.zoom-btn:hover{ border-color:#e8743b; color:#e8743b; transform:translateY(-1px) }
+.zoom-btn:active{ transform:translateY(0) }
+
+@media(max-width:600px){
+  .zoom-hint{ display:none }
+  .zoom-btn{ width:2.2rem; height:2.2rem; font-size:1rem }
+}

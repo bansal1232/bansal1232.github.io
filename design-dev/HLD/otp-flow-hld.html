@@ -6,7 +6,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>OTP Validation System — HLD Design</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<link rel="stylesheet" href="../../css/likes.css"/>
 <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script src="../../js/likes.js" defer></script>
 <script>
   mermaid.initialize({
     startOnLoad: true,
@@ -344,7 +348,7 @@ flowchart LR
 
   <div class="diagram-box">
     <div class="mermaid">
-flowchart LRb
+flowchart LR
   CL([Client App])
   GW[API Gateway<br/>per-IP rate limit<br/>CAPTCHA]
   OTP[OTP Service<br/>generate / hash / verify]
@@ -1303,6 +1307,14 @@ document.addEventListener('DOMContentLoaded', () => {
   if (saved === 'v2') setVersion('v2');
 });
 </script>
+
+<div class="likes-row">
+  <p class="like-prompt">
+    <strong>Did this rewire how you think about OTP security?</strong>
+    If it landed, tap the ❤️ — <em>that's how I know it hit.</em>
+  </p>
+  <div id="likes"></div>
+</div>
 
 </body>
 </html>

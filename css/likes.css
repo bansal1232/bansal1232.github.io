@@ -1,0 +1,91 @@
+/* Anonymous like-button. Pairs with /js/likes.js. Mount point: <div id="likes"></div> */
+
+.likes-row{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:1.1rem;
+  margin:3rem auto 1.5rem;
+  padding:1.8rem 1.6rem;
+  max-width:620px;
+  background:linear-gradient(180deg, var(--orange-d), rgba(232,116,59,0));
+  border:1px solid var(--border);
+  border-top:2px solid var(--orange);
+  border-radius:var(--r);
+  text-align:center;
+  box-shadow:0 8px 28px rgba(0,0,0,.25);
+}
+.like-prompt{
+  margin:0;
+  max-width:520px;
+  color:var(--text);
+  font-size:.98rem;
+  line-height:1.55;
+}
+.like-prompt strong{
+  display:block;
+  margin-bottom:.5rem;
+  color:var(--heading);
+  font-family:'Playfair Display', serif;
+  font-weight:700;
+  font-size:1.35rem;
+  letter-spacing:.01em;
+}
+.like-prompt em{
+  font-style:normal;
+  color:var(--cyan, #3cbfbf);
+  font-weight:600;
+}
+
+@keyframes likeHeartPulse{
+  0%, 100% { transform:scale(1); }
+  50%      { transform:scale(1.18); }
+}
+
+.like-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:.65rem;
+  padding:.7rem 1.4rem;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:100px;
+  color:var(--text);
+  font-family:'DM Sans',sans-serif;
+  font-size:.95rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:transform .15s, border-color .15s, color .15s, background .15s;
+}
+.like-btn:hover{
+  border-color:var(--pink, #ec5d8a);
+  color:var(--pink, #ec5d8a);
+  transform:translateY(-1px);
+  box-shadow:0 6px 18px rgba(236,93,138,.25);
+}
+.like-btn.liked{
+  background:var(--pink-d, rgba(236,93,138,.12));
+  border-color:var(--pink, #ec5d8a);
+  color:var(--pink, #ec5d8a);
+  cursor:default;
+}
+.like-btn.liked:hover{ transform:none; box-shadow:none; }
+.like-btn:disabled{ opacity:.65; cursor:wait; }
+
+.like-heart{
+  font-size:1.25rem;
+  line-height:1;
+  display:inline-block;
+  transform-origin:center;
+  color:var(--pink, #ec5d8a);
+}
+.like-btn:not(.liked) .like-heart{
+  animation:likeHeartPulse 1.8s ease-in-out infinite;
+}
+.like-count{
+  font-family:'JetBrains Mono',monospace;
+  font-size:.88rem;
+  min-width:1.6rem;
+  text-align:right;
+}
+.like-label{ font-size:.9rem; }
