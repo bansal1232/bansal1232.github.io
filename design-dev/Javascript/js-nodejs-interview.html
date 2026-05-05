@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>JavaScript &amp; Node.js Interview Guide — Story-Driven Q&amp;A</title>
+<meta name="description" content="A comprehensive, story-driven walkthrough of every JavaScript and Node.js question that actually shows up in interviews — hoisting, closures, event loop, promises, streams, clustering and more."/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<link rel="stylesheet" href="../../css/likes.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script src="../../js/likes.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 30% 75%,rgba(74,144,217,.07) 0%,transparent 60%),radial-gradient(ellipse at 75% 25%,rgba(56,178,101,.06) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 .yellow{color:var(--yellow);font-style:italic}
+.hero h1 .green{color:var(--green)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.6rem;position:relative;z-index:1;max-width:760px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar h4:not(:first-child){margin-top:1.4rem}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec h3{font-size:1.1rem;font-weight:700;color:var(--heading);margin:1.6rem 0 .55rem}
+.sec>p{color:var(--text);font-size:.94rem;margin-bottom:1.5rem;max-width:780px}
+.sec p{color:var(--text);font-size:.9rem;margin-bottom:.9rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.4rem 1.55rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.02rem;font-weight:700;color:var(--heading);margin:0 0 .35rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.88rem;color:var(--text);line-height:1.72}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+.card.blue-card ul li::before{color:var(--blue)}
+.card.green-card ul li::before{color:var(--green)}
+.card.red-card ul li::before{color:var(--red)}
+.card.purple-card ul li::before{color:var(--purple)}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+code{font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--orange);background:var(--orange-d);padding:.08rem .4rem;border-radius:4px}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+@media(max-width:760px){.g2,.g3{grid-template-columns:1fr}.hero h1{font-size:2.1rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.05rem 1.35rem;margin-bottom:.85rem;font-size:.88rem;line-height:1.7}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:#ffb88a}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:#83d8a3}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:#8fb8e6}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:#ec8e8e}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:#e0c178}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:#bea1e0}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.qa-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:0;margin-bottom:1.2rem;overflow:hidden}
+.qa-block .q{background:linear-gradient(180deg,rgba(74,144,217,.14),rgba(74,144,217,.05));padding:.85rem 1.2rem;font-size:.93rem;color:#a8c8ec;font-weight:700;border-bottom:1px solid var(--border)}
+.qa-block .q::before{content:'Q · ';color:var(--blue);font-family:'JetBrains Mono',monospace;font-weight:800}
+.qa-block .a{padding:1.05rem 1.3rem;font-size:.88rem;color:var(--text);line-height:1.78}
+.qa-block .a strong{color:var(--heading)}
+.qa-block .a p{margin-bottom:.65rem}
+.qa-block .a p:last-child{margin-bottom:0}
+.qa-block .a ul{margin:.4rem 0 .6rem;padding-left:1.2rem}
+.qa-block .a ul li{margin-bottom:.3rem;list-style:disc;color:var(--text)}
+
+/* story bubble */
+.story{background:linear-gradient(180deg,rgba(212,168,56,.08),rgba(212,168,56,.02));border:1px dashed rgba(212,168,56,.4);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);line-height:1.78;font-style:italic}
+.story strong{font-style:normal;color:var(--yellow);font-weight:700;letter-spacing:.05em;text-transform:uppercase;font-size:.7rem;display:block;margin-bottom:.35rem}
+
+/* ── TABLE ── */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+.tbl{width:100%;border-collapse:collapse;font-size:.84rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl td.tick{color:var(--green);font-weight:700}
+.tbl td.cross{color:var(--red);font-weight:700}
+.tbl td.warn{color:var(--yellow);font-weight:700}
+
+/* numbered badges */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue{background:var(--blue-d);color:var(--blue);border:1px solid var(--blue)}
+.comp-num.green{background:var(--green-d);color:var(--green);border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan{background:var(--cyan-d);color:var(--cyan);border:1px solid var(--cyan)}
+.comp-num.red{background:var(--red-d);color:var(--red);border:1px solid var(--red)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">Interview Prep · JavaScript &amp; Node.js</div>
+  <h1><span class="yellow">JavaScript</span> &amp; <span class="green">Node.js</span><br/>Interview — Every Question, Told as a Story</h1>
+  <p class="sub">A complete walkthrough of the questions actually asked in JS and Node.js rounds — from hoisting to the event loop, from closures to streams. Each concept is taught as a small story so the answer sticks the first time.</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>JavaScript Core</h4>
+    <ol>
+      <li><a href="#s1">How JS Actually Runs</a></li>
+      <li><a href="#s2">var · let · const &amp; Hoisting</a></li>
+      <li><a href="#s3">Scope &amp; Closures</a></li>
+      <li><a href="#s4">The <code>this</code> Keyword</a></li>
+      <li><a href="#s5">Prototypes &amp; Inheritance</a></li>
+      <li><a href="#s6">Event Loop &amp; Microtasks</a></li>
+      <li><a href="#s7">Promises &amp; async / await</a></li>
+      <li><a href="#s8">Equality, Coercion &amp; Truthy</a></li>
+      <li><a href="#s9">Shallow vs Deep Copy</a></li>
+      <li><a href="#s10">Debounce vs Throttle</a></li>
+      <li><a href="#s11">Currying &amp; Memoization</a></li>
+      <li><a href="#s12">ES6+ Goodies</a></li>
+    </ol>
+    <h4>Node.js Core</h4>
+    <ol style="counter-reset:sbtoc 12">
+      <li><a href="#n1">Why Node Exists</a></li>
+      <li><a href="#n2">Node Event Loop Phases</a></li>
+      <li><a href="#n3">nextTick · setImmediate · setTimeout</a></li>
+      <li><a href="#n4">Streams &amp; Buffers</a></li>
+      <li><a href="#n5">EventEmitter</a></li>
+      <li><a href="#n6">Cluster vs Worker Threads</a></li>
+      <li><a href="#n7">Child Processes</a></li>
+      <li><a href="#n8">Modules — CJS vs ESM</a></li>
+      <li><a href="#n9">Express &amp; Middleware</a></li>
+      <li><a href="#n10">Error Handling</a></li>
+      <li><a href="#n11">Memory Leaks &amp; Debugging</a></li>
+      <li><a href="#n12">Security Cheat Sheet</a></li>
+      <li><a href="#n13">Rapid-Fire Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  PART 1 — JAVASCRIPT CORE                                   ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Foundation · Mental Model</span>
+  <h2>1 · How JavaScript Actually Runs</h2>
+  <p>Before any specific question makes sense, the interviewer wants to know if you have the right mental picture of <em>what is even happening</em> when JS runs your code. Get this picture right and half the trick questions answer themselves.</p>
+
+  <div class="story">
+    <strong>The Story</strong>
+    Imagine JavaScript as a single chef in a tiny kitchen. There is exactly one chef (one thread), one cooking surface (the <em>call stack</em>), and a long line of order tickets sitting in a tray (the <em>callback queue</em>). Whenever the chef finishes the dish on the surface, she grabs the next ticket from the tray and starts cooking it. While a dish is on the surface, the chef cannot touch anything else — no chopping, no plating, no answering the door. That is what "single-threaded" means. The trick is that the chef has helpers outside the kitchen (the browser or Node.js APIs — timers, network, file system) who do the slow work for her, then drop a ticket back in her tray when they're done. That is "non-blocking I/O".
+  </div>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  subgraph JS["JS Engine (one thread)"]
+    CS[Call Stack<br/>currently running code]
+  end
+  subgraph RT["Runtime APIs (browser / Node)"]
+    T[setTimeout<br/>Network · FS · Timers]
+  end
+  MQ[Macrotask Queue<br/>setTimeout, I/O, UI events]
+  MIC[Microtask Queue<br/>Promise.then, queueMicrotask]
+  CS -->|"async call"| T
+  T -->|"done"| MQ
+  T -->|"resolved promise"| MIC
+  MIC -->|"drained first"| CS
+  MQ -->|"one task per loop tick"| CS
+
+  style CS fill:#e8743b,stroke:#e8743b,color:#fff
+  style MIC fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style MQ fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style T fill:#38b265,stroke:#38b265,color:#fff
+    </div>
+  </div>
+
+  <div class="highlight hl-orange">
+    <strong>So what?</strong> JavaScript is single-threaded, but the runtime around it is not. The <em>event loop</em> is the rule that says "drain the microtask queue completely, then take one macrotask, then drain microtasks again, then repeat." Almost every async question is testing whether you know that order.
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── SECTION 2 ─────── -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-blue">Variables · Hoisting</span>
+  <h2>2 · var, let, const &amp; Hoisting</h2>
+  <p>Hoisting is the feature that surprises every beginner: variables seem to "exist" before they were declared. The interview question is rarely "what is hoisting?" — it is a code snippet where the answer depends on whether you used <code>var</code>, <code>let</code>, or <code>const</code>.</p>
+
+  <div class="story">
+    <strong>The Story</strong>
+    Picture JavaScript reading your file in two passes. On the <em>first pass</em>, it walks through your code with a notebook, writing down every variable name it sees. <code>var</code> names go in the notebook with the value <em>undefined</em>. <code>let</code> and <code>const</code> names also go in the notebook — but with a red sticker that says "do not touch yet". On the <em>second pass</em>, JS actually executes the lines top to bottom, peeling off the red stickers when it reaches the declaration. That red-sticker zone — between the top of the scope and the actual <code>let</code>/<code>const</code> line — is called the <strong>Temporal Dead Zone (TDZ)</strong>.
+  </div>
+
+  <span class="code-label cl-yellow">classic-trick.js</span>
+<pre><span class="cmt">// var is hoisted with value undefined</span>
+<span class="kw">console</span>.<span class="fn">log</span>(a); <span class="cmt">// undefined  (no error!)</span>
+<span class="kw">var</span> a = <span class="num">10</span>;
+
+<span class="cmt">// let / const are hoisted but in TDZ</span>
+<span class="kw">console</span>.<span class="fn">log</span>(b); <span class="cmt">// ❌ ReferenceError: Cannot access 'b' before initialization</span>
+<span class="kw">let</span> b = <span class="num">20</span>;</pre>
+
+  <div class="g3">
+    <div class="card">
+      <h3 style="color:var(--orange)">var</h3>
+      <p>Function-scoped. Hoisted &amp; initialised to <code>undefined</code>. Re-declaration allowed. Avoid in modern code.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--blue)">let</h3>
+      <p>Block-scoped. Hoisted but in TDZ until the line runs. Re-declaration in the same scope throws. Re-assignment allowed.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--green)">const</h3>
+      <p>Block-scoped. TDZ. Cannot be re-assigned. The <em>binding</em> is constant — but if it points to an object, the object's contents can still change.</p>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">What is the Temporal Dead Zone?</div>
+    <div class="a">The window between when a <code>let</code>/<code>const</code> variable is hoisted (it exists in the scope) and when its declaration line is actually executed. Touching it in that window throws a <strong>ReferenceError</strong>. The TDZ exists so that modern variables behave predictably — you can't accidentally read or write them before they are properly defined.</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">Is <code>const</code> truly immutable?</div>
+    <div class="a">No. Only the <em>binding</em> is immutable. <code>const arr = [1,2]; arr.push(3);</code> works fine — the array's identity (the reference) didn't change. To freeze contents use <code>Object.freeze(arr)</code> (shallow) or a deep-freeze utility for nested objects.</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── SECTION 3 — CLOSURES ─────── -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-green">Scope · Memory</span>
+  <h2>3 · Scope &amp; Closures</h2>
+  <p>Closures are the single most-asked JS concept. They are also the foundation of currying, memoization, module patterns, and most of the React Hook tricks you'll see later.</p>
+
+  <div class="story">
+    <strong>The Story</strong>
+    Sarah writes a thank-you note and tucks it into a small backpack. Then she gives the backpack to her friend Raj and walks away. Years later Raj opens the backpack and reads the note — Sarah is long gone, but her words are still there, exactly as she left them. A <strong>closure</strong> is that backpack. When you define a function inside another function, the inner function carries a backpack of the outer function's variables with it. Even after the outer function has returned and "walked away", the inner function still has access to those variables.
+  </div>
+
+  <span class="code-label cl-green">closure-counter.js</span>
+<pre><span class="kw">function</span> <span class="fn">makeCounter</span>() {
+  <span class="kw">let</span> count = <span class="num">0</span>;            <span class="cmt">// lives in the backpack</span>
+  <span class="kw">return</span> <span class="kw">function</span>() {
+    count++;
+    <span class="kw">return</span> count;
+  };
+}
+
+<span class="kw">const</span> c = <span class="fn">makeCounter</span>();
+c(); <span class="cmt">// 1</span>
+c(); <span class="cmt">// 2</span>
+c(); <span class="cmt">// 3 — count survives between calls</span></pre>
+
+  <div class="qa-block">
+    <div class="q">What is a closure, in one sentence?</div>
+    <div class="a">A function bundled together with the variables of the lexical scope in which it was defined — so it can still read (and write) them even after the outer scope has finished executing.</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">Classic loop trick: what does this print?</div>
+    <div class="a">
+<pre style="margin:.4rem 0 .8rem"><span class="kw">for</span> (<span class="kw">var</span> i = <span class="num">0</span>; i &lt; <span class="num">3</span>; i++) {
+  <span class="fn">setTimeout</span>(() =&gt; <span class="kw">console</span>.<span class="fn">log</span>(i), <span class="num">100</span>);
+}
+<span class="cmt">// prints 3, 3, 3 — all three callbacks share the SAME `i` (var is function-scoped)</span></pre>
+      <p>Replace <code>var</code> with <code>let</code> and you get <strong>0, 1, 2</strong> — because <code>let</code> creates a fresh binding for each loop iteration, so each callback gets its own backpack with its own <code>i</code>.</p>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">Real-world uses of closures?</div>
+    <div class="a">
+      <ul>
+        <li><strong>Data privacy:</strong> emulate private fields by keeping state in the closure and only exposing methods.</li>
+        <li><strong>Once / memoize:</strong> cache results in a closure variable so repeated calls are free.</li>
+        <li><strong>Currying / partial application:</strong> capture early arguments, return a function waiting for the rest.</li>
+        <li><strong>Event handlers:</strong> remember which item was clicked without storing it on the DOM.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-red">
+    <strong>Memory caveat.</strong> Closures hold references to their backpack — that variable cannot be garbage-collected as long as the closure is reachable. Forgetting old closures (especially attached to DOM nodes) is the most common cause of memory leaks in long-running JS apps.
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── SECTION 4 — THIS ─────── -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Binding</span>
+  <h2>4 · The <code>this</code> Keyword</h2>
+  <p>"What is <code>this</code>?" is JavaScript's most-asked, most-mistaken question. The trick is to remember that <code>this</code> isn't decided when the function is <em>written</em> — it's decided when the function is <em>called</em>.</p>
+
+  <div class="story">
+    <strong>The Story</strong>
+    Think of <code>this</code> as the speaker pointing at the audience. The pronoun "you" doesn't have a fixed meaning — it depends on who the speaker is pointing at right now. The same way, <code>this</code> doesn't have a fixed meaning — it depends on <em>how</em> the function is called. There are exactly four "ways to call" — and each one decides what <code>this</code> points to.
+  </div>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Call style</th><th>Example</th><th><code>this</code> is…</th></tr></thead>
+      <tbody>
+        <tr><td><strong>1. Method call</strong></td><td><code>obj.fn()</code></td><td><code>obj</code></td></tr>
+        <tr><td><strong>2. Plain call</strong></td><td><code>fn()</code></td><td><code>undefined</code> in strict mode, else <code>globalThis</code></td></tr>
+        <tr><td><strong>3. <code>new</code> call</strong></td><td><code>new Fn()</code></td><td>the freshly created object</td></tr>
+        <tr><td><strong>4. Explicit bind</strong></td><td><code>fn.call(x)</code> · <code>fn.apply(x)</code> · <code>fn.bind(x)</code></td><td><code>x</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Arrow functions break the rule (on purpose)</h3>
+  <p>Arrow functions don't have their own <code>this</code>. They borrow it from the surrounding scope at the moment they were <em>defined</em>. That is exactly why we love them inside callbacks — no more <code>const self = this;</code> dance.</p>
+
+  <span class="code-label cl-purple">this-trap.js</span>
+<pre><span class="kw">const</span> user = {
+  name: <span class="str">'Sarah'</span>,
+  greet() { <span class="kw">console</span>.<span class="fn">log</span>(<span class="str">'Hi '</span> + <span class="kw">this</span>.name); }
+};
+
+user.<span class="fn">greet</span>();             <span class="cmt">// "Hi Sarah" — method call</span>
+<span class="kw">const</span> g = user.greet;
+<span class="fn">g</span>();                      <span class="cmt">// "Hi undefined" — plain call, this is global</span>
+<span class="fn">g</span>.<span class="fn">call</span>(user);             <span class="cmt">// "Hi Sarah" — explicit bind</span></pre>
+
+  <div class="qa-block">
+    <div class="q">Difference between <code>call</code>, <code>apply</code>, and <code>bind</code>?</div>
+    <div class="a">
+      <ul>
+        <li><code>call(thisArg, a, b, c)</code> — invokes the function immediately, args passed individually.</li>
+        <li><code>apply(thisArg, [a,b,c])</code> — same, but args as an array.</li>
+        <li><code>bind(thisArg, ...)</code> — does NOT invoke; returns a <em>new function</em> with <code>this</code> permanently bound. Useful for event handlers that you'll attach later.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">Why does <code>setTimeout(this.fn, 1000)</code> sometimes lose <code>this</code>?</div>
+    <div class="a">Because passing <code>this.fn</code> strips the method off the object — it becomes a plain function reference. When the timer fires, JS calls it as a plain call (rule 2), so <code>this</code> becomes global / undefined. Fix it by binding (<code>this.fn.bind(this)</code>) or wrapping in an arrow (<code>() =&gt; this.fn()</code>).</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── SECTION 5 — PROTOTYPES ─────── -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-yellow">OOP</span>
+  <h2>5 · Prototypes &amp; Inheritance</h2>
+  <p>JavaScript doesn't have classes the way Java does — even the <code>class</code> keyword is sugar over prototypes. Once you understand the prototype chain, every "why does <code>arr.map</code> exist?" question answers itself.</p>
+
+  <div class="story">
+    <strong>The Story</strong>
+    Imagine a chain of librarians. You ask the first librarian for a book on "map". She doesn't have it. She points up a shelf and says "ask the librarian one floor up." That librarian also doesn't have it, but she points one more floor up. Eventually the top librarian has the book and hands it down. That is the <strong>prototype chain</strong>. Every object has a hidden link (<code>__proto__</code>) to a "parent" object. When you ask for a property, JS walks up the chain until it finds it — or hits <code>null</code> at the top.
+  </div>
+
+  <span class="code-label cl-yellow">proto-chain.js</span>
+<pre><span class="kw">const</span> arr = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>];
+
+<span class="cmt">// arr ─→ Array.prototype ─→ Object.prototype ─→ null</span>
+arr.<span class="fn">map</span>(...);     <span class="cmt">// found on Array.prototype</span>
+arr.<span class="fn">hasOwnProperty</span>(<span class="num">0</span>); <span class="cmt">// found on Object.prototype</span></pre>
+
+  <h3>class is just sugar</h3>
+  <span class="code-label cl-blue">class-vs-proto.js</span>
+<pre><span class="kw">class</span> <span class="ty">Animal</span> {
+  <span class="fn">constructor</span>(name) { <span class="kw">this</span>.name = name; }
+  <span class="fn">speak</span>() { <span class="kw">console</span>.<span class="fn">log</span>(<span class="kw">this</span>.name + <span class="str">' makes a noise'</span>); }
+}
+
+<span class="cmt">// is roughly equivalent to:</span>
+<span class="kw">function</span> <span class="ty">Animal</span>(name) { <span class="kw">this</span>.name = name; }
+<span class="ty">Animal</span>.prototype.<span class="fn">speak</span> = <span class="kw">function</span>() {
+  <span class="kw">console</span>.<span class="fn">log</span>(<span class="kw">this</span>.name + <span class="str">' makes a noise'</span>);
+};</pre>
+
+  <div class="qa-block">
+    <div class="q">Difference between <code>__proto__</code> and <code>prototype</code>?</div>
+    <div class="a">
+      <p><code>prototype</code> lives on <em>functions</em> (specifically constructor functions). It's the object that becomes the prototype of instances created with <code>new</code>.</p>
+      <p><code>__proto__</code> (or <code>Object.getPrototypeOf(obj)</code>) lives on <em>every object</em>. It's the actual link the prototype chain walks. So <code>new Animal().__proto__ === Animal.prototype</code>.</p>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">How would you implement classical inheritance without <code>class</code>?</div>
+    <div class="a">
+<pre style="margin:.4rem 0"><span class="kw">function</span> <span class="ty">Dog</span>(name) {
+  <span class="ty">Animal</span>.<span class="fn">call</span>(<span class="kw">this</span>, name);          <span class="cmt">// 1. inherit fields</span>
+}
+<span class="ty">Dog</span>.prototype = <span class="ty">Object</span>.<span class="fn">create</span>(<span class="ty">Animal</span>.prototype); <span class="cmt">// 2. inherit methods</span>
+<span class="ty">Dog</span>.prototype.constructor = <span class="ty">Dog</span>;             <span class="cmt">// 3. fix constructor pointer</span></pre>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── SECTION 6 — EVENT LOOP ─────── -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-cyan">Async · Concurrency</span>
+  <h2>6 · The Event Loop &amp; Microtasks</h2>
+  <p>Every async question is the event loop wearing a different hat. If you only memorise one diagram for your interview, memorise this one.</p>
+
+  <div class="story">
+    <strong>The Story</strong>
+    Picture a busy bartender. The bar has two ticket trays. The <strong>microtask tray</strong> sits right under her hand — every time she finishes pouring a drink, she empties this tray completely before doing anything else. The <strong>macrotask tray</strong> sits across the room — after the microtask tray is empty, she walks over, grabs <em>one</em> ticket, comes back, and starts pouring. Then she empties the microtask tray again. That's the loop. Promise callbacks land in the close tray (microtasks). <code>setTimeout</code> callbacks land in the far tray (macrotasks). That single rule explains the answer to most async puzzles.
+  </div>
+
+  <span class="code-label cl-cyan">order-puzzle.js</span>
+<pre><span class="kw">console</span>.<span class="fn">log</span>(<span class="str">'A'</span>);
+<span class="fn">setTimeout</span>(() =&gt; <span class="kw">console</span>.<span class="fn">log</span>(<span class="str">'B'</span>), <span class="num">0</span>);
+<span class="ty">Promise</span>.<span class="fn">resolve</span>().<span class="fn">then</span>(() =&gt; <span class="kw">console</span>.<span class="fn">log</span>(<span class="str">'C'</span>));
+<span class="kw">console</span>.<span class="fn">log</span>(<span class="str">'D'</span>);
+
+<span class="cmt">// Output: A, D, C, B
+// 1. A and D run synchronously (call stack)
+// 2. Stack empties → drain microtasks → C
+// 3. Then take one macrotask → B</span></pre>
+
+  <div class="qa-block">
+    <div class="q">What lands in the microtask queue?</div>
+    <div class="a">Promise <code>.then</code> / <code>.catch</code> / <code>.finally</code> callbacks, <code>queueMicrotask()</code>, and <code>MutationObserver</code> callbacks. They run <em>before</em> the next macrotask, after the current one finishes.</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">What lands in the macrotask queue?</div>
+    <div class="a"><code>setTimeout</code>, <code>setInterval</code>, I/O callbacks, UI events (click, scroll), <code>setImmediate</code> in Node.</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">Can a microtask flood starve macrotasks?</div>
+    <div class="a">Yes. If a microtask schedules another microtask, which schedules another… the loop never reaches the macrotask phase and the page can freeze. This is why infinite-promise-chains are dangerous.</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── SECTION 7 — PROMISES ─────── -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-green">Async · Promises</span>
+  <h2>7 · Promises &amp; async / await</h2>
+  <p>Promises gave us a cleaner way out of "callback hell". <code>async/await</code> then gave us a cleaner way out of <code>.then</code> chains. Underneath, it's all still the event loop.</p>
+
+  <div class="story">
+    <strong>The Story</strong>
+    You order a pizza. The cashier hands you a buzzer (the Promise). The buzzer is in one of three states: <strong>pending</strong> (still cooking), <strong>fulfilled</strong> (ready, here's your pizza), or <strong>rejected</strong> (sorry, we're out of cheese). You don't stand at the counter — you walk away with the buzzer and tell it: "<em>when</em> you're fulfilled, do this; <em>if</em> rejected, do that". That's <code>.then</code> and <code>.catch</code>. <code>async/await</code> is the same buzzer, but you're allowed to write your code as if you were standing at the counter — JS handles the walking-away for you behind the scenes.
+  </div>
+
+  <h3>The four Promise combinators</h3>
+  <div class="g2">
+    <div class="card green-card">
+      <h3 style="color:var(--green)">Promise.all</h3>
+      <p>Waits for ALL to fulfil. If any one rejects → the whole thing rejects immediately. Use when every result is required (e.g. fetch user + their posts + their settings).</p>
+    </div>
+    <div class="card blue-card">
+      <h3 style="color:var(--blue)">Promise.allSettled</h3>
+      <p>Waits for ALL to finish, regardless of success or failure. Returns an array of <code>{status, value/reason}</code>. Use when you want a partial result (e.g. analytics dashboard with optional widgets).</p>
+    </div>
+    <div class="card purple-card">
+      <h3 style="color:var(--purple)">Promise.race</h3>
+      <p>Settles with whichever promise settles first — fulfilled OR rejected. Useful for timeouts: race a fetch against a 5-second timer.</p>
+    </div>
+    <div class="card red-card">
+      <h3 style="color:var(--red)">Promise.any</h3>
+      <p>Resolves with the first FULFILLED one. Only rejects if ALL reject (with an <code>AggregateError</code>). Use for fallback mirrors — "give me whichever CDN responds first."</p>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">async / await vs .then chains — what's the real difference?</div>
+    <div class="a">
+      <p><strong>Behaviour-wise: nothing.</strong> Under the hood, <code>await x</code> is exactly <code>x.then(result =&gt; ...rest of the function)</code>. The compiler rewrites your linear-looking function into a state machine of <code>.then</code> calls.</p>
+      <p><strong>Readability-wise: huge.</strong> async/await keeps the code linear, lets you use try/catch for errors, and works naturally with loops (<code>for...of</code> + <code>await</code>).</p>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">Common mistake: awaiting in a forEach loop</div>
+    <div class="a">
+<pre style="margin:.4rem 0"><span class="cmt">// ❌ does NOT wait — forEach ignores the returned promise</span>
+users.<span class="fn">forEach</span>(<span class="kw">async</span> u =&gt; { <span class="kw">await</span> <span class="fn">save</span>(u); });
+
+<span class="cmt">// ✅ runs sequentially</span>
+<span class="kw">for</span> (<span class="kw">const</span> u <span class="kw">of</span> users) <span class="kw">await</span> <span class="fn">save</span>(u);
+
+<span class="cmt">// ✅ runs in parallel</span>
+<span class="kw">await</span> <span class="ty">Promise</span>.<span class="fn">all</span>(users.<span class="fn">map</span>(<span class="fn">save</span>));</pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">What happens if you don't <code>.catch</code> a rejected promise?</div>
+    <div class="a">In Node.js it triggers an <code>unhandledRejection</code> event. Since Node 15 the default is to crash the process (good — surfaces bugs early). In browsers it shows up in DevTools console. Always either <code>.catch</code> or wrap your <code>await</code> in try/catch.</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── SECTION 8 — EQUALITY ─────── -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-red">Quirks</span>
+  <h2>8 · Equality, Coercion &amp; Truthiness</h2>
+  <p>JavaScript's loose equality is the source of the language's worst-known memes. Interviewers love it because it forces you to demonstrate that you actually understand type coercion.</p>
+
+  <div class="story">
+    <strong>The Story</strong>
+    There are two judges in the JS courthouse. Judge <code>===</code> is strict — same type AND same value, or you lose. Judge <code>==</code> is lenient — she'll convert your types behind the scenes to "give you the benefit of the doubt." Most production code uses Judge Strict because Judge Lenient's rulings are unpredictable: <code>0 == ''</code> is true, <code>null == undefined</code> is true, but <code>null == 0</code> is false. Use <code>===</code> by default.
+  </div>
+
+  <span class="code-label cl-red">coercion-traps.js</span>
+<pre>[] == ![]              <span class="cmt">// true   — !! both sides become 0</span>
+<span class="num">0</span> == <span class="str">''</span>                <span class="cmt">// true   — '' becomes 0</span>
+<span class="num">0</span> == <span class="str">'0'</span>               <span class="cmt">// true   — '0' becomes 0</span>
+<span class="str">''</span> == <span class="str">'0'</span>              <span class="cmt">// false  — string comparison, no coercion</span>
+<span class="kw">null</span> == <span class="kw">undefined</span>      <span class="cmt">// true   — by spec</span>
+<span class="kw">null</span> == <span class="num">0</span>             <span class="cmt">// false  — null only equals undefined</span>
+<span class="ty">NaN</span> == <span class="ty">NaN</span>              <span class="cmt">// false  — NaN is never equal to anything</span></pre>
+
+  <h3>Truthy / Falsy</h3>
+  <p>Only seven values are <strong>falsy</strong>: <code>false</code>, <code>0</code>, <code>-0</code>, <code>0n</code>, <code>""</code>, <code>null</code>, <code>undefined</code>, <code>NaN</code>. Everything else (including <code>[]</code> and <code>{}</code>!) is truthy.</p>
+
+  <div class="qa-block">
+    <div class="q">Difference between <code>??</code> and <code>||</code>?</div>
+    <div class="a">
+      <p><code>||</code> falls back on any <em>falsy</em> value. <code>??</code> falls back ONLY on <code>null</code> or <code>undefined</code>.</p>
+<pre style="margin:.4rem 0"><span class="kw">const</span> port = config.port || <span class="num">3000</span>; <span class="cmt">// 0 → 3000  ❌ (user wanted 0)</span>
+<span class="kw">const</span> port = config.port ?? <span class="num">3000</span>; <span class="cmt">// 0 → 0     ✅</span></pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">How do you correctly check for <code>NaN</code>?</div>
+    <div class="a">Use <code>Number.isNaN(x)</code> (strict, only true for the actual NaN value). Avoid the older global <code>isNaN()</code> which coerces — <code>isNaN('hello')</code> returns <code>true</code> because it tries to convert the string first.</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── SECTION 9 — COPY ─────── -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-blue">References · Mutation</span>
+  <h2>9 · Shallow vs Deep Copy</h2>
+  <p>The bug story behind this question is identical at every company: "I changed one item in <code>userB</code> and somehow <code>userA</code> changed too."</p>
+
+  <div class="story">
+    <strong>The Story</strong>
+    Imagine a Google Doc shared between two people. If Raj and Sarah both have the SAME share-link, edits Raj makes appear on Sarah's screen — they share one document. That's a <strong>reference</strong>. Now imagine Sarah hits "Make a copy" — she gets her own copy, edits don't affect Raj. That's a <strong>shallow copy</strong>. But wait — the doc has an embedded spreadsheet. Sarah's copy still <em>links to the same spreadsheet</em>. Editing the embedded sheet still leaks across. To truly separate them she'd need to also copy the sheet. That recursive copy of every nested thing is a <strong>deep copy</strong>.
+  </div>
+
+  <span class="code-label cl-blue">copy-tradeoffs.js</span>
+<pre><span class="kw">const</span> a = { name: <span class="str">'Raj'</span>, addr: { city: <span class="str">'Pune'</span> } };
+
+<span class="cmt">// SHALLOW — only top-level keys are duplicated</span>
+<span class="kw">const</span> b = { ...a };
+b.addr.city = <span class="str">'Delhi'</span>;
+<span class="kw">console</span>.<span class="fn">log</span>(a.addr.city); <span class="cmt">// 'Delhi' — leaked!</span>
+
+<span class="cmt">// DEEP — modern, built-in, handles cycles, Maps, Sets, Dates</span>
+<span class="kw">const</span> c = <span class="fn">structuredClone</span>(a);
+c.addr.city = <span class="str">'Delhi'</span>;
+<span class="kw">console</span>.<span class="fn">log</span>(a.addr.city); <span class="cmt">// 'Pune' — safe</span></pre>
+
+  <div class="qa-block">
+    <div class="q">Why is <code>JSON.parse(JSON.stringify(obj))</code> a bad deep clone?</div>
+    <div class="a">It quietly drops <code>undefined</code>, functions, symbols. It turns <code>Date</code> into a string, <code>Map</code>/<code>Set</code> into <code>{}</code>. It throws on circular references. Use <code>structuredClone()</code> instead (built into modern Node and browsers).</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── SECTION 10 — DEBOUNCE / THROTTLE ─────── -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-cyan">Performance</span>
+  <h2>10 · Debounce vs Throttle</h2>
+  <p>Both limit how often a function runs. They're cousins but solve different problems. Interviewers love asking you to implement both from scratch.</p>
+
+  <div class="story">
+    <strong>The Story</strong>
+    Imagine an elevator. <strong>Debounce</strong> is the elevator that waits — every time a new person presses the button, the doors restart their wait. The lift only departs once nobody has pressed for X seconds. Perfect for "wait until the user stops typing, THEN search". <strong>Throttle</strong> is the elevator on a fixed schedule — it leaves every 30 seconds no matter how many times you press. Perfect for "limit scroll handler to fire at most every 100ms".
+  </div>
+
+  <span class="code-label cl-cyan">debounce-throttle.js</span>
+<pre><span class="kw">function</span> <span class="fn">debounce</span>(fn, delay) {
+  <span class="kw">let</span> timer;
+  <span class="kw">return</span> <span class="kw">function</span>(...args) {
+    <span class="fn">clearTimeout</span>(timer);
+    timer = <span class="fn">setTimeout</span>(() =&gt; fn.<span class="fn">apply</span>(<span class="kw">this</span>, args), delay);
+  };
+}
+
+<span class="kw">function</span> <span class="fn">throttle</span>(fn, limit) {
+  <span class="kw">let</span> waiting = <span class="kw">false</span>;
+  <span class="kw">return</span> <span class="kw">function</span>(...args) {
+    <span class="kw">if</span> (waiting) <span class="kw">return</span>;
+    fn.<span class="fn">apply</span>(<span class="kw">this</span>, args);
+    waiting = <span class="kw">true</span>;
+    <span class="fn">setTimeout</span>(() =&gt; waiting = <span class="kw">false</span>, limit);
+  };
+}</pre>
+
+  <div class="qa-block">
+    <div class="q">When to use which?</div>
+    <div class="a">
+      <ul>
+        <li><strong>Debounce →</strong> search-as-you-type, window resize end, autosave-on-stop-typing.</li>
+        <li><strong>Throttle →</strong> scroll listener, mouse-move tracker, button-spam protection, drag handler.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── SECTION 11 — CURRYING / MEMO ─────── -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-purple">Functional</span>
+  <h2>11 · Currying &amp; Memoization</h2>
+
+  <h3>Currying — one argument at a time</h3>
+  <div class="story">
+    <strong>The Story</strong>
+    A vending machine that asks for coins one at a time instead of all at once. Each time you drop a coin (an argument), it gives you back a new vending machine that's waiting for the next coin. Only when you've dropped all the coins does the snack actually drop. <code>add(2)(3)(4)</code> — each call returns a new function until all arguments are gathered.
+  </div>
+
+  <span class="code-label cl-purple">curry.js</span>
+<pre><span class="kw">function</span> <span class="fn">curry</span>(fn) {
+  <span class="kw">return</span> <span class="kw">function</span> <span class="fn">curried</span>(...args) {
+    <span class="kw">if</span> (args.length &gt;= fn.length) <span class="kw">return</span> fn.<span class="fn">apply</span>(<span class="kw">this</span>, args);
+    <span class="kw">return</span> (...next) =&gt; <span class="fn">curried</span>(...args, ...next);
+  };
+}
+
+<span class="kw">const</span> add = <span class="fn">curry</span>((a, b, c) =&gt; a + b + c);
+<span class="fn">add</span>(<span class="num">1</span>)(<span class="num">2</span>)(<span class="num">3</span>);     <span class="cmt">// 6</span>
+<span class="fn">add</span>(<span class="num">1</span>, <span class="num">2</span>)(<span class="num">3</span>);     <span class="cmt">// 6</span></pre>
+
+  <h3>Memoization — remember past answers</h3>
+  <div class="story">
+    <strong>The Story</strong>
+    Sarah's a librarian. The first time someone asks "what's the sum of digits of 9876?" she actually computes it. Second time, she reaches into a drawer (the cache) and hands the answer back. Memoization is just a closure with a cache.
+  </div>
+
+  <span class="code-label cl-yellow">memoize.js</span>
+<pre><span class="kw">function</span> <span class="fn">memoize</span>(fn) {
+  <span class="kw">const</span> cache = <span class="kw">new</span> <span class="ty">Map</span>();
+  <span class="kw">return</span> <span class="kw">function</span>(...args) {
+    <span class="kw">const</span> key = <span class="ty">JSON</span>.<span class="fn">stringify</span>(args);
+    <span class="kw">if</span> (!cache.<span class="fn">has</span>(key)) cache.<span class="fn">set</span>(key, fn.<span class="fn">apply</span>(<span class="kw">this</span>, args));
+    <span class="kw">return</span> cache.<span class="fn">get</span>(key);
+  };
+}</pre>
+
+  <div class="qa-block">
+    <div class="q">Where is memoization risky?</div>
+    <div class="a">When the function is impure (depends on time, network, user) — same arguments may not always give the same answer. Also when args are large objects — JSON-keying gets expensive. And the cache grows forever unless you cap it (LRU).</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── SECTION 12 — ES6+ ─────── -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-orange">Modern Syntax</span>
+  <h2>12 · ES6+ Goodies — the One-Liners You'll Be Asked About</h2>
+
+  <div class="g2">
+    <div class="card">
+      <h3>Spread &amp; Rest</h3>
+<pre style="margin-top:.4rem;font-size:.74rem"><span class="kw">const</span> arr2 = [...arr1, <span class="num">4</span>];      <span class="cmt">// spread</span>
+<span class="kw">function</span> <span class="fn">sum</span>(...nums) { ... } <span class="cmt">// rest</span></pre>
+      <p>Same syntax, opposite meaning. Spread <em>expands</em>, rest <em>collects</em>.</p>
+    </div>
+    <div class="card">
+      <h3>Destructuring</h3>
+<pre style="margin-top:.4rem;font-size:.74rem"><span class="kw">const</span> { name, age = <span class="num">18</span> } = user;
+<span class="kw">const</span> [first, ...rest] = arr;</pre>
+      <p>Pull values out of objects/arrays in one line. Default values fill in for <code>undefined</code>.</p>
+    </div>
+    <div class="card">
+      <h3>Optional chaining</h3>
+<pre style="margin-top:.4rem;font-size:.74rem">user?.address?.city
+api?.fetch?.()</pre>
+      <p>Returns <code>undefined</code> instead of throwing when a link in the chain is null/undefined.</p>
+    </div>
+    <div class="card">
+      <h3>Nullish coalescing</h3>
+<pre style="margin-top:.4rem;font-size:.74rem">value ?? <span class="str">'fallback'</span></pre>
+      <p>Falls back ONLY on <code>null</code>/<code>undefined</code>, not on <code>0</code> or <code>""</code>.</p>
+    </div>
+    <div class="card">
+      <h3>Map &amp; Set</h3>
+      <p><code>Map</code> keeps insertion order, accepts any key type, has <code>.size</code>. <code>Set</code> stores unique values — handy one-liner: <code>[...new Set(arr)]</code> dedupes an array.</p>
+    </div>
+    <div class="card">
+      <h3>Generators</h3>
+<pre style="margin-top:.4rem;font-size:.74rem"><span class="kw">function</span>* <span class="fn">range</span>(n) {
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; n; i++) <span class="kw">yield</span> i;
+}</pre>
+      <p>Functions that pause at <code>yield</code> and resume on <code>.next()</code>. Foundation of async iterators.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗ -->
+<!-- ║  PART 2 — NODE.JS                                            ║ -->
+<!-- ╚══════════════════════════════════════════════════════════════╝ -->
+
+<div class="sec" id="n1">
+  <span class="sec-tag tag-green">Node.js · Foundation</span>
+  <h2>13 · Why Node.js Exists</h2>
+  <p>Node.js is JavaScript's V8 engine ripped out of Chrome and stitched onto a C library called <strong>libuv</strong>. The marriage gave the language two things it never had: file-system access and a way to do async I/O at scale.</p>
+
+  <div class="story">
+    <strong>The Story</strong>
+    In 2009 Ryan Dahl was watching an upload progress bar in a browser. Underneath, Apache was spinning up a whole new thread for each upload — at 10,000 uploads, the server died from thread overhead. Ryan asked: "What if the server was one thread that just <em>delegated</em> the slow stuff and kept moving?" He took Chrome's V8 (fast JS engine), bolted on libuv (a C library that talks to the OS for non-blocking I/O), and Node.js was born. The whole point of Node is: <strong>one thread can serve thousands of concurrent connections, because no single connection ever blocks the thread</strong>.
+  </div>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  subgraph N["Node.js Process"]
+    JS[① Your JS Code]
+    V8[② V8 Engine<br/>parses + runs JS]
+    EL[③ Event Loop<br/>libuv-managed]
+    TP[④ Thread Pool<br/>4 threads default<br/>fs · crypto · dns]
+  end
+  OS[(⑤ OS Kernel<br/>epoll · kqueue · IOCP)]
+
+  JS --&gt; V8 --&gt; EL
+  EL --&gt;|"non-blocking I/O"| OS
+  EL --&gt;|"blocking ops"| TP
+  TP --&gt;|"work done"| EL
+  OS --&gt;|"I/O ready"| EL
+
+  style JS fill:#e8743b,stroke:#e8743b,color:#fff
+  style V8 fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style EL fill:#38b265,stroke:#38b265,color:#fff
+  style TP fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style OS fill:#d4a838,stroke:#d4a838,color:#000
+    </div>
+  </div>
+
+  <h3 style="margin-top:1.2rem">The five parts that make Node tick</h3>
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Your JS Code</h3>
+      <p>Your <code>app.js</code>, your routes, your business logic. This is the part you write — everything below is the runtime carrying you.</p>
+      <p><strong>Why it exists:</strong> well, it's the app. Nothing happens without it.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">②</span> V8 Engine</h3>
+      <p>Google's open-source JavaScript engine — same one in Chrome. It parses your JS, JIT-compiles it to machine code, runs it.</p>
+      <p><strong>Why it exists:</strong> JS is a language, not a runtime. You need an engine to actually execute it. V8 was chosen because it's fast and embeddable.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">③</span> Event Loop</h3>
+      <p>The traffic cop that decides which callback runs next. Implemented in libuv (C). It cycles through phases — timers, I/O callbacks, idle, poll, check, close — picking up work in order.</p>
+      <p><strong>Why it exists:</strong> with one thread, you need a strict scheduling rule for callbacks, or chaos. The event loop IS that rule.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">④</span> Thread Pool</h3>
+      <p>libuv keeps a pool of background threads (4 by default, configurable via <code>UV_THREADPOOL_SIZE</code>) for operations the OS can't do non-blocking — file I/O, DNS lookups, crypto, zlib.</p>
+      <p><strong>Why it exists:</strong> not every operation has a non-blocking OS API. Without the pool, <code>fs.readFile</code> would block the event loop and freeze the server.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑤</span> OS Kernel</h3>
+      <p>The actual non-blocking I/O facilities of the operating system: <code>epoll</code> on Linux, <code>kqueue</code> on macOS/BSD, <code>IOCP</code> on Windows. libuv hides the differences.</p>
+      <p><strong>Why it exists:</strong> network I/O genuinely is async at the OS level — Node didn't invent it, libuv just exposes it cleanly.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-green">
+    <strong>So what?</strong> "Node is single-threaded" is half the truth. Your JavaScript runs on one thread. But behind the curtain, libuv keeps 4+ background threads working on file/crypto operations, and the OS handles network I/O entirely on its own. That's how a single Node process serves 10,000 concurrent connections without breaking a sweat.
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── N2 — EVENT LOOP PHASES ─────── -->
+<div class="sec" id="n2">
+  <span class="sec-tag tag-blue">Async</span>
+  <h2>14 · The Node Event Loop — Phases</h2>
+  <p>The browser event loop has two queues. The Node event loop has SIX phases. Interviewers ask about the order because most race-condition bugs in Node trace back to "I thought my callback ran before that other callback."</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  T[① Timers<br/>setTimeout · setInterval] --&gt; P[② Pending<br/>callbacks deferred from prev tick]
+  P --&gt; I[③ Idle / Prepare<br/>internal use]
+  I --&gt; PO[④ Poll<br/>fetch new I/O · execute callbacks]
+  PO --&gt; CH[⑤ Check<br/>setImmediate]
+  CH --&gt; CL[⑥ Close<br/>socket.on close]
+  CL --&gt; T
+
+  style T fill:#e8743b,stroke:#e8743b,color:#fff
+  style P fill:#d4a838,stroke:#d4a838,color:#000
+  style I fill:#7b8599,stroke:#7b8599,color:#fff
+  style PO fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style CH fill:#38b265,stroke:#38b265,color:#fff
+  style CL fill:#e05252,stroke:#e05252,color:#fff
+    </div>
+  </div>
+
+  <div class="story">
+    <strong>The Story</strong>
+    Picture a postman doing a daily route through six neighbourhoods in fixed order. Each neighbourhood is a phase. He starts at <strong>Timers</strong> and delivers anything whose timer has elapsed. Then he moves to the <strong>Poll</strong> neighbourhood — this is the busiest one, where most of his packages (network I/O, file reads) live. Then <strong>Check</strong>, where <code>setImmediate</code> callbacks live. Then <strong>Close</strong> for any socket-close callbacks. After each neighbourhood (and even between deliveries within one), he stops, opens his special microtask envelope, and processes everything in there — that's <code>process.nextTick</code> and resolved Promises. Then he carries on. Loop forever.
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Timers</h3>
+      <p>Runs <code>setTimeout</code> and <code>setInterval</code> callbacks whose threshold has elapsed. "5ms timeout" doesn't mean exactly 5ms — it means <em>at least</em> 5ms.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">②</span> Pending</h3>
+      <p>Internal — TCP error callbacks deferred from the previous loop tick. Rarely your code.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">④</span> Poll</h3>
+      <p>The big one. Picks up new I/O events (incoming requests, completed reads) and runs their callbacks. If the poll queue is empty, the loop may block here waiting for I/O.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑤</span> Check</h3>
+      <p>Runs <code>setImmediate</code> callbacks. The ONLY phase that runs them. Use <code>setImmediate</code> when you want "after the current poll cycle".</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑥</span> Close</h3>
+      <p>Runs close-event callbacks like <code>socket.on('close')</code>.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--purple)">Microtasks (every gap)</h3>
+      <p><code>process.nextTick</code> queue first, then Promise queue. Drained <em>between</em> every operation, not just between phases. <code>nextTick</code> beats Promises.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── N3 — TICK / IMMEDIATE / TIMEOUT ─────── -->
+<div class="sec" id="n3">
+  <span class="sec-tag tag-purple">Async · Ordering</span>
+  <h2>15 · process.nextTick · setImmediate · setTimeout(0)</h2>
+  <p>This is the trick question every Node interviewer keeps in their pocket. The three look like "do it later" but they're scheduled in different phases.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>API</th><th>When it runs</th><th>Beats</th></tr></thead>
+      <tbody>
+        <tr><td><code>process.nextTick(cb)</code></td><td>Before any other I/O / timer — drained right after the current op</td><td>Everything below</td></tr>
+        <tr><td>Promise <code>.then(cb)</code></td><td>Microtask queue, after nextTick</td><td>Timers &amp; Immediate</td></tr>
+        <tr><td><code>setTimeout(cb, 0)</code></td><td>Timers phase, ≥1ms later</td><td>—</td></tr>
+        <tr><td><code>setImmediate(cb)</code></td><td>Check phase, after Poll</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <span class="code-label cl-purple">order-puzzle-node.js</span>
+<pre><span class="fn">setTimeout</span>(() =&gt; <span class="kw">console</span>.<span class="fn">log</span>(<span class="str">'timeout'</span>), <span class="num">0</span>);
+<span class="fn">setImmediate</span>(() =&gt; <span class="kw">console</span>.<span class="fn">log</span>(<span class="str">'immediate'</span>));
+process.<span class="fn">nextTick</span>(() =&gt; <span class="kw">console</span>.<span class="fn">log</span>(<span class="str">'nextTick'</span>));
+<span class="ty">Promise</span>.<span class="fn">resolve</span>().<span class="fn">then</span>(() =&gt; <span class="kw">console</span>.<span class="fn">log</span>(<span class="str">'promise'</span>));
+
+<span class="cmt">// nextTick → promise → (timeout or immediate, order varies in main module)
+// Inside an I/O callback, setImmediate ALWAYS beats setTimeout(0).</span></pre>
+
+  <div class="qa-block">
+    <div class="q">When should I prefer <code>setImmediate</code> over <code>setTimeout(0)</code>?</div>
+    <div class="a">Inside an I/O callback when you want to "yield and continue after the current poll cycle". <code>setImmediate</code> is the documented contract for that. <code>setTimeout(0)</code> can drift to ≥1ms and depends on system clock.</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">Why is <code>process.nextTick</code> dangerous?</div>
+    <div class="a">It runs BEFORE the loop continues. A recursive nextTick can starve I/O — your server stops accepting connections because the loop never reaches the Poll phase. Use it carefully; <code>setImmediate</code> is usually safer.</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── N4 — STREAMS ─────── -->
+<div class="sec" id="n4">
+  <span class="sec-tag tag-cyan">I/O</span>
+  <h2>16 · Streams &amp; Buffers</h2>
+  <p>Streams are how Node processes data that doesn't fit in memory — like a 5GB log file or a video upload. Instead of loading the whole thing, you process it in chunks as it flows past.</p>
+
+  <div class="story">
+    <strong>The Story</strong>
+    Imagine a fire brigade passing buckets of water down a line. The water (your data) never sits in any one person's hands for long — each person grabs a bucket, processes it, hands it on. That's a stream. The alternative (the non-stream way) is to fill an entire swimming pool first and then carry it — fine for a glass of water, impossible for a fire.
+  </div>
+
+  <h3>The four stream types</h3>
+  <div class="g2">
+    <div class="card">
+      <h3 style="color:var(--blue)">Readable</h3>
+      <p>You can read FROM it. Examples: <code>fs.createReadStream()</code>, <code>http.IncomingMessage</code> (the request).</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--green)">Writable</h3>
+      <p>You can write TO it. Examples: <code>fs.createWriteStream()</code>, <code>http.ServerResponse</code>.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--orange)">Duplex</h3>
+      <p>Both readable and writable, independent channels. Example: TCP sockets.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--purple)">Transform</h3>
+      <p>Duplex where output is computed from input. Examples: <code>zlib.createGzip()</code>, <code>crypto.createCipher()</code>.</p>
+    </div>
+  </div>
+
+  <span class="code-label cl-cyan">stream-pipeline.js</span>
+<pre><span class="kw">const</span> { pipeline } = <span class="fn">require</span>(<span class="str">'stream/promises'</span>);
+<span class="kw">const</span> fs = <span class="fn">require</span>(<span class="str">'fs'</span>);
+<span class="kw">const</span> zlib = <span class="fn">require</span>(<span class="str">'zlib'</span>);
+
+<span class="cmt">// gzip a 5GB file using ~64KB of RAM</span>
+<span class="kw">await</span> <span class="fn">pipeline</span>(
+  fs.<span class="fn">createReadStream</span>(<span class="str">'huge.log'</span>),
+  zlib.<span class="fn">createGzip</span>(),
+  fs.<span class="fn">createWriteStream</span>(<span class="str">'huge.log.gz'</span>)
+);</pre>
+
+  <div class="qa-block">
+    <div class="q">What is backpressure?</div>
+    <div class="a">When the writable side is slower than the readable side, data piles up in memory. Streams handle this automatically: <code>readable.pipe(writable)</code> pauses the source when the destination's internal buffer fills up. Use <code>pipeline()</code> instead of raw <code>.pipe()</code> — it propagates errors and cleans up streams properly.</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">What is a Buffer?</div>
+    <div class="a">A fixed-size chunk of raw binary memory outside V8's heap. Used to handle bytes — files, network packets, images. Created with <code>Buffer.alloc(n)</code> (zero-filled, safe) or <code>Buffer.from(data)</code>. Avoid the deprecated <code>new Buffer()</code> — it allocates uninitialized memory and was a known security hole.</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── N5 — EventEmitter ─────── -->
+<div class="sec" id="n5">
+  <span class="sec-tag tag-orange">Events</span>
+  <h2>17 · EventEmitter — The Pub/Sub at Node's Core</h2>
+  <p>Half of Node is built on EventEmitter — streams, HTTP servers, child processes, sockets all extend it. Knowing the API also signals you understand the observer pattern.</p>
+
+  <span class="code-label cl-orange">emitter.js</span>
+<pre><span class="kw">const</span> { EventEmitter } = <span class="fn">require</span>(<span class="str">'events'</span>);
+<span class="kw">const</span> bus = <span class="kw">new</span> <span class="ty">EventEmitter</span>();
+
+bus.<span class="fn">on</span>(<span class="str">'order:placed'</span>, (id) =&gt; <span class="kw">console</span>.<span class="fn">log</span>(<span class="str">'email '</span> + id));
+bus.<span class="fn">on</span>(<span class="str">'order:placed'</span>, (id) =&gt; <span class="kw">console</span>.<span class="fn">log</span>(<span class="str">'metric '</span> + id));
+bus.<span class="fn">emit</span>(<span class="str">'order:placed'</span>, <span class="num">42</span>);
+
+<span class="cmt">// 'once' — listener auto-removed after first fire
+// 'off' / 'removeListener' — detach
+// default max listeners = 10 (warning above)</span></pre>
+
+  <div class="qa-block">
+    <div class="q">Why does Node print "MaxListenersExceededWarning"?</div>
+    <div class="a">Each emitter has a soft limit (default 10) of listeners per event. Going over is usually a leak — typically you forgot to <code>off()</code> a listener inside a handler that re-runs. Bump the limit with <code>setMaxListeners(20)</code> only if you genuinely need more — otherwise fix the leak.</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── N6 — CLUSTER / WORKERS ─────── -->
+<div class="sec" id="n6">
+  <span class="sec-tag tag-yellow">Scaling</span>
+  <h2>18 · Cluster vs Worker Threads</h2>
+  <p>One Node process uses one CPU core. But your server has 8 cores. How do you use them all?</p>
+
+  <div class="story">
+    <strong>The Story</strong>
+    Imagine you run a busy restaurant with one chef and the orders are stacking up. You have two options. Option A: open <em>identical clones of the same restaurant</em> next door — same menu, separate kitchens. A host out front routes diners to whichever clone is free. That is <strong>cluster</strong> — multiple Node processes, each with its own memory, sharing the same listening port. Option B: keep one restaurant but hire <em>specialised assistants</em> (sous-chefs) for the slow tasks. The head chef keeps taking orders; the assistants chop, mix, plate in parallel and hand back finished work. That is <strong>worker threads</strong> — multiple threads inside one process, sharing memory.
+  </div>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th></th><th>Cluster</th><th>Worker Threads</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Unit</strong></td><td>OS process</td><td>Thread inside one process</td></tr>
+        <tr><td><strong>Memory</strong></td><td>Separate (no shared state)</td><td>Shared via SharedArrayBuffer</td></tr>
+        <tr><td><strong>Best for</strong></td><td>Scaling HTTP servers across cores</td><td>CPU-heavy tasks (image processing, parsing, hashing)</td></tr>
+        <tr><td><strong>Crash blast radius</strong></td><td>One process — others survive</td><td>One thread — but a bad <code>process.exit()</code> kills all</td></tr>
+        <tr><td><strong>Tooling</strong></td><td>Built-in <code>cluster</code> module · PM2 · K8s</td><td>Built-in <code>worker_threads</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">When should I prefer worker threads over cluster?</div>
+    <div class="a">When the bottleneck is CPU on a single request — e.g., an endpoint that compresses a 10MB payload and blocks the event loop for 200ms. A cluster process would still freeze for 200ms on that one request; a worker thread offloads the compression and the main thread keeps serving others.</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── N7 — CHILD PROCESS ─────── -->
+<div class="sec" id="n7">
+  <span class="sec-tag tag-purple">Process</span>
+  <h2>19 · Child Processes — spawn vs exec vs fork</h2>
+
+  <div class="g3">
+    <div class="card">
+      <h3 style="color:var(--blue)">spawn</h3>
+      <p>Launch any binary, stream its stdout/stderr. Best for long-running or large-output processes — never buffers, won't OOM.</p>
+<pre style="margin-top:.4rem;font-size:.72rem"><span class="fn">spawn</span>(<span class="str">'ffmpeg'</span>, [<span class="str">'-i'</span>, ...])</pre>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--orange)">exec</h3>
+      <p>Run a shell command, get the FULL stdout/stderr in a callback once it's done. Buffered — careful with large output (default 1MB cap).</p>
+<pre style="margin-top:.4rem;font-size:.72rem"><span class="fn">exec</span>(<span class="str">'ls -la'</span>, cb)</pre>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--green)">fork</h3>
+      <p>Special-case spawn that runs another <strong>Node script</strong> with an IPC channel for message passing. Used for cluster.</p>
+<pre style="margin-top:.4rem;font-size:.72rem"><span class="fn">fork</span>(<span class="str">'./worker.js'</span>)</pre>
+    </div>
+  </div>
+
+  <div class="highlight hl-red">
+    <strong>Security warning.</strong> Never pass user input to <code>exec</code> — it goes through a shell, opening you to command injection. Use <code>spawn</code> with an args array, where arguments are passed safely without shell parsing.
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── N8 — MODULES ─────── -->
+<div class="sec" id="n8">
+  <span class="sec-tag tag-blue">Modules</span>
+  <h2>20 · CommonJS vs ES Modules</h2>
+  <p>Node started life with CommonJS (<code>require</code> / <code>module.exports</code>) because ES modules didn't exist when Node was born. Today both work, and the difference matters in interviews.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th></th><th>CommonJS</th><th>ES Modules</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Syntax</strong></td><td><code>const x = require('x')</code></td><td><code>import x from 'x'</code></td></tr>
+        <tr><td><strong>Loading</strong></td><td>Synchronous</td><td>Asynchronous</td></tr>
+        <tr><td><strong>Resolution</strong></td><td>At runtime, dynamic</td><td>Static, at parse time</td></tr>
+        <tr><td><strong>Tree-shaking</strong></td><td>No</td><td>Yes (bundlers can drop unused exports)</td></tr>
+        <tr><td><strong>top-level await</strong></td><td>No</td><td>Yes</td></tr>
+        <tr><td><strong>Trigger</strong></td><td>Default for <code>.js</code> if no <code>"type"</code></td><td><code>"type":"module"</code> in package.json or <code>.mjs</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">Can I <code>require()</code> an ESM module?</div>
+    <div class="a">Not directly with the classic <code>require</code> in older Node. Use dynamic <code>import('./esm-mod.js')</code> which returns a Promise and works from CJS. Newer Node (≥22) added experimental <code>require(esm)</code> for synchronous interop.</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">What is the module wrapper in CJS?</div>
+    <div class="a">Before running your file, Node wraps it in a function: <code>(function(exports, require, module, __filename, __dirname) { /* your code */ })</code>. That's why those five identifiers are "magically available" inside every CJS file — they're just function arguments.</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── N9 — EXPRESS ─────── -->
+<div class="sec" id="n9">
+  <span class="sec-tag tag-green">Express</span>
+  <h2>21 · Express &amp; the Middleware Pipeline</h2>
+  <p>Express is a thin layer over Node's <code>http</code> module. Its core idea is the <strong>middleware pipeline</strong> — a function chain that each request walks through.</p>
+
+  <div class="story">
+    <strong>The Story</strong>
+    Picture an airport. A passenger (the request) walks through a series of stations: check-in, security scan, passport control, boarding. Each station can: stamp the passport (mutate the request), reject the passenger (send a response), or wave them on (call <code>next()</code>). Express middleware is exactly that — a function with signature <code>(req, res, next)</code> chained in order. The first one to call <code>res.send()</code> ends the journey; the rest never run. The first one to call <code>next(err)</code> jumps to the error-handling station.
+  </div>
+
+  <span class="code-label cl-green">express-pipeline.js</span>
+<pre><span class="kw">const</span> app = <span class="fn">express</span>();
+
+app.<span class="fn">use</span>(express.<span class="fn">json</span>());                         <span class="cmt">// 1. parse body</span>
+app.<span class="fn">use</span>((req, res, next) =&gt; { req.id = <span class="ty">crypto</span>.<span class="fn">randomUUID</span>(); <span class="fn">next</span>(); }); <span class="cmt">// 2. tag</span>
+app.<span class="fn">use</span>(<span class="fn">authMiddleware</span>);                          <span class="cmt">// 3. auth or 401</span>
+app.<span class="fn">get</span>(<span class="str">'/users/:id'</span>, <span class="fn">getUser</span>);                  <span class="cmt">// 4. handler</span>
+
+<span class="cmt">// 5. error-handling middleware — 4 args is the magic signature</span>
+app.<span class="fn">use</span>((err, req, res, next) =&gt; {
+  <span class="kw">console</span>.<span class="fn">error</span>(err);
+  res.<span class="fn">status</span>(<span class="num">500</span>).<span class="fn">json</span>({ error: <span class="str">'oops'</span> });
+});</pre>
+
+  <div class="qa-block">
+    <div class="q">How does the error-handling middleware know it's the error one?</div>
+    <div class="a">Pure convention: Express checks the function's <code>.length</code>. A 4-arg function <code>(err, req, res, next)</code> is treated as an error handler. It only runs when something upstream calls <code>next(err)</code> or throws inside an async handler that you wrapped properly.</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── N10 — ERROR HANDLING ─────── -->
+<div class="sec" id="n10">
+  <span class="sec-tag tag-red">Errors</span>
+  <h2>22 · Error Handling — the Right Way</h2>
+
+  <div class="g2">
+    <div class="card red-card">
+      <h3>Operational errors</h3>
+      <p>Expected runtime problems: bad user input, network timeout, DB unavailable. Catch them, respond gracefully, log them.</p>
+    </div>
+    <div class="card red-card">
+      <h3>Programmer errors</h3>
+      <p>Bugs: undefined property, wrong type, logic mistake. You can't recover. Log, then crash and let the supervisor (PM2 / K8s) restart.</p>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">Should I catch <code>uncaughtException</code> and keep running?</div>
+    <div class="a">No. By the time it fires, the process state is undefined — half-mutated objects, leaked file descriptors. Log the error, try to flush logs gracefully, then call <code>process.exit(1)</code> and let your orchestrator restart. The official Node guidance is "crash on programmer errors".</div>
+  </div>
+
+  <div class="qa-block">
+    <div class="q">How do I forward async errors in Express?</div>
+    <div class="a">In modern Express (≥5) async route handlers' rejections auto-forward to the error middleware. In Express 4 you must wrap them:
+<pre style="margin:.4rem 0;font-size:.74rem"><span class="kw">const</span> wrap = (fn) =&gt; (req, res, next) =&gt; <span class="ty">Promise</span>.<span class="fn">resolve</span>(<span class="fn">fn</span>(req, res, next)).<span class="fn">catch</span>(<span class="fn">next</span>);
+app.<span class="fn">get</span>(<span class="str">'/x'</span>, <span class="fn">wrap</span>(<span class="kw">async</span> (req, res) =&gt; { ... }));</pre></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── N11 — DEBUGGING ─────── -->
+<div class="sec" id="n11">
+  <span class="sec-tag tag-yellow">Production</span>
+  <h2>23 · Memory Leaks &amp; Debugging</h2>
+  <p>"My Node service starts at 200MB and slowly creeps to 2GB then dies" — every Node engineer has lived this. The four usual suspects:</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>① Forgotten listeners</h3>
+      <p>Adding <code>emitter.on(...)</code> inside a function that runs on every request — and never calling <code>off</code>. Each request piles a new closure on. Look for the <em>MaxListenersExceeded</em> warning.</p>
+    </div>
+    <div class="card">
+      <h3>② Closures holding big data</h3>
+      <p>A timer, callback, or cache referencing a big object keeps the entire object alive. Audit globals; weak references (<code>WeakMap</code>, <code>WeakRef</code>) can help.</p>
+    </div>
+    <div class="card">
+      <h3>③ Unbounded caches</h3>
+      <p>An in-memory <code>Map</code> that grows forever. Use <code>lru-cache</code> with a max size or TTL.</p>
+    </div>
+    <div class="card">
+      <h3>④ Module-level state in long-lived processes</h3>
+      <p>Anything assigned at the top of a file lives forever. Resist temptation to keep "just one global counter".</p>
+    </div>
+  </div>
+
+  <h3>Tools</h3>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li><code>node --inspect app.js</code> + Chrome DevTools → live heap snapshots, CPU profiles.</li>
+    <li><code>--prof</code> + <code>node --prof-process</code> → V8 tick profiler.</li>
+    <li><code>clinic.js doctor / flame / bubbleprof</code> → opinionated diagnostic with auto-recommendations.</li>
+    <li><code>process.memoryUsage()</code> → quick log line; watch <code>heapUsed</code> trend over time.</li>
+  </ul>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── N12 — SECURITY ─────── -->
+<div class="sec" id="n12">
+  <span class="sec-tag tag-red">Security</span>
+  <h2>24 · Security Cheat Sheet</h2>
+
+  <div class="g2">
+    <div class="card red-card">
+      <h3>Inputs</h3>
+      <ul>
+        <li>Validate &amp; sanitize every body / query / param (<code>zod</code>, <code>joi</code>).</li>
+        <li>Never pass user input to <code>exec</code>, <code>eval</code>, or template strings sent to the shell.</li>
+        <li>Cap body size with <code>express.json({ limit: '100kb' })</code> — defends against memory DoS.</li>
+      </ul>
+    </div>
+    <div class="card red-card">
+      <h3>Headers</h3>
+      <ul>
+        <li>Use <code>helmet()</code> middleware — sets ~12 secure-by-default headers (CSP, HSTS, X-Frame-Options).</li>
+        <li>Set <code>cors()</code> with an allowlist, never <code>*</code> on credentialed endpoints.</li>
+      </ul>
+    </div>
+    <div class="card red-card">
+      <h3>Auth</h3>
+      <ul>
+        <li>Hash passwords with <code>bcrypt</code> or <code>argon2</code> — never SHA-256.</li>
+        <li>Sign JWTs with strong secrets / RS256; set short TTL + refresh tokens.</li>
+        <li>Store secrets in env / vault — never in git.</li>
+      </ul>
+    </div>
+    <div class="card red-card">
+      <h3>Dependencies</h3>
+      <ul>
+        <li>Run <code>npm audit</code> in CI; pin versions with a lockfile.</li>
+        <li>Use <code>npm ci</code> (not <code>install</code>) in CI for reproducible builds.</li>
+        <li>Drop unused deps — every package is supply-chain risk.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ─────── N13 — RAPID FIRE ─────── -->
+<div class="sec" id="n13">
+  <span class="sec-tag tag-orange">Quickfire</span>
+  <h2>25 · Rapid-Fire Q&amp;A</h2>
+  <p>The remaining short-form questions interviewers fire when time is running out. Memorise the one-liners.</p>
+
+  <div class="qa-block">
+    <div class="q">Why is Node.js single-threaded but scalable?</div>
+    <div class="a">JS runs on one thread, but I/O is delegated to libuv (thread pool) and the OS kernel (epoll/kqueue). The thread is rarely blocked, so a single process can serve thousands of concurrent connections.</div>
+  </div>
+  <div class="qa-block">
+    <div class="q">What is V8?</div>
+    <div class="a">Google's open-source JavaScript engine, written in C++. Same one in Chrome. JIT-compiles JS to optimized machine code. Node.js embeds it.</div>
+  </div>
+  <div class="qa-block">
+    <div class="q">What is libuv?</div>
+    <div class="a">A C library that gives Node its event loop, thread pool, and cross-platform async I/O abstractions over epoll (Linux), kqueue (macOS), IOCP (Windows).</div>
+  </div>
+  <div class="qa-block">
+    <div class="q">Difference between <code>fs.readFile</code> and <code>fs.createReadStream</code>?</div>
+    <div class="a"><code>readFile</code> loads the entire file into memory before the callback fires — fine for small configs, dangerous for large files. <code>createReadStream</code> emits chunks as they're read — constant-memory, scales to any file size.</div>
+  </div>
+  <div class="qa-block">
+    <div class="q">What is <code>__dirname</code>?</div>
+    <div class="a">In CJS, the absolute path of the directory the current file lives in. Not available in ESM — use <code>import.meta.url</code> + <code>fileURLToPath</code> instead.</div>
+  </div>
+  <div class="qa-block">
+    <div class="q">How does <code>require</code> caching work?</div>
+    <div class="a">First <code>require('x')</code> loads + executes <code>x</code> and caches its <code>module.exports</code>. Every subsequent <code>require('x')</code> returns the same exports object — without re-running the file. That's why module-level state behaves like a singleton.</div>
+  </div>
+  <div class="qa-block">
+    <div class="q">What is the difference between exit codes?</div>
+    <div class="a"><code>0</code> = success, <code>1</code> = generic failure, <code>>1</code> = specific error class. Set with <code>process.exit(code)</code>. Orchestrators (PM2, Kubernetes) often restart on non-zero.</div>
+  </div>
+  <div class="qa-block">
+    <div class="q">What is the <code>package-lock.json</code> for?</div>
+    <div class="a">Records the EXACT version of every package and sub-dependency installed, so <code>npm ci</code> on another machine produces the identical tree. Without it, two builds days apart can diverge if a sub-dep released a patch.</div>
+  </div>
+  <div class="qa-block">
+    <div class="q">What's <code>nodemon</code> doing under the hood?</div>
+    <div class="a">Watches your files with <code>chokidar</code>, kills the running Node process on change, restarts it. Pure dev convenience — never use in production; use PM2 / systemd.</div>
+  </div>
+  <div class="qa-block">
+    <div class="q">Why is <code>JSON.parse</code> blocking?</div>
+    <div class="a">It runs synchronously on the event loop. A 100MB JSON string can freeze the server for hundreds of ms. For huge payloads, stream-parse with <code>stream-json</code> or offload to a worker thread.</div>
+  </div>
+  <div class="qa-block">
+    <div class="q">Difference between <code>res.send</code>, <code>res.json</code>, <code>res.end</code>?</div>
+    <div class="a"><code>res.end</code> is raw — closes the response, no Content-Type. <code>res.send</code> auto-detects type, sets headers, supports strings/buffers/objects. <code>res.json</code> stringifies + sets <code>application/json</code>. Use <code>res.json</code> for APIs, <code>res.end</code> when streaming a custom body.</div>
+  </div>
+  <div class="qa-block">
+    <div class="q">What is CORS and why does it bite Node devs?</div>
+    <div class="a">Cross-Origin Resource Sharing — browser security policy that blocks JS on <code>a.com</code> from calling <code>b.com</code> unless <code>b.com</code> sends explicit <code>Access-Control-Allow-Origin</code> headers. Solve in Express with the <code>cors</code> middleware, configured with an explicit origin allowlist.</div>
+  </div>
+  <div class="qa-block">
+    <div class="q">What's the difference between <code>app.use</code> and <code>app.get</code>?</div>
+    <div class="a"><code>app.use</code> mounts middleware that runs for ALL HTTP methods at a path prefix. <code>app.get</code> mounts a handler for GET requests at an exact path. Order matters — middleware must be declared before the routes that depend on it.</div>
+  </div>
+
+  <div class="highlight hl-blue" style="margin-top:1.6rem">
+    <strong>Final tip.</strong> The interviewer rarely cares whether your answer is textbook-perfect. They care whether you can explain <em>why</em> the design is the way it is, and what <em>breaks</em> if it weren't. Every story above is built around the "why" — keep that pattern in your answers, and you'll sound like an engineer instead of a flashcard.
+  </div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+<div class="likes-row">
+  <p class="like-prompt">
+    <strong>Did this JS &amp; Node.js guide click?</strong>
+    If it helped, tap the ❤️ — <em>that's how I know it landed.</em>
+  </p>
+  <div id="likes"></div>
+</div>
+
+</body>
+</html>

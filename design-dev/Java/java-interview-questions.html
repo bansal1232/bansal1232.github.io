@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Java Interview Questions — A Storytelling Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../../css/likes.css"/>
+<script src="../../js/likes.js" defer></script>
+<style>
+  :root {
+    --bg: #0e1117;
+    --surface: #161b22;
+    --surface-hover: #1c2230;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #f0883e;
+    --accent-dim: rgba(240,136,62,0.12);
+    --green: #3fb950;
+    --green-dim: rgba(63,185,80,0.12);
+    --red: #f85149;
+    --red-dim: rgba(248,81,73,0.12);
+    --blue: #58a6ff;
+    --blue-dim: rgba(88,166,255,0.12);
+    --purple: #bc8cff;
+    --purple-dim: rgba(188,140,255,0.12);
+    --yellow: #e3b341;
+    --yellow-dim: rgba(227,179,65,0.12);
+    --code-bg: #0d1117;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+  }
+
+  .layout {
+    max-width: 1920px;
+    margin: 0 auto;
+    padding: 3rem 4rem 5rem;
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 4.5rem;
+    align-items: start;
+  }
+  @media (max-width: 1200px) { .layout { padding: 3rem 2rem 5rem; gap: 3rem; } }
+  @media (max-width: 960px) {
+    .layout { grid-template-columns: 1fr; gap: 1.5rem; padding: 2rem 1.2rem 4rem; }
+  }
+
+  .sidebar { position: sticky; top: 2rem; font-size: 0.88rem; }
+  @media (max-width: 960px) {
+    .sidebar {
+      position: static; top: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.4rem;
+    }
+  }
+  .sidebar h4 {
+    font-size: 0.72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--text-muted); margin-bottom: 0.85rem;
+    padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);
+  }
+  .sidebar ol { list-style: none; padding: 0; counter-reset: toc2; }
+  .sidebar ol li { counter-increment: toc2; margin-bottom: 0.35rem; }
+  .sidebar ol li::before {
+    content: counter(toc2, decimal-leading-zero);
+    display: inline-block; width: 1.8rem;
+    color: var(--accent); font-weight: 700;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+  }
+  .sidebar a {
+    color: var(--text-muted); text-decoration: none;
+    transition: color 0.15s; font-size: 0.9rem;
+  }
+  .sidebar a:hover { color: var(--accent); }
+  @media (max-width: 960px) {
+    .sidebar ol { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem 1rem; }
+  }
+  @media (max-width: 560px) { .sidebar ol { grid-template-columns: 1fr; } }
+
+  .content { min-width: 0; }
+
+  header {
+    text-align: center;
+    padding: 3rem 0 2.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 3rem;
+  }
+
+  header .badge {
+    display: inline-block;
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.35rem 1rem;
+    border-radius: 100px;
+    margin-bottom: 1rem;
+  }
+
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 900;
+    font-size: 2.6rem;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 0.5rem;
+  }
+
+  header p { color: var(--text-muted); font-size: 1.05rem; }
+
+  .feature {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    margin-bottom: 1.75rem;
+    transition: border-color 0.2s;
+    scroll-margin-top: 1.5rem;
+  }
+
+  .feature:hover { border-color: var(--accent); }
+
+  .feature-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .feature-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--accent);
+    background: var(--accent-dim);
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    letter-spacing: 0.05em;
+  }
+
+  .feature h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 1.45rem;
+    line-height: 1.3;
+  }
+
+  .feature h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin: 1.5rem 0 0.5rem;
+    color: var(--text);
+  }
+
+  .feature p { color: var(--text); font-size: 0.95rem; margin-bottom: 0.85rem; }
+  .feature p.lead { color: var(--text); font-size: 1rem; margin-bottom: 1.2rem; }
+
+  .scene {
+    background: linear-gradient(135deg, rgba(240,136,62,0.06), rgba(188,140,255,0.04));
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.2rem;
+    margin: 0 0 1.4rem;
+    font-size: 0.95rem;
+    color: var(--text);
+    font-style: italic;
+  }
+
+  .scene::before {
+    content: "🎬 Scene · ";
+    font-style: normal;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+  }
+
+  .interview-q {
+    background: var(--blue-dim);
+    border-left: 3px solid var(--blue);
+    border-radius: 0 8px 8px 0;
+    padding: 0.75rem 1rem;
+    margin: 1.2rem 0 0.85rem;
+    font-size: 0.92rem;
+    color: var(--blue);
+    font-weight: 600;
+  }
+
+  .interview-q::before { content: "Q: "; font-weight: 800; }
+
+  .answer {
+    color: var(--text);
+    font-size: 0.95rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .answer ul, .feature ul { margin: 0.5rem 0 0.9rem 1.3rem; color: var(--text); }
+  .answer li, .feature li { margin-bottom: 0.4rem; font-size: 0.93rem; }
+
+  .answer strong, .feature strong { color: var(--text); }
+
+  code, pre { font-family: 'JetBrains Mono', monospace; }
+  p code, li code, .answer code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 0.05rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    color: var(--accent);
+  }
+
+  .code-block { position: relative; margin: 0.6rem 0 1rem; }
+
+  .code-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.8rem;
+    border-radius: 8px 8px 0 0;
+    display: inline-block;
+    font-weight: 600;
+  }
+
+  .code-label.example { background: var(--purple-dim); color: var(--purple); }
+  .code-label.bad     { background: var(--red-dim);    color: var(--red); }
+  .code-label.good    { background: var(--green-dim);  color: var(--green); }
+  .code-label.demo    { background: var(--blue-dim);   color: var(--blue); }
+  .code-label.note    { background: var(--yellow-dim); color: var(--yellow); }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 0 8px 8px 8px;
+    padding: 1.1rem 1.25rem;
+    overflow-x: auto;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  pre .kw { color: #ff7b72; }
+  pre .str { color: #a5d6ff; }
+  pre .cmt { color: #8b949e; font-style: italic; }
+  pre .fn { color: #d2a8ff; }
+  pre .type { color: #79c0ff; }
+  pre .num { color: #f0883e; }
+  pre .ann { color: #ffa657; }
+
+  .tip {
+    background: var(--green-dim);
+    border-left: 3px solid var(--green);
+    border-radius: 0 8px 8px 0;
+    padding: 0.75rem 1rem;
+    font-size: 0.88rem;
+    color: var(--green);
+    margin-top: 0.5rem;
+  }
+  .tip::before { content: "💡 Interview Tip · "; font-weight: 700; }
+
+  .analogy {
+    background: var(--purple-dim);
+    border-left: 3px solid var(--purple);
+    border-radius: 0 8px 8px 0;
+    padding: 0.75rem 1rem;
+    font-size: 0.92rem;
+    color: var(--text);
+    margin: 0.5rem 0 1rem;
+  }
+  .analogy::before { content: "🔗 Analogy · "; font-weight: 700; color: var(--purple); }
+
+  .gotcha {
+    background: var(--red-dim);
+    border-left: 3px solid var(--red);
+    border-radius: 0 8px 8px 0;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    color: var(--text);
+    margin: 0.5rem 0 1rem;
+  }
+  .gotcha::before { content: "⚠️ Gotcha · "; font-weight: 700; color: var(--red); }
+
+  .so-what {
+    background: var(--accent-dim);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 0.85rem 1rem;
+    font-size: 0.95rem;
+    color: var(--text);
+    margin: 1.4rem 0 0.5rem;
+    font-weight: 500;
+  }
+  .so-what::before { content: "🎯 So in short · "; font-weight: 700; color: var(--accent); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8rem 0 1rem;
+    font-size: 0.88rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.6rem 0.85rem;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  th {
+    background: var(--surface-hover);
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .versus {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  @media (max-width: 750px) {
+    .versus { grid-template-columns: 1fr; }
+    header h1 { font-size: 1.8rem; }
+    .feature { padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<header style="padding: 3rem 1.5rem 2.5rem;position:relative;">
+  <a href="../../design-development.html" style="position:absolute;top:1.2rem;left:1.5rem;display:inline-flex;align-items:center;gap:.4rem;color:var(--accent);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid rgba(255,255,255,.12);border-radius:100px;background:rgba(17,22,30,.5);backdrop-filter:blur(6px);transition:transform .2s;">← Back to Design &amp; Development</a>
+  <div class="badge">Interview Prep</div>
+  <h1>Java Interview Questions<br/></h1>
+  <p>OOP · Collections · Concurrency · JVM · Streams — explained the way you'd teach a friend over chai</p>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">OOP — Four Pillars</a></li>
+      <li><a href="#s2">String &amp; the Pool</a></li>
+      <li><a href="#s3">equals &amp; hashCode</a></li>
+      <li><a href="#s4">== vs equals</a></li>
+      <li><a href="#s5">Collections Framework</a></li>
+      <li><a href="#s6">HashMap Internals</a></li>
+      <li><a href="#s7">ArrayList vs LinkedList</a></li>
+      <li><a href="#s8">Exception Handling</a></li>
+      <li><a href="#s9">Generics &amp; Type Erasure</a></li>
+      <li><a href="#s10">Immutability &amp; final</a></li>
+      <li><a href="#s11">Threads — The Basics</a></li>
+      <li><a href="#s12">synchronized &amp; volatile</a></li>
+      <li><a href="#s13">Executors &amp; Thread Pools</a></li>
+      <li><a href="#s14">Locks &amp; Concurrent Collections</a></li>
+      <li><a href="#s15">JVM Memory Model</a></li>
+      <li><a href="#s16">Garbage Collection</a></li>
+      <li><a href="#s17">ClassLoaders</a></li>
+      <li><a href="#s18">Streams &amp; Functional</a></li>
+      <li><a href="#s19">Optional — Done Right</a></li>
+      <li><a href="#s20">Tricky Gotchas</a></li>
+    </ol>
+  </aside>
+
+  <main class="content">
+
+<!-- ====================================================== -->
+<!-- 1. OOP — Four Pillars                                   -->
+<!-- ====================================================== -->
+<div class="feature" id="s1">
+  <div class="feature-header">
+    <span class="feature-num">01</span>
+    <h2>The Four Pillars of OOP — Through Sarah's Coffee Shop</h2>
+  </div>
+  <p class="lead">Almost every Java interview opens here. The trick is not to recite definitions — interviewers have heard "encapsulation is hiding data" five hundred times. They want to know if you can <em>recognize</em> these pillars in code.</p>
+
+  <div class="scene">Sarah runs a coffee shop. She has a <strong>CoffeeMachine</strong> behind the counter. Customers don't open it up to grind beans manually — they press a button. That hidden complexity is encapsulation. The shop also serves tea, smoothies, and coffee — all called "drinks" — that's polymorphism. Let's walk through each pillar with this shop in mind.</div>
+
+  <div class="interview-q">Explain the four pillars of OOP with real examples.</div>
+
+  <h3>1. Encapsulation — hide the wires, expose the buttons</h3>
+  <p>Encapsulation means bundling data (fields) and behavior (methods) inside a class, and exposing only what the outside world needs. Private fields, public methods. Think of Sarah's coffee machine — customers push <code>brew()</code>, they don't poke at <code>internalGrinderRPM</code>.</p>
+
+  <div class="code-block">
+    <span class="code-label example">Encapsulation</span>
+<pre><span class="kw">public class</span> <span class="type">CoffeeMachine</span> {
+    <span class="kw">private int</span> waterMl;          <span class="cmt">// hidden state</span>
+    <span class="kw">private int</span> beansGrams;
+    <span class="kw">private int</span> grinderRpm = <span class="num">1200</span>;
+
+    <span class="kw">public</span> <span class="type">Coffee</span> <span class="fn">brew</span>(<span class="type">String</span> type) {
+        <span class="kw">if</span> (waterMl &lt; <span class="num">200</span>) <span class="kw">throw new</span> <span class="type">IllegalStateException</span>(<span class="str">"Refill water"</span>);
+        <span class="cmt">// internals hidden — customer just gets a Coffee back</span>
+        <span class="kw">return new</span> <span class="type">Coffee</span>(type);
+    }
+
+    <span class="kw">public void</span> <span class="fn">refillWater</span>(<span class="kw">int</span> ml) { <span class="kw">this</span>.waterMl += ml; }
+}</pre>
+  </div>
+
+  <div class="analogy">An ATM is the cleanest example of encapsulation. You insert a card and press buttons. You don't reach inside to count cash, log the transaction, or talk to the bank's database. The ATM exposes <em>4 buttons</em>; behind those buttons sit thousands of lines of code.</div>
+
+  <h3>2. Inheritance — the family resemblance</h3>
+  <p>Inheritance lets a child class reuse fields and methods from a parent. Sarah's shop sells different drinks, but every drink has a price, a name, and a way to "serve." Instead of repeating those in <code>Coffee</code>, <code>Tea</code>, and <code>Smoothie</code>, we put them in a parent <code>Drink</code>.</p>
+
+  <div class="code-block">
+    <span class="code-label example">Inheritance</span>
+<pre><span class="kw">abstract class</span> <span class="type">Drink</span> {
+    <span class="kw">protected</span> <span class="type">String</span> name;
+    <span class="kw">protected double</span> price;
+
+    <span class="kw">public abstract void</span> <span class="fn">prepare</span>();   <span class="cmt">// each child decides how</span>
+
+    <span class="kw">public void</span> <span class="fn">serve</span>() {                 <span class="cmt">// shared behavior</span>
+        System.out.<span class="fn">println</span>(<span class="str">"Serving "</span> + name + <span class="str">" for ₹"</span> + price);
+    }
+}
+
+<span class="kw">class</span> <span class="type">Coffee</span> <span class="kw">extends</span> <span class="type">Drink</span> {
+    <span class="kw">public void</span> <span class="fn">prepare</span>() { System.out.<span class="fn">println</span>(<span class="str">"Brewing espresso..."</span>); }
+}
+
+<span class="kw">class</span> <span class="type">Tea</span> <span class="kw">extends</span> <span class="type">Drink</span> {
+    <span class="kw">public void</span> <span class="fn">prepare</span>() { System.out.<span class="fn">println</span>(<span class="str">"Steeping leaves..."</span>); }
+}</pre>
+  </div>
+
+  <div class="gotcha">Inheritance is the most overused tool in OOP. Prefer composition unless the relationship is truly an "is-a." A <code>Stack</code> is not an <code>ArrayList</code> — that's why <code>java.util.Stack</code> extending <code>Vector</code> is widely considered a design mistake.</div>
+
+  <h3>3. Polymorphism — one call, many forms</h3>
+  <p>Polymorphism means a single reference can point to different types and call the right method automatically. Sarah's barista holds a list of <code>Drink</code> — they call <code>prepare()</code> on each, and each drink does its own thing. The barista doesn't need a giant <code>if/else</code> chain.</p>
+
+  <div class="code-block">
+    <span class="code-label example">Runtime polymorphism</span>
+<pre><span class="type">List</span>&lt;<span class="type">Drink</span>&gt; orders = <span class="type">List</span>.<span class="fn">of</span>(<span class="kw">new</span> <span class="type">Coffee</span>(), <span class="kw">new</span> <span class="type">Tea</span>(), <span class="kw">new</span> <span class="type">Coffee</span>());
+
+<span class="kw">for</span> (<span class="type">Drink</span> d : orders) {
+    d.<span class="fn">prepare</span>();   <span class="cmt">// resolves to Coffee.prepare() or Tea.prepare() at RUNTIME</span>
+    d.<span class="fn">serve</span>();
+}</pre>
+  </div>
+
+  <p>There are two flavors:</p>
+  <ul>
+    <li><strong>Compile-time (overloading)</strong> — same method name, different parameter list. The compiler picks based on arguments. Example: <code>System.out.println(int)</code> vs <code>println(String)</code>.</li>
+    <li><strong>Runtime (overriding)</strong> — child class redefines a parent method. The JVM picks based on the actual object type. This is what gives us "one call, many forms."</li>
+  </ul>
+
+  <h3>4. Abstraction — show what, hide how</h3>
+  <p>Abstraction is the cousin of encapsulation. Encapsulation hides <em>data</em>; abstraction hides <em>implementation details</em>. You write to an interface (<em>"what should happen"</em>), not a concrete class (<em>"how it happens"</em>).</p>
+
+  <div class="code-block">
+    <span class="code-label example">Abstraction via interface</span>
+<pre><span class="kw">interface</span> <span class="type">PaymentGateway</span> {
+    <span class="type">PaymentResult</span> <span class="fn">pay</span>(<span class="kw">double</span> amount);
+}
+
+<span class="kw">class</span> <span class="type">Razorpay</span> <span class="kw">implements</span> <span class="type">PaymentGateway</span> { <span class="cmt">/* HTTP calls to RP */</span> }
+<span class="kw">class</span> <span class="type">Stripe</span>   <span class="kw">implements</span> <span class="type">PaymentGateway</span> { <span class="cmt">/* HTTP calls to Stripe */</span> }
+
+<span class="cmt">// Caller doesn't care which gateway:</span>
+<span class="type">PaymentGateway</span> gw = <span class="fn">pickCheapestGateway</span>();
+gw.<span class="fn">pay</span>(<span class="num">499.0</span>);</pre>
+  </div>
+
+  <div class="so-what">The four pillars are not separate ideas — they reinforce each other. Encapsulation gives you safe state, inheritance gives you reuse, polymorphism gives you flexibility, and abstraction lets you swap implementations without breaking callers. Together they let Sarah add "Mango Smoothie" tomorrow without touching the barista's code.</div>
+
+  <div class="tip">When asked to "explain OOP," skip the textbook definitions. Walk through one consistent example (like the coffee shop) and show all four pillars in action. Interviewers remember the story, not the buzzwords.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 2. String & the Pool                                    -->
+<!-- ====================================================== -->
+<div class="feature" id="s2">
+  <div class="feature-header">
+    <span class="feature-num">02</span>
+    <h2>String, the String Pool, and Why <code>"hi" == "hi"</code> is True</h2>
+  </div>
+
+  <div class="scene">Raj is debugging a login bug. He compares two usernames with <code>==</code> and it works in tests but fails in production. He's just stumbled into the most-asked Java interview topic: how Strings live in memory.</div>
+
+  <div class="interview-q">Why is String immutable in Java? Where do String literals live?</div>
+
+  <h3>The String Pool — a shared bookshelf</h3>
+  <p>Java keeps a special area of memory called the <strong>String Pool</strong> (or "string intern table") inside the heap. When you write a literal like <code>"hello"</code>, the JVM checks: is this exact text already on the shelf? If yes, hand back the existing reference. If no, place it on the shelf and hand back the new reference.</p>
+
+  <div class="code-block">
+    <span class="code-label demo">The pool in action</span>
+<pre><span class="type">String</span> a = <span class="str">"hello"</span>;             <span class="cmt">// goes into the pool</span>
+<span class="type">String</span> b = <span class="str">"hello"</span>;             <span class="cmt">// reuses the pool reference</span>
+<span class="type">String</span> c = <span class="kw">new</span> <span class="type">String</span>(<span class="str">"hello"</span>);  <span class="cmt">// FORCES a new object on the heap</span>
+
+System.out.<span class="fn">println</span>(a == b);          <span class="cmt">// true  — same pool reference</span>
+System.out.<span class="fn">println</span>(a == c);          <span class="cmt">// false — c is a fresh object</span>
+System.out.<span class="fn">println</span>(a.<span class="fn">equals</span>(c));     <span class="cmt">// true  — same characters</span>
+System.out.<span class="fn">println</span>(a == c.<span class="fn">intern</span>());   <span class="cmt">// true  — intern() puts c into the pool</span></pre>
+  </div>
+
+  <div class="analogy">The String Pool is like a school library's reference section. The librarian (JVM) keeps one copy of every popular book. Ten students saying "give me the dictionary" all get the same physical book. But if a student insists on buying their own copy off Amazon (<code>new String(...)</code>), they get a different physical book — even though the words inside are identical.</div>
+
+  <h3>Why is String immutable?</h3>
+  <p>Once a String is created, you can't change its characters. <code>s.toUpperCase()</code> returns a new String — the original is untouched. Why did Java's designers pick this?</p>
+  <ul>
+    <li><strong>Pool safety.</strong> If two variables share <code>"hello"</code> from the pool and one could mutate it, the other would see the change. Chaos.</li>
+    <li><strong>Thread safety.</strong> Immutable objects are inherently safe to share across threads — no locks needed.</li>
+    <li><strong>HashMap key safety.</strong> A String's <code>hashCode()</code> is computed once and cached. If the contents could change, the map would lose the entry.</li>
+    <li><strong>Security.</strong> File paths, class names, URLs — all passed as Strings. If they could be mutated after a security check, an attacker could pass <code>"safe.txt"</code>, get past the check, then change it to <code>"/etc/passwd"</code>.</li>
+  </ul>
+
+  <h3>String vs StringBuilder vs StringBuffer</h3>
+  <table>
+    <tr><th>Class</th><th>Mutable?</th><th>Thread-safe?</th><th>Use when</th></tr>
+    <tr><td><code>String</code></td><td>No</td><td>Yes (immutable)</td><td>Most cases — short text, keys, return values</td></tr>
+    <tr><td><code>StringBuilder</code></td><td>Yes</td><td>No</td><td>Building text in a single thread (loops, parsers)</td></tr>
+    <tr><td><code>StringBuffer</code></td><td>Yes</td><td>Yes (synchronized)</td><td>Legacy — almost never the right choice today</td></tr>
+  </table>
+
+  <div class="gotcha">Concatenating in a loop with <code>+</code> creates a new String every iteration — O(n²) garbage. Use <code>StringBuilder</code> for loops. The compiler converts a <em>single</em> <code>a + b + c</code> expression into a StringBuilder under the hood, but it can't do that across loop iterations.</div>
+
+  <div class="so-what">Strings are pooled, immutable, and that's why <code>==</code> sometimes "works" by accident. Always use <code>.equals()</code> for content comparison; <code>==</code> only tells you "same object reference."</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 3. equals & hashCode                                    -->
+<!-- ====================================================== -->
+<div class="feature" id="s3">
+  <div class="feature-header">
+    <span class="feature-num">03</span>
+    <h2>The equals/hashCode Contract — A Pact, Not a Suggestion</h2>
+  </div>
+
+  <div class="scene">Priya stores Employee objects in a HashSet. She adds an employee, then immediately checks <code>contains()</code> for the same person — and gets <code>false</code>. She forgot to override <code>hashCode()</code>. The set is using the default identity hash, so the "same" employee maps to two different buckets.</div>
+
+  <div class="interview-q">What's the contract between equals() and hashCode()? What happens if you violate it?</div>
+
+  <h3>The contract in plain English</h3>
+  <ul>
+    <li><strong>If <code>a.equals(b)</code> is true, then <code>a.hashCode() == b.hashCode()</code> MUST be true.</strong></li>
+    <li>If hash codes are equal, equals may or may not be true (collisions are allowed).</li>
+    <li>Both methods must be deterministic — same input, same output, every call.</li>
+    <li>equals must be reflexive (<code>a.equals(a)</code>), symmetric (<code>a.equals(b) == b.equals(a)</code>), and transitive (<code>a=b, b=c → a=c</code>).</li>
+  </ul>
+
+  <div class="analogy">Think of <code>hashCode()</code> as your house's pin code and <code>equals()</code> as your house number. The post office (HashMap) uses the pin code to deliver to the right neighborhood, then the house number to find the exact door. If two houses claim to be "the same address" (equals) but live in different pin codes (hashCode), the post office will look in the wrong neighborhood and never find the second one.</div>
+
+  <h3>The right way to implement them</h3>
+  <div class="code-block">
+    <span class="code-label good">Correct equals/hashCode</span>
+<pre><span class="kw">public class</span> <span class="type">Employee</span> {
+    <span class="kw">private final</span> <span class="type">String</span> id;
+    <span class="kw">private final</span> <span class="type">String</span> email;
+
+    <span class="ann">@Override</span>
+    <span class="kw">public boolean</span> <span class="fn">equals</span>(<span class="type">Object</span> o) {
+        <span class="kw">if</span> (<span class="kw">this</span> == o) <span class="kw">return true</span>;            <span class="cmt">// shortcut</span>
+        <span class="kw">if</span> (!(o <span class="kw">instanceof</span> <span class="type">Employee</span> e)) <span class="kw">return false</span>;
+        <span class="kw">return</span> <span class="type">Objects</span>.<span class="fn">equals</span>(id, e.id) &amp;&amp;
+               <span class="type">Objects</span>.<span class="fn">equals</span>(email, e.email);
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public int</span> <span class="fn">hashCode</span>() {
+        <span class="kw">return</span> <span class="type">Objects</span>.<span class="fn">hash</span>(id, email);     <span class="cmt">// must use SAME fields as equals</span>
+    }
+}</pre>
+  </div>
+
+  <h3>What breaks if you violate the contract?</h3>
+  <ul>
+    <li><strong>HashSet/HashMap fails to find your object.</strong> You add it, you can't find it. Memory leak: the set grows forever with "duplicates" that aren't really duplicates.</li>
+    <li><strong>Two equal objects in different buckets.</strong> Iterating the map shows both — looks like a bug from the outside.</li>
+    <li><strong>Caches break silently.</strong> Spring's <code>@Cacheable</code>, Guava caches, anything keyed by your object — all return stale or missing data.</li>
+  </ul>
+
+  <div class="gotcha">If you override equals using a mutable field and then change that field while the object is in a HashMap, the object becomes unreachable — the map looks in the wrong bucket. Lesson: prefer immutable fields (or at least immutable-while-in-the-map fields) for equals/hashCode.</div>
+
+  <div class="tip">Java records (since 14) auto-generate equals, hashCode, and toString from the components. If your class is a value carrier, use a record — one line eliminates an entire category of bugs.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 4. == vs equals                                         -->
+<!-- ====================================================== -->
+<div class="feature" id="s4">
+  <div class="feature-header">
+    <span class="feature-num">04</span>
+    <h2><code>==</code> vs <code>.equals()</code> — and the Integer Cache Trap</h2>
+  </div>
+
+  <p class="lead">This question is so common that interviewers expect a thorough answer with the famous "Integer cache" twist. If you can explain that, you're showing you know the JVM, not just the syntax.</p>
+
+  <div class="interview-q">What's the difference between == and equals()? Why does Integer.valueOf(127) == Integer.valueOf(127) return true but 128 == 128 return false?</div>
+
+  <h3>The simple rule</h3>
+  <ul>
+    <li><code>==</code> compares <strong>references</strong> for objects (same object in memory?), and <strong>values</strong> for primitives.</li>
+    <li><code>.equals()</code> compares <strong>logical equality</strong> based on the class's contract.</li>
+  </ul>
+
+  <h3>The Integer cache</h3>
+  <p>To save memory, the JVM pre-creates Integer objects for the range <code>-128 to 127</code> and reuses them whenever you call <code>Integer.valueOf(x)</code> (which autoboxing also calls). Outside that range, every call creates a fresh object.</p>
+
+  <div class="code-block">
+    <span class="code-label demo">The cache in action</span>
+<pre><span class="type">Integer</span> a = <span class="num">127</span>;
+<span class="type">Integer</span> b = <span class="num">127</span>;
+System.out.<span class="fn">println</span>(a == b);         <span class="cmt">// true  — both pulled from cache</span>
+
+<span class="type">Integer</span> c = <span class="num">128</span>;
+<span class="type">Integer</span> d = <span class="num">128</span>;
+System.out.<span class="fn">println</span>(c == d);         <span class="cmt">// false — two new objects</span>
+System.out.<span class="fn">println</span>(c.<span class="fn">equals</span>(d));    <span class="cmt">// true  — same value</span></pre>
+  </div>
+
+  <div class="analogy">Imagine a cafe that pre-prints menu cards 1–127 (always available, share them around). For numbers 128 and up, they print fresh cards on demand. Two customers asking for "menu 50" get the same shared card. Two customers asking for "menu 200" each get their own freshly-printed card — same content, different cards.</div>
+
+  <div class="gotcha">This is why interviews love it: developers who only know <code>==</code> from C/JavaScript get burned. Always use <code>.equals()</code> for object equality — even for Integer, Long, String, Date, and any wrapper type.</div>
+
+  <div class="so-what"><code>==</code> answers "are these the same object?" — almost never the question you actually want. <code>.equals()</code> answers "are these logically the same?" — that's the question 99% of the time.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 5. Collections Framework                                -->
+<!-- ====================================================== -->
+<div class="feature" id="s5">
+  <div class="feature-header">
+    <span class="feature-num">05</span>
+    <h2>The Collections Framework — A Tour Through the Toolbox</h2>
+  </div>
+
+  <div class="scene">A new dev, Aman, opens IntelliJ and types <code>List</code>. Autocomplete shows ArrayList, LinkedList, CopyOnWriteArrayList, Stack, Vector, and ten more. He freezes. Which one? When? Why are there so many?</div>
+
+  <p class="lead">The Collections Framework is huge but organized. Three main interfaces sit at the top: <strong>List</strong>, <strong>Set</strong>, and <strong>Map</strong>. Everything else is a specialization.</p>
+
+  <h3>The mental map</h3>
+  <table>
+    <tr><th>Interface</th><th>What it represents</th><th>Common implementations</th></tr>
+    <tr><td><code>List</code></td><td>Ordered, allows duplicates</td><td>ArrayList, LinkedList, CopyOnWriteArrayList</td></tr>
+    <tr><td><code>Set</code></td><td>No duplicates</td><td>HashSet, LinkedHashSet, TreeSet</td></tr>
+    <tr><td><code>Queue</code> / <code>Deque</code></td><td>FIFO / double-ended</td><td>ArrayDeque, LinkedList, PriorityQueue</td></tr>
+    <tr><td><code>Map</code></td><td>Key→value pairs</td><td>HashMap, LinkedHashMap, TreeMap, ConcurrentHashMap</td></tr>
+  </table>
+
+  <div class="analogy">Think of a kitchen drawer. <strong>List</strong> is a row of drawers in order — you can have two spoons next to each other. <strong>Set</strong> is a knife block — each slot holds exactly one unique item. <strong>Map</strong> is a labeled spice rack — every label maps to one specific jar.</div>
+
+  <h3>How to choose, in 30 seconds</h3>
+  <ul>
+    <li><strong>Need order + duplicates + index access?</strong> → <code>ArrayList</code>. Default choice.</li>
+    <li><strong>Need uniqueness, don't care about order?</strong> → <code>HashSet</code>.</li>
+    <li><strong>Need uniqueness in insertion order?</strong> → <code>LinkedHashSet</code>.</li>
+    <li><strong>Need uniqueness in sorted order?</strong> → <code>TreeSet</code>.</li>
+    <li><strong>Need key→value lookup?</strong> → <code>HashMap</code> (single-thread) or <code>ConcurrentHashMap</code> (multi-thread).</li>
+    <li><strong>Need sorted keys?</strong> → <code>TreeMap</code>.</li>
+    <li><strong>Need a stack/queue?</strong> → <code>ArrayDeque</code> (faster than Stack/LinkedList).</li>
+  </ul>
+
+  <h3>Big-O cheat sheet</h3>
+  <table>
+    <tr><th>Operation</th><th>ArrayList</th><th>LinkedList</th><th>HashMap</th><th>TreeMap</th></tr>
+    <tr><td>get / contains</td><td>O(1) by index, O(n) by value</td><td>O(n)</td><td>O(1) avg</td><td>O(log n)</td></tr>
+    <tr><td>add at end</td><td>O(1) amortized</td><td>O(1)</td><td>O(1)</td><td>O(log n)</td></tr>
+    <tr><td>add at middle</td><td>O(n)</td><td>O(1) if you have node ref, else O(n)</td><td>—</td><td>—</td></tr>
+    <tr><td>remove</td><td>O(n)</td><td>O(1) at ends, O(n) in middle</td><td>O(1)</td><td>O(log n)</td></tr>
+  </table>
+
+  <div class="tip">Vector and Stack are legacy (synchronized) — avoid in new code. Use <code>ArrayList</code>, and wrap with <code>Collections.synchronizedList()</code> only if you actually need thread safety. Better: use a concurrent collection.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 6. HashMap Internals                                    -->
+<!-- ====================================================== -->
+<div class="feature" id="s6">
+  <div class="feature-header">
+    <span class="feature-num">06</span>
+    <h2>HashMap Internals — The Most-Asked Question in Java</h2>
+  </div>
+
+  <div class="scene">Anvi opens an interview and the panel says, "Walk me through how HashMap works internally." She knows there are buckets and hash codes, but the details — load factor, chaining, treeification, resizing — that's where the real points hide.</div>
+
+  <div class="interview-q">Explain HashMap's internals. What's the load factor? When does it resize? When does it convert to a tree?</div>
+
+  <h3>The structure — an array of buckets</h3>
+  <p>Internally, a HashMap is a <code>Node[]</code> (called the "table") where each slot is called a <strong>bucket</strong>. Default initial size: 16. Each bucket either holds <code>null</code>, a single Node, a linked list of Nodes (when there are collisions), or a red-black tree (when collisions get bad).</p>
+
+  <div class="code-block">
+    <span class="code-label note">The Node — what HashMap really stores</span>
+<pre><span class="kw">static class</span> <span class="type">Node</span>&lt;K, V&gt; {
+    <span class="kw">final int</span> hash;
+    <span class="kw">final</span> K key;
+    V value;
+    <span class="type">Node</span>&lt;K, V&gt; next;   <span class="cmt">// linked list pointer for collisions</span>
+}</pre>
+  </div>
+
+  <h3>Put, step by step</h3>
+  <ol style="margin-left:1.3rem;color:var(--text)">
+    <li>Compute <code>key.hashCode()</code>.</li>
+    <li>Apply a "spreading" function: <code>hash = h ^ (h &gt;&gt;&gt; 16)</code>. This mixes the high bits into the low bits, so even bad hashCodes spread well.</li>
+    <li>Compute bucket index: <code>index = (n - 1) &amp; hash</code> where <code>n</code> is the table size (always a power of 2, so this is equivalent to <code>hash % n</code> but faster).</li>
+    <li>If the bucket is empty → place the new Node.</li>
+    <li>If occupied → walk the chain. If a Node's key <code>.equals()</code> the new key → replace the value. Otherwise → append.</li>
+    <li>If the chain length exceeds 8 AND the table size is ≥ 64 → convert that bucket to a red-black tree (treeification). Lookups in that bucket go from O(n) to O(log n).</li>
+    <li>If <code>size &gt; capacity * loadFactor</code> → <strong>resize</strong>. Default load factor is 0.75, so a 16-bucket table resizes when it hits 12 entries. The new table is double the size, and every entry is rehashed into it.</li>
+  </ol>
+
+  <div class="analogy">Picture a parking lot with 16 numbered rows. Each car (key) has a hash that picks a row. If a row already has a car, the new one parks behind it (linked list). When a row gets too crowded (>8 cars), the lot manager rebuilds that row as an organized lot with sub-spots (red-black tree). When the whole lot is 75% full, the city builds a bigger lot (32 rows) and re-parks every car. That's resizing.</div>
+
+  <h3>Why load factor 0.75?</h3>
+  <p>It's a balance. Lower load factor (e.g., 0.5) → fewer collisions but wasted memory. Higher (e.g., 0.9) → less memory but more collisions, slower lookups. 0.75 is the sweet spot picked from empirical testing.</p>
+
+  <h3>The treeification fix (Java 8)</h3>
+  <p>Pre-Java 8, a bucket with bad hashCodes (or worse, a malicious attacker) could degrade to O(n) — a denial-of-service vector. Java 8 added the tree conversion at threshold 8 → guarantees O(log n) worst case for any single bucket.</p>
+
+  <h3>HashMap is NOT thread-safe</h3>
+  <p>Concurrent puts during resize can cause infinite loops (pre-Java 8, due to entry rotation) or lost data. Use <code>ConcurrentHashMap</code> for multi-threaded access — it locks individual bucket segments (Java 8+: per-bucket CAS), so reads are lock-free and writes only block on the same bucket.</p>
+
+  <div class="gotcha">If your key's hashCode is broken (e.g., always returns 0), every entry lands in the same bucket. With 1M entries, that's a 1M-long linked list / red-black tree. <code>get()</code> goes from O(1) to O(log n) at best. Always test <code>hashCode()</code> for distribution on real data.</div>
+
+  <div class="so-what">HashMap is an array of buckets, each bucket is a linked list (or tree past 8 items), with a load factor of 0.75 triggering a resize that doubles capacity and rehashes everything. Memorize that one sentence and you can explain it for 5 minutes confidently.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 7. ArrayList vs LinkedList                              -->
+<!-- ====================================================== -->
+<div class="feature" id="s7">
+  <div class="feature-header">
+    <span class="feature-num">07</span>
+    <h2>ArrayList vs LinkedList — and Why You Probably Want ArrayList</h2>
+  </div>
+
+  <p class="lead">Textbooks teach: "Use LinkedList for frequent inserts in the middle." Reality: even then, ArrayList usually wins. Let's see why.</p>
+
+  <h3>Internally</h3>
+  <ul>
+    <li><strong>ArrayList</strong> — backed by a contiguous <code>Object[]</code>. When full, it grows by 50% (Java 8+) and copies into a new array.</li>
+    <li><strong>LinkedList</strong> — doubly-linked list of Nodes. Each Node holds a value plus two pointers (prev, next).</li>
+  </ul>
+
+  <h3>The real-world performance story</h3>
+  <p>Modern CPUs love contiguous memory. ArrayList is a flat array → CPU cache prefetches the next elements for free. LinkedList is scattered Nodes across the heap → every <code>.next</code> is a potential cache miss, often 100x slower than a cache hit.</p>
+
+  <div class="analogy">ArrayList is a stack of pancakes on a single plate — you can grab any one fast, and reaching the next is instant. LinkedList is pancakes scattered across 12 different tables, with handwritten notes pointing to where the next pancake is. Even reading sequentially is slow because you keep walking around.</div>
+
+  <h3>When does LinkedList actually win?</h3>
+  <p>Almost never in practice. The textbook answer says "frequent insertions in the middle" — but to insert in the middle, you first need to <em>find</em> the position, which is O(n) for LinkedList anyway (walking the chain). The only true win is when you already hold a Node reference and want O(1) insert/remove there — and that's a rare API need.</p>
+
+  <p>Real winning use case: <code>Deque</code> operations from both ends. But even there, <code>ArrayDeque</code> is usually faster.</p>
+
+  <div class="tip">Default to ArrayList. Reach for LinkedList only with measurements proving it's faster for your workload — that essentially never happens.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 8. Exception Handling                                   -->
+<!-- ====================================================== -->
+<div class="feature" id="s8">
+  <div class="feature-header">
+    <span class="feature-num">08</span>
+    <h2>Exceptions — Checked, Unchecked, and Why People Argue About Them</h2>
+  </div>
+
+  <div class="scene">Maya writes a method that reads a file and forgets to declare <code>throws IOException</code>. The compiler refuses to compile. She gets annoyed: "Why can't Java just trust me?" She's just met checked exceptions.</div>
+
+  <h3>The hierarchy</h3>
+  <p>Every error inherits from <code>Throwable</code>. Below it are two branches:</p>
+  <ul>
+    <li><strong>Error</strong> — JVM problems you can't recover from (<code>OutOfMemoryError</code>, <code>StackOverflowError</code>). Don't catch these.</li>
+    <li><strong>Exception</strong> — application problems. Two sub-categories:
+      <ul>
+        <li><strong>Checked</strong> (everything that extends <code>Exception</code> but NOT <code>RuntimeException</code>) — compiler forces you to catch or declare. Examples: <code>IOException</code>, <code>SQLException</code>.</li>
+        <li><strong>Unchecked</strong> (extends <code>RuntimeException</code>) — compiler doesn't force anything. Examples: <code>NullPointerException</code>, <code>IllegalArgumentException</code>.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <div class="analogy">Checked exceptions are like a contract clause — the method's signature has to declare it, like a shipping label declaring "fragile, may break." Unchecked exceptions are unexpected accidents — a tire bursts mid-trip, no label warned you.</div>
+
+  <h3>try-with-resources (Java 7+)</h3>
+  <p>Anything implementing <code>AutoCloseable</code> can go in a try-with-resources block — Java auto-closes it, in reverse order, even if an exception is thrown.</p>
+
+  <div class="code-block">
+    <span class="code-label good">Modern resource handling</span>
+<pre><span class="kw">try</span> (<span class="type">BufferedReader</span> r = <span class="type">Files</span>.<span class="fn">newBufferedReader</span>(path);
+     <span class="type">PreparedStatement</span> ps = conn.<span class="fn">prepareStatement</span>(sql)) {
+
+    <span class="cmt">// use r and ps</span>
+
+}  <span class="cmt">// ps.close() then r.close() — even if exception thrown</span></pre>
+  </div>
+
+  <h3>Common mistakes</h3>
+  <ul>
+    <li><strong>Catching <code>Exception</code> or <code>Throwable</code> at the top.</strong> Hides bugs. Catch the narrowest type that's actually meaningful.</li>
+    <li><strong>Empty catch blocks.</strong> "Just don't crash" — and now your team spends 3 hours debugging silent corruption. At minimum log it.</li>
+    <li><strong>Wrapping and re-throwing without the cause.</strong> <code>throw new RuntimeException("failed")</code> loses the stack trace. Always pass the original: <code>throw new RuntimeException("failed", e)</code>.</li>
+    <li><strong>Returning from finally.</strong> Swallows exceptions silently. Don't.</li>
+  </ul>
+
+  <div class="gotcha">Checked exceptions don't compose with lambdas — Stream's <code>map</code> can't accept a function that throws IOException. This forced workaround patterns. Many modern Java libraries (Spring, Guava) lean unchecked for this reason.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 9. Generics & Type Erasure                              -->
+<!-- ====================================================== -->
+<div class="feature" id="s9">
+  <div class="feature-header">
+    <span class="feature-num">09</span>
+    <h2>Generics &amp; Type Erasure — What Happens to <code>&lt;T&gt;</code> at Runtime?</h2>
+  </div>
+
+  <div class="scene">Karthik writes <code>List&lt;String&gt;</code> and <code>List&lt;Integer&gt;</code> and runs <code>list1.getClass() == list2.getClass()</code>. It returns true. He's just discovered that at runtime, both are just <code>List</code> — the type parameter has been <em>erased</em>.</div>
+
+  <h3>What is type erasure?</h3>
+  <p>Java generics are a compile-time feature only. The compiler uses <code>&lt;T&gt;</code> to type-check your code and insert casts, but the bytecode that ships to the JVM has no record of <code>T</code>. Wherever you wrote <code>T</code>, the bytecode says <code>Object</code> (or the upper bound, like <code>Number</code> for <code>&lt;T extends Number&gt;</code>).</p>
+
+  <div class="code-block">
+    <span class="code-label note">What the compiler does</span>
+<pre><span class="cmt">// What you write:</span>
+<span class="type">List</span>&lt;<span class="type">String</span>&gt; names = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+names.<span class="fn">add</span>(<span class="str">"Sarah"</span>);
+<span class="type">String</span> first = names.<span class="fn">get</span>(<span class="num">0</span>);
+
+<span class="cmt">// What the JVM actually runs (after erasure):</span>
+<span class="type">List</span> names = <span class="kw">new</span> <span class="type">ArrayList</span>();
+names.<span class="fn">add</span>(<span class="str">"Sarah"</span>);
+<span class="type">String</span> first = (<span class="type">String</span>) names.<span class="fn">get</span>(<span class="num">0</span>);   <span class="cmt">// compiler-inserted cast</span></pre>
+  </div>
+
+  <div class="analogy">Generics are like sticky notes the compiler puts on your code. "This list only holds Strings!" the note says. The compiler reads the notes, makes sure you obey them, and then peels them off before the bytecode is shipped. The JVM never sees the notes.</div>
+
+  <h3>The consequences</h3>
+  <ul>
+    <li><strong>You can't do <code>new T()</code></strong> — at runtime there is no <code>T</code> to instantiate.</li>
+    <li><strong>You can't do <code>obj instanceof List&lt;String&gt;</code></strong> — only <code>instanceof List</code>. The runtime can't see the type parameter.</li>
+    <li><strong>You can't have arrays of generic types</strong> — <code>new T[10]</code> won't compile. (Arrays know their element type at runtime; generics don't.)</li>
+    <li><strong>Bridge methods</strong> — when a generic class is overridden, the compiler may add invisible methods to keep the JVM's method dispatch happy.</li>
+  </ul>
+
+  <h3>Wildcards — <code>? extends</code> vs <code>? super</code> (PECS)</h3>
+  <p>Mnemonic: <strong>PECS — Producer Extends, Consumer Super</strong>.</p>
+  <ul>
+    <li><code>List&lt;? extends Number&gt;</code> — you can <em>read</em> Numbers out (it's a <em>producer</em>), but you can't add anything (compiler can't know if it's a List of Integer or Double).</li>
+    <li><code>List&lt;? super Integer&gt;</code> — you can <em>add</em> Integers (it's a <em>consumer</em>), but reading gives you Object (compiler can't know the upper bound).</li>
+  </ul>
+
+  <div class="tip">Generics give you compile-time safety with zero runtime cost. The "cost" of erasure is some lost reflection power — small price for catching ClassCastException at compile time.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 10. Immutability & final                                -->
+<!-- ====================================================== -->
+<div class="feature" id="s10">
+  <div class="feature-header">
+    <span class="feature-num">10</span>
+    <h2>Immutability and the Three Faces of <code>final</code></h2>
+  </div>
+
+  <h3>What does <code>final</code> mean?</h3>
+  <ul>
+    <li><strong><code>final</code> variable</strong> — value can be assigned once. (For objects, it means the reference can't change — the object's internals can still mutate.)</li>
+    <li><strong><code>final</code> method</strong> — cannot be overridden by subclasses.</li>
+    <li><strong><code>final</code> class</strong> — cannot be extended. <code>String</code>, <code>Integer</code>, <code>LocalDate</code> are all final.</li>
+  </ul>
+
+  <div class="gotcha"><code>final List&lt;String&gt; names = new ArrayList&lt;&gt;()</code> does NOT make the list immutable. You can still <code>names.add("...")</code>. The reference is final; the list contents are not. For a truly read-only list, use <code>List.copyOf(names)</code> or <code>Collections.unmodifiableList(names)</code>.</div>
+
+  <h3>How to build a truly immutable class</h3>
+  <ol style="margin-left:1.3rem">
+    <li>Mark the class <code>final</code> (so no one can subclass and add mutability).</li>
+    <li>Mark all fields <code>private final</code>.</li>
+    <li>No setters. Initialize everything in the constructor.</li>
+    <li>If a field is itself a mutable object (e.g., a Date or List), <strong>defensive copy</strong> on the way in (in the constructor) and on the way out (in the getter).</li>
+  </ol>
+
+  <div class="code-block">
+    <span class="code-label good">Immutable class — done right</span>
+<pre><span class="kw">public final class</span> <span class="type">Order</span> {
+    <span class="kw">private final</span> <span class="type">String</span> id;
+    <span class="kw">private final</span> <span class="type">List</span>&lt;<span class="type">String</span>&gt; items;
+
+    <span class="kw">public</span> <span class="fn">Order</span>(<span class="type">String</span> id, <span class="type">List</span>&lt;<span class="type">String</span>&gt; items) {
+        <span class="kw">this</span>.id = id;
+        <span class="kw">this</span>.items = <span class="type">List</span>.<span class="fn">copyOf</span>(items);   <span class="cmt">// defensive copy + immutable</span>
+    }
+
+    <span class="kw">public</span> <span class="type">List</span>&lt;<span class="type">String</span>&gt; <span class="fn">getItems</span>() {
+        <span class="kw">return</span> items;   <span class="cmt">// already unmodifiable, safe to return</span>
+    }
+}</pre>
+  </div>
+
+  <h3>Why immutability matters</h3>
+  <ul>
+    <li><strong>Thread safety for free.</strong> No locks needed; the object can never be in an inconsistent state.</li>
+    <li><strong>Safe to use as a HashMap key.</strong> hashCode never changes mid-lookup.</li>
+    <li><strong>Easier to reason about.</strong> No "who mutated this?" debugging sessions.</li>
+    <li><strong>Cacheable.</strong> Compute once, reuse forever — <code>String</code> caches its hashCode.</li>
+  </ul>
+
+  <div class="tip">Records (Java 14+) give you immutability with one line: <code>record Order(String id, List&lt;String&gt; items) {}</code>. They auto-generate constructor, getters, equals, hashCode, toString. Defensive copy still requires a compact constructor, though.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 11. Threads — The Basics                                -->
+<!-- ====================================================== -->
+<div class="feature" id="s11">
+  <div class="feature-header">
+    <span class="feature-num">11</span>
+    <h2>Threads — The Basics, Told Through a Restaurant Kitchen</h2>
+  </div>
+
+  <div class="scene">Sarah's coffee shop expands. One barista can't keep up. She hires three more. Now four baristas (threads) work in the same kitchen (process), sharing the same espresso machine (memory). Most of the time it's fine — until two reach for the same coffee bean jar at the exact same instant.</div>
+
+  <h3>Thread vs Process</h3>
+  <ul>
+    <li><strong>Process</strong> — an independent program with its own memory space. Two processes can't see each other's variables.</li>
+    <li><strong>Thread</strong> — a unit of work inside a process. All threads in the same process share the heap (objects, static fields), but each has its own stack (local variables).</li>
+  </ul>
+
+  <h3>Three ways to start a thread</h3>
+  <div class="code-block">
+    <span class="code-label demo">All three styles</span>
+<pre><span class="cmt">// 1. Extend Thread (rarely the right choice)</span>
+<span class="kw">class</span> <span class="type">Worker</span> <span class="kw">extends</span> <span class="type">Thread</span> {
+    <span class="kw">public void</span> <span class="fn">run</span>() { System.out.<span class="fn">println</span>(<span class="str">"running"</span>); }
+}
+<span class="kw">new</span> <span class="type">Worker</span>().<span class="fn">start</span>();
+
+<span class="cmt">// 2. Implement Runnable (preferred — you can still extend something else)</span>
+<span class="type">Runnable</span> task = () -&gt; System.out.<span class="fn">println</span>(<span class="str">"running"</span>);
+<span class="kw">new</span> <span class="type">Thread</span>(task).<span class="fn">start</span>();
+
+<span class="cmt">// 3. Submit to an Executor (the modern way — see section 13)</span>
+<span class="type">ExecutorService</span> pool = <span class="type">Executors</span>.<span class="fn">newFixedThreadPool</span>(<span class="num">4</span>);
+pool.<span class="fn">submit</span>(task);</pre>
+  </div>
+
+  <div class="gotcha">Never call <code>thread.run()</code> directly. That just runs the code on the current thread synchronously. <code>start()</code> is what tells the JVM to actually create a new thread.</div>
+
+  <h3>Thread lifecycle</h3>
+  <ul>
+    <li><strong>NEW</strong> — created but not started.</li>
+    <li><strong>RUNNABLE</strong> — eligible to run (the OS scheduler picks when).</li>
+    <li><strong>BLOCKED</strong> — waiting for a monitor lock (e.g., entering a <code>synchronized</code> block held by another thread).</li>
+    <li><strong>WAITING / TIMED_WAITING</strong> — waiting for another thread (<code>Object.wait()</code>, <code>Thread.join()</code>, <code>Thread.sleep()</code>).</li>
+    <li><strong>TERMINATED</strong> — finished or threw an uncaught exception.</li>
+  </ul>
+
+  <div class="analogy">Threads are like cooks in a kitchen. NEW = standing outside the door. RUNNABLE = in the kitchen, doing work or waiting for a turn at the stove. BLOCKED = the freezer is locked and someone else has the key. WAITING = sitting on a chair until a teammate calls them. TERMINATED = clocked out for the day.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 12. synchronized & volatile                              -->
+<!-- ====================================================== -->
+<div class="feature" id="s12">
+  <div class="feature-header">
+    <span class="feature-num">12</span>
+    <h2><code>synchronized</code> and <code>volatile</code> — The Two Keywords Every Java Dev Must Know</h2>
+  </div>
+
+  <div class="interview-q">What's the difference between synchronized and volatile? When would you use each?</div>
+
+  <h3>The problem they solve</h3>
+  <p>Modern CPUs have multiple cores, each with its own cache. When thread A on Core 1 writes to a variable, that write may sit in Core 1's cache for a while before reaching main memory. Thread B on Core 2 reading the same variable might see a stale value. Worse, the compiler and CPU can <em>reorder</em> instructions for performance, breaking your assumptions about what runs first. <code>synchronized</code> and <code>volatile</code> are how Java tells the JVM "stop being clever here."</p>
+
+  <h3><code>synchronized</code> — mutual exclusion + memory visibility</h3>
+  <p>Wraps a block in a monitor lock. Only one thread can hold the lock at a time; others block. Critically, entering and exiting a synchronized block also flushes the thread's CPU caches to/from main memory.</p>
+
+  <div class="code-block">
+    <span class="code-label example">synchronized — the two ways</span>
+<pre><span class="kw">class</span> <span class="type">Counter</span> {
+    <span class="kw">private int</span> count = <span class="num">0</span>;
+
+    <span class="cmt">// Method-level — locks on `this`</span>
+    <span class="kw">public synchronized void</span> <span class="fn">increment</span>() { count++; }
+
+    <span class="cmt">// Block-level — lock on a specific object (more flexible)</span>
+    <span class="kw">private final</span> <span class="type">Object</span> lock = <span class="kw">new</span> <span class="type">Object</span>();
+    <span class="kw">public void</span> <span class="fn">incrementSafe</span>() {
+        <span class="kw">synchronized</span> (lock) {
+            count++;
+        }
+    }
+}</pre>
+  </div>
+
+  <h3><code>volatile</code> — visibility, NOT mutual exclusion</h3>
+  <p>Marks a variable so every read goes to main memory and every write is flushed immediately. No locking. Threads always see the latest value, but multiple threads can still race on it.</p>
+
+  <div class="code-block">
+    <span class="code-label demo">volatile — the canonical use case</span>
+<pre><span class="kw">class</span> <span class="type">Worker</span> <span class="kw">implements</span> <span class="type">Runnable</span> {
+    <span class="kw">private volatile boolean</span> running = <span class="kw">true</span>;
+
+    <span class="kw">public void</span> <span class="fn">run</span>() {
+        <span class="kw">while</span> (running) { <span class="cmt">/* work */</span> }
+    }
+
+    <span class="kw">public void</span> <span class="fn">stop</span>() { running = <span class="kw">false</span>; }   <span class="cmt">// other thread sees this immediately</span>
+}</pre>
+  </div>
+
+  <div class="analogy">Imagine a whiteboard in a kitchen. <code>volatile</code> is like saying "always read the whiteboard, never trust your memory." <code>synchronized</code> is "lock the whiteboard room — only one cook in at a time, and when they leave, everyone else's notes are updated."</div>
+
+  <h3>When to use which</h3>
+  <table>
+    <tr><th>Need</th><th>Use</th></tr>
+    <tr><td>Read-only flag updated from another thread</td><td><code>volatile</code></td></tr>
+    <tr><td>Read-modify-write (<code>count++</code>, list.add)</td><td><code>synchronized</code> or <code>AtomicXxx</code></td></tr>
+    <tr><td>Compound action across multiple fields</td><td><code>synchronized</code></td></tr>
+    <tr><td>Single counter / single reference, lock-free</td><td><code>AtomicInteger</code> / <code>AtomicReference</code></td></tr>
+  </table>
+
+  <div class="gotcha"><code>volatile</code> on <code>count++</code> does NOT make it thread-safe. <code>count++</code> is read-modify-write — three operations. Two threads can both read 5, both write 6, and you've lost an increment. Use <code>AtomicInteger.incrementAndGet()</code>.</div>
+
+  <div class="so-what"><strong>volatile</strong> = visibility only. <strong>synchronized</strong> = visibility + atomicity (mutual exclusion). When in doubt, synchronized.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 13. Executors & Thread Pools                            -->
+<!-- ====================================================== -->
+<div class="feature" id="s13">
+  <div class="feature-header">
+    <span class="feature-num">13</span>
+    <h2>Executors and Thread Pools — Don't Hire a New Cook for Every Order</h2>
+  </div>
+
+  <div class="scene">Imagine Sarah's shop hires a new barista every time a customer walks in, then fires them after one drink. Insane, right? Yet that's what <code>new Thread(task).start()</code> for every request does — creating a thread costs ~1 MB of memory and milliseconds of OS overhead. ExecutorService is the staffing agency that maintains a pool of standing-by baristas.</div>
+
+  <h3>The four common pools</h3>
+  <table>
+    <tr><th>Factory method</th><th>Behavior</th><th>Use case</th></tr>
+    <tr><td><code>newFixedThreadPool(n)</code></td><td>n threads, unbounded queue</td><td>Steady load, known concurrency</td></tr>
+    <tr><td><code>newCachedThreadPool()</code></td><td>Unbounded threads, threads die after 60s idle</td><td>Many short-lived tasks, bursty</td></tr>
+    <tr><td><code>newSingleThreadExecutor()</code></td><td>1 thread, sequential execution</td><td>Order-dependent tasks (logger, sequencer)</td></tr>
+    <tr><td><code>newScheduledThreadPool(n)</code></td><td>Delayed/periodic tasks</td><td>Cron-style jobs</td></tr>
+  </table>
+
+  <h3>Submit and wait</h3>
+  <div class="code-block">
+    <span class="code-label demo">Future and CompletableFuture</span>
+<pre><span class="type">ExecutorService</span> pool = <span class="type">Executors</span>.<span class="fn">newFixedThreadPool</span>(<span class="num">4</span>);
+
+<span class="cmt">// Submit returns a Future — the task's "claim ticket"</span>
+<span class="type">Future</span>&lt;<span class="type">String</span>&gt; future = pool.<span class="fn">submit</span>(() -&gt; {
+    <span class="type">Thread</span>.<span class="fn">sleep</span>(<span class="num">1000</span>);
+    <span class="kw">return</span> <span class="str">"done"</span>;
+});
+
+<span class="type">String</span> result = future.<span class="fn">get</span>();   <span class="cmt">// blocks until the task finishes</span>
+
+<span class="cmt">// Modern: CompletableFuture — chainable, non-blocking</span>
+<span class="type">CompletableFuture</span>.<span class="fn">supplyAsync</span>(() -&gt; <span class="fn">fetchUser</span>(<span class="num">42</span>), pool)
+    .<span class="fn">thenApply</span>(user -&gt; user.getName())
+    .<span class="fn">thenAccept</span>(name -&gt; System.out.<span class="fn">println</span>(name))
+    .<span class="fn">exceptionally</span>(ex -&gt; { ex.<span class="fn">printStackTrace</span>(); <span class="kw">return null</span>; });
+
+pool.<span class="fn">shutdown</span>();   <span class="cmt">// always shutdown — else JVM won't exit</span></pre>
+  </div>
+
+  <div class="gotcha"><code>Executors.newCachedThreadPool()</code> can create unlimited threads → if your tasks block (e.g., on slow I/O), you can run out of memory. Prefer <code>new ThreadPoolExecutor(...)</code> with explicit bounded queue + rejection policy in production.</div>
+
+  <h3>Virtual Threads (Java 21+)</h3>
+  <p>Lightweight threads managed by the JVM, not the OS. Cost: ~few KB. You can spin up <strong>millions</strong>. Perfect for I/O-bound work where each task spends most of its time waiting on a network call. The "one thread per request" model is back — but cheap.</p>
+
+  <div class="code-block">
+    <span class="code-label good">Virtual threads (Java 21+)</span>
+<pre><span class="kw">try</span> (<span class="type">ExecutorService</span> exec = <span class="type">Executors</span>.<span class="fn">newVirtualThreadPerTaskExecutor</span>()) {
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">10_000</span>; i++) {
+        exec.<span class="fn">submit</span>(() -&gt; <span class="fn">callSlowApi</span>());
+    }
+}   <span class="cmt">// AutoCloseable — waits for all tasks</span></pre>
+  </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 14. Locks & Concurrent Collections                      -->
+<!-- ====================================================== -->
+<div class="feature" id="s14">
+  <div class="feature-header">
+    <span class="feature-num">14</span>
+    <h2>Beyond synchronized — Locks, Atomics, and Concurrent Collections</h2>
+  </div>
+
+  <h3>ReentrantLock — synchronized with superpowers</h3>
+  <p><code>synchronized</code> is simple but rigid. <code>ReentrantLock</code> gives you tryLock (non-blocking attempt), interruptible lock, fair ordering, and multiple condition variables.</p>
+
+  <div class="code-block">
+    <span class="code-label example">ReentrantLock — flexible mutex</span>
+<pre><span class="type">Lock</span> lock = <span class="kw">new</span> <span class="type">ReentrantLock</span>();
+
+<span class="cmt">// Try to acquire for 500ms — give up if it can't</span>
+<span class="kw">if</span> (lock.<span class="fn">tryLock</span>(<span class="num">500</span>, <span class="type">TimeUnit</span>.MILLISECONDS)) {
+    <span class="kw">try</span> {
+        <span class="cmt">// critical section</span>
+    } <span class="kw">finally</span> {
+        lock.<span class="fn">unlock</span>();   <span class="cmt">// MUST be in finally — else lock leaks forever</span>
+    }
+}</pre>
+  </div>
+
+  <h3>ReadWriteLock — many readers, one writer</h3>
+  <p>If your data is read 100x more often than written, full mutual exclusion is wasteful. <code>ReentrantReadWriteLock</code> lets unlimited readers in concurrently, but writers get exclusive access.</p>
+
+  <h3>Atomics — lock-free counters</h3>
+  <p><code>AtomicInteger</code>, <code>AtomicLong</code>, <code>AtomicReference</code> use CPU-level CAS (compare-and-swap) instructions. No locks, no blocking — just retry-on-conflict at the hardware level.</p>
+
+  <div class="code-block">
+    <span class="code-label good">AtomicInteger</span>
+<pre><span class="type">AtomicInteger</span> count = <span class="kw">new</span> <span class="type">AtomicInteger</span>();
+count.<span class="fn">incrementAndGet</span>();    <span class="cmt">// thread-safe ++ without synchronized</span>
+count.<span class="fn">compareAndSet</span>(<span class="num">5</span>, <span class="num">10</span>);  <span class="cmt">// "if value is 5, set to 10" atomically</span></pre>
+  </div>
+
+  <h3>Concurrent collections</h3>
+  <table>
+    <tr><th>Collection</th><th>What's special</th></tr>
+    <tr><td><code>ConcurrentHashMap</code></td><td>Per-bucket locks. Reads are lock-free. Writes only contend on the same bucket.</td></tr>
+    <tr><td><code>CopyOnWriteArrayList</code></td><td>Every write creates a new copy. Reads are lock-free and very fast. Use only when reads dominate writes massively.</td></tr>
+    <tr><td><code>BlockingQueue</code> (ArrayBlockingQueue, LinkedBlockingQueue)</td><td>Producer-consumer pattern. <code>put()</code> blocks if full, <code>take()</code> blocks if empty.</td></tr>
+    <tr><td><code>ConcurrentLinkedQueue</code></td><td>Lock-free FIFO queue (Michael-Scott algorithm).</td></tr>
+  </table>
+
+  <div class="analogy">Think of <code>ConcurrentHashMap</code> as a parking garage with separate gates per row. Pre-Java 8 it had ~16 gates (segments). Java 8 onwards, every row has its own little gate (CAS). Two cars heading to different rows never wait.</div>
+
+  <div class="tip">Default to <code>ConcurrentHashMap</code> over <code>Collections.synchronizedMap()</code> — the latter wraps every operation in a single lock, which kills concurrency.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 15. JVM Memory Model                                    -->
+<!-- ====================================================== -->
+<div class="feature" id="s15">
+  <div class="feature-header">
+    <span class="feature-num">15</span>
+    <h2>JVM Memory Model — Where Does Your Object Actually Live?</h2>
+  </div>
+
+  <div class="scene">Devansh writes <code>Person p = new Person("Sarah")</code>. He's been told "objects go on the heap, primitives on the stack." But <em>which</em> stack? <em>Where</em> in the heap? And what is this Metaspace thing? Let's open the JVM and look inside.</div>
+
+  <h3>The five memory areas</h3>
+  <ul>
+    <li><strong>Heap</strong> — shared by all threads. All objects (everything created with <code>new</code>) live here. Subdivided into Young Gen (Eden + two Survivor spaces) and Old Gen.</li>
+    <li><strong>Stack</strong> — one per thread. Holds method frames: each frame contains local variables and the return address. Primitives and object references (NOT the objects themselves) live here.</li>
+    <li><strong>Metaspace</strong> (Java 8+; replaced PermGen) — class metadata, method bytecode, runtime constant pool. Native memory, grows dynamically.</li>
+    <li><strong>PC Register</strong> — one per thread. Holds the address of the current bytecode instruction.</li>
+    <li><strong>Native Method Stack</strong> — for JNI / native calls.</li>
+  </ul>
+
+  <div class="analogy">Picture a hotel. The <strong>heap</strong> is the giant shared lobby where all the actual furniture (objects) sits. Each <strong>thread</strong> is a guest with their own private notepad (stack) — they jot down where in the lobby their stuff is (references). The <strong>metaspace</strong> is the hotel's manual, listing what types of furniture exist.</div>
+
+  <h3>Stack vs Heap — a concrete example</h3>
+  <div class="code-block">
+    <span class="code-label demo">Where does what go?</span>
+<pre><span class="kw">void</span> <span class="fn">checkOut</span>() {
+    <span class="kw">int</span> total = <span class="num">100</span>;                       <span class="cmt">// primitive — on this thread's STACK</span>
+    <span class="type">String</span> name = <span class="str">"Sarah"</span>;                  <span class="cmt">// reference on STACK, "Sarah" String on HEAP (in pool)</span>
+    <span class="type">Order</span> order = <span class="kw">new</span> <span class="type">Order</span>(<span class="num">42</span>, name);     <span class="cmt">// reference on STACK, Order object on HEAP</span>
+}   <span class="cmt">// stack frame discarded — heap objects live until GC</span></pre>
+  </div>
+
+  <h3>Young vs Old generation</h3>
+  <p>The heap has two main zones:</p>
+  <ul>
+    <li><strong>Young Generation</strong> — where new objects are born (specifically in Eden). Most objects die young (the "weak generational hypothesis"). Young GC is fast and frequent.</li>
+    <li><strong>Old Generation</strong> — objects that survive several Young GC cycles get promoted here. Long-lived objects (caches, singletons). Old GC is slower but rarer.</li>
+  </ul>
+
+  <div class="gotcha"><code>StackOverflowError</code> = stack ran out (usually unbounded recursion). <code>OutOfMemoryError: Java heap space</code> = heap is full. Different problems, different fixes — increase <code>-Xss</code> for stack, <code>-Xmx</code> for heap.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 16. Garbage Collection                                  -->
+<!-- ====================================================== -->
+<div class="feature" id="s16">
+  <div class="feature-header">
+    <span class="feature-num">16</span>
+    <h2>Garbage Collection — Java's Janitor</h2>
+  </div>
+
+  <p class="lead">The GC's job is to find objects no one is using anymore and reclaim their memory. The how and when has evolved dramatically — knowing modern GCs (G1, ZGC, Shenandoah) is a strong signal in interviews.</p>
+
+  <h3>What does "no one is using" mean?</h3>
+  <p>The GC walks from a set of <strong>GC roots</strong> (live thread stacks, static fields, JNI references) and marks every object it can reach. Anything not reached is unreachable → garbage → freed.</p>
+
+  <div class="analogy">Imagine the GC standing at the entrance of a maze. It follows every path, painting each room green. When done, any room not painted green is empty and gets demolished. That's "mark-and-sweep."</div>
+
+  <h3>Generational hypothesis — the key insight</h3>
+  <p>Empirically, <strong>most objects die young</strong>. A request handler creates 100 short-lived objects, returns, and they're all garbage. Why scan the whole heap when 99% of garbage is in the young area? Modern GCs split the heap into Young + Old and run different algorithms on each.</p>
+
+  <h3>GC algorithms — the modern lineup</h3>
+  <table>
+    <tr><th>GC</th><th>Pause time</th><th>Best for</th></tr>
+    <tr><td><strong>Serial</strong></td><td>Stops the world. Single-threaded.</td><td>Tiny apps, embedded</td></tr>
+    <tr><td><strong>Parallel (Throughput)</strong></td><td>Stops the world. Multi-threaded.</td><td>Batch jobs — max throughput, pauses ok</td></tr>
+    <tr><td><strong>G1 (default since Java 9)</strong></td><td>Tries to hit a target pause (e.g., 200ms). Region-based.</td><td>Most server apps with multi-GB heap</td></tr>
+    <tr><td><strong>ZGC / Shenandoah</strong></td><td>&lt;10ms pauses, even on 100GB+ heaps</td><td>Latency-critical, large heap apps</td></tr>
+  </table>
+
+  <h3>Stop-the-world (STW)</h3>
+  <p>For some GC phases, all application threads must pause. This is "stop-the-world." It's why a 16 GB heap full of long-lived objects can cause noticeable lag spikes. Modern GCs (G1, ZGC) minimize STW pauses by doing most work concurrently with the application.</p>
+
+  <h3>When you can't be GC'd</h3>
+  <p>Common causes of memory leaks in Java (yes, leaks exist despite GC):</p>
+  <ul>
+    <li><strong>Static collections that grow forever</strong> — a static <code>HashMap</code> that you never evict from.</li>
+    <li><strong>Unclosed listeners / callbacks</strong> — registered but never deregistered. The framework keeps a strong reference to your object.</li>
+    <li><strong>ThreadLocals not removed</strong> — a thread in a pool retains its ThreadLocal entry across requests.</li>
+    <li><strong>Caches without size limits</strong> — use <code>WeakHashMap</code> or a real cache library (Caffeine).</li>
+  </ul>
+
+  <div class="tip">If asked "explain GC," structure it as: (1) what's garbage, (2) generational hypothesis, (3) name the algorithm you've used (G1 by default), (4) STW trade-off. Bonus: mention ZGC for sub-10ms pauses on huge heaps.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 17. ClassLoaders                                        -->
+<!-- ====================================================== -->
+<div class="feature" id="s17">
+  <div class="feature-header">
+    <span class="feature-num">17</span>
+    <h2>ClassLoaders — Who Brings Your Classes In?</h2>
+  </div>
+
+  <div class="scene">When you run <code>java -cp myapp.jar com.example.Main</code>, who actually loads <code>Main.class</code> into memory? It's not magic — it's a chain of ClassLoaders, each with its own job and its own search path.</div>
+
+  <h3>The classic three-tier hierarchy</h3>
+  <ul>
+    <li><strong>Bootstrap ClassLoader</strong> — written in C++, part of the JVM itself. Loads the core JDK classes (<code>java.lang.*</code>, <code>java.util.*</code>). Pre-Java 9 these came from <code>rt.jar</code>; post-Java 9 from JRT modules.</li>
+    <li><strong>Platform (Extension) ClassLoader</strong> — loads JDK extension modules. A child of bootstrap.</li>
+    <li><strong>Application (System) ClassLoader</strong> — loads classes from your <code>-cp</code> classpath. A child of platform. This is the one that loads <em>your</em> code.</li>
+  </ul>
+
+  <h3>The delegation model</h3>
+  <p>When asked to load class X, a ClassLoader first asks its <em>parent</em> ("can you load X?"). Only if the parent can't does it try locally. This walks all the way up to bootstrap before any child tries.</p>
+
+  <div class="analogy">Picture a chain of librarians. You ask the junior librarian (Application) for "java.lang.String." She first asks her boss (Platform). Boss asks her boss (Bootstrap). Bootstrap finds it in the core JDK shelf and hands it down the chain. This prevents you from accidentally substituting a malicious <code>java.lang.String</code>.</div>
+
+  <h3>Why does this matter?</h3>
+  <ul>
+    <li><strong>Class identity = (class name, ClassLoader)</strong>. Two different ClassLoaders can load the same class name and the JVM treats them as different types. Cast between them → ClassCastException.</li>
+    <li><strong>Hot reloading</strong> — frameworks like Spring DevTools, Tomcat, and IDEs use multiple ClassLoaders so they can swap class versions without restarting the JVM.</li>
+    <li><strong>Plugin systems</strong> — each plugin gets its own ClassLoader, isolated from others.</li>
+  </ul>
+
+  <div class="gotcha">Frameworks sometimes break delegation (Tomcat does — it loads webapp classes <em>first</em> from the WAR, then delegates). This lets webapps ship their own version of a library, but causes "ClassCastException: com.foo.Bar cannot be cast to com.foo.Bar" when types cross ClassLoader boundaries.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 18. Streams & Functional                                -->
+<!-- ====================================================== -->
+<div class="feature" id="s18">
+  <div class="feature-header">
+    <span class="feature-num">18</span>
+    <h2>Streams &amp; Functional Java — Pipelines, Lazy Evaluation, the Whole Story</h2>
+  </div>
+
+  <div class="scene">Mira has a list of orders. The old way: a 30-line for-loop with nested ifs to find the top 5 customers by spend in the last week. The new way (Java 8+): a 5-line stream. Let's understand <em>why</em> the new way is better, and what's actually happening underneath.</div>
+
+  <h3>What is a stream?</h3>
+  <p>A Stream is a sequence of elements supporting <em>declarative</em> operations like filter, map, reduce. It's NOT a data structure — it doesn't store anything. It's a <em>pipeline</em> that lazily processes elements from a source.</p>
+
+  <div class="code-block">
+    <span class="code-label demo">A typical pipeline</span>
+<pre><span class="type">List</span>&lt;<span class="type">Order</span>&gt; orders = <span class="cmt">/* ... */</span>;
+
+<span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Double</span>&gt; topCustomers = orders.<span class="fn">stream</span>()
+    .<span class="fn">filter</span>(o -&gt; o.<span class="fn">getDate</span>().<span class="fn">isAfter</span>(<span class="type">LocalDate</span>.<span class="fn">now</span>().<span class="fn">minusDays</span>(<span class="num">7</span>)))
+    .<span class="fn">collect</span>(<span class="type">Collectors</span>.<span class="fn">groupingBy</span>(<span class="type">Order</span>::getCustomer,
+                                <span class="type">Collectors</span>.<span class="fn">summingDouble</span>(<span class="type">Order</span>::getAmount)));</pre>
+  </div>
+
+  <h3>Three pieces of every stream</h3>
+  <ol style="margin-left:1.3rem">
+    <li><strong>Source</strong> — collection, array, I/O channel, generator. Where elements come from.</li>
+    <li><strong>Intermediate operations</strong> — <code>filter</code>, <code>map</code>, <code>flatMap</code>, <code>sorted</code>, <code>distinct</code>. Lazy — they describe work, don't do it.</li>
+    <li><strong>Terminal operation</strong> — <code>collect</code>, <code>forEach</code>, <code>reduce</code>, <code>count</code>. Triggers the actual computation.</li>
+  </ol>
+
+  <div class="analogy">A stream pipeline is like an assembly line. The source is the conveyor belt feeding raw items. Each intermediate operation is a station that transforms or rejects items. The terminal operation is the box at the end that catches the output. Until the box is in place, the conveyor doesn't move — that's laziness.</div>
+
+  <h3>Lazy evaluation — the key superpower</h3>
+  <p>Intermediate ops don't run until a terminal op pulls. This means <strong>short-circuiting</strong>: <code>findFirst()</code> only processes elements until it finds one. <code>limit(10)</code> stops after ten. Streams over infinite sources (<code>Stream.iterate</code>, <code>Stream.generate</code>) work because of laziness.</p>
+
+  <h3>Parallel streams</h3>
+  <p>Add <code>.parallel()</code> and the JVM splits the work across the common ForkJoinPool. Sounds magical — and is dangerous if abused.</p>
+
+  <div class="gotcha">Parallel streams use the SHARED common ForkJoinPool. If your task is I/O-bound or you call them from multiple places, threads contend. Also, mutating shared state inside a parallel stream (e.g., <code>list.add</code>) is a race condition. Rule: parallel only for CPU-heavy, stateless, large-N work.</div>
+
+  <h3>Functional interfaces — the building blocks</h3>
+  <table>
+    <tr><th>Interface</th><th>Signature</th><th>When to use</th></tr>
+    <tr><td><code>Function&lt;T, R&gt;</code></td><td>R apply(T)</td><td>Transform: <code>map</code></td></tr>
+    <tr><td><code>Predicate&lt;T&gt;</code></td><td>boolean test(T)</td><td>Filter</td></tr>
+    <tr><td><code>Consumer&lt;T&gt;</code></td><td>void accept(T)</td><td>Side effect: <code>forEach</code></td></tr>
+    <tr><td><code>Supplier&lt;T&gt;</code></td><td>T get()</td><td>Lazy value, factory</td></tr>
+    <tr><td><code>BiFunction&lt;T, U, R&gt;</code></td><td>R apply(T, U)</td><td>Two-arg transform: <code>reduce</code> accumulator</td></tr>
+  </table>
+
+  <div class="tip">Don't force everything into streams. A simple for-loop is often clearer for 5 lines of imperative code. Streams shine for declarative transformations — filter / map / reduce / group — where the loop version would have nested conditionals and accumulator variables.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 19. Optional                                            -->
+<!-- ====================================================== -->
+<div class="feature" id="s19">
+  <div class="feature-header">
+    <span class="feature-num">19</span>
+    <h2>Optional — Use It Right or Don't Use It</h2>
+  </div>
+
+  <p class="lead"><code>Optional</code> was added in Java 8 to express "this might be absent." The community immediately misused it everywhere. Here's how to use it the way Brian Goetz (Java's chief language architect) recommends.</p>
+
+  <h3>What it's for</h3>
+  <p>Optional exists to make "no value" explicit in <strong>return types</strong>. A method returning <code>Optional&lt;User&gt;</code> tells the caller, "I might not find one — handle that case."</p>
+
+  <div class="code-block">
+    <span class="code-label good">The right way</span>
+<pre><span class="kw">public</span> <span class="type">Optional</span>&lt;<span class="type">User</span>&gt; <span class="fn">findById</span>(<span class="type">String</span> id) {
+    <span class="kw">return</span> <span class="type">Optional</span>.<span class="fn">ofNullable</span>(userMap.<span class="fn">get</span>(id));
+}
+
+<span class="cmt">// Caller is forced to handle absence:</span>
+<span class="type">String</span> name = <span class="fn">findById</span>(<span class="str">"u1"</span>)
+    .<span class="fn">map</span>(<span class="type">User</span>::getName)
+    .<span class="fn">orElse</span>(<span class="str">"Unknown"</span>);</pre>
+  </div>
+
+  <h3>What it's NOT for</h3>
+  <ul>
+    <li><strong>Fields</strong> — don't make <code>Optional&lt;Address&gt; address</code> a field. Use null directly, or split into two classes. Optional doesn't serialize well and adds memory overhead.</li>
+    <li><strong>Method parameters</strong> — overloads or just allowing null are simpler.</li>
+    <li><strong>Collection elements</strong> — <code>List&lt;Optional&lt;User&gt;&gt;</code> is silly. An empty list <em>is</em> the absence.</li>
+    <li><strong>Direct .get() without isPresent</strong> — defeats the entire purpose. If you're going to call <code>.get()</code> blindly, you've replaced NullPointerException with NoSuchElementException for no benefit.</li>
+  </ul>
+
+  <div class="analogy">Optional is like a small box that may contain a gift or be empty. The recipient has to open it carefully. Wrapping every variable in your house in such a box (fields, parameters, list elements) just makes life annoying for everyone.</div>
+
+  <div class="gotcha"><code>Optional</code> is NOT a substitute for <code>null</code> everywhere. It's a tool for one specific signaling problem: "this query might return nothing." Use it surgically.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 20. Tricky Gotchas                                      -->
+<!-- ====================================================== -->
+<div class="feature" id="s20">
+  <div class="feature-header">
+    <span class="feature-num">20</span>
+    <h2>The Tricky Gotchas — Questions That Separate Mid from Senior</h2>
+  </div>
+
+  <p class="lead">These are the questions where interviewers smile when you nail them — they reveal whether you've actually shipped Java in production or just memorized a textbook.</p>
+
+  <h3>1. <code>finally</code> runs even after return</h3>
+  <div class="code-block">
+    <span class="code-label demo">What does this print?</span>
+<pre><span class="kw">int</span> <span class="fn">tricky</span>() {
+    <span class="kw">try</span> {
+        <span class="kw">return</span> <span class="num">1</span>;
+    } <span class="kw">finally</span> {
+        System.out.<span class="fn">println</span>(<span class="str">"finally"</span>);   <span class="cmt">// PRINTS "finally"</span>
+        <span class="cmt">// return 2;  // BAD — would override return 1</span>
+    }
+}
+<span class="cmt">// Output: "finally", returns 1.</span></pre>
+  </div>
+
+  <h3>2. Autoboxing in collections</h3>
+  <p><code>list.remove(2)</code> on a <code>List&lt;Integer&gt;</code> — does it remove the element <em>at index 2</em> or the element <em>with value 2</em>?</p>
+  <p>Index 2! Because <code>List</code> has both <code>remove(int index)</code> and <code>remove(Object o)</code>, and the primitive <code>int</code> matches the index version. To remove by value: <code>list.remove(Integer.valueOf(2))</code>.</p>
+
+  <h3>3. Static method "overriding"</h3>
+  <p>Static methods cannot be overridden — only <em>hidden</em>. A child class declaring <code>static foo()</code> doesn't override the parent's <code>static foo()</code>; it shadows it. Calls resolve at compile time based on the reference type, not the runtime object.</p>
+
+  <h3>4. <code>String.intern()</code> moves a string into the pool</h3>
+  <p>Useful for deduplication when reading millions of strings from a file. But: don't intern user input — the pool is a permanent area (well, GC'd in modern JVMs but expensive), and an attacker filling it with garbage = denial of service.</p>
+
+  <h3>5. The diamond problem with default methods</h3>
+  <p>Java 8 allowed interfaces to have default methods. What if a class implements two interfaces with the same default method? You MUST override and pick: <code>InterfaceA.super.method();</code></p>
+
+  <h3>6. Constructor of an inner class secretly captures the outer</h3>
+  <p>A non-static inner class holds an implicit reference to its enclosing instance. If the inner is long-lived (e.g., stored in a static map or sent to an executor), the outer can't be GC'd → memory leak. Solution: use a <code>static</code> nested class when no enclosing reference is needed.</p>
+
+  <h3>7. <code>HashMap</code> iteration order is not insertion order</h3>
+  <p>Insertion order is <strong>not preserved</strong> in HashMap. If you need it, use <code>LinkedHashMap</code>. If you need sorted order, use <code>TreeMap</code>.</p>
+
+  <h3>8. <code>SimpleDateFormat</code> is NOT thread-safe</h3>
+  <p>The classic 2009-era bug. Sharing a <code>SimpleDateFormat</code> across threads silently corrupts dates. Use <code>DateTimeFormatter</code> (Java 8+) — it's immutable and thread-safe.</p>
+
+  <h3>9. <code>equals</code> on arrays compares references, not contents</h3>
+  <p><code>arr1.equals(arr2)</code> is <code>arr1 == arr2</code>. Use <code>Arrays.equals(arr1, arr2)</code> for element-wise comparison, <code>Arrays.deepEquals</code> for nested arrays.</p>
+
+  <h3>10. <code>Integer i = null; int x = i;</code> throws NullPointerException</h3>
+  <p>Auto-unboxing a null wrapper throws NPE — a classic source of "where did this NPE come from?" debugging. Always null-check wrappers before auto-unboxing.</p>
+
+  <div class="so-what">These aren't trivia — every one of them has bitten production code at companies you've heard of. If you can rattle off five of these in an interview, you've moved from "I learned Java" to "I shipped Java."</div>
+
+  <div class="tip">When you don't know an answer, say so. Then reason out loud about what it <em>could</em> be — interviewers value clear thinking far more than perfect recall.</div>
+</div>
+
+  </main>
+</div>
+
+<div class="likes-row">
+  <p class="like-prompt">
+    <strong>Did this guide make Java click?</strong>
+    If it helped, tap the ❤️ — <em>that's how I know it landed.</em>
+  </p>
+  <div id="likes"></div>
+</div>
+
+</body>
+</html>
