@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Parking Lot — LLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.92rem;margin-bottom:1.5rem;max-width:760px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.3rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.88rem;color:var(--text);line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.88rem}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.highlight strong{font-weight:700}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.88rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.88rem;color:var(--text);border:1px solid var(--border)}
+.ans strong{color:var(--heading)}
+
+.tbl{width:100%;border-collapse:collapse;font-size:.84rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.6rem .85rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">Low-Level Design</div>
+  <h1>Parking <span>Lot</span></h1>
+  <p class="sub">A multi-floor smart parking lot — built up from a paper-ticket booth, with Strategy + State + Observer + Singleton, full Java code &amp; the gaps in Grokking's classic design fixed.</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Clarify Requirements</a></li>
+      <li><a href="#s2">Actors &amp; Use Cases</a></li>
+      <li><a href="#s3">Story — From Booth to Smart Lot</a></li>
+      <li><a href="#s4">Core Entities</a></li>
+      <li><a href="#s5">ER / Schema Diagram</a></li>
+      <li><a href="#s6">Class Diagram</a></li>
+      <li><a href="#s7">Design Patterns Used</a></li>
+      <li><a href="#s8">Sequence — Entry &amp; Exit</a></li>
+      <li><a href="#s9">State Diagram — Ticket</a></li>
+      <li><a href="#s10">Java Implementation</a></li>
+      <li><a href="#s11">Intuition Step-by-Step</a></li>
+      <li><a href="#s12">Improvements over Grokking</a></li>
+      <li><a href="#s13">Extension Points</a></li>
+      <li><a href="#s14">Trade-offs &amp; Talking Points</a></li>
+      <li><a href="#s15">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECTION 1: REQUIREMENTS                     -->
+<!-- ════════════════════════════════════════════ -->
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>Clarify Requirements</h2>
+  <p>Imagine you're at a busy mall on a Saturday afternoon. Cars are streaming in, motorcycles are weaving through, the security guard is waving people up to floor 2 because floor 1 is full, and an electric SUV is hunting for a charger. Every one of those flows is something the parking lot has to handle. Before we draw a single class, we lock down what's in scope and what isn't — that's how an interviewer hears that you've thought about the problem, not just the code.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Multi-floor lot with multiple entry &amp; exit gates per floor</li>
+        <li>Issue a ticket at entry (license plate + entry-time + assigned spot)</li>
+        <li>Park different vehicles: Motorcycle, Car, Van, Truck, Electric Car</li>
+        <li>Different spot types: Motorcycle, Compact, Large, Electric, Handicapped</li>
+        <li>Smart spot allocation — pick the best spot for the vehicle (nearest, type-fit)</li>
+        <li>Calculate fee at exit — flat, tiered, and peak-hour rates supported</li>
+        <li>Pay by Cash or Card; failed payment must be safely retried</li>
+        <li>Display board on each floor shows free spots per type — updates live</li>
+        <li>Admin can add/remove floors, spots, gates, attendants; tune pricing</li>
+        <li>Lost ticket flow — flat penalty fee, manual lookup by license plate</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🎯 Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Concurrency:</strong> 50+ entry/exit gates issuing tickets simultaneously must never double-allocate a spot</li>
+        <li><strong>Latency:</strong> Spot allocation &lt; 100 ms — drivers don't wait at the gate</li>
+        <li><strong>Availability:</strong> A single floor's gate failure must not bring the lot down</li>
+        <li><strong>Auditability:</strong> Every ticket, payment, and spot transition is logged</li>
+      </ul>
+      <h3 style="margin-top:1rem">🚫 Out of Scope</h3>
+      <ul>
+        <li>Online reservation / pre-booking (extension point only)</li>
+        <li>License-plate OCR / automatic gate hardware drivers</li>
+        <li>Valet service &amp; multi-tenant operators</li>
+        <li>Tax computation, refund disputes, accounting integrations</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>Interviewer trick:</strong> They <em>love</em> when you mention "lost ticket" and "peak-hour pricing" up-front. Both expose lifecycle &amp; strategy thinking — which most candidates skip and only stumble into when prodded.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECTION 2: ACTORS & USE CASES               -->
+<!-- ════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Actors &amp; Use Cases</h2>
+  <p>Before nouns become classes, we ask: <em>who is doing things in this system, and what do they do?</em> Four humans interact with the lot directly, and one silent actor — the System itself — runs the display board, the allocator, and the clock. Drawing these as a flowchart (instead of just listing them) makes the boundary between human-driven and system-driven actions visible at a glance.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  D([Driver / Customer])
+  A([Parking Attendant])
+  M([Admin / Manager])
+  S([System])
+
+  D --> E[Take Ticket at Entry]
+  D --> P[Pay at Exit]
+  D --> LT[Report Lost Ticket]
+
+  A --> SC[Scan Ticket]
+  A --> CP[Process Cash Payment]
+  A --> LP[Lookup by License Plate]
+
+  M --> AF[Add / Remove Floor]
+  M --> ASP[Add / Remove Spot]
+  M --> AG[Add / Remove Gate]
+  M --> PR[Configure Pricing]
+
+  S --> AL[Allocate Best Spot]
+  S --> DB[Update Display Board]
+  S --> CF[Calculate Fee]
+  S --> NT[Notify on Full]
+
+  style D fill:#e8743b,stroke:#e8743b,color:#fff
+  style A fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style M fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style S fill:#38b265,stroke:#38b265,color:#fff
+    </div>
+  </div>
+
+  <div class="g4">
+    <div class="card"><h3 style="color:var(--orange)">Driver</h3><p>The person whose car is being parked. Triggers entry, pays at exit, may lose a ticket.</p></div>
+    <div class="card"><h3 style="color:var(--blue)">Attendant</h3><p>Floor staff. Scans tickets, accepts cash, looks up vehicles by plate when tickets are lost.</p></div>
+    <div class="card"><h3 style="color:var(--purple)">Admin</h3><p>Operations manager. Configures floors, spots, gates, pricing — everything that shapes capacity and revenue.</p></div>
+    <div class="card"><h3 style="color:var(--green)">System</h3><p>The silent actor. Allocates spots, refreshes display boards, calculates fees, and emits "lot full" alerts.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECTION 3: STORY ARC                        -->
+<!-- ════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-purple">Step 3</span>
+  <h2>Story — From a Paper-Ticket Booth to a Smart Lot</h2>
+  <p>The fastest way to design a parking lot is to <em>start with the dumbest version that could plausibly work</em>, watch it break, and let each break suggest the next class. We do this in three passes: the naive design, the mental split that fixes it, and the production shape. Every box you'll see in the class diagram later was put there because something concrete broke without it.</p>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:1.5rem 0 .8rem">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>You start with a single-floor lot, one gate, one attendant Raj at the booth with a stack of paper tickets and a clock. Cars come in, Raj scribbles the entry time on a ticket, hands it over. Cars leave, Raj reads the time, computes the fee on a calculator, accepts cash. Done. Code-wise this is one class with a list of spots and a HashMap of active tickets.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  Driver --> Booth[Raj's Booth<br/>paper tickets]
+  Booth --> Spot[Open Spot]
+  Booth --> DB[(Cashbox + Notebook)]
+  style Booth fill:#e05252,stroke:#e05252,color:#fff
+    </div>
+  </div>
+
+  <p>Then reality hits:</p>
+  <div class="g3">
+    <div class="card"><h3 style="color:var(--red)">💥 Truck shows up</h3><p>The next free spot is a compact slot. The truck doesn't fit. Raj walks the lot looking for a Large spot. <em>Spots aren't fungible.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Saturday rush</h3><p>Five cars enter simultaneously through two gates. Raj and his colleague both write down spot 12 for two different cars. <em>No concurrency control.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Floor 2 fills up</h3><p>Drivers waste 5 minutes circling floor 2 before realising it's full. <em>No live capacity signal.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 EV needs charge</h3><p>Compact spot fits the car, but there's no charging cable. <em>Spots have features, not just sizes.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Peak hour</h3><p>Mall is packed at 7pm. Flat rate gives away the scarcest hour for the same price as 3am. <em>Pricing is a strategy, not a constant.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Lost ticket</h3><p>Driver lost the paper. Raj has no way to look up entry time. <em>Ticket lifecycle has more states than ACTIVE/PAID.</em></p></div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:1.5rem 0 .8rem">Pass 2 — The mental split</h3>
+  <p>Every failure above maps to one of two concerns the booth was conflating:</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--blue)"><h3 style="color:var(--blue)">🅿️ Inventory plane</h3><p>What spots exist, where they are, what they fit, and whether they're free <em>right now</em>. This is hot, contended, must be thread-safe, and is the source of truth the display board reads from. ParkingLot, ParkingFloor, ParkingSpot live here.</p></div>
+    <div class="card" style="border-left:3px solid var(--orange)"><h3 style="color:var(--orange)">🎟️ Transaction plane</h3><p>What ticket was issued to whom, when, what they owe, and whether they paid. This is a per-vehicle workflow with a clear lifecycle (state machine). ParkingTicket, Payment, PricingStrategy live here.</p></div>
+  </div>
+
+  <p>That single split — inventory vs transaction — is the spine of the design. Anything in the inventory plane mutates a shared map under a lock; anything in the transaction plane is a per-ticket state machine that doesn't need to fight with anyone else for a lock.</p>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:1.5rem 0 .8rem">Pass 3 — The production shape</h3>
+  <p>Now we build the full architecture. Each numbered box below earns its place by fixing one of the failures from Pass 1. Read the badge color on each card to find the matching box in the diagram.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  subgraph entry [" "]
+    direction LR
+    EG[① Entry Gate]
+  end
+
+  subgraph lot ["ParkingLot Singleton"]
+    direction TB
+    PL[② ParkingLot]
+    SAS[③ SpotAllocationStrategy]
+    PS[④ PricingStrategy]
+  end
+
+  subgraph floors ["Floors"]
+    direction LR
+    F1[⑤ ParkingFloor 1]
+    F2[⑤ ParkingFloor 2]
+    F3[⑤ ParkingFloor 3]
+  end
+
+  subgraph spots ["Spots per floor"]
+    direction LR
+    SP[⑥ ParkingSpot]
+    DBd[⑦ DisplayBoard<br/>Observer]
+  end
+
+  subgraph tx ["Transaction"]
+    direction LR
+    PT[⑧ ParkingTicket<br/>State Machine]
+    PMT[⑨ Payment]
+  end
+
+  subgraph exit [" "]
+    direction LR
+    XG[⑩ Exit Gate]
+  end
+
+  EG --> PL
+  PL --> SAS
+  PL --> PS
+  PL --> F1
+  PL --> F2
+  PL --> F3
+  F1 --> SP
+  F1 --> DBd
+  SP -.notify.-> DBd
+  EG --> PT
+  XG --> PT
+  PT --> PMT
+  PMT --> PS
+
+  style EG fill:#e8743b,stroke:#e8743b,color:#fff
+  style PL fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style SAS fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style PS fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style F1 fill:#38b265,stroke:#38b265,color:#fff
+  style F2 fill:#38b265,stroke:#38b265,color:#fff
+  style F3 fill:#38b265,stroke:#38b265,color:#fff
+  style SP fill:#3cbfbf,stroke:#3cbfbf,color:#fff
+  style DBd fill:#d4a838,stroke:#d4a838,color:#000
+  style PT fill:#e05252,stroke:#e05252,color:#fff
+  style PMT fill:#e05252,stroke:#e05252,color:#fff
+  style XG fill:#e8743b,stroke:#e8743b,color:#fff
+    </div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.4rem 0 .8rem">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram to find the matching card. Each card answers four questions: what is it, why does it exist, what would break without it, and what does it talk to.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Entry / Exit Gate</h3>
+      <p>The physical gate where Raj used to sit, now a software service backing a hardware terminal. On entry it asks the lot to allocate a spot and prints a ticket. On exit it scans the ticket, asks PricingStrategy for the fee, takes payment, and triggers the spot release.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> Without separate Entry &amp; Exit Gate services, the lot has no API surface. They're the only place a Driver actually touches the system.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">②</span> ParkingLot (Singleton)</h3>
+      <p>The orchestrator. There's exactly one parking lot per facility — every gate, every floor, every active ticket roots up to it. Holds the map of floors, the registry of active tickets, and the shared allocation/pricing strategies.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> Without a single root, two gates could each spin up their own "lot" and double-allocate. Singleton + a synchronized issueTicket method is what makes "50 gates, no double-booking" actually work.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">③</span> SpotAllocationStrategy</h3>
+      <p>An interface, not a method. <code>NearestFirstStrategy</code> grabs the closest spot to the entry gate; <code>BestFitStrategy</code> grabs the smallest spot the vehicle still fits in (compact car → compact, never large). Swappable at runtime.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> The Grokking reference hardcodes a switch statement that always picks the first matching spot. The moment you want "EV cars prefer charging spots, fall back to compact" or "VIP gate gets nearest spots", a switch becomes a 6-clause mess. Strategy turns it into one line: <code>strategy.allocate(vehicle)</code>.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">④</span> PricingStrategy</h3>
+      <p>Another interface. <code>FlatRateStrategy</code> is ₹50/hour. <code>TieredRateStrategy</code> is ₹40 first hour, ₹30 next two, ₹20 after. <code>PeakHourStrategy</code> applies a 1.5× multiplier between 6–9 PM. The lot doesn't care which is plugged in.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> The reference design has one method <code>calculateFee(hours)</code> wired to a single rate table. Switching to peak pricing means rewriting that method everywhere it's called. Strategy isolates the change to one new class.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑤</span> ParkingFloor</h3>
+      <p>One physical floor. Owns its spots (segregated by type for O(1) lookup), has its own gates and display board. Knows how many spots of each type are free.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> Without a floor abstraction, a 4-floor lot becomes a single flat list of 800 spots and the allocator has no notion of "skip floor 2, it's full". Floor is the unit of partition.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑥</span> ParkingSpot</h3>
+      <p>One slot on the floor. Has a type (Compact / Large / Motorcycle / Electric / Handicapped), a number, and exactly one vehicle (or none). The <code>fits(vehicle)</code> method encodes the size-compatibility rules so they live in one place.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> Without a polymorphic fits-check, every allocator becomes a chain of if-vehicle-is-X-and-spot-is-Y conditions. Pushing the rule into the spot keeps allocation logic dumb.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑦</span> DisplayBoard (Observer)</h3>
+      <p>The "Floor 2 — 14 free, 3 EV" board you see when you drive in. Subscribes to spot events: when a spot becomes occupied or freed, the floor publishes an event, and every board on that floor refreshes its counts.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> Without Observer, the gate code would have to remember to call <code>board.refresh()</code> after every assign/release — easy to forget, easy to call twice, and impossible to scale to multiple boards. Observer is "publish once, listen forever".</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑧</span> ParkingTicket (State Machine)</h3>
+      <p>The receipt. Lives a real lifecycle: <code>ACTIVE</code> while the car is parked, <code>PAID</code> the moment payment clears, <code>EXITED</code> when the gate lifts, or <code>LOST</code> if the driver reports it gone. Each transition is gated — you can't pay a LOST ticket without going through the lost-ticket flow first.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> Reference has an enum with the values but no transitions. State pattern means a misuse like "pay an already-paid ticket" throws instead of double-charging.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑨</span> Payment</h3>
+      <p>One payment attempt — amount, method (Cash / Card), result. Uses PricingStrategy to compute the amount, hands the result back to the ticket. On failure, the ticket stays in ACTIVE and the spot stays held.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> Without a Payment object, fee calculation and spot release are tangled. If card processing fails halfway, you've already freed the spot and the next car drives over a still-parked car. Payment is the atomic boundary.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">⑩</span> Exit Gate</h3>
+      <p>Same shape as Entry, opposite direction. Validates the ticket is in PAID state, releases the spot back into the inventory, and lifts the barrier.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> A separate exit path means we can have <em>more exits than entries</em> at peak (drainage is faster than fill), and the entry/exit code paths can evolve independently.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>So in short —</strong> the parking lot is split into two planes. The <em>inventory plane</em> (Lot → Floor → Spot) is shared and contended; one synchronized method on the singleton serializes every spot allocation. The <em>transaction plane</em> (Ticket → Payment) is a per-vehicle state machine with no contention. The board listens to both; the strategies plug into either; the gates are the only API the outside world sees.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECTION 4: CORE ENTITIES                    -->
+<!-- ════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-blue">Step 4</span>
+  <h2>Core Entities</h2>
+  <p>Now we name every noun. For each one we say one sentence about its responsibility and list the 3–5 fields it absolutely needs. Methods come later in the class diagram — for now, just attributes.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Entity</th><th>Responsibility</th><th>Key Fields</th></tr></thead>
+      <tbody>
+        <tr><td><code>ParkingLot</code></td><td>Singleton root — owns floors, gates, active tickets</td><td><code>String name</code>, <code>List&lt;ParkingFloor&gt; floors</code>, <code>Map&lt;String,ParkingTicket&gt; activeTickets</code>, <code>SpotAllocationStrategy allocator</code>, <code>PricingStrategy pricer</code></td></tr>
+        <tr><td><code>ParkingFloor</code></td><td>One physical floor with its own spots, gates, board</td><td><code>String floorId</code>, <code>Map&lt;SpotType,List&lt;ParkingSpot&gt;&gt; spots</code>, <code>DisplayBoard board</code></td></tr>
+        <tr><td><code>ParkingSpot</code></td><td>One slot — knows its type and current vehicle</td><td><code>String spotId</code>, <code>SpotType type</code>, <code>Vehicle vehicle</code>, <code>boolean free</code></td></tr>
+        <tr><td><code>Vehicle</code></td><td>Abstract — the thing being parked</td><td><code>String licensePlate</code>, <code>VehicleType type</code></td></tr>
+        <tr><td><code>ParkingTicket</code></td><td>Receipt for one parking session — has a state machine</td><td><code>String ticketId</code>, <code>String licensePlate</code>, <code>String spotId</code>, <code>LocalDateTime entryTime</code>, <code>TicketStatus status</code>, <code>BigDecimal amount</code></td></tr>
+        <tr><td><code>Gate</code></td><td>Abstract entry/exit terminal</td><td><code>String gateId</code>, <code>String floorId</code></td></tr>
+        <tr><td><code>EntryGate / ExitGate</code></td><td>Subclasses — issue or close out a ticket</td><td>(plus methods)</td></tr>
+        <tr><td><code>DisplayBoard</code></td><td>Observer of spot events — shows live counts per type</td><td><code>String floorId</code>, <code>Map&lt;SpotType,Integer&gt; freeCounts</code></td></tr>
+        <tr><td><code>SpotAllocationStrategy</code></td><td>Interface — picks a spot for a vehicle</td><td>(no fields, behavior only)</td></tr>
+        <tr><td><code>PricingStrategy</code></td><td>Interface — computes fee from entry/exit time</td><td>(no fields, behavior only)</td></tr>
+        <tr><td><code>Payment</code></td><td>One payment attempt</td><td><code>String paymentId</code>, <code>BigDecimal amount</code>, <code>PaymentMethod method</code>, <code>PaymentStatus status</code></td></tr>
+        <tr><td><code>Account</code></td><td>Abstract user — Admin / Attendant</td><td><code>String userId</code>, <code>String name</code>, <code>AccountStatus status</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECTION 5: ER DIAGRAM                       -->
+<!-- ════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>ER / Schema Diagram</h2>
+  <p>Even though the in-memory design doesn't strictly need a database, drawing the ER tells you the <em>persistence shape</em> — and in an interview it shows you separated identity from references. Read each line as "one X owns many Y" or "one X belongs to one Y".</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  PARKING_LOT {
+    string lot_id PK
+    string name
+    string address
+  }
+  PARKING_FLOOR {
+    string floor_id PK
+    string lot_id FK
+    int floor_number
+  }
+  PARKING_SPOT {
+    string spot_id PK
+    string floor_id FK
+    string type
+    string spot_number
+    boolean is_free
+  }
+  GATE {
+    string gate_id PK
+    string floor_id FK
+    string kind
+  }
+  VEHICLE {
+    string license_plate PK
+    string type
+  }
+  PARKING_TICKET {
+    string ticket_id PK
+    string license_plate FK
+    string spot_id FK
+    string entry_gate_id FK
+    datetime entry_time
+    datetime exit_time
+    string status
+    decimal amount
+  }
+  PAYMENT {
+    string payment_id PK
+    string ticket_id FK
+    decimal amount
+    string method
+    string status
+    datetime paid_at
+  }
+  ACCOUNT {
+    string user_id PK
+    string role
+    string status
+  }
+  PARKING_LOT     ||--o{ PARKING_FLOOR  : "has"
+  PARKING_FLOOR   ||--o{ PARKING_SPOT   : "contains"
+  PARKING_FLOOR   ||--o{ GATE           : "has"
+  PARKING_SPOT    ||--o| PARKING_TICKET : "currently holds"
+  VEHICLE         ||--o{ PARKING_TICKET : "issued for"
+  PARKING_TICKET  ||--o{ PAYMENT        : "settled by"
+    </div>
+  </div>
+  <p style="font-size:.85rem;color:var(--text);margin-top:.5rem"><strong>Read the cardinality:</strong> one Lot has many Floors. One Floor has many Spots and many Gates. A Spot can hold zero or one Ticket at any moment (the <code>||--o|</code>). A Vehicle is identified by its plate and can have many tickets across visits. A Ticket can have multiple Payment attempts (because the first one might fail).</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECTION 6: CLASS DIAGRAM                    -->
+<!-- ════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-purple">Step 6</span>
+  <h2>Class Diagram</h2>
+  <p>Now we wire methods, inheritance, and relationships. Pay attention to which arrows are inheritance (<code>&lt;|--</code>), which are composition (<code>*--</code>), and which are association (<code>--&gt;</code>). The split between <em>abstract Vehicle/ParkingSpot/Account</em> and their concrete subclasses is what lets the lot work with "any vehicle" and "any spot" without caring about the concrete type.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+classDiagram
+  class ParkingLot {
+    -String name
+    -List~ParkingFloor~ floors
+    -Map~String,ParkingTicket~ activeTickets
+    -SpotAllocationStrategy allocator
+    -PricingStrategy pricer
+    -static ParkingLot instance
+    +getInstance() ParkingLot
+    +issueTicket(Vehicle) ParkingTicket
+    +closeTicket(String,PaymentMethod) Payment
+    +reportLostTicket(String) ParkingTicket
+    -synchronized assignSpot(Vehicle) ParkingSpot
+  }
+
+  class ParkingFloor {
+    -String floorId
+    -Map~SpotType,List~ParkingSpot~~ spots
+    -DisplayBoard board
+    +findFreeSpot(Vehicle) ParkingSpot
+    +releaseSpot(ParkingSpot)
+  }
+
+  class ParkingSpot {
+    <<abstract>>
+    -String spotId
+    -SpotType type
+    -Vehicle vehicle
+    -boolean free
+    +fits(Vehicle) boolean
+    +assign(Vehicle)
+    +release()
+  }
+  class CompactSpot
+  class LargeSpot
+  class MotorcycleSpot
+  class ElectricSpot
+  class HandicappedSpot
+
+  class Vehicle {
+    <<abstract>>
+    -String licensePlate
+    -VehicleType type
+  }
+  class Car
+  class Motorcycle
+  class Truck
+  class Van
+  class ElectricCar
+
+  class ParkingTicket {
+    -String ticketId
+    -String licensePlate
+    -String spotId
+    -LocalDateTime entryTime
+    -LocalDateTime exitTime
+    -TicketStatus status
+    -BigDecimal amount
+    +markPaid(BigDecimal)
+    +markLost()
+    +markExited()
+  }
+
+  class SpotAllocationStrategy {
+    <<interface>>
+    +allocate(Vehicle, List~ParkingFloor~) ParkingSpot
+  }
+  class NearestFirstStrategy
+  class BestFitStrategy
+
+  class PricingStrategy {
+    <<interface>>
+    +price(LocalDateTime, LocalDateTime, VehicleType) BigDecimal
+  }
+  class FlatRateStrategy
+  class TieredRateStrategy
+  class PeakHourStrategy
+
+  class Payment {
+    -String paymentId
+    -BigDecimal amount
+    -PaymentMethod method
+    -PaymentStatus status
+    +process() boolean
+  }
+
+  class DisplayBoard {
+    -String floorId
+    -Map~SpotType,Integer~ freeCounts
+    +onSpotChanged(SpotEvent)
+    +render() String
+  }
+
+  class Gate { <<abstract>> }
+  class EntryGate
+  class ExitGate
+
+  class Account { <<abstract>> }
+  class Admin
+  class ParkingAttendant
+
+  ParkingSpot <|-- CompactSpot
+  ParkingSpot <|-- LargeSpot
+  ParkingSpot <|-- MotorcycleSpot
+  ParkingSpot <|-- ElectricSpot
+  ParkingSpot <|-- HandicappedSpot
+
+  Vehicle <|-- Car
+  Vehicle <|-- Motorcycle
+  Vehicle <|-- Truck
+  Vehicle <|-- Van
+  Vehicle <|-- ElectricCar
+
+  SpotAllocationStrategy <|.. NearestFirstStrategy
+  SpotAllocationStrategy <|.. BestFitStrategy
+  PricingStrategy <|.. FlatRateStrategy
+  PricingStrategy <|.. TieredRateStrategy
+  PricingStrategy <|.. PeakHourStrategy
+
+  Gate <|-- EntryGate
+  Gate <|-- ExitGate
+  Account <|-- Admin
+  Account <|-- ParkingAttendant
+
+  ParkingLot "1" *-- "many" ParkingFloor
+  ParkingFloor "1" *-- "many" ParkingSpot
+  ParkingFloor "1" *-- "1" DisplayBoard
+  ParkingLot "1" --> "1" SpotAllocationStrategy
+  ParkingLot "1" --> "1" PricingStrategy
+  ParkingTicket "1" --> "0..*" Payment
+  ParkingSpot "0..1" --> "0..1" Vehicle
+  ParkingTicket --> ParkingSpot
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECTION 7: DESIGN PATTERNS                  -->
+<!-- ════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-yellow">Step 7</span>
+  <h2>Design Patterns Used</h2>
+  <p>An interviewer will absolutely ask "where are the patterns?". Here are the six that earn their keep — pattern name, who plays it, and the single sentence that justifies it.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔒 Singleton — <code>ParkingLot</code></h3>
+      <p>One physical lot, one in-memory root. Every gate, every floor, every active ticket reaches up to the same instance, so a synchronized <code>issueTicket</code> on it is enough to prevent double allocation across all gates.</p>
+    </div>
+    <div class="card">
+      <h3>🎯 Strategy — <code>SpotAllocationStrategy</code> &amp; <code>PricingStrategy</code></h3>
+      <p>Two axes that vary independently and frequently. Allocation can be Nearest, BestFit, or VIP. Pricing can be Flat, Tiered, or Peak. Strategy makes both swappable at runtime without touching the lot.</p>
+    </div>
+    <div class="card">
+      <h3>🚦 State — <code>ParkingTicket</code></h3>
+      <p>The ticket has four states (ACTIVE → PAID → EXITED, plus LOST). Every transition is a method on the ticket; illegal transitions throw. Stops the "double-pay" and "exit without paying" bugs at the type level.</p>
+    </div>
+    <div class="card">
+      <h3>📡 Observer — <code>DisplayBoard</code></h3>
+      <p>The board subscribes to the floor's spot events. Every assign/release publishes once; every board on that floor refreshes. Add a new board (say, an LED screen near the entrance) without touching the gate code.</p>
+    </div>
+    <div class="card">
+      <h3>🏭 Factory — <code>VehicleFactory</code> &amp; <code>SpotFactory</code></h3>
+      <p>Encapsulates the "given a type enum, give me the right subclass" mapping. Keeps construction logic out of the lot, and means adding a new vehicle type touches one factory and one enum, not the rest of the code.</p>
+    </div>
+    <div class="card">
+      <h3>🛡️ Template Method — <code>Gate.process()</code></h3>
+      <p>Both EntryGate and ExitGate follow the same skeleton: validate → call lot → emit event → log. The shared steps live in the abstract Gate; only the call to the lot differs. Cuts duplication and locks the order in.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECTION 8: SEQUENCE                         -->
+<!-- ════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-green">Step 8</span>
+  <h2>Sequence — Entry &amp; Exit</h2>
+  <p>Here's the happy path for the most important flow: a car drives in, parks for an hour, drives out. Watch where the synchronization lives — it's only on the spot allocation. Pricing and payment are per-ticket and need no lock.</p>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--heading);margin:1.2rem 0 .6rem">Flow A — Sarah parks her Honda</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor Sarah as Sarah (Driver)
+  participant EG as EntryGate
+  participant PL as ParkingLot
+  participant SAS as AllocationStrategy
+  participant SP as ParkingSpot
+  participant DB as DisplayBoard
+
+  Sarah->>EG: pulls up, presses ticket button
+  EG->>PL: issueTicket(vehicle)
+  Note over PL: synchronized block starts
+  PL->>SAS: allocate(vehicle, floors)
+  SAS-->>PL: ParkingSpot S-2-12
+  PL->>SP: assign(vehicle)
+  SP-->>DB: SpotChanged(occupied)
+  Note over PL: synchronized block ends
+  PL-->>EG: ParkingTicket{T-9X1, ACTIVE}
+  EG-->>Sarah: prints ticket "Floor 2, Spot 12"
+  Sarah->>SP: parks the car
+  DB-->>DB: refreshes "Floor 2 — 13 free"
+    </div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--heading);margin:1.4rem 0 .6rem">Flow B — Sarah leaves an hour later</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor Sarah as Sarah (Driver)
+  participant XG as ExitGate
+  participant PL as ParkingLot
+  participant PT as ParkingTicket
+  participant PS as PricingStrategy
+  participant PMT as Payment
+  participant SP as ParkingSpot
+  participant DB as DisplayBoard
+
+  Sarah->>XG: scans ticket T-9X1
+  XG->>PL: closeTicket("T-9X1", CARD)
+  PL->>PT: lookup, status=ACTIVE
+  PL->>PS: price(entry, now, CAR)
+  PS-->>PL: ₹65
+  PL->>PMT: process(₹65, CARD)
+  PMT-->>PL: SUCCESS
+  PL->>PT: markPaid(₹65)
+  PL->>PT: markExited()
+  PL->>SP: release()
+  SP-->>DB: SpotChanged(free)
+  PL-->>XG: Receipt
+  XG-->>Sarah: barrier opens
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>Concurrency note:</strong> only the <code>assignSpot</code> and <code>release</code> mutations need synchronization. Pricing is pure (entry + exit + type → fee), and ticket state transitions only mutate the ticket itself — no shared state. So 50 gates can compute fees in parallel; only spot allocation serializes.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECTION 9: STATE DIAGRAM                    -->
+<!-- ════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-red">Step 9</span>
+  <h2>State Diagram — ParkingTicket</h2>
+  <p>The ticket is the entity with the most lifecycle complexity. Without a state diagram you'll write code that lets you "pay an exited ticket" or "exit without paying". Each arrow is a method on <code>ParkingTicket</code>; the methods in any other state throw <code>IllegalTicketStateException</code>.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+stateDiagram-v2
+  [*] --> ACTIVE : issueTicket()
+  ACTIVE --> PAID : markPaid(amount)
+  ACTIVE --> LOST : markLost()
+  LOST --> PAID : markPaid(amount + penalty)
+  PAID --> EXITED : markExited()
+  EXITED --> [*]
+
+  note right of LOST
+    Driver reported ticket lost.
+    Attendant looks up by license plate,
+    flat penalty fee added to amount.
+  end note
+
+  note right of PAID
+    Spot is still held until
+    markExited() — prevents
+    unpaid car driving out.
+  end note
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card"><h3 style="color:var(--blue)">ACTIVE</h3><p>Issued at entry. Spot is held. Awaiting payment.</p></div>
+    <div class="card"><h3 style="color:var(--yellow)">LOST</h3><p>Driver reported missing. Attendant validates by plate. Penalty added.</p></div>
+    <div class="card"><h3 style="color:var(--green)">PAID</h3><p>Payment cleared. Spot is still held until barrier opens.</p></div>
+    <div class="card"><h3 style="color:var(--purple)">EXITED</h3><p>Barrier lifted. Spot released back to inventory. Terminal.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECTION 10: JAVA IMPLEMENTATION             -->
+<!-- ════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-orange">Step 10</span>
+  <h2>Java Implementation</h2>
+  <p>Java 17+. No frameworks. Showing the parts that demonstrate the patterns and the concurrency story; a real implementation would also have factories, persistence, and gates. Code order: enums → interfaces → entities → strategies → orchestrator → demo.</p>
+
+  <div class="code-label cl-yellow">Enums.java — types &amp; states</div>
+<pre><span class="kw">public enum</span> <span class="ty">VehicleType</span> { MOTORCYCLE, CAR, VAN, TRUCK, ELECTRIC_CAR }
+
+<span class="kw">public enum</span> <span class="ty">SpotType</span> { MOTORCYCLE, COMPACT, LARGE, ELECTRIC, HANDICAPPED }
+
+<span class="kw">public enum</span> <span class="ty">TicketStatus</span> { ACTIVE, PAID, EXITED, LOST }
+
+<span class="kw">public enum</span> <span class="ty">PaymentMethod</span> { CASH, CARD }
+
+<span class="kw">public enum</span> <span class="ty">PaymentStatus</span> { PENDING, SUCCESS, FAILED }
+</pre>
+
+  <div class="code-label cl-blue">Vehicle.java — abstract + subclasses</div>
+<pre><span class="kw">public abstract class</span> <span class="ty">Vehicle</span> {
+  <span class="kw">private final</span> <span class="ty">String</span> licensePlate;
+  <span class="kw">private final</span> <span class="ty">VehicleType</span> type;
+  <span class="kw">protected</span> <span class="fn">Vehicle</span>(<span class="ty">String</span> plate, <span class="ty">VehicleType</span> t) {
+    <span class="kw">this</span>.licensePlate = plate; <span class="kw">this</span>.type = t;
+  }
+  <span class="kw">public</span> <span class="ty">String</span> <span class="fn">getLicensePlate</span>() { <span class="kw">return</span> licensePlate; }
+  <span class="kw">public</span> <span class="ty">VehicleType</span> <span class="fn">getType</span>() { <span class="kw">return</span> type; }
+}
+<span class="kw">public class</span> <span class="ty">Car</span>         <span class="kw">extends</span> <span class="ty">Vehicle</span> { <span class="kw">public</span> <span class="fn">Car</span>(<span class="ty">String</span> p)         { <span class="kw">super</span>(p, <span class="ty">VehicleType</span>.CAR); } }
+<span class="kw">public class</span> <span class="ty">Motorcycle</span>  <span class="kw">extends</span> <span class="ty">Vehicle</span> { <span class="kw">public</span> <span class="fn">Motorcycle</span>(<span class="ty">String</span> p)  { <span class="kw">super</span>(p, <span class="ty">VehicleType</span>.MOTORCYCLE); } }
+<span class="kw">public class</span> <span class="ty">Truck</span>       <span class="kw">extends</span> <span class="ty">Vehicle</span> { <span class="kw">public</span> <span class="fn">Truck</span>(<span class="ty">String</span> p)       { <span class="kw">super</span>(p, <span class="ty">VehicleType</span>.TRUCK); } }
+<span class="kw">public class</span> <span class="ty">Van</span>         <span class="kw">extends</span> <span class="ty">Vehicle</span> { <span class="kw">public</span> <span class="fn">Van</span>(<span class="ty">String</span> p)         { <span class="kw">super</span>(p, <span class="ty">VehicleType</span>.VAN); } }
+<span class="kw">public class</span> <span class="ty">ElectricCar</span> <span class="kw">extends</span> <span class="ty">Vehicle</span> { <span class="kw">public</span> <span class="fn">ElectricCar</span>(<span class="ty">String</span> p) { <span class="kw">super</span>(p, <span class="ty">VehicleType</span>.ELECTRIC_CAR); } }
+</pre>
+
+  <div class="code-label cl-cyan">ParkingSpot.java — fits() encodes the rules</div>
+<pre><span class="kw">public abstract class</span> <span class="ty">ParkingSpot</span> {
+  <span class="kw">private final</span> <span class="ty">String</span> spotId;
+  <span class="kw">private final</span> <span class="ty">SpotType</span> type;
+  <span class="kw">private</span> <span class="ty">Vehicle</span> vehicle;
+  <span class="kw">private boolean</span> free = <span class="kw">true</span>;
+
+  <span class="kw">protected</span> <span class="fn">ParkingSpot</span>(<span class="ty">String</span> id, <span class="ty">SpotType</span> t) { <span class="kw">this</span>.spotId = id; <span class="kw">this</span>.type = t; }
+
+  <span class="kw">public abstract boolean</span> <span class="fn">fits</span>(<span class="ty">Vehicle</span> v);
+
+  <span class="kw">public synchronized void</span> <span class="fn">assign</span>(<span class="ty">Vehicle</span> v) {
+    <span class="kw">if</span> (!free) <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="str">"spot already taken"</span>);
+    <span class="kw">if</span> (!<span class="fn">fits</span>(v)) <span class="kw">throw new</span> <span class="ty">IllegalArgumentException</span>(<span class="str">"vehicle does not fit"</span>);
+    <span class="kw">this</span>.vehicle = v; <span class="kw">this</span>.free = <span class="kw">false</span>;
+  }
+  <span class="kw">public synchronized void</span> <span class="fn">release</span>() { <span class="kw">this</span>.vehicle = <span class="kw">null</span>; <span class="kw">this</span>.free = <span class="kw">true</span>; }
+  <span class="kw">public boolean</span> <span class="fn">isFree</span>() { <span class="kw">return</span> free; }
+  <span class="kw">public</span> <span class="ty">SpotType</span> <span class="fn">getType</span>() { <span class="kw">return</span> type; }
+  <span class="kw">public</span> <span class="ty">String</span> <span class="fn">getId</span>() { <span class="kw">return</span> spotId; }
+}
+
+<span class="kw">public class</span> <span class="ty">CompactSpot</span> <span class="kw">extends</span> <span class="ty">ParkingSpot</span> {
+  <span class="kw">public</span> <span class="fn">CompactSpot</span>(<span class="ty">String</span> id) { <span class="kw">super</span>(id, <span class="ty">SpotType</span>.COMPACT); }
+  <span class="kw">public boolean</span> <span class="fn">fits</span>(<span class="ty">Vehicle</span> v) {
+    <span class="kw">return</span> v.<span class="fn">getType</span>() == <span class="ty">VehicleType</span>.CAR
+        || v.<span class="fn">getType</span>() == <span class="ty">VehicleType</span>.ELECTRIC_CAR;
+  }
+}
+<span class="kw">public class</span> <span class="ty">LargeSpot</span> <span class="kw">extends</span> <span class="ty">ParkingSpot</span> {
+  <span class="kw">public</span> <span class="fn">LargeSpot</span>(<span class="ty">String</span> id) { <span class="kw">super</span>(id, <span class="ty">SpotType</span>.LARGE); }
+  <span class="kw">public boolean</span> <span class="fn">fits</span>(<span class="ty">Vehicle</span> v) {
+    <span class="kw">return</span> v.<span class="fn">getType</span>() != <span class="ty">VehicleType</span>.MOTORCYCLE; <span class="cmt">// fits everything except bikes</span>
+  }
+}
+<span class="kw">public class</span> <span class="ty">MotorcycleSpot</span> <span class="kw">extends</span> <span class="ty">ParkingSpot</span> {
+  <span class="kw">public</span> <span class="fn">MotorcycleSpot</span>(<span class="ty">String</span> id) { <span class="kw">super</span>(id, <span class="ty">SpotType</span>.MOTORCYCLE); }
+  <span class="kw">public boolean</span> <span class="fn">fits</span>(<span class="ty">Vehicle</span> v) { <span class="kw">return</span> v.<span class="fn">getType</span>() == <span class="ty">VehicleType</span>.MOTORCYCLE; }
+}
+<span class="kw">public class</span> <span class="ty">ElectricSpot</span> <span class="kw">extends</span> <span class="ty">ParkingSpot</span> {
+  <span class="kw">public</span> <span class="fn">ElectricSpot</span>(<span class="ty">String</span> id) { <span class="kw">super</span>(id, <span class="ty">SpotType</span>.ELECTRIC); }
+  <span class="kw">public boolean</span> <span class="fn">fits</span>(<span class="ty">Vehicle</span> v) { <span class="kw">return</span> v.<span class="fn">getType</span>() == <span class="ty">VehicleType</span>.ELECTRIC_CAR; }
+}
+</pre>
+
+  <div class="code-label cl-purple">SpotAllocationStrategy.java — Strategy pattern</div>
+<pre><span class="kw">public interface</span> <span class="ty">SpotAllocationStrategy</span> {
+  <span class="ty">Optional</span>&lt;<span class="ty">ParkingSpot</span>&gt; <span class="fn">allocate</span>(<span class="ty">Vehicle</span> v, <span class="ty">List</span>&lt;<span class="ty">ParkingFloor</span>&gt; floors);
+}
+
+<span class="kw">public class</span> <span class="ty">NearestFirstStrategy</span> <span class="kw">implements</span> <span class="ty">SpotAllocationStrategy</span> {
+  <span class="kw">public</span> <span class="ty">Optional</span>&lt;<span class="ty">ParkingSpot</span>&gt; <span class="fn">allocate</span>(<span class="ty">Vehicle</span> v, <span class="ty">List</span>&lt;<span class="ty">ParkingFloor</span>&gt; floors) {
+    <span class="kw">return</span> floors.<span class="fn">stream</span>()                  <span class="cmt">// floors are sorted by proximity to entry</span>
+      .<span class="fn">map</span>(f -&gt; f.<span class="fn">findFreeSpot</span>(v))
+      .<span class="fn">filter</span>(<span class="ty">Optional</span>::isPresent)
+      .<span class="fn">map</span>(<span class="ty">Optional</span>::get)
+      .<span class="fn">findFirst</span>();
+  }
+}
+
+<span class="kw">public class</span> <span class="ty">BestFitStrategy</span> <span class="kw">implements</span> <span class="ty">SpotAllocationStrategy</span> {
+  <span class="kw">public</span> <span class="ty">Optional</span>&lt;<span class="ty">ParkingSpot</span>&gt; <span class="fn">allocate</span>(<span class="ty">Vehicle</span> v, <span class="ty">List</span>&lt;<span class="ty">ParkingFloor</span>&gt; floors) {
+    <span class="cmt">// EV → Electric → Compact → Large; Car → Compact → Large; Truck/Van → Large</span>
+    <span class="ty">List</span>&lt;<span class="ty">SpotType</span>&gt; preference = <span class="kw">switch</span> (v.<span class="fn">getType</span>()) {
+      <span class="kw">case</span> ELECTRIC_CAR -&gt; <span class="ty">List</span>.<span class="fn">of</span>(<span class="ty">SpotType</span>.ELECTRIC, <span class="ty">SpotType</span>.COMPACT, <span class="ty">SpotType</span>.LARGE);
+      <span class="kw">case</span> CAR          -&gt; <span class="ty">List</span>.<span class="fn">of</span>(<span class="ty">SpotType</span>.COMPACT, <span class="ty">SpotType</span>.LARGE);
+      <span class="kw">case</span> MOTORCYCLE   -&gt; <span class="ty">List</span>.<span class="fn">of</span>(<span class="ty">SpotType</span>.MOTORCYCLE);
+      <span class="kw">case</span> VAN, TRUCK   -&gt; <span class="ty">List</span>.<span class="fn">of</span>(<span class="ty">SpotType</span>.LARGE);
+    };
+    <span class="kw">for</span> (<span class="ty">SpotType</span> pref : preference)
+      <span class="kw">for</span> (<span class="ty">ParkingFloor</span> f : floors) {
+        <span class="ty">Optional</span>&lt;<span class="ty">ParkingSpot</span>&gt; s = f.<span class="fn">findFreeSpotOfType</span>(pref, v);
+        <span class="kw">if</span> (s.<span class="fn">isPresent</span>()) <span class="kw">return</span> s;
+      }
+    <span class="kw">return</span> <span class="ty">Optional</span>.<span class="fn">empty</span>();
+  }
+}
+</pre>
+
+  <div class="code-label cl-purple">PricingStrategy.java — Strategy pattern</div>
+<pre><span class="kw">public interface</span> <span class="ty">PricingStrategy</span> {
+  <span class="ty">BigDecimal</span> <span class="fn">price</span>(<span class="ty">LocalDateTime</span> entry, <span class="ty">LocalDateTime</span> exit, <span class="ty">VehicleType</span> type);
+}
+
+<span class="kw">public class</span> <span class="ty">FlatRateStrategy</span> <span class="kw">implements</span> <span class="ty">PricingStrategy</span> {
+  <span class="kw">private final</span> <span class="ty">BigDecimal</span> ratePerHour;
+  <span class="kw">public</span> <span class="fn">FlatRateStrategy</span>(<span class="ty">BigDecimal</span> r) { <span class="kw">this</span>.ratePerHour = r; }
+  <span class="kw">public</span> <span class="ty">BigDecimal</span> <span class="fn">price</span>(<span class="ty">LocalDateTime</span> entry, <span class="ty">LocalDateTime</span> exit, <span class="ty">VehicleType</span> t) {
+    <span class="kw">long</span> hours = <span class="ty">Math</span>.<span class="fn">max</span>(<span class="num">1</span>, <span class="ty">Duration</span>.<span class="fn">between</span>(entry, exit).<span class="fn">toHours</span>());
+    <span class="kw">return</span> ratePerHour.<span class="fn">multiply</span>(<span class="ty">BigDecimal</span>.<span class="fn">valueOf</span>(hours));
+  }
+}
+
+<span class="kw">public class</span> <span class="ty">TieredRateStrategy</span> <span class="kw">implements</span> <span class="ty">PricingStrategy</span> {
+  <span class="cmt">// 1st hour ₹40, hours 2-3 ₹30 each, 4+ ₹20 each</span>
+  <span class="kw">public</span> <span class="ty">BigDecimal</span> <span class="fn">price</span>(<span class="ty">LocalDateTime</span> entry, <span class="ty">LocalDateTime</span> exit, <span class="ty">VehicleType</span> t) {
+    <span class="kw">long</span> h = <span class="ty">Math</span>.<span class="fn">max</span>(<span class="num">1</span>, <span class="ty">Duration</span>.<span class="fn">between</span>(entry, exit).<span class="fn">toHours</span>());
+    <span class="ty">BigDecimal</span> total = <span class="ty">BigDecimal</span>.<span class="fn">valueOf</span>(<span class="num">40</span>);
+    <span class="kw">if</span> (h &gt; <span class="num">1</span>) total = total.<span class="fn">add</span>(<span class="ty">BigDecimal</span>.<span class="fn">valueOf</span>(<span class="ty">Math</span>.<span class="fn">min</span>(h - <span class="num">1</span>, <span class="num">2</span>) * <span class="num">30</span>));
+    <span class="kw">if</span> (h &gt; <span class="num">3</span>) total = total.<span class="fn">add</span>(<span class="ty">BigDecimal</span>.<span class="fn">valueOf</span>((h - <span class="num">3</span>) * <span class="num">20</span>));
+    <span class="kw">return</span> total;
+  }
+}
+
+<span class="kw">public class</span> <span class="ty">PeakHourStrategy</span> <span class="kw">implements</span> <span class="ty">PricingStrategy</span> {
+  <span class="cmt">// Decorator-style: wraps another strategy, applies 1.5x for any hour overlapping 18:00–21:00</span>
+  <span class="kw">private final</span> <span class="ty">PricingStrategy</span> inner;
+  <span class="kw">public</span> <span class="fn">PeakHourStrategy</span>(<span class="ty">PricingStrategy</span> inner) { <span class="kw">this</span>.inner = inner; }
+  <span class="kw">public</span> <span class="ty">BigDecimal</span> <span class="fn">price</span>(<span class="ty">LocalDateTime</span> entry, <span class="ty">LocalDateTime</span> exit, <span class="ty">VehicleType</span> t) {
+    <span class="ty">BigDecimal</span> base = inner.<span class="fn">price</span>(entry, exit, t);
+    <span class="kw">boolean</span> peakOverlap = entry.<span class="fn">getHour</span>() &lt; <span class="num">21</span> &amp;&amp; exit.<span class="fn">getHour</span>() &gt;= <span class="num">18</span>;
+    <span class="kw">return</span> peakOverlap ? base.<span class="fn">multiply</span>(<span class="ty">BigDecimal</span>.<span class="fn">valueOf</span>(<span class="num">1.5</span>)) : base;
+  }
+}
+</pre>
+
+  <div class="code-label cl-red">ParkingTicket.java — State pattern (lite)</div>
+<pre><span class="kw">public class</span> <span class="ty">ParkingTicket</span> {
+  <span class="kw">private final</span> <span class="ty">String</span> ticketId;
+  <span class="kw">private final</span> <span class="ty">String</span> licensePlate;
+  <span class="kw">private final</span> <span class="ty">String</span> spotId;
+  <span class="kw">private final</span> <span class="ty">LocalDateTime</span> entryTime;
+  <span class="kw">private</span> <span class="ty">LocalDateTime</span> exitTime;
+  <span class="kw">private</span> <span class="ty">TicketStatus</span> status = <span class="ty">TicketStatus</span>.ACTIVE;
+  <span class="kw">private</span> <span class="ty">BigDecimal</span> amount = <span class="ty">BigDecimal</span>.ZERO;
+
+  <span class="kw">public</span> <span class="fn">ParkingTicket</span>(<span class="ty">String</span> plate, <span class="ty">String</span> spotId) {
+    <span class="kw">this</span>.ticketId = <span class="ty">UUID</span>.<span class="fn">randomUUID</span>().<span class="fn">toString</span>();
+    <span class="kw">this</span>.licensePlate = plate;
+    <span class="kw">this</span>.spotId = spotId;
+    <span class="kw">this</span>.entryTime = <span class="ty">LocalDateTime</span>.<span class="fn">now</span>();
+  }
+
+  <span class="kw">public synchronized void</span> <span class="fn">markPaid</span>(<span class="ty">BigDecimal</span> amt) {
+    <span class="kw">if</span> (status != <span class="ty">TicketStatus</span>.ACTIVE &amp;&amp; status != <span class="ty">TicketStatus</span>.LOST)
+      <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="str">"cannot pay ticket in state "</span> + status);
+    <span class="kw">this</span>.amount = amt;
+    <span class="kw">this</span>.status = <span class="ty">TicketStatus</span>.PAID;
+  }
+  <span class="kw">public synchronized void</span> <span class="fn">markLost</span>() {
+    <span class="kw">if</span> (status != <span class="ty">TicketStatus</span>.ACTIVE)
+      <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="str">"only ACTIVE tickets can be marked LOST"</span>);
+    <span class="kw">this</span>.status = <span class="ty">TicketStatus</span>.LOST;
+  }
+  <span class="kw">public synchronized void</span> <span class="fn">markExited</span>() {
+    <span class="kw">if</span> (status != <span class="ty">TicketStatus</span>.PAID)
+      <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="str">"must pay before exit, current="</span> + status);
+    <span class="kw">this</span>.exitTime = <span class="ty">LocalDateTime</span>.<span class="fn">now</span>();
+    <span class="kw">this</span>.status = <span class="ty">TicketStatus</span>.EXITED;
+  }
+  <span class="cmt">// getters omitted</span>
+}
+</pre>
+
+  <div class="code-label cl-yellow">DisplayBoard.java — Observer</div>
+<pre><span class="kw">public record</span> <span class="ty">SpotEvent</span>(<span class="ty">SpotType</span> type, <span class="kw">boolean</span> nowFree) {}
+
+<span class="kw">public interface</span> <span class="ty">SpotListener</span> { <span class="kw">void</span> <span class="fn">onSpotChanged</span>(<span class="ty">SpotEvent</span> e); }
+
+<span class="kw">public class</span> <span class="ty">DisplayBoard</span> <span class="kw">implements</span> <span class="ty">SpotListener</span> {
+  <span class="kw">private final</span> <span class="ty">String</span> floorId;
+  <span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">SpotType</span>, <span class="ty">AtomicInteger</span>&gt; freeCounts = <span class="kw">new</span> <span class="ty">EnumMap</span>&lt;&gt;(<span class="ty">SpotType</span>.<span class="kw">class</span>);
+  <span class="kw">public</span> <span class="fn">DisplayBoard</span>(<span class="ty">String</span> floorId, <span class="ty">Map</span>&lt;<span class="ty">SpotType</span>, <span class="ty">Integer</span>&gt; initial) {
+    <span class="kw">this</span>.floorId = floorId;
+    initial.<span class="fn">forEach</span>((k, v) -&gt; freeCounts.<span class="fn">put</span>(k, <span class="kw">new</span> <span class="ty">AtomicInteger</span>(v)));
+  }
+  <span class="kw">public void</span> <span class="fn">onSpotChanged</span>(<span class="ty">SpotEvent</span> e) {
+    freeCounts.<span class="fn">get</span>(e.<span class="fn">type</span>()).<span class="fn">addAndGet</span>(e.<span class="fn">nowFree</span>() ? <span class="num">1</span> : -<span class="num">1</span>);
+  }
+  <span class="kw">public</span> <span class="ty">String</span> <span class="fn">render</span>() {
+    <span class="ty">StringBuilder</span> sb = <span class="kw">new</span> <span class="ty">StringBuilder</span>(<span class="str">"Floor "</span>).<span class="fn">append</span>(floorId).<span class="fn">append</span>(<span class="str">" — "</span>);
+    freeCounts.<span class="fn">forEach</span>((k, v) -&gt; sb.<span class="fn">append</span>(k).<span class="fn">append</span>(<span class="str">":"</span>).<span class="fn">append</span>(v.<span class="fn">get</span>()).<span class="fn">append</span>(<span class="str">" "</span>));
+    <span class="kw">return</span> sb.<span class="fn">toString</span>();
+  }
+}
+</pre>
+
+  <div class="code-label cl-blue">ParkingLot.java — the orchestrator</div>
+<pre><span class="kw">public class</span> <span class="ty">ParkingLot</span> {
+  <span class="kw">private static volatile</span> <span class="ty">ParkingLot</span> instance;
+  <span class="kw">public static</span> <span class="ty">ParkingLot</span> <span class="fn">getInstance</span>() {
+    <span class="kw">if</span> (instance == <span class="kw">null</span>) <span class="kw">synchronized</span> (<span class="ty">ParkingLot</span>.<span class="kw">class</span>) {
+      <span class="kw">if</span> (instance == <span class="kw">null</span>) instance = <span class="kw">new</span> <span class="ty">ParkingLot</span>();
+    }
+    <span class="kw">return</span> instance;
+  }
+
+  <span class="kw">private final</span> <span class="ty">List</span>&lt;<span class="ty">ParkingFloor</span>&gt; floors = <span class="kw">new</span> <span class="ty">ArrayList</span>&lt;&gt;();
+  <span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">String</span>, <span class="ty">ParkingTicket</span>&gt; activeTickets = <span class="kw">new</span> <span class="ty">ConcurrentHashMap</span>&lt;&gt;();
+  <span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">String</span>, <span class="ty">String</span>&gt; plateIndex = <span class="kw">new</span> <span class="ty">ConcurrentHashMap</span>&lt;&gt;(); <span class="cmt">// for lost-ticket lookup</span>
+  <span class="kw">private</span> <span class="ty">SpotAllocationStrategy</span> allocator = <span class="kw">new</span> <span class="ty">BestFitStrategy</span>();
+  <span class="kw">private</span> <span class="ty">PricingStrategy</span> pricer = <span class="kw">new</span> <span class="ty">PeakHourStrategy</span>(<span class="kw">new</span> <span class="ty">TieredRateStrategy</span>());
+  <span class="kw">private final</span> <span class="ty">BigDecimal</span> lostPenalty = <span class="kw">new</span> <span class="ty">BigDecimal</span>(<span class="str">"200"</span>);
+
+  <span class="kw">public synchronized</span> <span class="ty">ParkingTicket</span> <span class="fn">issueTicket</span>(<span class="ty">Vehicle</span> v) {
+    <span class="ty">ParkingSpot</span> spot = allocator.<span class="fn">allocate</span>(v, floors)
+      .<span class="fn">orElseThrow</span>(() -&gt; <span class="kw">new</span> <span class="ty">IllegalStateException</span>(<span class="str">"lot full for "</span> + v.<span class="fn">getType</span>()));
+    spot.<span class="fn">assign</span>(v);
+    <span class="ty">ParkingTicket</span> t = <span class="kw">new</span> <span class="ty">ParkingTicket</span>(v.<span class="fn">getLicensePlate</span>(), spot.<span class="fn">getId</span>());
+    activeTickets.<span class="fn">put</span>(t.<span class="fn">getTicketId</span>(), t);
+    plateIndex.<span class="fn">put</span>(v.<span class="fn">getLicensePlate</span>(), t.<span class="fn">getTicketId</span>());
+    notifyFloorOf(spot, <span class="kw">false</span>); <span class="cmt">// emits SpotEvent → DisplayBoard</span>
+    <span class="kw">return</span> t;
+  }
+
+  <span class="kw">public</span> <span class="ty">Payment</span> <span class="fn">closeTicket</span>(<span class="ty">String</span> ticketId, <span class="ty">PaymentMethod</span> method) {
+    <span class="ty">ParkingTicket</span> t = <span class="ty">Optional</span>.<span class="fn">ofNullable</span>(activeTickets.<span class="fn">get</span>(ticketId))
+      .<span class="fn">orElseThrow</span>(() -&gt; <span class="kw">new</span> <span class="ty">NoSuchElementException</span>(<span class="str">"unknown ticket"</span>));
+    <span class="ty">BigDecimal</span> fee = pricer.<span class="fn">price</span>(t.<span class="fn">getEntryTime</span>(), <span class="ty">LocalDateTime</span>.<span class="fn">now</span>(), lookupVehicleType(t));
+    <span class="kw">if</span> (t.<span class="fn">getStatus</span>() == <span class="ty">TicketStatus</span>.LOST) fee = fee.<span class="fn">add</span>(lostPenalty);
+    <span class="ty">Payment</span> p = <span class="kw">new</span> <span class="ty">Payment</span>(fee, method);
+    <span class="kw">if</span> (!p.<span class="fn">process</span>()) <span class="kw">throw new</span> <span class="ty">PaymentFailedException</span>(p);
+    t.<span class="fn">markPaid</span>(fee);
+    t.<span class="fn">markExited</span>();
+    releaseSpot(t.<span class="fn">getSpotId</span>());
+    activeTickets.<span class="fn">remove</span>(ticketId);
+    plateIndex.<span class="fn">remove</span>(t.<span class="fn">getLicensePlate</span>());
+    <span class="kw">return</span> p;
+  }
+
+  <span class="kw">public</span> <span class="ty">ParkingTicket</span> <span class="fn">reportLostTicket</span>(<span class="ty">String</span> licensePlate) {
+    <span class="ty">String</span> ticketId = <span class="ty">Optional</span>.<span class="fn">ofNullable</span>(plateIndex.<span class="fn">get</span>(licensePlate))
+      .<span class="fn">orElseThrow</span>(() -&gt; <span class="kw">new</span> <span class="ty">NoSuchElementException</span>(<span class="str">"no active ticket for plate"</span>));
+    <span class="ty">ParkingTicket</span> t = activeTickets.<span class="fn">get</span>(ticketId);
+    t.<span class="fn">markLost</span>();
+    <span class="kw">return</span> t;
+  }
+
+  <span class="cmt">// admin hooks for hot-swapping strategies — Open/Closed in action</span>
+  <span class="kw">public void</span> <span class="fn">setAllocator</span>(<span class="ty">SpotAllocationStrategy</span> s) { <span class="kw">this</span>.allocator = s; }
+  <span class="kw">public void</span> <span class="fn">setPricer</span>(<span class="ty">PricingStrategy</span> p)        { <span class="kw">this</span>.pricer = p; }
+  <span class="cmt">// notifyFloorOf, releaseSpot, lookupVehicleType helpers omitted</span>
+}
+</pre>
+
+  <div class="code-label cl-green">Demo.java — exercise the happy + lost-ticket paths</div>
+<pre><span class="kw">public class</span> <span class="ty">Demo</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="ty">String</span>[] args) {
+    <span class="ty">ParkingLot</span> lot = <span class="ty">ParkingLot</span>.<span class="fn">getInstance</span>();
+    <span class="cmt">// admin pre-seeds floors &amp; spots elsewhere…</span>
+
+    <span class="ty">Vehicle</span> sarahCar = <span class="kw">new</span> <span class="ty">Car</span>(<span class="str">"DL-3C-AA-1234"</span>);
+    <span class="ty">ParkingTicket</span> t1 = lot.<span class="fn">issueTicket</span>(sarahCar);
+    <span class="ty">System</span>.<span class="fn">out</span>.<span class="fn">println</span>(<span class="str">"Sarah parked at "</span> + t1.<span class="fn">getSpotId</span>());
+
+    <span class="cmt">// Sarah loses her ticket</span>
+    <span class="ty">ParkingTicket</span> recovered = lot.<span class="fn">reportLostTicket</span>(<span class="str">"DL-3C-AA-1234"</span>);
+    <span class="ty">System</span>.<span class="fn">out</span>.<span class="fn">println</span>(<span class="str">"Recovered ticket "</span> + recovered.<span class="fn">getTicketId</span>() + <span class="str">", state="</span> + recovered.<span class="fn">getStatus</span>());
+
+    <span class="cmt">// pays at exit (penalty included)</span>
+    <span class="ty">Payment</span> p = lot.<span class="fn">closeTicket</span>(recovered.<span class="fn">getTicketId</span>(), <span class="ty">PaymentMethod</span>.CARD);
+    <span class="ty">System</span>.<span class="fn">out</span>.<span class="fn">println</span>(<span class="str">"Sarah paid ₹"</span> + p.<span class="fn">getAmount</span>());
+  }
+}
+</pre>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECTION 11: INTUITION                       -->
+<!-- ════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-cyan">Step 11</span>
+  <h2>Intuition — How to arrive at this design from scratch</h2>
+  <p>If an interviewer asks you to solve this cold, this is the order to think it. You won't reach for Strategy and Observer because you remembered them — you'll reach for them because the problem keeps pushing you there.</p>
+
+  <div class="g2">
+    <div class="card"><h3>1️⃣ Start from the action, not the diagram</h3><p>What does a driver do? Take a ticket, park, pay, leave. That's your primary flow. Everything else exists to support it.</p></div>
+    <div class="card"><h3>2️⃣ Find nouns &amp; verbs</h3><p>Nouns: lot, floor, spot, vehicle, ticket, gate, board, payment. Verbs: take, allocate, fit, free, calculate, pay, exit. Nouns become classes; verbs become methods.</p></div>
+    <div class="card"><h3>3️⃣ Ask "who owns what?"</h3><p>Lot owns floors. Floors own spots. Spots hold a vehicle (but don't own it — vehicles outlive the parking session). Tickets reference spots; they don't contain them.</p></div>
+    <div class="card"><h3>4️⃣ Find what changes state</h3><p>Spots flip free↔occupied. Tickets cycle ACTIVE→PAID→EXITED with a LOST detour. Both deserve explicit state tracking; the ticket gets a full state machine because its transitions matter for correctness.</p></div>
+    <div class="card"><h3>5️⃣ Spot repeated behavior</h3><p>All vehicles have a plate and type. All spots have an id and a fits-check. Pull both up to abstract base classes.</p></div>
+    <div class="card"><h3>6️⃣ Find variation points</h3><p>Allocation strategy varies (nearest, best-fit, VIP). Pricing varies (flat, tiered, peak). Both go behind interfaces — that's Strategy.</p></div>
+    <div class="card"><h3>7️⃣ Check concurrency</h3><p>Spot allocation is shared mutable state with high contention. Synchronized method on the singleton. Pricing and ticket state are per-ticket — no lock needed.</p></div>
+    <div class="card"><h3>8️⃣ Happy path first</h3><p>Code "park, pay, leave" end-to-end. Then add lost-ticket. Then add EV charging. Don't design for hypotheticals before the basic flow runs.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECTION 12: IMPROVEMENTS OVER REFERENCE     -->
+<!-- ════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-red">Step 12</span>
+  <h2>Improvements over the Grokking Reference Design</h2>
+  <p>The "Grokking the Object Oriented Design Interview" design is the canonical answer most candidates parrot. It works, but a senior interviewer will probe its seams. Here's what we changed and why each change is interview-defensible.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Area</th><th>Grokking design</th><th>This design</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Spot allocation</strong></td>
+          <td><code>switch</code> on VehicleType inside ParkingLot, picks first matching</td>
+          <td><code>SpotAllocationStrategy</code> interface — NearestFirst, BestFit, swappable</td>
+          <td>VIP gates, EV preference, off-peak rebalancing — all become new strategy classes, no edits to the lot</td>
+        </tr>
+        <tr>
+          <td><strong>Pricing</strong></td>
+          <td>Single rate table with tier counters baked into a method</td>
+          <td><code>PricingStrategy</code> interface + <code>PeakHourStrategy</code> as a decorator wrapping any base strategy</td>
+          <td>Peak hour, weekend, EV-discount all stack as decorators. Flat-rate test pricing is a one-line swap</td>
+        </tr>
+        <tr>
+          <td><strong>Ticket lifecycle</strong></td>
+          <td>Enum with values ACTIVE/PAID/LOST, no transition guards</td>
+          <td>Full state machine — markPaid/markLost/markExited throw on illegal transitions</td>
+          <td>Stops the "double-pay" and "exit without paying" bugs at compile/runtime instead of in production</td>
+        </tr>
+        <tr>
+          <td><strong>Lost ticket</strong></td>
+          <td>Status exists but no flow defined</td>
+          <td><code>plateIndex</code> for O(1) lookup, <code>reportLostTicket(plate)</code>, <code>lostPenalty</code> added at exit</td>
+          <td>This is the most-asked follow-up — having a real implementation differentiates senior from junior</td>
+        </tr>
+        <tr>
+          <td><strong>Display board</strong></td>
+          <td>Single free spot per type, manually refreshed by the lot after each assign</td>
+          <td>Observer pattern — board listens to <code>SpotEvent</code> stream, atomic counters per type</td>
+          <td>Adding a second board (LED at the gate) is zero-edit; missing a refresh call is impossible</td>
+        </tr>
+        <tr>
+          <td><strong>Payment failure</strong></td>
+          <td>Not handled — fee calc &amp; spot release are tangled</td>
+          <td>Payment is a separate object; ticket only flips to PAID after <code>process()</code> returns true</td>
+          <td>Card decline doesn't free a still-occupied spot. Driver retries; spot stays held</td>
+        </tr>
+        <tr>
+          <td><strong>fits() rule</strong></td>
+          <td>Lives in ParkingLot.isFull as a tangle of if-vehicle-and-spot conditions</td>
+          <td>Polymorphic — each spot subclass implements its own <code>fits(Vehicle)</code></td>
+          <td>Adding a "TruckOnly" spot or a "BikeOrCar" combo spot is one new class. Allocation logic stays untouched</td>
+        </tr>
+        <tr>
+          <td><strong>Concurrency</strong></td>
+          <td>Singleton with one synchronized method, no atomic counters</td>
+          <td>Synchronized only on allocation; <code>ConcurrentHashMap</code> for tickets &amp; plate index; <code>AtomicInteger</code> in board</td>
+          <td>Reads of "free counts" and "is plate parked" don't block writers — much higher gate throughput</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>Interview tip:</strong> When the interviewer says "what would you change?", these are gold. Pick two or three; explaining <em>why</em> the original choice failed is more impressive than the change itself.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECTION 13: EXTENSION POINTS                -->
+<!-- ════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-purple">Step 13</span>
+  <h2>Extension Points (Open / Closed)</h2>
+  <p>Three things this design can absorb without editing the existing classes — which is exactly what Open/Closed promises.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🅿️ Reservations</h3>
+      <p>Add a <code>ReservationService</code> that pre-allocates spots and issues a ticket in <code>RESERVED</code> state. Add one new state and one new transition (<code>RESERVED → ACTIVE</code> on arrival). No edits to existing classes.</p>
+    </div>
+    <div class="card">
+      <h3>⚡ EV charging billing</h3>
+      <p>Wrap the current PricingStrategy with a <code>ChargingDecoratorStrategy</code> that adds ₹X per kWh consumed (read from the spot's charger). Stacks on top of peak-hour without conflict.</p>
+    </div>
+    <div class="card">
+      <h3>👑 VIP gates</h3>
+      <p>Add a <code>VipNearestStrategy</code> that always picks floor 1 spots. Wire it to the VIP entry gate only. The default gates keep using BestFit.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECTION 14: TRADE-OFFS                      -->
+<!-- ════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-orange">Step 14</span>
+  <h2>Trade-offs &amp; Talking Points</h2>
+  <p>Every choice in the design beats one alternative — and brings its own cost. These are the trade-offs an interviewer will probe.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Decision</th><th>Alternative</th><th>Why this choice</th></tr></thead>
+      <tbody>
+        <tr><td>Singleton ParkingLot</td><td>Static utility class / DI container</td><td>One physical lot = one in-memory root; static utilities can't be mocked easily in tests; full DI is overkill for a single-process system. Singleton with <code>volatile</code> + double-checked locking is the smallest correct option.</td></tr>
+        <tr><td>Synchronized method on issueTicket</td><td>Per-floor lock, optimistic CAS on each spot</td><td>Per-floor would be faster but allows global "lot is full" races. CAS works but complicates the allocator. <code>synchronized</code> on one method is fast enough for &lt;500 gates and far simpler to reason about.</td></tr>
+        <tr><td>Strategy for allocation</td><td>If/else inside ParkingLot</td><td>Six conditions today, twelve tomorrow. Strategy pays for itself the second you need to A/B test allocation policies in different gates.</td></tr>
+        <tr><td>fits() on spot, not allocator</td><td>Centralized compatibility table</td><td>A table is fine until you add a "BikeOrCar" combo spot whose rules don't fit a 2D matrix. Polymorphism scales; tables don't.</td></tr>
+        <tr><td>State machine on ticket</td><td>Plain status enum</td><td>An enum says "this is valid", not "this transition is valid". Methods that throw on illegal transitions are the cheapest correctness test you'll ever write.</td></tr>
+        <tr><td>Observer for board</td><td>Lot calls board.refresh() after each op</td><td>Easy to forget; impossible to scale to multiple boards. Observer is "publish once, listen forever".</td></tr>
+        <tr><td>BigDecimal for money</td><td>double / float</td><td>Floating point loses pennies on multiplication. Always BigDecimal for currency. Always.</td></tr>
+        <tr><td>plateIndex for lost tickets</td><td>Linear scan of activeTickets</td><td>O(n) at every lost-ticket report; an attendant looking up at 6pm rush could wait seconds. The index is one extra map and lookup is O(1).</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ════════════════════════════════════════════ -->
+<!-- SECTION 15: INTERVIEW Q&A                   -->
+<!-- ════════════════════════════════════════════ -->
+<div class="sec" id="s15">
+  <span class="sec-tag tag-blue">Step 15</span>
+  <h2>Interview Q &amp; A</h2>
+  <p>The follow-ups an interviewer almost always asks after the main design. Practice saying these out loud — they're the difference between "candidate knows the canonical answer" and "candidate has actually thought about this".</p>
+
+  <div class="iq">How do you guarantee two cars at different gates don't get the same spot?</div>
+  <div class="ans">Spot allocation is the only place we mutate shared state. <strong>ParkingLot.issueTicket</strong> is <code>synchronized</code>, so only one thread is inside the allocator + assign sequence at a time. Inside, the allocator returns a free spot, we immediately call <code>spot.assign(vehicle)</code> which double-checks <code>!free</code> and flips the flag — all under the lock. Other gates wait. Throughput is fine for &lt;500 gates; if we needed more we'd partition by floor and only lock the chosen floor.</div>
+
+  <div class="iq">A driver loses their ticket. What happens?</div>
+  <div class="ans">The attendant calls <code>reportLostTicket(licensePlate)</code>. We keep a <code>plateIndex</code> map (plate → ticketId) populated at issue time, so this lookup is O(1). The ticket's state moves <code>ACTIVE → LOST</code>. At exit, <code>closeTicket</code> sees the LOST status, computes the regular fee with PricingStrategy, and adds a flat <code>lostPenalty</code>. Ticket then moves <code>LOST → PAID → EXITED</code>. We don't compute fee from "now minus best-guess entry" because the entry time was recorded at issue; only the receipt is missing.</div>
+
+  <div class="iq">What if the card payment fails at exit?</div>
+  <div class="ans"><code>Payment.process()</code> returns false, <code>closeTicket</code> throws <code>PaymentFailedException</code>, and the ticket stays in ACTIVE. The spot is still held, the barrier doesn't lift, the driver retries with another card or pays cash. The key invariant is: <strong>the spot is only released after the ticket is PAID and EXITED</strong>. No payment, no exit.</div>
+
+  <div class="iq">How do you support peak-hour pricing without rewriting everything?</div>
+  <div class="ans"><code>PeakHourStrategy</code> is a decorator wrapping another <code>PricingStrategy</code>. Its <code>price()</code> calls the inner strategy first, then applies a 1.5× multiplier if any hour of the parking session overlaps 18:00–21:00. To turn it on, the admin calls <code>lot.setPricer(new PeakHourStrategy(new TieredRateStrategy()))</code>. To turn it off, swap back. Zero edits to ParkingLot or anything else.</div>
+
+  <div class="iq">An EV needs charging. How does allocation handle that?</div>
+  <div class="ans"><code>BestFitStrategy</code> has a preference list per vehicle type. For ELECTRIC_CAR it's <code>[ELECTRIC, COMPACT, LARGE]</code> — try electric spots first (charger access), fall back to compact, finally large. We iterate the preference, and for each preferred type scan all floors. The strategy stays clean; the rule lives in one place.</div>
+
+  <div class="iq">How would you scale to 100 lots in a city?</div>
+  <div class="ans">Now Singleton stops being right — we need one ParkingLot instance per facility, behind a <code>LotRegistry</code> keyed by lot ID. State moves out of memory into a database (Postgres for tickets/payments, Redis for spot availability since it's hot). Display boards become per-floor topics on a pub/sub bus. Allocation is now a service call. The <em>class design stays the same</em>; only the persistence layer and the location of state change.</div>
+
+  <div class="iq">Why state pattern and not just an enum check?</div>
+  <div class="ans">An enum check is "<code>if (status == ACTIVE) { … }</code>" scattered across the codebase. Forget one check, you've got a bug. State pattern (even the lite version where transitions are methods on the entity) <em>centralizes</em> the rules in one place. The compiler won't catch <code>markExited()</code> on an ACTIVE ticket — but the throw at runtime in tests will, and it's easy to find.</div>
+
+  <div class="iq">Why didn't you use the Builder pattern?</div>
+  <div class="ans">Builder pays off when constructors have &gt;3 params and many are optional. Our entities are slim — Vehicle has 2, Spot has 2, Ticket gets 2 at construction. If the interviewer adds "vehicle has color, owner, registration date, insurance…" then we'd builder-ize Vehicle. Don't add abstractions before they earn their keep.</div>
+
+  <div class="iq">How does the display board stay consistent with the allocator?</div>
+  <div class="ans">The board is an Observer subscribed to <code>SpotEvent</code>s emitted by the floor whenever a spot's <code>free</code> flag flips. Counters on the board are <code>AtomicInteger</code>s, so concurrent <code>onSpotChanged</code> calls don't lose updates. The board is eventually consistent — there's a microsecond between the spot flipping and the counter updating — but for a "Floor 2 — 13 free" display that's fine. If we needed strict consistency we'd hold the same lock as <code>issueTicket</code>, at the cost of throughput.</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

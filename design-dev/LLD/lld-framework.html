@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LLD Framework — A 5-Step Playbook with a Parking Lot Walkthrough</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+
+.script-line{display:grid;grid-template-columns:80px 1fr;gap:1rem;padding:.85rem 1rem;border-left:2px solid var(--border);margin-bottom:.4rem;background:var(--surface);border-radius:0 var(--r) var(--r) 0}
+.script-line .stime{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);font-weight:700}
+.script-line .scontent{font-size:.9rem;color:var(--text);line-height:1.75}
+.script-line.s-blue{border-left-color:var(--blue)}.script-line.s-blue .stime{color:var(--blue)}
+.script-line.s-green{border-left-color:var(--green)}.script-line.s-green .stime{color:var(--green)}
+.script-line.s-purple{border-left-color:var(--purple)}.script-line.s-purple .stime{color:var(--purple)}
+.script-line.s-yellow{border-left-color:var(--yellow)}.script-line.s-yellow .stime{color:var(--yellow)}
+.script-line.s-cyan{border-left-color:var(--cyan)}.script-line.s-cyan .stime{color:var(--cyan)}
+
+.next-nav{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:2rem}
+.next-nav a{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem;text-decoration:none;color:var(--text);transition:border-color .2s,transform .2s}
+.next-nav a:hover{border-color:var(--orange);transform:translateY(-2px)}
+.next-nav .lbl{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:.3rem;display:block}
+.next-nav .ttl{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--heading)}
+@media(max-width:700px){.next-nav{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">LLD · In a Hurry · Part 2 of 3</div>
+  <h1>The 5-Step <span>LLD Framework</span></h1>
+  <p class="sub">A 45-minute timeboxed playbook for any LLD prompt — from "design a parking lot" to "design a chess game" — with a full minute-by-minute walkthrough at the end.</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Why a Framework?</a></li>
+      <li><a href="#s2">The 5 Steps Overview</a></li>
+      <li><a href="#s3">Step 1 — Requirements</a></li>
+      <li><a href="#s4">Step 2 — Core Entities</a></li>
+      <li><a href="#s5">Step 3 — Class Diagram</a></li>
+      <li><a href="#s6">Step 4 — Patterns &amp; Sequence</a></li>
+      <li><a href="#s7">Step 5 — Java Code</a></li>
+      <li><a href="#s8">Specificity Wins</a></li>
+      <li><a href="#s9">Walkthrough — Parking Lot</a></li>
+      <li><a href="#s10">Mapping the Site's LLDs</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ================================================ -->
+<!-- SECTION 1                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 0</span>
+  <h2>Why You Need a Framework — Even More Than in HLD</h2>
+  <p>Picture Raj at his SDE-3 onsite. The interviewer says, <em>"design a movie booking system."</em> Raj knows Strategy. He knows Factory. He's read about every GoF pattern twice. So he opens the whiteboard, draws a class called <code>Movie</code>, then a class called <code>Theater</code>, then a class called <code>Booking</code> — and freezes. The classes are right but the relationships are vague. He hasn't named the requirements. He hasn't decided whether <code>Seat</code> is a class or a field on <code>Theater</code>. He hasn't thought about race conditions on bookings. Twenty-five minutes in he's drawing arrows between boxes that he's not sure point in the right direction. The interviewer asks <em>"what does <code>book()</code> actually do?"</em> and Raj realises he hasn't decided who owns the seat-locking logic.</p>
+
+  <p>The problem isn't that Raj doesn't know patterns. The problem is he has <strong>no playbook for the order of operations</strong>. LLD interviews need structure even more than HLD ones, because LLD has more degrees of freedom — every entity could be a class or a field, every method could live on the producer or the consumer, every variation point could be a Strategy or a Factory or just a switch statement. Without an order, you'll thrash.</p>
+
+  <div class="highlight hl-orange"><strong>The framework is the recipe, not the menu.</strong> A great chef doesn't decide what to cook by reading the entire pantry top-to-bottom; they pick a dish, then go in order — mise en place, then sear, then deglaze, then plate. The LLD framework is the same. Requirements before entities. Entities before relationships. Relationships before patterns. Patterns before code. Skip a step and the next one collapses.</div>
+
+  <p>This page lays out the 5 steps, gives you the timebox for each, then shows them in action on a "design a parking lot" prompt. By the end you should be able to walk into any LLD interview and know <em>exactly what you're going to do at minute 5, minute 15, minute 25, and minute 35</em>.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 2                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-purple">The Playbook</span>
+  <h2>The 5-Step Framework — A 45-Minute Timeline</h2>
+  <p>Here's the playbook on one page. Five distinct phases, ordered the way a senior engineer would actually approach a new domain in a real design review. Each step has a hard timebox — the goal isn't to finish fast, it's to <strong>spend exactly the right amount on each phase so you reach the code with the interviewer still engaged</strong>.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+gantt
+  title LLD Interview — 45 to 60 Minute Timeline
+  dateFormat X
+  axisFormat %s
+
+  section Setup
+  Step 1 — Requirements              :crit, s1, 0, 5m
+  Step 2 — Core Entities             :s2, after s1, 5m
+
+  section Design
+  Step 3 — Class Diagram             :crit, s3, after s2, 10m
+  Step 4 — Patterns and Sequence     :crit, s4, after s3, 10m
+
+  section Code
+  Step 5 — Java Code                 :crit, s5, after s4, 12m
+
+  section Buffer
+  Q and A and Trade-offs             :s6, after s5, 5m
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card" style="border-left:3px solid var(--orange)"><h3>Step 1 · ~5 min</h3><p><strong>Requirements.</strong> 3–5 functional + 3 non-functional. Explicit out-of-scope. Get sign-off before drawing.</p></div>
+    <div class="card" style="border-left:3px solid var(--green)"><h3>Step 2 · ~5 min</h3><p><strong>Core Entities.</strong> 5–8 nouns with a one-sentence responsibility each. Build the vocabulary.</p></div>
+    <div class="card" style="border-left:3px solid var(--blue)"><h3>Step 3 · ~10 min</h3><p><strong>Class Diagram.</strong> UML — fields, methods, relationships. Inheritance vs composition justified.</p></div>
+    <div class="card" style="border-left:3px solid var(--purple)"><h3>Step 4 · ~10 min</h3><p><strong>Patterns + Sequence.</strong> Find variation points, apply 2–4 patterns, draw the happy-path sequence.</p></div>
+    <div class="card" style="border-left:3px solid var(--yellow)"><h3>Step 5 · ~12 min</h3><p><strong>Java Code.</strong> Enums → interfaces → entities → service → main(). One end-to-end happy path that compiles.</p></div>
+    <div class="card" style="border-left:3px solid var(--cyan)"><h3>Buffer · ~5 min</h3><p><strong>Trade-offs &amp; Q&amp;A.</strong> Extension points, concurrency, "what would you change?"</p></div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The framework as a kitchen.</strong> Steps 1–2 are mise en place — the prep nobody admires but everyone needs. Step 3 is the sear — visible, dramatic, and where the dish takes shape. Step 4 is the deglaze — small move, huge flavour, where the design starts to feel professional. Step 5 is the plate — the version the interviewer photographs. Skip mise en place and you're going to be chopping onions while the pan smokes.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 3                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-orange">Step 1 · 5 min</span>
+  <h2>Step 1 — Clarify Requirements</h2>
+  <p>The single most undervalued step. Candidates who skip it always design the wrong thing. The interviewer's gentle <em>"interesting, but what about X?"</em> twenty minutes in lands like a wrecking ball, and there's no time to recover. Five minutes here saves twenty later.</p>
+
+  <h3 class="subh">Functional requirements — top 3 user actions</h3>
+  <p>Phrase each as <em>"a user should be able to..."</em> Resist the urge to brainstorm 15 features. The interviewer doesn't have time to design 15 things in 45 minutes, and the loop is graded on depth, not breadth. Pick the 3 hardest, hardest-coupled features — they'll force out the most interesting design choices.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✅ Good — Parking Lot top 3</h3>
+      <ul>
+        <li>A driver should be able to <strong>find and occupy a free spot</strong> appropriate for their vehicle size</li>
+        <li>A driver should be able to <strong>pay and exit</strong>, with the bill computed from time + spot type</li>
+        <li>An admin should be able to <strong>add a new floor or change pricing rules</strong> without redeploying core logic</li>
+      </ul>
+      <p style="margin-top:.55rem"><em>Three actions, each one drives a different architectural slice. Park → spot allocation strategy. Pay → billing strategy. Admin → extension points / Open-Closed.</em></p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">❌ Bad — kitchen sink</h3>
+      <ul>
+        <li>Park, reserve, cancel, transfer, refund</li>
+        <li>Pay by card, UPI, wallet, monthly subscription, corporate billing</li>
+        <li>SMS notification, app notification, license-plate recognition, EV charging, valet</li>
+        <li>Multi-operator, franchising, dynamic pricing, surge, reporting...</li>
+      </ul>
+      <p style="margin-top:.55rem"><em>You'll spend 15 minutes just listing features and have no time for the class diagram, let alone code. The interviewer will start cutting features by force, which is a process failure on you.</em></p>
+    </div>
+  </div>
+
+  <h3 class="subh">Non-functional requirements — quantify or skip</h3>
+  <p>NFRs in LLD are smaller in scope than HLD ones — you don't need to estimate QPS — but you still need to commit to a few. The good list: <span class="metric">concurrency model</span> <span class="metric">extensibility direction</span> <span class="metric">performance budget</span> <span class="metric">durability</span>. Each one constrains a later design choice.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✅ Good NFRs (Parking Lot)</h3>
+      <ul>
+        <li><strong>Concurrency:</strong> 10K active drivers, two parking attempts on the same spot must serialise — second one fails fast</li>
+        <li><strong>Extensibility:</strong> new vehicle types, new pricing rules, and new payment methods must be add-only</li>
+        <li><strong>Performance:</strong> spot lookup under 50ms; the system holds state in-memory, persistence is out of scope</li>
+        <li><strong>Out of scope:</strong> payment gateway integration, license-plate ML, multi-tenant operators</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">❌ Bad NFRs</h3>
+      <ul>
+        <li>"Highly available" — what's the SLO? Does the parking gate fall back to free entry?</li>
+        <li>"Scalable" — to what? 100 spots or 100,000?</li>
+        <li>"Secure" — secure against what? Drivers gaming pricing? Admins forging tickets?</li>
+        <li>"Maintainable" — meaningless without a stated extension axis</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="subh">The "out of scope" line — the most underused move</h3>
+  <p>Saying "I'm not designing X" is as valuable as saying "I'm designing Y". It tells the interviewer you've considered the trade-off and made a deliberate cut. <em>"Payment gateway integration is out of scope — I'll use a <code>PaymentProvider</code> interface so production swaps in Stripe; the LLD focuses on the in-memory model"</em> earns more credit than silently leaving payments unaddressed.</p>
+
+  <div class="highlight hl-orange"><strong>Anti-pattern:</strong> "Sure, design a parking lot, let me start drawing." The candidate has just decided the requirements unilaterally and will spend the next 40 minutes defending choices the interviewer never agreed to. The fix is one sentence — <em>"Before I draw anything, can I confirm the top 3 features and what's out of scope?"</em></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 4                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-green">Step 2 · 5 min</span>
+  <h2>Step 2 — Identify Core Entities</h2>
+  <p>List the data nouns the system manipulates. One sentence of responsibility per entity. No fields yet, no relationships, no methods — just names and what each one is responsible for. This step exists to <strong>establish vocabulary</strong> with the interviewer so when you say "Spot" or "Ticket" later, you both mean the same thing.</p>
+
+  <h3 class="subh">How to find the entities — circle the nouns</h3>
+  <p>Read the requirements out loud. Every concrete noun that has its own state or its own lifecycle is an entity candidate. Adjectives and verbs are <em>not</em> entities — they become fields and methods. <em>"Park a car in a spot"</em> gives you <strong>Car</strong>, <strong>Spot</strong> (entities) and <strong>park()</strong> (method). <em>"in"</em> isn't an entity.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Entity</th>
+          <th>Responsibility (one sentence)</th>
+          <th>Lifecycle</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>ParkingLot</strong></td><td>Owns all floors, exposes the entry/exit operations</td><td>Singleton — one per facility</td></tr>
+        <tr><td><strong>Floor</strong></td><td>Holds a list of spots and answers "is anything free for this vehicle size?"</td><td>Created at lot setup, mostly immutable</td></tr>
+        <tr><td><strong>Spot</strong></td><td>Represents a single parking slot with size and occupancy state</td><td>Long-lived; oscillates FREE ↔ OCCUPIED</td></tr>
+        <tr><td><strong>Vehicle</strong></td><td>Represents the thing being parked; carries size + license plate</td><td>Transient — exists for one parking session</td></tr>
+        <tr><td><strong>Ticket</strong></td><td>The receipt that proves a vehicle entered; carries entry time</td><td>Issued on park, consumed on exit</td></tr>
+        <tr><td><strong>Bill</strong></td><td>Computed at exit from ticket + pricing strategy</td><td>One-shot — generated and paid</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Six entities is the sweet spot for a parking lot. Less than four and you're hiding complexity in fat classes; more than nine and you're overdesigning. If you're tempted to add <code>EntryGate</code>, <code>ExitGate</code>, and <code>DisplayBoard</code> — pause. Those are interface concerns, not domain entities. Mention them in passing if asked, but don't pollute the diagram.</p>
+
+  <h3 class="subh">The three reasons this step earns its time</h3>
+  <div class="g3">
+    <div class="card"><h3>🎯 Anchors for later</h3><p>When you draw <code>park()</code> in Step 5, you'll reach for "the Spot collection" — the interviewer already knows what that means.</p></div>
+    <div class="card"><h3>📐 Forces a model</h3><p>If you can't list the entities, you don't understand the problem. Five minutes here exposes confusion early, while you can still recover.</p></div>
+    <div class="card"><h3>⚡ Locks in vocabulary</h3><p>"Slot" vs "Spot" vs "Bay" — pick one and the rest of the interview becomes shorter and clearer.</p></div>
+  </div>
+
+  <div class="highlight hl-green"><strong>So what.</strong> Step 2 is small, fast, and almost mechanical — and it's the step that lets Steps 3, 4, and 5 each move twice as fast. Five minutes of vocabulary now buys you ten minutes back later.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 5                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-blue">Step 3 · 10 min</span>
+  <h2>Step 3 — Class Diagram</h2>
+  <p>Now the entities get fields, methods, and relationships. This is where most of the LLD score is decided. The interviewer is watching for two things: (a) does the class structure cleanly map to the domain you described in Step 2, and (b) do the relationships use the right kind of arrow — inheritance vs composition vs aggregation vs association?</p>
+
+  <h3 class="subh">The four relationships you must know cold</h3>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>Inheritance — "is-a"</h3>
+      <p>UML: solid line + hollow triangle (<code>--|&gt;</code>). <em>"A <code>Car</code> is a <code>Vehicle</code>."</em> Use only when the subclass <em>genuinely substitutes</em> for the parent. Default away from inheritance — it's a one-way door.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--green)">
+      <h3>Composition — "owns, dies-with"</h3>
+      <p>UML: solid line + filled diamond (<code>*--</code>). <em>"A <code>Floor</code> owns its <code>Spot</code>s."</em> If the parent dies, the children die with it. Spots can't exist without their floor.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h3>Aggregation — "has-a, lives-on"</h3>
+      <p>UML: solid line + hollow diamond (<code>o--</code>). <em>"A <code>Garage</code> has <code>Car</code>s."</em> Cars exist before, during, and after they're parked. The garage doesn't own them.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--purple)">
+      <h3>Association — "knows-about"</h3>
+      <p>UML: solid line with arrowhead (<code>--&gt;</code>). <em>"A <code>Ticket</code> references the <code>Spot</code> it's for."</em> A weak link, no ownership. The most common relationship.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>The cheat code:</strong> if you can't decide between composition and aggregation, pick aggregation. Composition is a stronger commitment ("I will manage your lifetime") that you usually don't need. If you can't decide between inheritance and composition, pick composition. Inheritance only when the subclass passes the Liskov test in Section 6 of <a href="lld-introduction.html#s6" style="color:var(--orange)">Part 1</a>.</div>
+
+  <h3 class="subh">Mermaid example — the parking lot's class spine</h3>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+classDiagram
+  class ParkingLot {
+    -List~Floor~ floors
+    -PricingStrategy pricing
+    -SpotAllocator allocator
+    +parkVehicle(Vehicle) Ticket
+    +exitVehicle(Ticket) Bill
+  }
+  class Floor {
+    -int floorNo
+    -List~Spot~ spots
+    +findFreeSpot(VehicleSize) Spot
+  }
+  class Spot {
+    <<abstract>>
+    -String spotId
+    -boolean occupied
+    +occupy(Vehicle)
+    +vacate()
+  }
+  class CarSpot
+  class BikeSpot
+  class TruckSpot
+  class Vehicle {
+    -String licensePlate
+    -VehicleSize size
+  }
+  class Ticket {
+    -String ticketId
+    -Spot spot
+    -Instant entryTime
+  }
+  class PricingStrategy {
+    <<interface>>
+    +calculate(Ticket, Instant exit) Bill
+  }
+  class HourlyPricing
+  class DayNightPricing
+
+  ParkingLot *-- Floor : composition
+  Floor *-- Spot : composition
+  Spot <|-- CarSpot : inheritance
+  Spot <|-- BikeSpot : inheritance
+  Spot <|-- TruckSpot : inheritance
+  ParkingLot --> PricingStrategy : association
+  PricingStrategy <|.. HourlyPricing
+  PricingStrategy <|.. DayNightPricing
+  Ticket --> Spot : association
+    </div>
+  </div>
+
+  <h3 class="subh">How to narrate this aloud</h3>
+  <p>The diagram alone earns nothing if the interviewer can't follow why each arrow is the kind of arrow it is. As you draw, say: <em>"<code>ParkingLot</code> composes <code>Floor</code> — floors don't exist outside their lot. <code>Floor</code> composes <code>Spot</code> for the same reason. <code>Spot</code> is abstract because Bike, Car, and Truck spots have different size constraints — that's inheritance because they truly substitute. <code>PricingStrategy</code> is an interface that <code>ParkingLot</code> holds by reference (association) because pricing rules change every quarter and I want a new rule to be a new file."</em></p>
+
+  <div class="highlight hl-blue"><strong>The senior signal in this step:</strong> every relationship has a one-sentence justification rooted in domain reality, not in pattern dogma. <em>"It's composition because the lifetimes are bound"</em> beats <em>"composition because the book said composition."</em></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 6                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-purple">Step 4 · 10 min</span>
+  <h2>Step 4 — Apply Patterns &amp; Draw the Sequence</h2>
+  <p>Now you find the <strong>variation points</strong> in the design — the places where requirements are most likely to change next quarter — and you apply the GoF pattern that absorbs that change cleanly. Then you draw the happy-path sequence so the interviewer can see the runtime, not just the static topology.</p>
+
+  <h3 class="subh">How to spot a variation point</h3>
+  <p>Ask one question per noun in the diagram: <em>"if I had to add a new variant of this next month, would the existing code change?"</em> If yes, that's a variation point. The pattern toolbox is in <a href="lld-patterns.html" style="color:var(--orange)">Part 3</a>; the cheat-sheet for picking the right one is below.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Smell</th>
+          <th>Pattern</th>
+          <th>Parking Lot Example</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>An <code>if/else</code> over a "kind" enum</td><td><strong>Strategy</strong></td><td>Pricing rules — hourly, day/night, weekend</td></tr>
+        <tr><td>Object construction has many switches</td><td><strong>Factory</strong></td><td>Creating the right <code>Spot</code> subclass for a vehicle</td></tr>
+        <tr><td>One write must update many readers</td><td><strong>Observer</strong></td><td>Spot freed → notify reservation holders</td></tr>
+        <tr><td>Behaviour depends on lifecycle stage</td><td><strong>State</strong></td><td>Reservation: PENDING → CONFIRMED → EXPIRED</td></tr>
+        <tr><td>Optional features stack at runtime</td><td><strong>Decorator</strong></td><td>Peak-hour surcharge wraps base pricing</td></tr>
+        <tr><td>Exactly one instance, globally accessible</td><td><strong>Singleton</strong></td><td>The <code>ParkingLot</code> registry</td></tr>
+        <tr><td>Constructor with &gt;3 params</td><td><strong>Builder</strong></td><td>Configuring a <code>Lot</code> at startup</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The two-to-four rule.</strong> Aim for 2–4 patterns. One pattern looks like you flinched. Six patterns looks like resume-driven design — the interviewer will start asking <em>"why Visitor here?"</em> and you'll fold. Each pattern you name should be tied to a specific class plus a one-sentence reason that mentions a concrete future change.</div>
+
+  <h3 class="subh">Sequence diagram — show one user action end-to-end</h3>
+  <p>Pick the most important user action — usually the one from your top functional requirement — and draw the sequence of method calls between objects. A sequence diagram is worth ten paragraphs of explanation; the interviewer can <em>see</em> the runtime.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor Driver
+  participant Gate as EntryGate
+  participant Lot as ParkingLot
+  participant Alloc as SpotAllocator
+  participant Floor
+  participant Spot
+  participant Ticket
+
+  Driver->>Gate: drive in (vehicle)
+  Gate->>Lot: parkVehicle(vehicle)
+  Lot->>Alloc: findSpot(vehicle.size)
+  Alloc->>Floor: findFreeSpot(size)
+  Floor->>Spot: tryOccupy(vehicle)
+  alt CAS success
+    Spot-->>Floor: occupied
+    Floor-->>Alloc: spot
+    Alloc-->>Lot: spot
+    Lot->>Ticket: new Ticket(spot, now)
+    Lot-->>Gate: ticket
+    Gate-->>Driver: print ticket, raise barrier
+  else CAS failed (race lost)
+    Spot-->>Floor: BUSY
+    Floor->>Spot: try next free spot
+  end
+    </div>
+  </div>
+
+  <p>Notice two things in the sequence. <strong>One:</strong> the alt block makes the race condition visible. Two drivers hitting the same spot is a real risk and showing the CAS retry path scores points without anyone asking. <strong>Two:</strong> every participant is a real class from your Step 3 diagram. If a sequence message has no class to send it to, you're missing an entity.</p>
+
+  <div class="highlight hl-purple"><strong>So what.</strong> Step 4 is the step that turns a static class diagram into a system the interviewer can imagine running. Patterns explain <em>why</em> the design will survive next quarter's changes; the sequence diagram explains <em>how</em> the runtime behaves today. Both, together, in 10 minutes.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 7                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-yellow">Step 5 · 12 min</span>
+  <h2>Step 5 — Write the Java</h2>
+  <p>Twelve minutes is not a lot. The temptation is to start with the most exciting class and write it in detail. The right move is the opposite — write the <em>boring scaffolding first</em> (enums, interfaces) so the meat in the middle has something to lean on, and end with one <code>main()</code> that exercises the happy path. If the interviewer can read your <code>main()</code> top-to-bottom and see the design come alive, you win the loop.</p>
+
+  <h3 class="subh">The order of operations</h3>
+
+  <div class="g3">
+    <div class="card" style="border-left:3px solid var(--orange)"><h3>1. Enums (1 min)</h3><p>VehicleSize, SpotStatus, anything finite. Cheap to write, locks in vocabulary.</p></div>
+    <div class="card" style="border-left:3px solid var(--green)"><h3>2. Interfaces (2 min)</h3><p>PricingStrategy, SpotAllocator, PaymentProvider. The variation points from Step 4.</p></div>
+    <div class="card" style="border-left:3px solid var(--blue)"><h3>3. Entity classes (4 min)</h3><p>Spot, Vehicle, Ticket. Records or POJOs — skip getter/setter ceremony.</p></div>
+    <div class="card" style="border-left:3px solid var(--purple)"><h3>4. Service (3 min)</h3><p>ParkingLot — the orchestrator. Where the parking + billing logic lives.</p></div>
+    <div class="card" style="border-left:3px solid var(--yellow)"><h3>5. main() (2 min)</h3><p>Three lines: park a car, sleep, exit. Show the design works end-to-end.</p></div>
+  </div>
+
+  <h3 class="subh">A skeleton in 60 lines (the kind that fits on a whiteboard)</h3>
+
+  <span class="code-label cl-orange">Enums + interfaces — vocabulary first</span>
+<pre><span class="kw">enum</span> <span class="ty">VehicleSize</span> { <span class="num">BIKE</span>, <span class="num">CAR</span>, <span class="num">TRUCK</span> }
+
+<span class="kw">interface</span> <span class="ty">PricingStrategy</span> {
+  <span class="ty">double</span> <span class="fn">calculate</span>(<span class="ty">Duration</span> stay, <span class="ty">VehicleSize</span> size);
+}
+
+<span class="kw">interface</span> <span class="ty">SpotAllocator</span> {
+  <span class="ty">Optional</span>&lt;<span class="ty">Spot</span>&gt; <span class="fn">findAndOccupy</span>(<span class="ty">VehicleSize</span> size);
+}</pre>
+
+  <span class="code-label cl-blue">Entity classes — Spot is the abstract base, vehicle is a record</span>
+<pre><span class="kw">abstract class</span> <span class="ty">Spot</span> {
+  <span class="kw">protected final</span> <span class="ty">String</span> id;
+  <span class="kw">protected final</span> <span class="ty">VehicleSize</span> size;
+  <span class="kw">protected final</span> <span class="ty">AtomicReference</span>&lt;<span class="ty">Vehicle</span>&gt; occupant = <span class="kw">new</span> <span class="ty">AtomicReference</span>&lt;&gt;();
+
+  <span class="ty">Spot</span>(<span class="ty">String</span> id, <span class="ty">VehicleSize</span> size) { <span class="kw">this</span>.id = id; <span class="kw">this</span>.size = size; }
+
+  <span class="kw">boolean</span> <span class="fn">tryOccupy</span>(<span class="ty">Vehicle</span> v) {
+    <span class="kw">return</span> v.size().ordinal() &lt;= size.ordinal()
+        &amp;&amp; occupant.compareAndSet(<span class="kw">null</span>, v);   <span class="cmt">// race-safe</span>
+  }
+  <span class="kw">void</span> <span class="fn">vacate</span>() { occupant.set(<span class="kw">null</span>); }
+}
+
+<span class="kw">class</span> <span class="ty">CarSpot</span>   <span class="kw">extends</span> <span class="ty">Spot</span> { <span class="ty">CarSpot</span>(<span class="ty">String</span> id)   { <span class="kw">super</span>(id, <span class="ty">VehicleSize</span>.<span class="num">CAR</span>); } }
+<span class="kw">class</span> <span class="ty">TruckSpot</span> <span class="kw">extends</span> <span class="ty">Spot</span> { <span class="ty">TruckSpot</span>(<span class="ty">String</span> id) { <span class="kw">super</span>(id, <span class="ty">VehicleSize</span>.<span class="num">TRUCK</span>); } }
+
+<span class="kw">record</span> <span class="ty">Vehicle</span>(<span class="ty">String</span> licensePlate, <span class="ty">VehicleSize</span> size) {}
+<span class="kw">record</span> <span class="ty">Ticket</span>(<span class="ty">String</span> id, <span class="ty">Spot</span> spot, <span class="ty">Instant</span> entry) {}
+<span class="kw">record</span> <span class="ty">Bill</span>(<span class="ty">Ticket</span> ticket, <span class="ty">double</span> amount, <span class="ty">Duration</span> stay) {}</pre>
+
+  <span class="code-label cl-green">Service + main() — the happy path you can read top-to-bottom</span>
+<pre><span class="kw">class</span> <span class="ty">ParkingLot</span> {
+  <span class="kw">private final</span> <span class="ty">SpotAllocator</span> allocator;
+  <span class="kw">private final</span> <span class="ty">PricingStrategy</span> pricing;
+  <span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">String</span>, <span class="ty">Ticket</span>&gt; openTickets = <span class="kw">new</span> <span class="ty">ConcurrentHashMap</span>&lt;&gt;();
+
+  <span class="ty">ParkingLot</span>(<span class="ty">SpotAllocator</span> allocator, <span class="ty">PricingStrategy</span> pricing) {
+    <span class="kw">this</span>.allocator = allocator;
+    <span class="kw">this</span>.pricing   = pricing;
+  }
+
+  <span class="ty">Ticket</span> <span class="fn">park</span>(<span class="ty">Vehicle</span> v) {
+    <span class="ty">Spot</span> spot = allocator.findAndOccupy(v.size())
+                .orElseThrow(() -&gt; <span class="kw">new</span> <span class="ty">LotFullException</span>(v.size()));
+    <span class="ty">Ticket</span> t = <span class="kw">new</span> <span class="ty">Ticket</span>(<span class="ty">UUID</span>.randomUUID().toString(), spot, <span class="ty">Instant</span>.now());
+    openTickets.put(t.id(), t);
+    <span class="kw">return</span> t;
+  }
+
+  <span class="ty">Bill</span> <span class="fn">exit</span>(<span class="ty">String</span> ticketId) {
+    <span class="ty">Ticket</span> t = openTickets.remove(ticketId);
+    <span class="kw">if</span> (t == <span class="kw">null</span>) <span class="kw">throw new</span> <span class="ty">UnknownTicketException</span>();
+    <span class="ty">Duration</span> stay = <span class="ty">Duration</span>.between(t.entry(), <span class="ty">Instant</span>.now());
+    t.spot().vacate();
+    <span class="kw">return new</span> <span class="ty">Bill</span>(t, pricing.calculate(stay, t.spot().size), stay);
+  }
+}
+
+<span class="kw">public class</span> <span class="ty">Demo</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="ty">String</span>[] a) <span class="kw">throws</span> <span class="ty">Exception</span> {
+    <span class="ty">SpotAllocator</span>  alloc   = <span class="kw">new</span> <span class="ty">SimpleAllocator</span>(<span class="ty">List</span>.of(<span class="kw">new</span> <span class="ty">CarSpot</span>(<span class="str">"S-1"</span>)));
+    <span class="ty">PricingStrategy</span> pricing = <span class="kw">new</span> <span class="ty">HourlyPricing</span>(<span class="num">40.0</span>);
+    <span class="ty">ParkingLot</span>     lot     = <span class="kw">new</span> <span class="ty">ParkingLot</span>(alloc, pricing);
+
+    <span class="ty">Ticket</span> t = lot.park(<span class="kw">new</span> <span class="ty">Vehicle</span>(<span class="str">"KA-01-AB-1234"</span>, <span class="ty">VehicleSize</span>.<span class="num">CAR</span>));
+    <span class="ty">Thread</span>.sleep(<span class="num">3000</span>);
+    <span class="ty">Bill</span> b = lot.exit(t.id());
+    <span class="ty">System</span>.out.println(<span class="str">"Pay: ₹"</span> + b.amount());
+  }
+}</pre>
+
+  <div class="highlight hl-yellow"><strong>What this code demonstrates without saying a word.</strong> (1) Concurrency: <code>AtomicReference.compareAndSet</code> on the spot makes the race-condition discussion concrete. (2) Open/Closed: a new <code>PricingStrategy</code> implementation is one new class — no edits to <code>ParkingLot</code>. (3) Composition over inheritance: <code>ParkingLot</code> holds <code>SpotAllocator</code> by reference instead of extending it. (4) Java 17+ idioms: <code>record</code> for value types, <code>Optional</code> for "not found", <code>ConcurrentHashMap</code> for the ticket registry. Each one is a senior signal even if the interviewer never asks.</div>
+
+  <div class="highlight hl-red"><strong>What to skip without apology.</strong> Getters, setters, <code>equals()</code>/<code>hashCode()</code>, exception class definitions, the trivial <code>SimpleAllocator</code> body. Say out loud <em>"I'd Lombok these in production"</em> or <em>"I'll skip the <code>SimpleAllocator</code> body — just iterates the spot list — happy to write it if you want."</em> The interviewer almost always says skip it. Use the time saved on the methods that matter.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 8                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-cyan">The Senior Tell</span>
+  <h2>Specifying Implementations — Where Senior Beats Junior</h2>
+  <p>Of all the things that separate a junior-level LLD answer from a senior one, the biggest is <strong>specificity</strong>. Junior candidates name a class; senior candidates name the class, the data structure inside it, the concurrency primitive, the failure mode, and the extension point. Same five seconds, ten times the signal.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🟥 "I'll use a list of spots"</h3>
+      <p>Which list? <code>ArrayList</code>? Synchronised? Indexed how? Iterated under contention?</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🟩 The senior version</h3>
+      <p>"Per-floor I'll keep an <code>EnumMap&lt;VehicleSize, ConcurrentLinkedDeque&lt;Spot&gt;&gt;</code> of free spots so allocation is O(1) and lock-free. Occupied spots leave the deque entirely; on vacate, they re-enter at the head. Re-entry at head means the same spot gets re-used most often, which keeps the working set hot and helps with cache-friendly lookups in tests."</p>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🟥 "The Spot has a synchronised method"</h3>
+      <p>Synchronised on what monitor? What's the contention pattern? What's the timeout?</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🟩 The senior version</h3>
+      <p>"Each Spot holds an <code>AtomicReference&lt;Vehicle&gt;</code>. <code>tryOccupy</code> does a single CAS — if it returns false, the caller (the allocator) tries the next free spot. No blocking, no monitor, no deadlock surface. The whole 'two drivers hit the same spot' problem becomes one CPU instruction."</p>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🟥 "Pricing is configurable"</h3>
+      <p>Configurable how? Where does the config live? How is it reloaded?</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🟩 The senior version</h3>
+      <p>"<code>PricingStrategy</code> is an interface with one method, <code>calculate(Duration, VehicleSize)</code>. Implementations live in their own files — <code>HourlyPricing</code>, <code>DayNightPricing</code>, <code>WeekendSurcharge</code>. The lot holds the strategy by reference, so an admin endpoint can hot-swap it without restarting. Decorator on top — <code>PeakHourSurcharge</code> wraps any strategy and adds 30% between 9–11am."</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>The pattern in one sentence:</strong> for every component you name, also name (1) the specific data structure or interface, (2) the concurrency primitive, (3) the extension point (how would I add a new variant?), (4) the failure mode (what happens if this throws?). That's the senior signal — and it costs maybe 10 extra seconds per component.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 9                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-orange">Worked Example</span>
+  <h2>Walkthrough — "Design a Parking Lot" in 45 Minutes</h2>
+  <p>Below is a minute-by-minute script of an idealised candidate (call her Priya) running the framework on the parking-lot prompt. Read it as the tempo and tone you should aim for — concise, structured, narrating the framework out loud as she builds.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor P as Priya (candidate)
+  actor I as Interviewer
+
+  Note over P,I: Minute 0 — Prompt
+  I->>P: Design a parking lot.
+
+  Note over P,I: Minutes 0 to 5 — Step 1 Requirements
+  P->>I: Top 3 features  park, exit and bill, admin extends rules?
+  I-->>P: Yes. Skip payment gateway and ML license-plate.
+  P->>I: NFRs  10K drivers, race-safe spot allocation, add-only extensions
+
+  Note over P,I: Minutes 5 to 10 — Step 2 Entities
+  P->>I: Six entities  ParkingLot, Floor, Spot, Vehicle, Ticket, Bill
+
+  Note over P,I: Minutes 10 to 20 — Step 3 Class Diagram
+  P->>I: Lot composes Floor, Floor composes Spot. Spot is abstract  Bike Car Truck.
+  P->>I: PricingStrategy is an interface. Lot holds it by reference (association).
+  I-->>P: Why composition, not aggregation, for spot to floor?
+  P->>I: Spot can't exist without floor  parent dies, child dies. That is composition.
+
+  Note over P,I: Minutes 20 to 30 — Step 4 Patterns + Sequence
+  P->>I: Strategy on pricing. Factory on Spot creation. Singleton on Lot. State on Reservation.
+  P->>I: Sequence  Driver  Gate  Lot  Allocator  Floor  Spot.tryOccupy (CAS).
+  I-->>P: What if the CAS loses?
+  P->>I: Allocator catches the false return and tries the next free spot. No retry storms.
+
+  Note over P,I: Minutes 30 to 42 — Step 5 Code
+  P->>I: Enums first. Then PricingStrategy interface. Then abstract Spot with AtomicReference.
+  P->>I: ParkingLot.park() and exit(). One main() with park, sleep, exit, print bill.
+  I-->>P: How would you add EV charging spots?
+  P->>I: New EvSpot subclass. New EvPricing decorator. Zero edits to ParkingLot.
+
+  Note over P,I: Minutes 42 to 45 — Trade-offs &amp; Q&amp;A
+  I->>P: What would you change with more time?
+  P->>I: Persistence layer. The map of openTickets is in-memory. ParkingTicketRepo interface, prod implementation backed by Postgres.
+    </div>
+  </div>
+
+  <h3 class="subh">The same script, with timing annotations</h3>
+
+  <div class="script-line s-blue">
+    <div class="stime">00:00</div>
+    <div class="scontent"><strong>Interviewer:</strong> "Design a parking lot."</div>
+  </div>
+  <div class="script-line">
+    <div class="stime">00:30</div>
+    <div class="scontent"><strong>Priya:</strong> "Got it. Before I draw, can I pin down requirements? Top 3 functional features I'd focus on: (1) a driver finds and occupies a spot for their vehicle size, (2) on exit, the system computes a bill from time and spot type, (3) an admin can add new vehicle types or pricing rules without redeploying core logic. Sound right?"</div>
+  </div>
+  <div class="script-line s-blue">
+    <div class="stime">01:30</div>
+    <div class="scontent"><strong>Interviewer:</strong> "Yes. Skip payment gateway integration and license-plate ML."</div>
+  </div>
+  <div class="script-line">
+    <div class="stime">02:00</div>
+    <div class="scontent"><strong>Priya:</strong> "Non-functional: 10K active drivers, two parking attempts on the same spot must serialise (one wins, one fails fast). Spot lookup under 50ms. Extensibility — adding new vehicle types or pricing rules must be add-only. State stays in memory; persistence is out of scope but I'll leave a repository interface so it's swappable."</div>
+  </div>
+  <div class="script-line s-green">
+    <div class="stime">05:00</div>
+    <div class="scontent"><strong>Priya (Step 2):</strong> "Six core entities — <code>ParkingLot</code> (the registry), <code>Floor</code> (groups spots), <code>Spot</code> (one slot, has size + occupancy), <code>Vehicle</code> (transient, has plate + size), <code>Ticket</code> (issued at entry), <code>Bill</code> (computed at exit). I'm leaving out <code>EntryGate</code> and <code>DisplayBoard</code> — those are interface concerns, not domain entities."</div>
+  </div>
+  <div class="script-line s-blue">
+    <div class="stime">10:00</div>
+    <div class="scontent"><strong>Priya (Step 3):</strong> [draws UML] "<code>ParkingLot</code> composes <code>Floor</code> — composition because floors don't exist outside their lot. <code>Floor</code> composes <code>Spot</code> for the same reason. <code>Spot</code> is abstract because Bike, Car, and Truck spots have different size constraints — that's inheritance because the subclasses truly substitute. <code>PricingStrategy</code> is an interface and the lot holds it by reference (association) — pricing rules change every quarter and I want a new rule to be a new file."</div>
+  </div>
+  <div class="script-line s-blue">
+    <div class="stime">17:00</div>
+    <div class="scontent"><strong>Interviewer:</strong> "Why composition for Spot-to-Floor and not aggregation?"</div>
+  </div>
+  <div class="script-line">
+    <div class="stime">17:15</div>
+    <div class="scontent"><strong>Priya:</strong> "Aggregation says the parts can outlive the whole — a car outlives the garage. A spot can't outlive its floor; if we demolish the floor, the spot is gone. That's the composition test."</div>
+  </div>
+  <div class="script-line s-purple">
+    <div class="stime">20:00</div>
+    <div class="scontent"><strong>Priya (Step 4):</strong> "Four patterns. <strong>Strategy</strong> on <code>PricingStrategy</code> — pricing is the most-likely-to-change axis. <strong>Factory</strong> on <code>Spot</code> creation — the lot doesn't want to know which subclass to instantiate. <strong>Singleton</strong> on the lot itself — one per facility. <strong>Decorator</strong> for surge pricing — wraps any strategy without subclassing it. State pattern is overkill here because parking has only two states (free/occupied)."</div>
+  </div>
+  <div class="script-line s-purple">
+    <div class="stime">25:00</div>
+    <div class="scontent"><strong>Priya:</strong> [draws sequence diagram] "Happy path — driver enters, gate calls <code>lot.park(vehicle)</code>, lot delegates to allocator, allocator picks a free spot from the floor, calls <code>spot.tryOccupy(vehicle)</code> which is a single CAS. If false, allocator tries the next spot. If true, lot creates a Ticket and returns it."</div>
+  </div>
+  <div class="script-line s-blue">
+    <div class="stime">28:00</div>
+    <div class="scontent"><strong>Interviewer:</strong> "What if the CAS loses?"</div>
+  </div>
+  <div class="script-line">
+    <div class="stime">28:15</div>
+    <div class="scontent"><strong>Priya:</strong> "Allocator catches the false return and just tries the next spot. The free-spot deque is per-size, so the contention is naturally low — only when two drivers of the same size hit the gate the same millisecond. Worst case it walks the deque twice. No retry storms because there's no exponential backoff loop — just iteration."</div>
+  </div>
+  <div class="script-line s-yellow">
+    <div class="stime">30:00</div>
+    <div class="scontent"><strong>Priya (Step 5):</strong> [starts coding] "Enums first — <code>VehicleSize</code>. Then interfaces — <code>PricingStrategy</code>, <code>SpotAllocator</code>. Then abstract <code>Spot</code> with <code>AtomicReference&lt;Vehicle&gt;</code> and <code>tryOccupy(v)</code> doing the CAS. Concrete <code>CarSpot</code>, <code>TruckSpot</code>. <code>Vehicle</code>, <code>Ticket</code>, <code>Bill</code> as records — no boilerplate."</div>
+  </div>
+  <div class="script-line s-yellow">
+    <div class="stime">36:00</div>
+    <div class="scontent"><strong>Priya:</strong> "<code>ParkingLot</code> service — holds the allocator, the pricing, and a <code>ConcurrentHashMap</code> of open tickets. <code>park()</code> calls allocator, creates a ticket, inserts it. <code>exit()</code> removes the ticket, vacates the spot, runs pricing, returns the bill."</div>
+  </div>
+  <div class="script-line s-yellow">
+    <div class="stime">40:00</div>
+    <div class="scontent"><strong>Priya:</strong> "<code>main()</code> — instantiate a <code>SimpleAllocator</code> with one <code>CarSpot</code>, an <code>HourlyPricing</code> at ₹40/hr, build the lot, park a vehicle, sleep 3 seconds, exit, print the bill. That's the end-to-end happy path."</div>
+  </div>
+  <div class="script-line s-blue">
+    <div class="stime">42:00</div>
+    <div class="scontent"><strong>Interviewer:</strong> "How would you add EV charging spots?"</div>
+  </div>
+  <div class="script-line">
+    <div class="stime">42:15</div>
+    <div class="scontent"><strong>Priya:</strong> "Three changes, all add-only. (1) New <code>EvSpot</code> subclass with a <code>chargeRate</code> field. (2) New <code>EvPricing</code> decorator that wraps the existing strategy and adds an energy line. (3) Allocator already returns the right spot for a given size — extend <code>VehicleSize</code> with <code>EV_CAR</code>. Zero edits to <code>ParkingLot</code> — it never sees the difference."</div>
+  </div>
+  <div class="script-line s-cyan">
+    <div class="stime">43:30</div>
+    <div class="scontent"><strong>Interviewer:</strong> "What would you change with more time?"</div>
+  </div>
+  <div class="script-line s-cyan">
+    <div class="stime">43:45</div>
+    <div class="scontent"><strong>Priya:</strong> "Three things. (1) Persistence — the in-memory <code>openTickets</code> map needs a <code>TicketRepository</code> interface backed by Postgres in production. (2) Reservation flow — that has its own state machine (<code>PENDING → CONFIRMED → EXPIRED</code>) and would use the State pattern. (3) Observability — emit a domain event on every park/exit so analytics can subscribe."</div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>What this script demonstrates.</strong> Priya spent 5 minutes on requirements, 5 on entities, 10 on the class diagram, 10 on patterns + sequence, 12 on code, 3 on Q&amp;A — and never wandered. The senior moves: (1) explicitly named <em>out of scope</em> in Step 1, (2) defended composition vs aggregation with a one-line domain reason, not pattern dogma, (3) showed the race condition in the sequence diagram <em>before</em> being asked, (4) when the EV question came, answered with extension points, not new code. Run this loop yourself on three problems from <a href="lld-introduction.html#s7" style="color:var(--orange)">the question bank in Part 1</a> and the framework will feel like muscle memory.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 10                                        -->
+<!-- ================================================ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-green">Reference Map</span>
+  <h2>Mapping This Site's LLDs to the Framework</h2>
+  <p>Each existing LLD on this site emphasises different framework steps and showcases different patterns. When you're practising, pick a page based on the step you want to drill.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>LLD Page</th>
+          <th>Steps Emphasised</th>
+          <th>Patterns Showcased</th>
+          <th>Best for Practising</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="parking-lot-lld.html" style="color:var(--orange)">Parking Lot</a></td>
+          <td>All 5 steps end-to-end</td>
+          <td>Strategy, Factory, Singleton, State, Decorator, Observer</td>
+          <td>The canonical resource-allocation problem</td>
+        </tr>
+        <tr>
+          <td><a href="vending-machine-lld.html" style="color:var(--orange)">Vending Machine</a></td>
+          <td>Step 4 (State pattern deep dive)</td>
+          <td>State, Strategy</td>
+          <td>State machine modelling — when to use State vs enum</td>
+        </tr>
+        <tr>
+          <td><a href="notification-service-lld.html" style="color:var(--orange)">Notification Service</a></td>
+          <td>Steps 3 + 4 (multi-channel fan-out)</td>
+          <td>Strategy, Factory, Decorator, Observer</td>
+          <td>Variation along multiple axes (channel, retry, rate-limit)</td>
+        </tr>
+        <tr>
+          <td><a href="hotel-management-lld.html" style="color:var(--orange)">Hotel Management</a></td>
+          <td>Steps 1 + 3 (entity-rich domain)</td>
+          <td>Composite, Strategy, State for booking lifecycle</td>
+          <td>Domains with many entities and lifecycle states</td>
+        </tr>
+        <tr>
+          <td><a href="makemytrip-lld.html" style="color:var(--orange)">MakeMyTrip</a></td>
+          <td>Step 4 (10 patterns mapped to variability)</td>
+          <td>The full GoF tour applied to a marketplace</td>
+          <td>Reading "what pattern fits where" at scale</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-green"><strong>The meta-lesson:</strong> every LLD on this site was structured using the same 5-step framework you just learned. When you read them, watch for the framework underneath — Requirements first, then Entities, then the Class Diagram, then Patterns + Sequence, then Code. Once you see the skeleton, you can apply it to any prompt.</div>
+
+  <div class="next-nav">
+    <a href="lld-introduction.html">
+      <span class="lbl">Part 1 of 3</span>
+      <div class="ttl">← LLD Introduction</div>
+      <p style="font-size:.85rem;color:var(--muted);margin-top:.4rem">Re-read the four pillars and the LLD-vs-HLD distinction.</p>
+    </a>
+    <a href="lld-patterns.html">
+      <span class="lbl">Part 3 of 3</span>
+      <div class="ttl">Common Patterns Catalogue →</div>
+      <p style="font-size:.85rem;color:var(--muted);margin-top:.4rem">The eight patterns you'll actually use in LLD interviews — when each fits, with one-page examples.</p>
+    </a>
+  </div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

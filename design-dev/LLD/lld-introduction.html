@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LLD Introduction — What Low-Level Design Interviews Actually Test</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+
+.next-nav{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:2rem}
+.next-nav a{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem;text-decoration:none;color:var(--text);transition:border-color .2s,transform .2s}
+.next-nav a:hover{border-color:var(--orange);transform:translateY(-2px)}
+.next-nav .lbl{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:.3rem;display:block}
+.next-nav .ttl{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--heading)}
+@media(max-width:700px){.next-nav{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">LLD · In a Hurry · Part 1 of 3</div>
+  <h1>Low-Level Design — <span>Introduction</span></h1>
+  <p class="sub">What LLD interviews actually test, why they're not "code more LeetCode", and the four dimensions you're being scored on the entire 45 minutes.</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is LLD?</a></li>
+      <li><a href="#s2">LLD vs HLD</a></li>
+      <li><a href="#s3">Why It Exists</a></li>
+      <li><a href="#s4">The Four Pillars</a></li>
+      <li><a href="#s5">Anatomy of a Loop</a></li>
+      <li><a href="#s6">SOLID — The Spine</a></li>
+      <li><a href="#s7">Common Question Types</a></li>
+      <li><a href="#s8">What You'll Get Wrong</a></li>
+      <li><a href="#s9">Up Next</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ================================================ -->
+<!-- SECTION 1                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Setting the Scene</span>
+  <h2>What is Low-Level Design, Really?</h2>
+  <p>Picture Sarah at her L5 onsite. After lunch she walks into a room and the interviewer says, "Design a parking lot." Sarah's brain immediately does the wrong thing — it reaches for boxes-and-arrows. <em>"Should I draw a load balancer? Maybe a database?"</em> Twenty minutes in she has a Postgres schema, a sharding strategy, and zero classes. The interviewer politely interrupts: <em>"This is great… but what does the <code>Ticket</code> object look like? What method does the gate call when a car drives in?"</em> Sarah freezes. She designed a <strong>system</strong> when she was supposed to design <strong>objects</strong>.</p>
+
+  <p>That's the single sentence definition of LLD: <strong>it's the design of the objects, not the system</strong>. If High-Level Design (HLD) is "what boxes are on the architecture diagram", Low-Level Design is "what classes live inside one of those boxes, what methods they expose, and how they collaborate at runtime." LLD is the moment you stop drawing rectangles for services and start drawing rectangles for classes — with fields above the line and methods below.</p>
+
+  <div class="highlight hl-orange"><strong>The newbie one-liner.</strong> HLD answers <em>"how does the data move between machines?"</em> LLD answers <em>"once the data lands in one machine, what code processes it?"</em> An HLD interview ends with a system diagram. An LLD interview ends with compilable Java (or Python or C++) on the whiteboard.</div>
+
+  <p>If you've never seen an LLD interview before, here's the shape: the prompt is usually a real-world thing with rules — a parking lot, a vending machine, an elevator, a chess game, a movie booking site. Your job over 45–60 minutes is to walk the interviewer from "here's the problem" to "here's the working object model" — naming classes, drawing relationships, choosing design patterns where they fit, and writing enough code (usually one or two key methods) that the interviewer can see how the runtime would actually behave when a user takes an action.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 2                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-blue">Comparison</span>
+  <h2>LLD vs HLD — Two Different Conversations</h2>
+  <p>The fastest way to internalize what LLD <em>is</em> is to put it next to what it <em>isn't</em>. Most candidates blur the two and end up doing neither well. Here's the side-by-side a senior engineer carries in their head.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Dimension</th>
+          <th>HLD (System Design)</th>
+          <th>LLD (Object Design)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Unit of design</strong></td><td>Services, databases, queues</td><td>Classes, interfaces, methods</td></tr>
+        <tr><td><strong>Vocabulary</strong></td><td>Sharding, replication, caching, fan-out</td><td>Inheritance, composition, polymorphism, encapsulation</td></tr>
+        <tr><td><strong>Diagram type</strong></td><td>Boxes-and-arrows architecture</td><td>UML class diagram + sequence diagram</td></tr>
+        <tr><td><strong>Failure mode you fix</strong></td><td>"What if traffic 10×?"</td><td>"What if we add a new payment method?"</td></tr>
+        <tr><td><strong>Code on the board</strong></td><td>Rare — maybe a JSON payload</td><td>Mandatory — at least one full class + one driver method</td></tr>
+        <tr><td><strong>Patterns you cite</strong></td><td>Distributed: leader election, gossip, MapReduce</td><td>GoF: Strategy, Factory, Observer, State, Decorator</td></tr>
+        <tr><td><strong>Trade-offs centred on</strong></td><td>Consistency vs availability, latency vs cost</td><td>Flexibility vs simplicity, abstraction vs over-engineering</td></tr>
+        <tr><td><strong>Typical prompt</strong></td><td>"Design Twitter"</td><td>"Design a Parking Lot"</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-blue"><strong>The mental switch.</strong> When the prompt is a <em>company</em> ("Design Uber", "Design WhatsApp"), you're almost certainly in HLD territory. When the prompt is a <em>physical object or game</em> ("Design a vending machine", "Design Snake & Ladders"), you're in LLD territory. There are exceptions — "Design Splitwise" can be either — but if you're unsure, just ask: <em>"Is this an object-design question or a system-design question?"</em> The interviewer will tell you in one sentence.</div>
+
+  <p>So why does the industry keep both interviews? Because they test orthogonal skills. HLD tests whether you understand <strong>distributed systems</strong> — how data moves under load. LLD tests whether you understand <strong>object-oriented design</strong> — how to model a domain so the code stays maintainable for five years. A great backend engineer needs both: HLD to choose the right architecture, LLD to write the code that runs inside it without becoming an unmaintainable spaghetti pile.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 3                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-purple">Motivation</span>
+  <h2>Why LLD Exists — The Story Behind the Interview</h2>
+  <p>To understand why companies test LLD, watch what happens to a real codebase three years in. Imagine Raj joins a payments startup in year one. The codebase is small — one file called <code>Payment.java</code> with a 300-line method that handles "charge a card". Life is simple. Six months later the company adds Apple Pay. The method becomes 500 lines with a giant <code>if/else</code>. Then UPI. Then crypto. Then a partnership with a buy-now-pay-later provider. By year three, that one method is 4,000 lines, nobody can change it without breaking three other flows, and every new payment method takes three weeks instead of three days.</p>
+
+  <p>LLD is the discipline that prevents that file. The same problem — "charge a card" — could have been modelled as a <code>PaymentMethod</code> interface with a <code>Card</code>, <code>ApplePay</code>, <code>UPI</code>, and <code>Crypto</code> implementation. Adding a new method would mean writing one new class, not editing a 4,000-line monster. That difference — <em>open for extension, closed for modification</em> — is the soul of LLD. Interviewers test it because they've all maintained the 4,000-line version, and they don't want to do it again.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🟥 The 4000-line method</h3>
+      <pre style="margin-top:.4rem"><span class="kw">public class</span> <span class="ty">Payment</span> {
+  <span class="kw">public void</span> <span class="fn">charge</span>(<span class="ty">String</span> type, <span class="ty">double</span> amt) {
+    <span class="kw">if</span> (type.equals(<span class="str">"card"</span>)) {
+      <span class="cmt">// 800 lines of card logic</span>
+    } <span class="kw">else if</span> (type.equals(<span class="str">"applepay"</span>)) {
+      <span class="cmt">// 600 lines of Apple Pay logic</span>
+    } <span class="kw">else if</span> (type.equals(<span class="str">"upi"</span>)) {
+      <span class="cmt">// 700 lines of UPI logic</span>
+    } <span class="cmt">// ...10 more elses</span>
+  }
+}</pre>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🟩 The LLD version</h3>
+      <pre style="margin-top:.4rem"><span class="kw">interface</span> <span class="ty">PaymentMethod</span> {
+  <span class="ty">Receipt</span> <span class="fn">charge</span>(<span class="ty">double</span> amt);
+}
+
+<span class="kw">class</span> <span class="ty">Card</span>     <span class="kw">implements</span> <span class="ty">PaymentMethod</span> { ... }
+<span class="kw">class</span> <span class="ty">ApplePay</span> <span class="kw">implements</span> <span class="ty">PaymentMethod</span> { ... }
+<span class="kw">class</span> <span class="ty">UPI</span>      <span class="kw">implements</span> <span class="ty">PaymentMethod</span> { ... }
+
+<span class="cmt">// Adding crypto = one new file, zero edits</span>
+<span class="kw">class</span> <span class="ty">Crypto</span>   <span class="kw">implements</span> <span class="ty">PaymentMethod</span> { ... }</pre>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>So what.</strong> LLD interviews are companies asking, "If we hire you, will you be the engineer who writes the 4000-line method, or the one who writes the interface? We can't promote the first kind to senior — they create work for the rest of the team for years."</div>
+
+  <p>That's the why. Now the rest of this introduction is about the how — what specifically interviewers measure, how the 45-minute conversation flows, and which mental tools (SOLID, GoF patterns, UML) you need to walk in with already loaded.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 4                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-yellow">Scoring Rubric</span>
+  <h2>The Four Pillars — What Interviewers Actually Score</h2>
+  <p>Just like HLD has four scoring dimensions, so does LLD — but they're different ones. Knowing them tells you where to spend the 45 minutes. Most loops are won or lost on Pillar 2 (modelling) and Pillar 4 (communication), not on whether you remembered all 23 GoF patterns.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">① Requirements Discipline</h3>
+      <p>Can you turn a vague prompt — "design a parking lot" — into a tight list of features the design must support, plus a list of things you're explicitly punting on? Candidates who skip this step always design the wrong system. The good move sounds like: <em>"Top 3 functional features I'll focus on: (a) park a car, (b) calculate the bill on exit, (c) reserve a spot from an app. Out of scope: payment processing, valet integration, multi-tenant operators. Sound right?"</em></p>
+      <p><strong>What it looks like:</strong> the candidate produces 5 functional + 3 non-functional requirements in the first 3 minutes, names what's <em>out of scope</em>, and gets explicit interviewer buy-in before drawing anything.</p>
+    </div>
+
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">② Domain Modelling</h3>
+      <p>Can you take the vocabulary of the problem (cars, spots, tickets, gates) and translate it into a coherent class model — picking the right entities, the right relationships (composition vs aggregation vs inheritance), and the right level of abstraction? This is the heaviest weight in the rubric. A great class diagram is half the interview.</p>
+      <p><strong>What it looks like:</strong> the candidate names 5–8 entities, explains why each one is its own class (vs a field on another class), and can defend their inheritance vs composition choices with a one-line reason rooted in <em>"what changes independently?"</em></p>
+    </div>
+
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">③ Pattern Application</h3>
+      <p>Can you spot the <em>variation points</em> in the design — the places where future requirements are most likely to demand change — and apply the right GoF pattern there? The senior signal isn't "I memorized 23 patterns"; it's "I picked Strategy here because pricing rules will change every quarter, and I picked State here because the booking goes through 6 distinct lifecycle stages."</p>
+      <p><strong>What it looks like:</strong> 2–4 patterns named, each one tied to a specific class in the design, each one justified by a concrete future-change scenario the interviewer can imagine.</p>
+    </div>
+
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">④ Communication &amp; Trade-offs</h3>
+      <p>Can you narrate <em>why</em> you're making each choice, respond to interviewer pushback without getting defensive, and articulate the trade-offs of every decision in one sentence? The interviewer is also scoring "would I want this person on my code review?" Candidates who design silently — heads down, drawing for 20 minutes — fail this pillar even when their design is correct.</p>
+      <p><strong>What it looks like:</strong> the candidate thinks aloud, asks <em>"is this the depth you want?"</em> at every milestone, and when challenged with <em>"why composition not inheritance?"</em> answers in one sentence: <em>"A car's engine isn't an 'is-a' — it's a 'has-a'. If we ever need a hybrid (gas + electric), inheritance forces multiple inheritance; composition just adds another field."</em></p>
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>Rough weighting: 20 / 35 / 20 / 25.</strong> Domain Modelling is the heaviest because it's the hardest to fake — interviewers can immediately tell if your class diagram is coherent or held together with tape. Communication is the silent killer — most candidates lose loops not because their design was wrong but because the interviewer couldn't follow their reasoning. Patterns are surprisingly low-weight: dropping the right pattern name without justifying it is worse than not naming it at all.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 5                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-green">The Format</span>
+  <h2>Anatomy of a 45-Minute LLD Loop</h2>
+  <p>An LLD interview isn't a free-form chat — it has phases, and good candidates can feel the phase change without being told. Here's the shape of the conversation, minute by minute. We'll go deeper on each step in the <a href="lld-framework.html" style="color:var(--orange)">framework page</a>; this is the helicopter view.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+gantt
+  title LLD Interview — 45 to 60 Minute Timeline
+  dateFormat X
+  axisFormat %s
+
+  section Setup
+  Step 1 — Requirements              :crit, s1, 0, 5m
+  Step 2 — Core Entities             :s2, after s1, 5m
+
+  section Design
+  Step 3 — Class Diagram             :crit, s3, after s2, 10m
+  Step 4 — Patterns and Sequence     :crit, s4, after s3, 10m
+
+  section Code
+  Step 5 — Java Code                 :crit, s5, after s4, 12m
+
+  section Buffer
+  Q and A and Trade-offs             :s6, after s5, 5m
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card" style="border-left:3px solid var(--orange)"><h3>Step 1 · ~5 min</h3><p><strong>Requirements.</strong> Functional + non-functional. Top 3 user actions. Explicit out-of-scope list. Get interviewer sign-off.</p></div>
+    <div class="card" style="border-left:3px solid var(--green)"><h3>Step 2 · ~5 min</h3><p><strong>Core Entities.</strong> List 5–8 nouns with one-sentence responsibility each. No fields yet.</p></div>
+    <div class="card" style="border-left:3px solid var(--blue)"><h3>Step 3 · ~10 min</h3><p><strong>Class Diagram.</strong> UML with fields, methods, and relationships (inheritance/composition/association).</p></div>
+    <div class="card" style="border-left:3px solid var(--purple)"><h3>Step 4 · ~10 min</h3><p><strong>Patterns + Sequence.</strong> Identify variation points, apply 2–4 GoF patterns. Sequence diagram for the primary flow.</p></div>
+    <div class="card" style="border-left:3px solid var(--yellow)"><h3>Step 5 · ~12 min</h3><p><strong>Java Code.</strong> Enums → interfaces → entity classes → service → main(). One end-to-end happy path that compiles in your head.</p></div>
+    <div class="card" style="border-left:3px solid var(--cyan)"><h3>Buffer · ~5 min</h3><p><strong>Trade-offs &amp; Q&amp;A.</strong> Cross-questions on extension points, concurrency, and "what would you change?"</p></div>
+  </div>
+
+  <div class="highlight hl-green"><strong>The phase boundaries matter.</strong> If you're still talking about requirements at minute 15, you're going to run out of time before the code. If you start coding at minute 10, you'll write a class for an entity you haven't named yet and get tangled. The framework isn't optional — it's the only way to fit five distinct activities into 45 minutes without one of them eating the others.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 6                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-cyan">Foundations</span>
+  <h2>SOLID — The Spine of Every LLD Answer</h2>
+  <p>Before you walk into the interview, the five SOLID principles need to be loaded into RAM, not on the disk. They are the vocabulary the interviewer expects you to think in — every design decision you make should map back to one of them. Here they are in plain English, with the one-sentence test that tells you whether you're following them.</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3><strong style="color:var(--orange)">S</strong> — Single Responsibility</h3>
+      <p><strong>Every class has one reason to change.</strong> The <code>Invoice</code> class shouldn't know how to print itself; that's the printer's job.</p>
+      <p><strong>The test:</strong> can you describe what the class does in one sentence without using "and"? If not, split it.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--green)">
+      <h3><strong style="color:var(--green)">O</strong> — Open/Closed</h3>
+      <p><strong>Open for extension, closed for modification.</strong> Adding a new payment method shouldn't require editing the existing payment processor.</p>
+      <p><strong>The test:</strong> can you add a new variant by writing a new file (not editing an old one)? If not, you're missing an interface.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h3><strong style="color:var(--blue)">L</strong> — Liskov Substitution</h3>
+      <p><strong>A subclass must be usable wherever its parent is, without surprises.</strong> If <code>Square extends Rectangle</code> and setting width changes height, you've broken Liskov.</p>
+      <p><strong>The test:</strong> can the caller use any subclass without checking <code>instanceof</code>? If they need <code>if (obj instanceof Square)</code>, the hierarchy is wrong.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--purple)">
+      <h3><strong style="color:var(--purple)">I</strong> — Interface Segregation</h3>
+      <p><strong>Many small interfaces beat one fat one.</strong> Don't force <code>JsonReader</code> to implement <code>writeXml()</code> just because it sits in the same hierarchy.</p>
+      <p><strong>The test:</strong> does any implementation throw <code>UnsupportedOperationException</code>? You've combined unrelated capabilities — split the interface.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--yellow)" style="grid-column:1 / -1">
+      <h3><strong style="color:var(--yellow)">D</strong> — Dependency Inversion</h3>
+      <p><strong>Depend on abstractions, not concretions.</strong> The <code>OrderService</code> shouldn't <code>new MySQLOrderRepo()</code> — it should accept a <code>OrderRepository</code> interface in its constructor and let the wiring decide which implementation to inject.</p>
+      <p><strong>The test:</strong> can you swap MySQL for an in-memory store in the unit tests without changing <code>OrderService</code>? If yes, you're inverted. If you have to mock the database driver, you're not.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>The narrative move.</strong> When the interviewer asks "why did you put pricing behind an interface?" the answer is "Open/Closed — pricing rules change every quarter, and I want a new strategy to be a new file, not a new <code>if</code>." That kind of answer — where every design choice is named with a SOLID principle — is what separates a senior signal from a junior one. You're not just building a thing; you're building it <em>according to a stated principle</em>, and you can quote the principle at any moment.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 7                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-blue">The Question Bank</span>
+  <h2>Common LLD Question Types — A Field Guide</h2>
+  <p>LLD prompts cluster into a handful of recognisable shapes. Once you know the shape, you know which patterns to reach for and which traps to avoid. Here's the field guide — keep it loaded in your head before the interview so you can categorise the prompt within ten seconds of hearing it.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Shape</th>
+          <th>Examples</th>
+          <th>Reach For</th>
+          <th>The Trap</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>State Machine</strong></td>
+          <td>Vending Machine, Elevator, ATM, Order/Booking lifecycle</td>
+          <td><code>State</code> pattern, enums for events, transition table</td>
+          <td>If/else chains in every method instead of one State class per state</td>
+        </tr>
+        <tr>
+          <td><strong>Resource Allocation</strong></td>
+          <td>Parking Lot, Hotel, Movie Booking, Library</td>
+          <td><code>Strategy</code> for allocation rules, <code>Singleton</code> for the registry, locks on the spot/seat</td>
+          <td>Race condition: two users booking the same spot — answer this before being asked</td>
+        </tr>
+        <tr>
+          <td><strong>Game / Rules Engine</strong></td>
+          <td>Snake &amp; Ladders, Tic-Tac-Toe, Chess, Poker</td>
+          <td><code>Strategy</code> for moves, <code>Observer</code> for game events, <code>Command</code> for undo</td>
+          <td>Hard-coding the rules into the <code>Game</code> class instead of <code>Piece</code> subclasses</td>
+        </tr>
+        <tr>
+          <td><strong>Marketplace / Aggregator</strong></td>
+          <td>Swiggy, Uber, MakeMyTrip, Splitwise, Stack Overflow</td>
+          <td><code>Factory</code> for vendor adapters, <code>Decorator</code> for surge/discount, <code>Observer</code> for notifications</td>
+          <td>Forgetting that the matchmaking algorithm is itself a Strategy</td>
+        </tr>
+        <tr>
+          <td><strong>Pub-Sub / Notification</strong></td>
+          <td>Notification Service, Logger, Event Bus, Stock-price ticker</td>
+          <td><code>Observer</code>, <code>Chain of Responsibility</code>, <code>Strategy</code> per channel</td>
+          <td>Synchronous fan-out blocking the producer — must mention async/queue</td>
+        </tr>
+        <tr>
+          <td><strong>Data Structure as a System</strong></td>
+          <td>LRU Cache, In-memory File System, URL Shortener (LLD), Rate Limiter</td>
+          <td><code>Composite</code> for trees, custom doubly-linked-list-plus-hashmap, concurrency primitives</td>
+          <td>Skipping straight to code without naming the responsibilities of each class</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-blue"><strong>Pattern-recognition is the cheat code.</strong> Hearing "design a parking lot" should immediately summon "resource allocation → Strategy + Singleton + race-condition discussion". Hearing "design a vending machine" should summon "state machine → State pattern + enum events". The first 30 seconds of the interview is silently classifying the prompt; the next 44 minutes is executing the playbook for that class.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 8                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-red">Anti-patterns</span>
+  <h2>What You'll Get Wrong (If You Don't Read Part 2)</h2>
+  <p>Every interviewer has a mental list of red flags. Most of them aren't about technical knowledge — they're about process and tone. Here are the six that kill more LLD loops than any other.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 Diving into code at minute 5</h3>
+      <p>Candidate hears "design an elevator" and starts writing <code>class Elevator { ... }</code> without naming the requirements, the entities, or the relationships. The result is always the same: 30 minutes in, you realise you needed a <code>Request</code> queue but you've already wired <code>Elevator</code> to take a <code>floor</code> directly, and now you're refactoring on the whiteboard.</p>
+      <p><strong>Fix:</strong> nothing gets written until Step 4. The first four steps are diagrams and lists.</p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 Pattern-dropping for points</h3>
+      <p>Candidate name-drops <em>"I'll use the Visitor pattern, the Memento pattern, and the Bridge pattern"</em> for a vending machine that needs none of them. The interviewer asks "why Visitor?" and the candidate folds. Naming a pattern you can't justify is worse than not naming one.</p>
+      <p><strong>Fix:</strong> two to four patterns, max. Each one tied to a specific class and a specific reason in one sentence.</p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 Inheritance-everywhere</h3>
+      <p>Every relationship becomes a class hierarchy. <code>Car extends Vehicle</code>, <code>SUV extends Car</code>, <code>HybridSUV extends SUV</code>. By depth four nothing is overrideable without breaking a sibling. Inheritance is a one-way door — composition is reversible.</p>
+      <p><strong>Fix:</strong> default to composition. Use inheritance only for genuine "is-a" relationships where the subclass adds behaviour, not just fields.</p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 Forgetting concurrency</h3>
+      <p>Two users hit "book this seat" at the same millisecond. Both succeed. The interview is over.</p>
+      <p><strong>Fix:</strong> any time you have a shared mutable resource (a parking spot, a movie seat, an inventory count), say out loud — <em>"this needs synchronisation; I'll use a per-row lock / atomic CAS / optimistic concurrency"</em> — even if the interviewer doesn't ask.</p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 Designing in silence</h3>
+      <p>Candidate goes head-down for 20 minutes, draws a beautiful UML diagram, then turns around. The interviewer has no idea why any of those choices were made and can't grade the reasoning. It doesn't matter how good the design is — silence fails the communication pillar.</p>
+      <p><strong>Fix:</strong> narrate every decision. <em>"I'm putting <code>Spot</code> behind an interface because the parking lot has bike, car, and truck spots and they have different size constraints."</em></p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 Boilerplate-heavy code</h3>
+      <p>With 12 minutes for code, the candidate writes 4 minutes of getter/setter boilerplate, leaves no time for the actual logic. The interviewer learns nothing about how you'd implement <code>parkVehicle()</code>.</p>
+      <p><strong>Fix:</strong> say <em>"I'll skip getters/setters and Lombok this in production."</em> Use Java records or just write public fields on the whiteboard. Spend the time on the methods that matter.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The pattern under the patterns.</strong> Five of these six failures are about <em>process</em> — order of operations, narration, and time allocation — not about technical depth. That's why a framework matters more than memorising 23 GoF patterns. The framework is what stops you from making the process mistakes.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 9                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-orange">Where Next</span>
+  <h2>Up Next — From Theory to Playbook</h2>
+  <p>This page told you <em>what</em> LLD is and <em>why</em> the four pillars matter. The next two pages turn that into a usable playbook: a 5-step framework you can run on any prompt, and a pattern catalogue you can pull from when you spot a variation point.</p>
+
+  <div class="next-nav">
+    <a href="lld-framework.html">
+      <span class="lbl">Part 2 of 3</span>
+      <div class="ttl">The 5-Step LLD Framework →</div>
+      <p style="font-size:.85rem;color:var(--muted);margin-top:.4rem">Minute-by-minute playbook with a worked Parking Lot walkthrough — the methodology in action from prompt to compilable code.</p>
+    </a>
+    <a href="lld-patterns.html">
+      <span class="lbl">Part 3 of 3</span>
+      <div class="ttl">Common Patterns Catalogue →</div>
+      <p style="font-size:.85rem;color:var(--muted);margin-top:.4rem">Strategy, Factory, Observer, State, Decorator, Singleton, Builder, Command — when each one fits, with one-line LLD scenarios for each.</p>
+    </a>
+  </div>
+
+  <div class="highlight hl-orange" style="margin-top:1.5rem"><strong>The bigger arc.</strong> Part 1 (this page) gives you the vocabulary. Part 2 gives you the verbs — the actions in order. Part 3 gives you the toolbox — the named tools you'll point at during Step 4. Read them in order, then run the framework on three problems from the question bank above. By the third problem, the framework will feel like muscle memory.</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

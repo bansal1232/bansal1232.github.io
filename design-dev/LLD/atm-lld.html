@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ATM — LLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true, theme: 'dark',
+    themeVariables: { fontSize: '13px', darkMode: true, background: '#11161e', primaryColor: '#171d27', primaryTextColor: '#d4dae5', primaryBorderColor: '#e8743b', lineColor: '#7b8599', secondaryColor: '#11161e', tertiaryColor: '#171d27' }
+  });
+</script>
+<style>
+:root{--bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;--text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;--orange:#e8743b;--orange-d:rgba(232,116,59,.12);--green:#38b265;--green-d:rgba(56,178,101,.1);--blue:#4a90d9;--blue-d:rgba(74,144,217,.1);--purple:#9b72cf;--purple-d:rgba(155,114,207,.1);--red:#e05252;--red-d:rgba(224,82,82,.1);--yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);--cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+.wrap{min-width:0}
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;font-size:.9rem;transition:color .15s}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}.tag-green{background:var(--green-d);color:var(--green)}.tag-blue{background:var(--blue-d);color:var(--blue)}.tag-purple{background:var(--purple-d);color:var(--purple)}.tag-yellow{background:var(--yellow-d);color:var(--yellow)}.tag-red{background:var(--red-d);color:var(--red)}.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.92rem;margin-bottom:1.5rem;max-width:760px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.3rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.88rem;color:var(--text);line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}.cl-blue{background:var(--blue-d);color:var(--blue)}.cl-purple{background:var(--purple-d);color:var(--purple)}.cl-orange{background:var(--orange-d);color:var(--orange)}.cl-yellow{background:var(--yellow-d);color:var(--yellow)}.cl-cyan{background:var(--cyan-d);color:var(--cyan)}.cl-red{background:var(--red-d);color:var(--red)}
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.88rem}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.highlight strong{font-weight:700}
+.divider{height:1px;background:var(--border);margin:3rem 0}
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.88rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.88rem;color:var(--text);border:1px solid var(--border)}
+.ans strong{color:var(--heading)}
+.tbl{width:100%;border-collapse:collapse;font-size:.84rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.6rem .85rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}.comp-num.blue{background:var(--blue-d);color:var(--blue);border:1px solid var(--blue)}.comp-num.green{background:var(--green-d);color:var(--green);border:1px solid var(--green)}.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}.comp-num.cyan{background:var(--cyan-d);color:var(--cyan);border:1px solid var(--cyan)}.comp-num.red{background:var(--red-d);color:var(--red);border:1px solid var(--red)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">Low-Level Design</div>
+  <h1>ATM <span>System</span></h1>
+  <p class="sub">A real ATM — State machine for the device, Strategy for transactions, Chain of Responsibility for cash dispensing, full Java code &amp; every gap in Grokking's reference plugged.</p>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Clarify Requirements</a></li>
+      <li><a href="#s2">Actors &amp; Use Cases</a></li>
+      <li><a href="#s3">Story — From a Cash Drawer to an ATM</a></li>
+      <li><a href="#s4">Core Entities</a></li>
+      <li><a href="#s5">ER / Schema Diagram</a></li>
+      <li><a href="#s6">Class Diagram</a></li>
+      <li><a href="#s7">Design Patterns Used</a></li>
+      <li><a href="#s8">Sequence — Withdraw Flow</a></li>
+      <li><a href="#s9">State Diagram — ATM</a></li>
+      <li><a href="#s10">Java Implementation</a></li>
+      <li><a href="#s11">Intuition Step-by-Step</a></li>
+      <li><a href="#s12">Improvements over Grokking</a></li>
+      <li><a href="#s13">Extension Points</a></li>
+      <li><a href="#s14">Trade-offs &amp; Talking Points</a></li>
+      <li><a href="#s15">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>Clarify Requirements</h2>
+  <p>Picture a Sunday night ATM lobby in Bandra. Raj wants ₹2,000 in cash, an old uncle is depositing a check, and a college kid is checking his balance. Inside the machine: cassettes of ₹500 and ₹100 notes, a card reader, a screen, a printer that prints receipts. The software has to drive every component, talk to the bank network, and never — under any circumstance — eat a card with money still hanging in the dispenser. That's the requirements bar.</p>
+  <div class="g2">
+    <div class="card"><h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Authenticate the customer with card + 4-digit PIN (3 attempts, then card retained)</li>
+        <li>Five transactions: balance inquiry, cash withdraw, cash deposit, check deposit, transfer</li>
+        <li>Cash dispense respecting available denominations (₹500, ₹100) — partial-fail safe</li>
+        <li>Print a receipt for every transaction (or skip if printer is out)</li>
+        <li>Operator can power on/off, refill cash cassettes, refill paper, take out deposits</li>
+        <li>Bank manager can pull reports on totals deposited / withdrawn / cash remaining</li>
+        <li>Internal log of all transactions and hardware faults</li>
+      </ul>
+    </div>
+    <div class="card"><h3>🎯 Non-Functional &amp; 🚫 Out of Scope</h3>
+      <ul>
+        <li><strong>Single user at a time</strong> — but per-account locking inside the bank</li>
+        <li><strong>Atomicity</strong> — the bank debit and the cash dispense must never disagree</li>
+        <li><strong>Latency</strong> &lt; 5s for the bank round trip; otherwise abort</li>
+        <li><strong>Auditability</strong> — every state transition logged</li>
+      </ul>
+      <h3 style="margin-top:1rem">🚫 Out of scope</h3>
+      <ul>
+        <li>Card hardware drivers / EMV chip protocol details</li>
+        <li>Cross-bank network routing (we model the Bank as one boundary)</li>
+        <li>Anti-skimming / anti-fraud heuristics</li>
+        <li>Multi-currency / FX</li>
+      </ul>
+    </div>
+  </div>
+  <div class="highlight hl-orange"><strong>Interviewer trick:</strong> They love the question "what happens if your card is in the slot but the dispenser jams mid-withdrawal?" If you don't have a state for that, you've already failed. State Pattern is the answer.</div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Actors &amp; Use Cases</h2>
+  <p>Three humans interact with the ATM: the Customer who came for money, the Operator (the cash-truck guy who refills it), and the Bank Manager who pulls reports remotely. The Bank itself — the back office that holds the actual account balance — is a silent system actor; the ATM never holds the source of truth on money.</p>
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C([Customer])
+  O([Operator])
+  M([Bank Manager])
+  B([Bank Network])
+
+  C --> BI[Balance Inquiry]
+  C --> WD[Withdraw Cash]
+  C --> DC[Deposit Cash]
+  C --> DK[Deposit Check]
+  C --> TR[Transfer]
+
+  O --> ON[Power On / Off]
+  O --> RC[Refill Cash]
+  O --> RP[Refill Paper / Ink]
+  O --> CO[Collect Deposits]
+
+  M --> RD[Reports — deposits/withdrawals]
+  M --> CR[Check Remaining Cash]
+
+  B --> AU[Authenticate Card+PIN]
+  B --> DB[Debit / Credit Account]
+
+  style C fill:#e8743b,stroke:#e8743b,color:#fff
+  style O fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style M fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style B fill:#38b265,stroke:#38b265,color:#fff
+    </div>
+  </div>
+  <div class="g4">
+    <div class="card"><h3 style="color:var(--orange)">Customer</h3><p>Holds the card. Inserts it, types the PIN, picks a transaction, takes the cash &amp; receipt.</p></div>
+    <div class="card"><h3 style="color:var(--blue)">Operator</h3><p>Field staff. Refills cash cassettes, paper rolls, removes deposit envelopes. Has a special key-switch.</p></div>
+    <div class="card"><h3 style="color:var(--purple)">Bank Manager</h3><p>Remote — pulls totals and remaining-cash reports through a back-office portal.</p></div>
+    <div class="card"><h3 style="color:var(--green)">Bank Network</h3><p>The silent system actor. Holds the source of truth on accounts. Authenticates and authorizes every debit.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s3">
+  <span class="sec-tag tag-purple">Step 3</span>
+  <h2>Story — From a Cash Drawer to an ATM</h2>
+  <p>To get to the right design, start with the simplest thing that could work, watch each break, and let each break suggest a class. Three passes: the naive design, the mental split, and the production shape.</p>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:1.5rem 0 .8rem">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Start with one class — <code>ATM</code> — that has a card reader, a cash drawer, and a single method <code>withdraw(card, pin, amount)</code>. The method authenticates, debits the account, and opens the drawer. Done in 30 lines.</p>
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  Customer --> ATM[ATM monolith]
+  ATM --> Bank[(Bank account)]
+  ATM --> Drawer[Cash drawer]
+  style ATM fill:#e05252,stroke:#e05252,color:#fff
+    </div>
+  </div>
+  <p>Then reality hits:</p>
+  <div class="g3">
+    <div class="card"><h3 style="color:var(--red)">💥 Drawer jams</h3><p>The bank already debited ₹2,000 but the dispenser failed to release any notes. Now Raj's account is short by ₹2,000 and the ATM doesn't know how to recover. <em>No transaction state machine.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Wrong PIN three times</h3><p>The naive code just rejects each attempt. Anyone who steals the card has unlimited tries. <em>No lockout / retain logic.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Need ₹2,300 in ₹500 + ₹100</h3><p>The ATM has plenty of ₹500 but ran out of ₹100. Naive code says "out of cash" and aborts. The customer wanted ₹2,300 — not ₹2,000? <em>No denomination algorithm.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Card forgotten in slot</h3><p>Customer walked away after the cash. Card sits in the reader, next person grabs it, identity theft. <em>No card retention timeout.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 New transaction type</h3><p>Bank wants to add "mobile-recharge" as a transaction. The monolithic <code>withdraw</code> method has to grow a giant if/else. <em>No transaction abstraction.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Network timeout mid-debit</h3><p>Bank reply lost. ATM doesn't know if the debit actually happened. <em>No idempotency / no reversal protocol.</em></p></div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:1.5rem 0 .8rem">Pass 2 — The mental split</h3>
+  <p>Two concerns are conflated in the monolith:</p>
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--blue)"><h3 style="color:var(--blue)">📟 Device plane</h3><p>The physical ATM and its lifecycle. <em>What state is the machine in right now?</em> IDLE → CARD_INSERTED → AUTHENTICATING → SELECTING_TXN → PROCESSING → DISPENSING → RECEIPT → DONE. Hardware events drive transitions; the State Pattern lives here.</p></div>
+    <div class="card" style="border-left:3px solid var(--orange)"><h3 style="color:var(--orange)">🏦 Transaction plane</h3><p>What the customer is trying to <em>do</em>. Withdraw, Deposit, Transfer, BalanceInquiry — each is a Strategy with the same shape (<code>execute()</code>). Pricing, debiting, dispensing — all per-strategy.</p></div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:1.5rem 0 .8rem">Pass 3 — The production shape</h3>
+  <p>Each numbered box below earns its place by fixing one of Pass 1's failures. Card colors match the diagram fills.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  C([Customer])
+  C --> CR[① CardReader]
+  CR --> ATM[② ATM Singleton<br/>State Machine]
+  ATM --> KP[③ Keypad]
+  ATM --> SC[④ Screen]
+  ATM --> TX[⑤ Transaction Strategy]
+  TX --> WD2[Withdraw]
+  TX --> DEP[Deposit]
+  TX --> TR2[Transfer]
+  TX --> BI2[BalanceInquiry]
+  TX --> BN[⑥ BankAdapter]
+  BN --> BANK[(Bank Network)]
+  ATM --> CD[⑦ CashDispenser<br/>Chain of Responsibility]
+  ATM --> DS[⑧ DepositSlot]
+  ATM --> PR[⑨ Printer]
+  ATM --> LOG[⑩ AuditLog]
+
+  style CR fill:#e8743b,stroke:#e8743b,color:#fff
+  style ATM fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style KP fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style SC fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style TX fill:#38b265,stroke:#38b265,color:#fff
+  style BN fill:#3cbfbf,stroke:#3cbfbf,color:#fff
+  style CD fill:#d4a838,stroke:#d4a838,color:#000
+  style DS fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style PR fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style LOG fill:#e05252,stroke:#e05252,color:#fff
+    </div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.4rem 0 .8rem">Component-by-component — what each numbered box does</h3>
+  <div class="g2">
+    <div class="card"><h3><span class="comp-num orange">①</span> CardReader</h3><p>The slot. Reads card details, tracks "is card in slot", and can <em>retain</em> the card by physically swallowing it (no return motor). Triggers the IDLE → CARD_INSERTED transition.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Without a separate reader with a retain capability, the "3 wrong PINs in a row" rule has nowhere to live; the ATM either keeps spitting the card back or loses the security feature entirely.</p></div>
+    <div class="card"><h3><span class="comp-num blue">②</span> ATM (Singleton + State Machine)</h3><p>One physical device, one in-memory instance. The state field drives every screen, every keypad input, every dispense. Illegal events (e.g., "dispense" before "authenticate") are rejected by the current state's handler.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Without a state machine, the dispenser jam, network timeout, and "card forgotten" scenarios become a maze of boolean flags. The state is the single truth.</p></div>
+    <div class="card"><h3><span class="comp-num purple">③</span> Keypad</h3><p>Captures PIN entries and amount entries. Masks PIN on Screen. Handles the cancel button which is a "back to IDLE" event.</p><p style="margin-top:.55rem"><strong>Solves:</strong> The cancel button is a hardware event that can fire from <em>any</em> state — modeling the keypad as an event source means the state machine handles it once, not in every screen.</p></div>
+    <div class="card"><h3><span class="comp-num purple">④</span> Screen</h3><p>Displays the menu, prompts, and confirmation messages. The state machine pushes screen text whenever it transitions.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Without a Screen abstraction, every state would have to remember to call the right print statement. Pulling the screen out lets the state simply say "show me the deposit confirmation".</p></div>
+    <div class="card"><h3><span class="comp-num green">⑤</span> Transaction (Strategy)</h3><p>Abstract <code>Transaction.execute(ATM, Account)</code>; concrete subclasses: Withdraw, CashDeposit, CheckDeposit, Transfer, BalanceInquiry. Each has the same execute signature; the ATM just calls it without knowing which type.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Adding a new transaction (e.g., MobileRecharge) is one new class. The Grokking design has the same hierarchy; what we add is a real <code>execute()</code> that sequences "ask bank → debit → dispense → receipt → log".</p></div>
+    <div class="card"><h3><span class="comp-num cyan">⑥</span> BankAdapter</h3><p>The boundary to the bank network. Speaks ISO-8583 or whatever; exposes <code>authenticate(Card, pin)</code>, <code>authorizeDebit(Account, amount)</code>, <code>commitDebit(txnId)</code>, <code>reverseDebit(txnId)</code>. <strong>Two-phase</strong> — authorize holds the funds, commit finalizes, reverse rolls back if dispense fails.</p><p style="margin-top:.55rem"><strong>Solves:</strong> The "drawer jams after debit" scenario is exactly what 2-phase fixes. Authorize first; only commit if cash actually came out.</p></div>
+    <div class="card"><h3><span class="comp-num yellow">⑦</span> CashDispenser (Chain of Responsibility)</h3><p>For ₹2,300 with cassettes of ₹500 + ₹100, the dispenser is a chain: <code>₹500Handler</code> peels off as many ₹500s as possible, passes the remainder to <code>₹100Handler</code>. If the remainder isn't divisible by ₹100, the entire chain fails atomically (no partial cash).</p><p style="margin-top:.55rem"><strong>Solves:</strong> Grokking's design has fields like <code>totalFiveDollarBills</code> and <code>totalTwentyDollarBills</code> with no algorithm. Real ATMs need this exact chain.</p></div>
+    <div class="card"><h3><span class="comp-num purple">⑧</span> DepositSlot</h3><p>Two subclasses — <code>CashDepositSlot</code> (counts notes), <code>CheckDepositSlot</code> (scans MICR). Adds the deposit to a holding bin; the bank only credits the account after physical verification by the operator.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Captures the "deposits aren't instant" rule from requirements without spreading it through the code.</p></div>
+    <div class="card"><h3><span class="comp-num purple">⑨</span> Printer</h3><p>Prints receipts. Tracks paper level. If out of paper, the ATM completes the transaction but skips the receipt and logs a "needs refill" alert.</p><p style="margin-top:.55rem"><strong>Solves:</strong> A real ATM <em>must not</em> abort a successful debit just because paper ran out. The Printer's "graceful degrade" is a small thing that an interviewer probes for.</p></div>
+    <div class="card"><h3><span class="comp-num red">⑩</span> AuditLog</h3><p>Every state transition, every transaction, every hardware fault — all written to a tamper-evident log on disk and replicated to the bank. The log is what lets the manager trust the totals report.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Without an explicit log component, audit becomes "scattered println". With it, "show me yesterday's failed dispenses" is one query.</p></div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>So in short —</strong> the ATM is a state machine that orchestrates four physical devices and one network adapter. Transactions are pluggable Strategies; cash dispensing is a denomination chain; bank calls are 2-phase so a jam can roll back. Every observable event lands in an audit log.</div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s4">
+  <span class="sec-tag tag-blue">Step 4</span>
+  <h2>Core Entities</h2>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Entity</th><th>Responsibility</th><th>Key Fields</th></tr></thead>
+    <tbody>
+      <tr><td><code>ATM</code></td><td>Singleton — holds devices, current state, current session</td><td><code>String atmId</code>, <code>Address location</code>, <code>ATMState state</code>, <code>Session session</code></td></tr>
+      <tr><td><code>Session</code></td><td>One customer's interaction (card insert → eject)</td><td><code>Card card</code>, <code>Customer customer</code>, <code>List&lt;Transaction&gt; txns</code>, <code>int pinAttempts</code></td></tr>
+      <tr><td><code>Card</code></td><td>The customer's debit card</td><td><code>String cardNumber</code>, <code>String customerName</code>, <code>Date expiry</code>, <code>String pinHash</code></td></tr>
+      <tr><td><code>Customer</code></td><td>The cardholder</td><td><code>String name</code>, <code>String email</code>, <code>CustomerStatus status</code></td></tr>
+      <tr><td><code>Account</code></td><td>Abstract — holds balance</td><td><code>String accountNumber</code>, <code>BigDecimal balance</code>, <code>BigDecimal available</code></td></tr>
+      <tr><td><code>SavingAccount / CheckingAccount</code></td><td>Concrete — adds limits / debit-card link</td><td>(plus subclass-specific fields)</td></tr>
+      <tr><td><code>Transaction</code></td><td>Abstract Strategy — one customer action</td><td><code>String txnId</code>, <code>TransactionStatus status</code>, <code>BigDecimal amount</code></td></tr>
+      <tr><td><code>CardReader</code></td><td>Card slot device</td><td><code>boolean cardInside</code>, <code>boolean retained</code></td></tr>
+      <tr><td><code>CashDispenser</code></td><td>Chain of denomination handlers</td><td><code>List&lt;CashCassette&gt; cassettes</code></td></tr>
+      <tr><td><code>BankAdapter</code></td><td>Boundary to bank network — 2-phase debit</td><td>(stateless)</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>ER / Schema Diagram</h2>
+  <p>Persistence shape: most state lives at the Bank, not the ATM. The ATM only persists its own audit log and device fault state.</p>
+  <div class="diagram-box"><div class="mermaid">
+erDiagram
+  ATM { string atm_id PK string location string status }
+  CUSTOMER { string customer_id PK string name string email string status }
+  CARD { string card_number PK string customer_id FK date expiry string pin_hash }
+  ACCOUNT { string account_number PK string customer_id FK string type decimal balance decimal available }
+  TRANSACTION { string txn_id PK string atm_id FK string account_number FK string type decimal amount string status datetime created_at }
+  CASH_CASSETTE { string cassette_id PK string atm_id FK int denomination int notes_remaining }
+  AUDIT_LOG { string log_id PK string atm_id FK string txn_id FK string event_type datetime ts string detail }
+  CUSTOMER ||--o| CARD : holds
+  CUSTOMER ||--o{ ACCOUNT : owns
+  ACCOUNT ||--o{ TRANSACTION : "audited by"
+  ATM ||--o{ TRANSACTION : "performed at"
+  ATM ||--o{ CASH_CASSETTE : "stocks"
+  ATM ||--o{ AUDIT_LOG : "writes"
+  </div></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s6">
+  <span class="sec-tag tag-purple">Step 6</span>
+  <h2>Class Diagram</h2>
+  <div class="diagram-box"><div class="mermaid">
+classDiagram
+  class ATM {
+    -ATMState state
+    -Session session
+    -CardReader reader
+    -Keypad keypad
+    -Screen screen
+    -CashDispenser dispenser
+    -DepositSlot depositSlot
+    -Printer printer
+    -BankAdapter bank
+    -AuditLog log
+    +onEvent(Event) void
+    +setState(ATMState) void
+  }
+  class ATMState { <<interface>> +handle(ATM, Event) }
+  class IdleState
+  class CardInsertedState
+  class AuthenticatingState
+  class SelectingTxnState
+  class ProcessingState
+  class DispensingState
+  class ReceiptState
+  ATMState <|.. IdleState
+  ATMState <|.. CardInsertedState
+  ATMState <|.. AuthenticatingState
+  ATMState <|.. SelectingTxnState
+  ATMState <|.. ProcessingState
+  ATMState <|.. DispensingState
+  ATMState <|.. ReceiptState
+
+  class Transaction { <<abstract>> +execute(ATM, Account) Receipt }
+  class Withdraw
+  class CashDeposit
+  class CheckDeposit
+  class Transfer
+  class BalanceInquiry
+  Transaction <|-- Withdraw
+  Transaction <|-- CashDeposit
+  Transaction <|-- CheckDeposit
+  Transaction <|-- Transfer
+  Transaction <|-- BalanceInquiry
+
+  class Account { <<abstract>> }
+  Account <|-- SavingAccount
+  Account <|-- CheckingAccount
+
+  class CashDispenser { -DenominationHandler chain +dispense(amount) Map }
+  class DenominationHandler { <<abstract>> +setNext(h) +handle(amount, out) }
+
+  ATM --> ATMState
+  ATM --> Transaction
+  CashDispenser --> DenominationHandler
+  </div></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s7">
+  <span class="sec-tag tag-yellow">Step 7</span>
+  <h2>Design Patterns Used</h2>
+  <div class="g2">
+    <div class="card"><h3>🚦 State — <code>ATM</code></h3><p>The ATM has 8 states (Idle, CardInserted, Authenticating, SelectingTxn, Processing, Dispensing, Receipt, Faulted). Each state handles only the events that make sense for it. Illegal events (e.g., "dispense" while Idle) are silently rejected — no boolean spaghetti.</p></div>
+    <div class="card"><h3>🎯 Strategy — <code>Transaction</code></h3><p>Each transaction type implements <code>execute(ATM, Account)</code>. Adding MobileRecharge or BillPay is one new class — no edits to ATM or BankAdapter.</p></div>
+    <div class="card"><h3>⛓️ Chain of Responsibility — <code>CashDispenser</code></h3><p>Denomination handlers are linked: ₹500 → ₹100 → ₹50. Each peels off what it can; the rest flows down. If the chain can't make the exact amount, it rolls back atomically.</p></div>
+    <div class="card"><h3>🔒 Singleton — <code>ATM</code></h3><p>One physical device, one in-memory instance. Devices are wired once at boot.</p></div>
+    <div class="card"><h3>🛡️ Adapter / Proxy — <code>BankAdapter</code></h3><p>Hides ISO-8583, retries, idempotency keys behind <code>authorize/commit/reverse</code>. The ATM doesn't know if the bank is local or 3000 km away.</p></div>
+    <div class="card"><h3>📝 Template Method — <code>Transaction.execute</code></h3><p>The base class defines the skeleton (validate → authorize → device-action → commit → log → receipt). Subclasses fill in the device-action step.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s8">
+  <span class="sec-tag tag-green">Step 8</span>
+  <h2>Sequence — Withdraw Flow</h2>
+  <p>Raj wants ₹2,300. Watch the 2-phase debit and the dispenser chain — these are the two parts the naive design got wrong.</p>
+  <div class="diagram-box"><div class="mermaid">
+sequenceDiagram
+  actor Raj
+  participant CR as CardReader
+  participant ATM
+  participant KP as Keypad
+  participant TX as Withdraw
+  participant BA as BankAdapter
+  participant CD as CashDispenser
+  participant PR as Printer
+  participant LOG as AuditLog
+
+  Raj->>CR: insert card
+  CR->>ATM: cardInsertedEvent
+  ATM->>ATM: state = CardInserted
+  ATM->>KP: prompt for PIN
+  Raj->>KP: enters 4-digit PIN
+  KP->>ATM: pinEnteredEvent
+  ATM->>BA: authenticate(card, pin)
+  BA-->>ATM: ok
+  ATM->>ATM: state = SelectingTxn
+  Raj->>KP: chooses Withdraw, ₹2300
+  KP->>ATM: txnSelected
+  ATM->>TX: execute(ATM, account)
+  TX->>BA: authorizeDebit(account, 2300, txnId)
+  BA-->>TX: HOLD ok
+  TX->>CD: dispense(2300)
+  CD->>CD: ₹500Handler peels 4 → 2000 left
+  CD->>CD: ₹100Handler peels 3 → 0 left
+  CD-->>TX: {₹500: 4, ₹100: 3}
+  alt cash dispensed ok
+    TX->>BA: commitDebit(txnId)
+    TX->>LOG: write SUCCESS
+    TX->>PR: print receipt
+  else dispenser jam
+    TX->>BA: reverseDebit(txnId)
+    TX->>LOG: write JAM, REVERSED
+    TX->>ATM: state = Faulted
+  end
+  ATM->>CR: eject card
+  </div></div>
+  <div class="highlight hl-green"><strong>The trick:</strong> if the dispenser jams after the bank says HOLD ok, we call <code>reverseDebit</code>. The customer's account is never charged for cash that didn't come out. Without 2-phase, the only "fix" is a dispute call to the bank the next day.</div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s9">
+  <span class="sec-tag tag-red">Step 9</span>
+  <h2>State Diagram — ATM</h2>
+  <p>Eight states drive every screen, every prompt, every device call. Hardware events are the arrows.</p>
+  <div class="diagram-box"><div class="mermaid">
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> CardInserted : cardInsertedEvent
+  CardInserted --> Authenticating : pinEntered
+  Authenticating --> SelectingTxn : authOk
+  Authenticating --> CardInserted : authFail (attempts < 3)
+  Authenticating --> Faulted : authFail (attempts == 3, retain card)
+  SelectingTxn --> Processing : txnSelected
+  Processing --> Dispensing : needsCash
+  Processing --> Receipt : noCashNeeded
+  Dispensing --> Receipt : dispenseOk
+  Dispensing --> Faulted : dispenseJam (reverse debit)
+  Receipt --> Idle : ejectCard
+  Faulted --> Idle : operatorReset
+  Idle --> Idle : cancelEvent
+  </div></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s10">
+  <span class="sec-tag tag-orange">Step 10</span>
+  <h2>Java Implementation</h2>
+  <p>Java 17+. Showing the parts that demonstrate State, Strategy, and Chain. Production code adds device drivers, persistence, and tests.</p>
+
+  <div class="code-label cl-yellow">Enums.java</div>
+<pre><span class="kw">public enum</span> <span class="ty">TransactionType</span> { BALANCE_INQUIRY, DEPOSIT_CASH, DEPOSIT_CHECK, WITHDRAW, TRANSFER }
+<span class="kw">public enum</span> <span class="ty">TransactionStatus</span> { PENDING, AUTHORIZED, SUCCESS, FAILED, REVERSED }
+<span class="kw">public enum</span> <span class="ty">CustomerStatus</span> { ACTIVE, BLOCKED, COMPROMISED, ARCHIVED }
+</pre>
+
+  <div class="code-label cl-blue">ATMState — State Pattern</div>
+<pre><span class="kw">public interface</span> <span class="ty">ATMState</span> {
+  <span class="kw">void</span> <span class="fn">handle</span>(<span class="ty">ATM</span> atm, <span class="ty">Event</span> e);
+}
+
+<span class="kw">public class</span> <span class="ty">IdleState</span> <span class="kw">implements</span> <span class="ty">ATMState</span> {
+  <span class="kw">public void</span> <span class="fn">handle</span>(<span class="ty">ATM</span> atm, <span class="ty">Event</span> e) {
+    <span class="kw">if</span> (e <span class="kw">instanceof</span> <span class="ty">CardInsertedEvent</span> ev) {
+      atm.<span class="fn">startSession</span>(ev.<span class="fn">card</span>());
+      atm.<span class="fn">setState</span>(<span class="kw">new</span> <span class="ty">CardInsertedState</span>());
+    }
+  }
+}
+
+<span class="kw">public class</span> <span class="ty">AuthenticatingState</span> <span class="kw">implements</span> <span class="ty">ATMState</span> {
+  <span class="kw">public void</span> <span class="fn">handle</span>(<span class="ty">ATM</span> atm, <span class="ty">Event</span> e) {
+    <span class="kw">if</span> (e <span class="kw">instanceof</span> <span class="ty">PinEnteredEvent</span> ev) {
+      <span class="kw">boolean</span> ok = atm.<span class="fn">getBank</span>().<span class="fn">authenticate</span>(atm.<span class="fn">getSession</span>().<span class="fn">card</span>(), ev.<span class="fn">pin</span>());
+      <span class="kw">if</span> (ok) atm.<span class="fn">setState</span>(<span class="kw">new</span> <span class="ty">SelectingTxnState</span>());
+      <span class="kw">else if</span> (atm.<span class="fn">getSession</span>().<span class="fn">incrementPinAttempts</span>() &gt;= <span class="num">3</span>) {
+        atm.<span class="fn">getReader</span>().<span class="fn">retainCard</span>();
+        atm.<span class="fn">setState</span>(<span class="kw">new</span> <span class="ty">FaultedState</span>(<span class="str">"too many bad PINs"</span>));
+      } <span class="kw">else</span> atm.<span class="fn">getScreen</span>().<span class="fn">show</span>(<span class="str">"Wrong PIN, try again"</span>);
+    }
+  }
+}
+</pre>
+
+  <div class="code-label cl-green">Transaction — Strategy + Template Method</div>
+<pre><span class="kw">public abstract class</span> <span class="ty">Transaction</span> {
+  <span class="kw">protected</span> <span class="ty">String</span> txnId = <span class="ty">UUID</span>.<span class="fn">randomUUID</span>().<span class="fn">toString</span>();
+  <span class="kw">protected</span> <span class="ty">TransactionStatus</span> status = <span class="ty">TransactionStatus</span>.PENDING;
+  <span class="kw">protected</span> <span class="ty">BigDecimal</span> amount;
+
+  <span class="cmt">// Template Method — fixes the order; subclasses fill in deviceAction()</span>
+  <span class="kw">public final</span> <span class="ty">Receipt</span> <span class="fn">execute</span>(<span class="ty">ATM</span> atm, <span class="ty">Account</span> acct) {
+    <span class="fn">validate</span>(acct);
+    atm.<span class="fn">getBank</span>().<span class="fn">authorize</span>(acct, amount, txnId);
+    status = <span class="ty">TransactionStatus</span>.AUTHORIZED;
+    <span class="kw">try</span> {
+      <span class="ty">DeviceResult</span> r = <span class="fn">deviceAction</span>(atm, acct);
+      atm.<span class="fn">getBank</span>().<span class="fn">commit</span>(txnId);
+      status = <span class="ty">TransactionStatus</span>.SUCCESS;
+      atm.<span class="fn">getLog</span>().<span class="fn">write</span>(<span class="kw">this</span>, r);
+      <span class="kw">return</span> <span class="kw">new</span> <span class="ty">Receipt</span>(txnId, amount, r);
+    } <span class="kw">catch</span> (<span class="ty">DeviceException</span> ex) {
+      atm.<span class="fn">getBank</span>().<span class="fn">reverse</span>(txnId);
+      status = <span class="ty">TransactionStatus</span>.REVERSED;
+      atm.<span class="fn">getLog</span>().<span class="fn">writeFault</span>(<span class="kw">this</span>, ex);
+      <span class="kw">throw</span> ex;
+    }
+  }
+  <span class="kw">protected abstract void</span> <span class="fn">validate</span>(<span class="ty">Account</span> a);
+  <span class="kw">protected abstract</span> <span class="ty">DeviceResult</span> <span class="fn">deviceAction</span>(<span class="ty">ATM</span> atm, <span class="ty">Account</span> a);
+}
+
+<span class="kw">public class</span> <span class="ty">Withdraw</span> <span class="kw">extends</span> <span class="ty">Transaction</span> {
+  <span class="kw">public</span> <span class="fn">Withdraw</span>(<span class="ty">BigDecimal</span> amt) { <span class="kw">this</span>.amount = amt; }
+  <span class="kw">protected void</span> <span class="fn">validate</span>(<span class="ty">Account</span> a) {
+    <span class="kw">if</span> (a.<span class="fn">getAvailable</span>().<span class="fn">compareTo</span>(amount) &lt; <span class="num">0</span>)
+      <span class="kw">throw new</span> <span class="ty">InsufficientFundsException</span>();
+  }
+  <span class="kw">protected</span> <span class="ty">DeviceResult</span> <span class="fn">deviceAction</span>(<span class="ty">ATM</span> atm, <span class="ty">Account</span> a) {
+    <span class="ty">Map</span>&lt;<span class="ty">Integer</span>,<span class="ty">Integer</span>&gt; bills = atm.<span class="fn">getDispenser</span>().<span class="fn">dispense</span>(amount.<span class="fn">intValueExact</span>());
+    <span class="kw">return new</span> <span class="ty">DeviceResult</span>(bills);
+  }
+}
+</pre>
+
+  <div class="code-label cl-yellow">CashDispenser — Chain of Responsibility</div>
+<pre><span class="kw">public abstract class</span> <span class="ty">DenominationHandler</span> {
+  <span class="kw">protected final int</span> denomination;
+  <span class="kw">protected</span> <span class="ty">CashCassette</span> cassette;
+  <span class="kw">protected</span> <span class="ty">DenominationHandler</span> next;
+
+  <span class="kw">public</span> <span class="fn">DenominationHandler</span>(<span class="kw">int</span> d, <span class="ty">CashCassette</span> c) { <span class="kw">this</span>.denomination = d; <span class="kw">this</span>.cassette = c; }
+  <span class="kw">public</span> <span class="ty">DenominationHandler</span> <span class="fn">setNext</span>(<span class="ty">DenominationHandler</span> n) { <span class="kw">this</span>.next = n; <span class="kw">return</span> n; }
+
+  <span class="kw">public</span> <span class="ty">Map</span>&lt;<span class="ty">Integer</span>,<span class="ty">Integer</span>&gt; <span class="fn">handle</span>(<span class="kw">int</span> remaining, <span class="ty">Map</span>&lt;<span class="ty">Integer</span>,<span class="ty">Integer</span>&gt; out) {
+    <span class="kw">int</span> count = <span class="ty">Math</span>.<span class="fn">min</span>(remaining / denomination, cassette.<span class="fn">notesRemaining</span>());
+    <span class="kw">if</span> (count &gt; <span class="num">0</span>) {
+      out.<span class="fn">put</span>(denomination, count);
+      remaining -= count * denomination;
+    }
+    <span class="kw">if</span> (remaining == <span class="num">0</span>) <span class="kw">return</span> out;
+    <span class="kw">if</span> (next == <span class="kw">null</span>) <span class="kw">throw new</span> <span class="ty">CannotDispenseException</span>(<span class="str">"no exact change for "</span> + remaining);
+    <span class="kw">return</span> next.<span class="fn">handle</span>(remaining, out);
+  }
+}
+
+<span class="kw">public class</span> <span class="ty">CashDispenser</span> {
+  <span class="kw">private final</span> <span class="ty">DenominationHandler</span> chain;
+  <span class="kw">public</span> <span class="fn">CashDispenser</span>(<span class="ty">List</span>&lt;<span class="ty">CashCassette</span>&gt; cassettes) {
+    <span class="cmt">// build chain in DESCENDING denomination order</span>
+    cassettes.<span class="fn">sort</span>((a,b) -&gt; b.<span class="fn">getDenomination</span>() - a.<span class="fn">getDenomination</span>());
+    <span class="ty">DenominationHandler</span> head = <span class="kw">null</span>, prev = <span class="kw">null</span>;
+    <span class="kw">for</span> (<span class="ty">CashCassette</span> c : cassettes) {
+      <span class="ty">DenominationHandler</span> h = <span class="kw">new</span> <span class="ty">SimpleHandler</span>(c.<span class="fn">getDenomination</span>(), c);
+      <span class="kw">if</span> (head == <span class="kw">null</span>) head = h; <span class="kw">else</span> prev.<span class="fn">setNext</span>(h);
+      prev = h;
+    }
+    <span class="kw">this</span>.chain = head;
+  }
+  <span class="kw">public synchronized</span> <span class="ty">Map</span>&lt;<span class="ty">Integer</span>,<span class="ty">Integer</span>&gt; <span class="fn">dispense</span>(<span class="kw">int</span> amount) {
+    <span class="kw">return</span> chain.<span class="fn">handle</span>(amount, <span class="kw">new</span> <span class="ty">HashMap</span>&lt;&gt;());
+  }
+}
+</pre>
+
+  <div class="code-label cl-cyan">BankAdapter — 2-phase debit</div>
+<pre><span class="kw">public interface</span> <span class="ty">BankAdapter</span> {
+  <span class="kw">boolean</span> <span class="fn">authenticate</span>(<span class="ty">Card</span> card, <span class="ty">String</span> pin);
+  <span class="kw">void</span> <span class="fn">authorize</span>(<span class="ty">Account</span> a, <span class="ty">BigDecimal</span> amount, <span class="ty">String</span> txnId); <span class="cmt">// puts hold</span>
+  <span class="kw">void</span> <span class="fn">commit</span>(<span class="ty">String</span> txnId);                                         <span class="cmt">// finalize</span>
+  <span class="kw">void</span> <span class="fn">reverse</span>(<span class="ty">String</span> txnId);                                        <span class="cmt">// release hold</span>
+  <span class="ty">BigDecimal</span> <span class="fn">getBalance</span>(<span class="ty">Account</span> a);
+}
+</pre>
+
+  <div class="code-label cl-green">Demo — Withdraw + jam recovery</div>
+<pre><span class="kw">public class</span> <span class="ty">Demo</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="ty">String</span>[] a) {
+    <span class="ty">ATM</span> atm = <span class="ty">ATM</span>.<span class="fn">getInstance</span>();
+    atm.<span class="fn">onEvent</span>(<span class="kw">new</span> <span class="ty">CardInsertedEvent</span>(rajCard));
+    atm.<span class="fn">onEvent</span>(<span class="kw">new</span> <span class="ty">PinEnteredEvent</span>(<span class="str">"1234"</span>));
+    atm.<span class="fn">onEvent</span>(<span class="kw">new</span> <span class="ty">TxnSelectedEvent</span>(<span class="kw">new</span> <span class="ty">Withdraw</span>(<span class="kw">new</span> <span class="ty">BigDecimal</span>(<span class="str">"2300"</span>))));
+    <span class="cmt">// state machine takes over from here — auth → process → dispense → receipt → eject</span>
+  }
+}
+</pre>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s11">
+  <span class="sec-tag tag-cyan">Step 11</span>
+  <h2>Intuition — How to arrive at this design from scratch</h2>
+  <div class="g2">
+    <div class="card"><h3>1️⃣ Start from the action</h3><p>"Customer wants ₹2,300 cash." That's the primary flow. Everything else is supporting infrastructure.</p></div>
+    <div class="card"><h3>2️⃣ Find nouns &amp; verbs</h3><p>Nouns: ATM, card, customer, account, dispenser, receipt, log. Verbs: authenticate, authorize, dispense, print, reverse.</p></div>
+    <div class="card"><h3>3️⃣ Watch state, not data</h3><p>The data here barely changes — but the <em>state</em> changes constantly: idle, authenticating, dispensing. State pattern jumps out.</p></div>
+    <div class="card"><h3>4️⃣ Variability lives in transactions</h3><p>5 transaction types today, 8 next year. Strategy.</p></div>
+    <div class="card"><h3>5️⃣ Cash dispensing is a sub-problem</h3><p>"Make ₹2,300 from cassettes" is the coin-change problem. Chain of Responsibility encodes it as denomination handlers.</p></div>
+    <div class="card"><h3>6️⃣ Network calls fail mid-way</h3><p>2-phase commit (authorize → commit/reverse) is the only correct answer. Single-phase debits are lawsuits.</p></div>
+    <div class="card"><h3>7️⃣ Concurrency</h3><p>One customer at a time per ATM device — but the bank network is shared. Make BankAdapter calls idempotent via the txnId.</p></div>
+    <div class="card"><h3>8️⃣ Fail loudly &amp; auditably</h3><p>Every state transition lands in AuditLog. The bank will demand it.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s12">
+  <span class="sec-tag tag-red">Step 12</span>
+  <h2>Improvements over the Grokking Reference Design</h2>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Area</th><th>Grokking design</th><th>This design</th><th>Why it matters</th></tr></thead>
+    <tbody>
+      <tr><td><strong>ATM lifecycle</strong></td><td>No state — just method calls</td><td>State Pattern with 8 states + 1 Faulted</td><td>"Card forgotten in slot", "dispenser jam", "wrong PIN x3" all need lifecycle awareness; method-only design can't represent them</td></tr>
+      <tr><td><strong>Cash dispense</strong></td><td>Fields <code>totalFiveDollarBills</code>, <code>totalTwentyDollarBills</code> with no algorithm</td><td>Chain of Responsibility — one handler per denomination, atomic rollback if exact change impossible</td><td>Real ATMs run out of small notes constantly. The chain is the right abstraction; the field-counter design doesn't model the problem</td></tr>
+      <tr><td><strong>Bank debit</strong></td><td>Single-step debit</td><td>2-phase: authorize → commit/reverse, idempotent via txnId</td><td>If the dispenser jams after a single-step debit, the customer's money is gone. 2-phase prevents the entire class of bug</td></tr>
+      <tr><td><strong>PIN failure</strong></td><td>Reject and retry — unlimited</td><td>Counter on Session → 3 attempts → retain card</td><td>Without lockout, a stolen card is brute-forced in seconds</td></tr>
+      <tr><td><strong>Transactions</strong></td><td>Subclasses exist but have no <code>execute()</code> method</td><td>Template Method execute(): validate → authorize → device → commit → log</td><td>Without a real execute, the ATM ends up with a giant switch on TransactionType. Strategy + Template gives polymorphic dispatch</td></tr>
+      <tr><td><strong>Hardware faults</strong></td><td>Mentioned only as "internal log"</td><td>AuditLog is a first-class component; Faulted state is explicit</td><td>An interviewer asking about printer-out / paper-out wants to see explicit handling</td></tr>
+      <tr><td><strong>Concurrency</strong></td><td>"One customer at a time" — vague</td><td>Per-account locks at BankAdapter; ATM-level state machine; idempotent txnId on retry</td><td>Crucial when the same card is used at two ATMs simultaneously (rare but happens)</td></tr>
+      <tr><td><strong>BankAdapter</strong></td><td>Direct method calls on Bank</td><td>Adapter interface — production swaps in ISO-8583 driver, tests swap in fake</td><td>Testability + isolation from network protocol churn</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s13">
+  <span class="sec-tag tag-purple">Step 13</span>
+  <h2>Extension Points</h2>
+  <div class="g3">
+    <div class="card"><h3>📱 Mobile recharge</h3><p>New <code>MobileRecharge extends Transaction</code>. No edits to ATM or BankAdapter — just register the new strategy in the menu.</p></div>
+    <div class="card"><h3>💱 Multi-currency</h3><p>Add a <code>CurrencyConverter</code> adapter wrapping BankAdapter. Withdraw still calls <code>authorize</code>; conversion happens beneath.</p></div>
+    <div class="card"><h3>👁️ Biometric auth</h3><p>Plug a new <code>AuthenticatingState</code> variant that prompts for fingerprint after PIN. Other states untouched.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s14">
+  <span class="sec-tag tag-orange">Step 14</span>
+  <h2>Trade-offs &amp; Talking Points</h2>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Decision</th><th>Alternative</th><th>Why this choice</th></tr></thead>
+    <tbody>
+      <tr><td>State Pattern (concrete classes)</td><td>Enum + giant switch</td><td>Enum-switch grows by 8 cases for every event. Concrete states encapsulate event handling per state. Adding a state = one class</td></tr>
+      <tr><td>2-phase debit</td><td>Single debit + manual reversal</td><td>Manual reversal means the customer waits 24 hours for a dispute to resolve. 2-phase makes "money never actually left" the default</td></tr>
+      <tr><td>Chain of Responsibility for dispenser</td><td>Greedy algorithm in one method</td><td>Greedy is a one-liner; chain isolates the per-denomination logic so cassette refills, cassette failures, and swap-out are all per-handler concerns</td></tr>
+      <tr><td>BankAdapter interface</td><td>Direct calls</td><td>Tests need a fake bank. Production needs ISO-8583. Interface is the seam</td></tr>
+      <tr><td>BigDecimal for money</td><td>double / int paise</td><td>BigDecimal for safety; int-paise is fine but easy to slip up on division</td></tr>
+      <tr><td>Synchronized dispense()</td><td>Per-cassette lock</td><td>One ATM, one customer at a time — fine-grained locks are theatre</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s15">
+  <span class="sec-tag tag-blue">Step 15</span>
+  <h2>Interview Q &amp; A</h2>
+  <div class="iq">What if the dispenser jams after the bank has debited the account?</div>
+  <div class="ans">The Bank call is two-phase. <code>authorize(account, amount, txnId)</code> only puts a <em>hold</em> on the funds — the balance is reserved but not yet deducted. Then <code>dispense()</code>. If it succeeds, <code>commit(txnId)</code> finalizes the debit. If it throws, <code>reverse(txnId)</code> releases the hold. The customer's account is never short.</div>
+
+  <div class="iq">How do you make ₹2,350 if the ATM is out of ₹50 notes?</div>
+  <div class="ans">Chain of Responsibility. ₹500 handler peels 4 → 350 left. ₹100 handler peels 3 → 50 left. ₹50 handler tries — cassette empty. Last handler in chain throws <code>CannotDispenseException</code>. <strong>Atomicity is in the chain</strong>: nothing is dispensed until the chain returns successfully. The ATM tells the customer "amount unavailable in current denominations, try ₹2,300 or ₹2,400".</div>
+
+  <div class="iq">Wrong PIN three times — what happens?</div>
+  <div class="ans">Each failed attempt increments <code>session.pinAttempts</code>. On the 3rd, <code>AuthenticatingState</code> calls <code>cardReader.retainCard()</code> (physically swallows the card) and transitions to Faulted. The card is now physically held; the Operator collects it and the customer must visit the bank.</div>
+
+  <div class="iq">Why State Pattern and not just an enum?</div>
+  <div class="ans">An enum needs a switch in every event handler. With 8 states × 6 event types, that's a 48-row switch. State Pattern puts each state's event handling in its own class — one file per state. Adding a state (e.g., <code>BiometricAuthState</code>) is one new class; the existing states need zero edits.</div>
+
+  <div class="iq">Two ATMs, same card, same instant — what protects the account?</div>
+  <div class="ans">The ATM-level state machine guarantees one transaction at a time per device. Cross-ATM, the protection lives in <strong>BankAdapter.authorize</strong> — it grabs an account-level lock and checks available balance. The first authorize wins; the second sees insufficient funds and aborts. Idempotency is via the txnId so a network retry doesn't double-debit.</div>
+
+  <div class="iq">What if the printer is out of paper mid-transaction?</div>
+  <div class="ans">A real ATM <em>must not</em> reverse a successful withdrawal because of a paper jam. <code>Printer.printReceipt</code> catches the out-of-paper condition, logs a "needs refill" alert to AuditLog, and the transaction completes successfully. The screen shows "receipt unavailable, transaction complete" before ejecting the card.</div>
+
+  <div class="iq">How do you test this without a real ATM?</div>
+  <div class="ans">Every device is behind an interface (CardReader, Keypad, Screen, CashDispenser, Printer, BankAdapter). In tests, swap in fakes. Drive the state machine with synthetic events; assert on which methods the fakes were called with. The State Pattern + Adapter Pattern are <em>why</em> this works.</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

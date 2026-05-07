@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Movie Ticket Booking — LLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>mermaid.initialize({startOnLoad:true,theme:'dark',themeVariables:{fontSize:'13px',darkMode:true,background:'#11161e',primaryColor:'#171d27',primaryTextColor:'#d4dae5',primaryBorderColor:'#e8743b',lineColor:'#7b8599',secondaryColor:'#11161e',tertiaryColor:'#171d27'}});</script>
+<style>
+:root{--bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;--text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;--orange:#e8743b;--orange-d:rgba(232,116,59,.12);--green:#38b265;--green-d:rgba(56,178,101,.1);--blue:#4a90d9;--blue-d:rgba(74,144,217,.1);--purple:#9b72cf;--purple-d:rgba(155,114,207,.1);--red:#e05252;--red-d:rgba(224,82,82,.1);--yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);--cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+.wrap{min-width:0}
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;font-size:.9rem;transition:color .15s}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}.tag-green{background:var(--green-d);color:var(--green)}.tag-blue{background:var(--blue-d);color:var(--blue)}.tag-purple{background:var(--purple-d);color:var(--purple)}.tag-yellow{background:var(--yellow-d);color:var(--yellow)}.tag-red{background:var(--red-d);color:var(--red)}.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.92rem;margin-bottom:1.5rem;max-width:760px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.3rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.88rem;color:var(--text);line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}.cl-blue{background:var(--blue-d);color:var(--blue)}.cl-purple{background:var(--purple-d);color:var(--purple)}.cl-orange{background:var(--orange-d);color:var(--orange)}.cl-yellow{background:var(--yellow-d);color:var(--yellow)}.cl-cyan{background:var(--cyan-d);color:var(--cyan)}.cl-red{background:var(--red-d);color:var(--red)}
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.88rem}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.highlight strong{font-weight:700}
+.divider{height:1px;background:var(--border);margin:3rem 0}
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.88rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.88rem;color:var(--text);border:1px solid var(--border)}
+.ans strong{color:var(--heading)}
+.tbl{width:100%;border-collapse:collapse;font-size:.84rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.6rem .85rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}.comp-num.blue{background:var(--blue-d);color:var(--blue);border:1px solid var(--blue)}.comp-num.green{background:var(--green-d);color:var(--green);border:1px solid var(--green)}.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}.comp-num.cyan{background:var(--cyan-d);color:var(--cyan);border:1px solid var(--cyan)}.comp-num.red{background:var(--red-d);color:var(--red);border:1px solid var(--red)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">Low-Level Design</div>
+  <h1>Movie Ticket <span>Booking</span></h1>
+  <p class="sub">A real BookMyShow-style booking — Seat-locking with TTL, Saga payment flow, dynamic pricing Strategy, full Java code &amp; the concurrency story Grokking glosses over.</p>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Clarify Requirements</a></li>
+      <li><a href="#s2">Actors &amp; Use Cases</a></li>
+      <li><a href="#s3">Story — From a Box Office to BMS</a></li>
+      <li><a href="#s4">Core Entities</a></li>
+      <li><a href="#s5">ER / Schema Diagram</a></li>
+      <li><a href="#s6">Class Diagram</a></li>
+      <li><a href="#s7">Design Patterns Used</a></li>
+      <li><a href="#s8">Sequence — Concurrent Booking</a></li>
+      <li><a href="#s9">State Diagram — ShowSeat</a></li>
+      <li><a href="#s10">Java Implementation</a></li>
+      <li><a href="#s11">Intuition Step-by-Step</a></li>
+      <li><a href="#s12">Improvements over Grokking</a></li>
+      <li><a href="#s13">Extension Points</a></li>
+      <li><a href="#s14">Trade-offs &amp; Talking Points</a></li>
+      <li><a href="#s15">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>Clarify Requirements</h2>
+  <p>It's a Friday at 6 PM. Spider-Man just released. Across India, 200,000 people have the BookMyShow app open. Three of them — Sarah in Mumbai, Raj in Delhi, Priya in Bangalore — all click on seat F-12 of the 9 PM show at PVR Phoenix at exactly the same instant. Two of them must lose. The third must complete checkout and pay within 8 minutes — or release the seat. <em>That</em> is what this design has to handle.</p>
+  <div class="g2">
+    <div class="card"><h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>List cities; list cinemas in a city; list shows in a cinema</li>
+        <li>Search movies by title, language, genre, release date, city</li>
+        <li>Display seating arrangement of a hall with per-seat status</li>
+        <li>Reserve N seats in a single transaction with an 8-minute payment hold</li>
+        <li>Multiple seat types (Regular / Premium / Recliner / Accessible) with different prices</li>
+        <li>Cancel a confirmed booking up to 30 min before show; refund per policy</li>
+        <li>Notifications: confirmation, reminder 1 hour before show, cancellation</li>
+        <li>Admin adds/removes movies, shows; FrontDesk books on behalf of walk-ins</li>
+      </ul>
+    </div>
+    <div class="card"><h3>🎯 Non-Functional &amp; 🚫 Out of Scope</h3>
+      <ul>
+        <li><strong>Concurrency:</strong> two users grabbing the same seat — exactly one wins, no double-booking</li>
+        <li><strong>Latency &lt; 300 ms</strong> for the seat-grab API at peak load</li>
+        <li><strong>Availability:</strong> a single hall's data outage must not bring down the whole site</li>
+        <li><strong>Auditability:</strong> every seat lock / unlock / book / refund logged</li>
+      </ul>
+      <h3 style="margin-top:1rem">🚫 Out of scope</h3>
+      <ul>
+        <li>The actual movie streaming (this is just tickets)</li>
+        <li>Food &amp; beverage ordering inside the cinema</li>
+        <li>Loyalty / coupon engine (extension point)</li>
+        <li>The payment gateway internals (we adapt to it)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="highlight hl-orange"><strong>Interviewer trick:</strong> the entire interview hinges on "what happens if two users click the same seat?". If your design doesn't have a per-seat lock with a TTL, you've already failed. Lead with it.</div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Actors &amp; Use Cases</h2>
+  <div class="diagram-box"><div class="mermaid">
+flowchart LR
+  G([Guest])
+  C([Customer])
+  F([FrontDesk Officer])
+  A([Admin])
+  S([System])
+
+  G --> SE[Search Movies]
+  G --> VW[View Show Times]
+  C --> SE
+  C --> BK[Book Seats]
+  C --> PY[Pay]
+  C --> CN[Cancel]
+  F --> WK[Walk-in Booking]
+  A --> AM[Add/Remove Movie]
+  A --> ASH[Add/Remove Show]
+  A --> AC[Block/Unblock Account]
+  S --> EX[Expire Seat Locks]
+  S --> NT[Send Notifications]
+  S --> RF[Process Refunds]
+
+  style G fill:#7b8599,stroke:#7b8599,color:#fff
+  style C fill:#e8743b,stroke:#e8743b,color:#fff
+  style F fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style A fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style S fill:#38b265,stroke:#38b265,color:#fff
+  </div></div>
+  <div class="g4">
+    <div class="card"><h3 style="color:#7b8599">Guest</h3><p>Unauthenticated browser. Can search; must register to book.</p></div>
+    <div class="card"><h3 style="color:var(--orange)">Customer</h3><p>The booker. Searches, locks seats, pays, cancels.</p></div>
+    <div class="card"><h3 style="color:var(--blue)">FrontDesk</h3><p>In-cinema staff. Books for walk-ins; can override seat locks.</p></div>
+    <div class="card"><h3 style="color:var(--purple)">Admin</h3><p>Configures movies, shows, halls, pricing.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s3">
+  <span class="sec-tag tag-purple">Step 3</span>
+  <h2>Story — From a Box Office to BookMyShow</h2>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:1.5rem 0 .8rem">Pass 1 — The naive design</h3>
+  <p>One method <code>book(showId, seats[], userId)</code>. It checks if any of the seats are taken, marks them booked, calls the payment gateway, returns a ticket. Done in 40 lines.</p>
+  <div class="diagram-box"><div class="mermaid">
+flowchart LR
+  User --> API[book API]
+  API --> DB[(seats table)]
+  API --> PAY[Payment gateway]
+  style API fill:#e05252,stroke:#e05252,color:#fff
+  </div></div>
+  <div class="g3">
+    <div class="card"><h3 style="color:var(--red)">💥 Race</h3><p>Sarah, Raj, Priya all click seat F-12 at the same millisecond. All three pass the "is it taken?" check. All three try to book. Without a database row-lock, all three "succeed" — the cinema overbooks. <em>Read-then-write race.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Slow payment</h3><p>Sarah's card is being processed; the seat shows "available" to other users. While she's typing her OTP, Raj books her seat. Now what? <em>No payment hold.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Sarah abandons</h3><p>Sarah picks 3 seats but never pays. They stay "booked" forever. Inventory dies. <em>No TTL on the lock.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Search at scale</h3><p>20 cities, 1000 cinemas, 50 movies. Naive search is a Cartesian linear scan. <em>No indexing.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Pricing changes</h3><p>Recliners cost 2× regular. Friday evening shows cost 1.5× weekday morning. Pricing is hardcoded as a column. <em>No strategy.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Refund policy</h3><p>Cancel 5 min before show — full refund? 90% refund? Nothing? <em>No cancellation rules.</em></p></div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:1.5rem 0 .8rem">Pass 2 — The mental split</h3>
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--blue)"><h3 style="color:var(--blue)">🪑 Inventory plane</h3><p>What seats exist, what state each is in, who currently holds it. Hot, contended, must support row-level atomic transitions. ShowSeat as a state machine with 4 states, locked by SET-IF-AVAILABLE primitive.</p></div>
+    <div class="card" style="border-left:3px solid var(--orange)"><h3 style="color:var(--orange)">💳 Booking plane</h3><p>Booking lifecycle, payment, refund, notifications. Saga across 3 services (Booking, Payment, Notification). Idempotent, with compensations.</p></div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:1.5rem 0 .8rem">Pass 3 — The production shape</h3>
+  <div class="diagram-box"><div class="mermaid">
+flowchart TB
+  C([Customer])
+  C --> AG[① API Gateway]
+  AG --> SS[② SearchService<br/>Repository]
+  AG --> BS[③ BookingService<br/>Saga orchestrator]
+  BS --> SLM[④ SeatLockManager<br/>TTL locks]
+  BS --> SS2[⑤ ShowSeat<br/>State machine]
+  BS --> PR[⑥ PricingStrategy]
+  BS --> PA[⑦ PaymentAdapter]
+  BS --> EXP[⑧ LockExpiryWorker]
+  BS --> NT[⑨ NotificationService]
+  BS --> AL[⑩ AuditLog]
+
+  style AG fill:#e8743b,stroke:#e8743b,color:#fff
+  style SS fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style BS fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style SLM fill:#d4a838,stroke:#d4a838,color:#000
+  style SS2 fill:#3cbfbf,stroke:#3cbfbf,color:#fff
+  style PR fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style PA fill:#38b265,stroke:#38b265,color:#fff
+  style EXP fill:#e05252,stroke:#e05252,color:#fff
+  style NT fill:#38b265,stroke:#38b265,color:#fff
+  style AL fill:#e05252,stroke:#e05252,color:#fff
+  </div></div>
+
+  <div class="g2">
+    <div class="card"><h3><span class="comp-num orange">①</span> API Gateway</h3><p>Auth + rate-limit + traffic shaping. The seat-grab endpoint is the most-hit path on the entire site at 6 PM Friday — it must shed load gracefully.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Without rate-limiting, a runaway script user can lock thousands of seats simultaneously.</p></div>
+    <div class="card"><h3><span class="comp-num purple">②</span> SearchService</h3><p>Repository over an indexed catalog (Elasticsearch / Postgres FTS). Routes "thrillers in Mumbai this weekend" without a full scan.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Grokking's HashMap-by-string search degenerates to O(N) on real catalogs.</p></div>
+    <div class="card"><h3><span class="comp-num blue">③</span> BookingService (Saga)</h3><p>Orchestrates the multi-step booking: lock seats → quote price → take payment → confirm seats → notify. Each step has a compensation for failure.</p><p style="margin-top:.55rem"><strong>Solves:</strong> A naive single-method book() can't recover from "payment succeeded but confirm-seat call failed" — Saga makes the failure modes explicit.</p></div>
+    <div class="card"><h3><span class="comp-num yellow">④</span> SeatLockManager (TTL locks)</h3><p>The atomic "claim this seat for 8 minutes" primitive. Backed by Redis SETNX with EX 480, or by a database row lock with an <code>locked_until</code> column. Either way, the contract is: <em>at most one client can hold a given seat at a given time</em>.</p><p style="margin-top:.55rem"><strong>Solves:</strong> The race between Sarah / Raj / Priya — exactly one of them wins the SETNX. The other two see "seat unavailable" instantly.</p></div>
+    <div class="card"><h3><span class="comp-num cyan">⑤</span> ShowSeat (State Machine)</h3><p>Four states: AVAILABLE → LOCKED → BOOKED → AVAILABLE (after cancel). Each transition is method on ShowSeat that throws on illegal moves.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Stops "book a seat that wasn't locked" or "cancel a non-booked seat" at the type level.</p></div>
+    <div class="card"><h3><span class="comp-num purple">⑥</span> PricingStrategy</h3><p>Plug-in. <code>FlatRate</code> is base; <code>SeatTypeMultiplier</code> wraps it for premium/recliner; <code>PeakHourMultiplier</code> wraps that for weekend/evening. Stack as decorators.</p><p style="margin-top:.55rem"><strong>Solves:</strong> "Spider-Man on Friday at 9pm in IMAX" pricing is composable; new rules don't touch the booking code.</p></div>
+    <div class="card"><h3><span class="comp-num green">⑦</span> PaymentAdapter</h3><p>Hides Razorpay / Stripe / cash-at-counter. Calls are idempotent via the booking ID; on timeout, retries don't double-charge.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Real payment gateways flake. Idempotency is non-negotiable.</p></div>
+    <div class="card"><h3><span class="comp-num red">⑧</span> LockExpiryWorker</h3><p>Background scan over locked seats whose <code>locked_until</code> has passed. Releases them back to AVAILABLE and emits an event so the UI updates.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Sarah abandoning her cart can't kill inventory. After 8 minutes, her seats are everybody's seats again.</p></div>
+    <div class="card"><h3><span class="comp-num green">⑨</span> NotificationService</h3><p>Subscribes to booking events. Sends confirmation + 1-hour reminder + cancellation receipts. Email, SMS, push — Strategy per channel.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Inline calls would block the booking endpoint at peak; pub/sub keeps it snappy.</p></div>
+    <div class="card"><h3><span class="comp-num red">⑩</span> AuditLog</h3><p>Every lock, book, refund — append-only.</p><p style="margin-top:.55rem"><strong>Solves:</strong> "I never got my seat" disputes become evidence, not he-said-she-said.</p></div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>So in short —</strong> SeatLockManager is the heart. Every booking starts with a TTL lock. Saga orchestrates the multi-step flow with compensations. Pricing is pluggable strategies. The expiry worker is the reaper that keeps inventory healthy.</div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s4">
+  <span class="sec-tag tag-blue">Step 4</span>
+  <h2>Core Entities</h2>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Entity</th><th>Responsibility</th><th>Key Fields</th></tr></thead>
+    <tbody>
+      <tr><td><code>City</code></td><td>City listing</td><td><code>String name</code>, <code>String state</code>, <code>String zipCode</code></td></tr>
+      <tr><td><code>Cinema</code></td><td>One physical multiplex</td><td><code>String cinemaId</code>, <code>City city</code>, <code>List&lt;CinemaHall&gt; halls</code></td></tr>
+      <tr><td><code>CinemaHall</code></td><td>One auditorium</td><td><code>String hallId</code>, <code>int capacity</code>, <code>List&lt;CinemaHallSeat&gt; seats</code></td></tr>
+      <tr><td><code>CinemaHallSeat</code></td><td>Physical seat (template)</td><td><code>String seatNumber</code>, <code>SeatType type</code>, <code>String row, col</code></td></tr>
+      <tr><td><code>Movie</code></td><td>One movie</td><td><code>String movieId</code>, <code>String title</code>, <code>List&lt;String&gt; languages</code>, <code>String genre</code>, <code>LocalDate releaseDate</code></td></tr>
+      <tr><td><code>Show</code></td><td>One screening</td><td><code>String showId</code>, <code>Movie movie</code>, <code>CinemaHall hall</code>, <code>LocalDateTime startTime</code></td></tr>
+      <tr><td><code>ShowSeat</code></td><td>One bookable seat for one show — the stateful unit</td><td><code>String showSeatId</code>, <code>SeatStatus status</code>, <code>String lockedBy</code>, <code>LocalDateTime lockedUntil</code>, <code>BigDecimal price</code></td></tr>
+      <tr><td><code>Booking</code></td><td>One purchase</td><td><code>String bookingId</code>, <code>String customerId</code>, <code>List&lt;String&gt; seatIds</code>, <code>BookingStatus status</code></td></tr>
+      <tr><td><code>Payment</code></td><td>One payment attempt</td><td><code>String paymentId</code>, <code>BigDecimal amount</code>, <code>PaymentStatus status</code>, <code>String gatewayRef</code></td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>ER / Schema Diagram</h2>
+  <div class="diagram-box"><div class="mermaid">
+erDiagram
+  CITY { string city_id PK string name }
+  CINEMA { string cinema_id PK string city_id FK string name }
+  HALL { string hall_id PK string cinema_id FK int capacity }
+  HALL_SEAT { string seat_id PK string hall_id FK string row_col string type }
+  MOVIE { string movie_id PK string title string genre date release }
+  SHOW { string show_id PK string movie_id FK string hall_id FK datetime start }
+  SHOW_SEAT { string show_seat_id PK string show_id FK string seat_id FK string status string locked_by datetime locked_until decimal price }
+  BOOKING { string booking_id PK string customer_id FK string show_id FK string status decimal total }
+  BOOKING_SEAT { string booking_id FK string show_seat_id FK }
+  PAYMENT { string payment_id PK string booking_id FK decimal amount string status string gateway_ref }
+  CUSTOMER { string customer_id PK string name string email }
+  CITY ||--o{ CINEMA : has
+  CINEMA ||--o{ HALL : has
+  HALL ||--o{ HALL_SEAT : has
+  MOVIE ||--o{ SHOW : screened_as
+  HALL ||--o{ SHOW : hosts
+  SHOW ||--o{ SHOW_SEAT : has
+  HALL_SEAT ||--o{ SHOW_SEAT : "templates"
+  BOOKING ||--o{ BOOKING_SEAT : holds
+  SHOW_SEAT ||--o{ BOOKING_SEAT : "in"
+  BOOKING ||--o{ PAYMENT : "paid via"
+  CUSTOMER ||--o{ BOOKING : made
+  </div></div>
+  <p style="font-size:.85rem;margin-top:.5rem"><strong>Key insight:</strong> ShowSeat is a separate row per (show, seat) — not a join. This is what lets us put a unique constraint on it and use SET-IF-AVAILABLE for atomic locking.</p>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s6">
+  <span class="sec-tag tag-purple">Step 6</span>
+  <h2>Class Diagram</h2>
+  <div class="diagram-box"><div class="mermaid">
+classDiagram
+  class BookingService { -SeatLockManager locker -PricingStrategy pricer -PaymentAdapter pay +book(showId,seatIds,custId) Booking +cancel(bookingId) }
+  class SeatLockManager { +tryLock(seatIds, custId, ttl) boolean +release(seatIds, custId) +confirm(seatIds, custId) }
+  class ShowSeat { -SeatStatus status -String lockedBy -LocalDateTime lockedUntil +lock(custId) +book() +release() }
+  class PricingStrategy { <<interface>> +price(ShowSeat, Show) BigDecimal }
+  class FlatRate
+  class SeatTypeMultiplier
+  class PeakHourMultiplier
+  class PaymentAdapter { <<interface>> +charge(amount, idempKey) PaymentResult +refund(paymentId) }
+  class LockExpiryWorker { +run() }
+  class NotificationService
+  class Account { <<abstract>> }
+  class Customer
+  class Admin
+  class FrontDeskOfficer
+  Account <|-- Customer
+  Account <|-- Admin
+  Account <|-- FrontDeskOfficer
+  PricingStrategy <|.. FlatRate
+  PricingStrategy <|.. SeatTypeMultiplier
+  PricingStrategy <|.. PeakHourMultiplier
+  BookingService --> SeatLockManager
+  BookingService --> PricingStrategy
+  BookingService --> PaymentAdapter
+  BookingService --> ShowSeat
+  </div></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s7">
+  <span class="sec-tag tag-yellow">Step 7</span>
+  <h2>Design Patterns Used</h2>
+  <div class="g2">
+    <div class="card"><h3>🔒 SET-IF-AVAILABLE / TTL Lock — <code>SeatLockManager</code></h3><p>The atomic lock primitive. SETNX EX in Redis, or <code>UPDATE ... WHERE status = 'AVAILABLE'</code> in SQL. Returns true exactly once per (seat, time-window).</p></div>
+    <div class="card"><h3>🚦 State — <code>ShowSeat</code></h3><p>4 states, illegal transitions throw. Centralizes the rules.</p></div>
+    <div class="card"><h3>🎯 Strategy + Decorator — <code>PricingStrategy</code></h3><p>FlatRate as base; SeatType / PeakHour stack on top. Adding "first-show-discount" is a new decorator.</p></div>
+    <div class="card"><h3>🧩 Saga — <code>BookingService</code></h3><p>lock → quote → pay → confirm. Each step has a compensation: release locks if quote fails; refund if confirm fails.</p></div>
+    <div class="card"><h3>🛡️ Adapter — <code>PaymentAdapter</code></h3><p>Hides Razorpay/Stripe behind <code>charge / refund</code>. Idempotent via booking ID.</p></div>
+    <div class="card"><h3>📡 Observer — <code>NotificationService</code></h3><p>Listens to BookingConfirmedEvent, BookingCancelledEvent. Multiple subscribers (email, SMS, push).</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s8">
+  <span class="sec-tag tag-green">Step 8</span>
+  <h2>Sequence — Sarah, Raj, Priya all click F-12</h2>
+  <p>Three users, same seat, same millisecond. Watch how SeatLockManager picks exactly one winner.</p>
+  <div class="diagram-box"><div class="mermaid">
+sequenceDiagram
+  actor Sarah
+  actor Raj
+  actor Priya
+  participant BS as BookingService
+  participant SLM as SeatLockManager
+  participant SS as ShowSeat F-12
+  participant PA as PaymentAdapter
+
+  par All click at the same millisecond
+    Sarah->>BS: lock(F-12, sarah)
+    Raj->>BS: lock(F-12, raj)
+    Priya->>BS: lock(F-12, priya)
+  end
+  BS->>SLM: tryLock(F-12, sarah, 480s)
+  SLM->>SS: SETNX(locked_by=sarah, until=now+8m)
+  SS-->>SLM: ok (atomic)
+  SLM-->>BS: WIN
+  BS-->>Sarah: lock granted, 8 min to pay
+
+  BS->>SLM: tryLock(F-12, raj, 480s)
+  SLM->>SS: SETNX (already locked)
+  SS-->>SLM: fail
+  SLM-->>BS: LOSE
+  BS-->>Raj: "seat just taken, pick another"
+
+  BS->>SLM: tryLock(F-12, priya, 480s)
+  SLM-->>BS: LOSE
+  BS-->>Priya: "seat just taken, pick another"
+
+  Note over Sarah: 4 minutes later
+  Sarah->>BS: pay(bookingId)
+  BS->>PA: charge(amount, idemKey=bookingId)
+  PA-->>BS: SUCCESS
+  BS->>SS: book()
+  SS->>SS: state = BOOKED
+  BS-->>Sarah: confirmed
+  </div></div>
+  <div class="highlight hl-green"><strong>The trick:</strong> the SETNX is atomic in Redis (or row-lock in SQL). Three concurrent calls — exactly one wins. This single primitive is the difference between a working ticket system and a class-action lawsuit.</div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s9">
+  <span class="sec-tag tag-red">Step 9</span>
+  <h2>State Diagram — ShowSeat</h2>
+  <div class="diagram-box"><div class="mermaid">
+stateDiagram-v2
+  [*] --> AVAILABLE : show created
+  AVAILABLE --> LOCKED : tryLock(custId) success
+  LOCKED --> BOOKED : payment success
+  LOCKED --> AVAILABLE : lock expires (8 min)
+  LOCKED --> AVAILABLE : user cancels checkout
+  BOOKED --> AVAILABLE : booking cancelled (with refund)
+  BOOKED --> [*] : show finished
+  </div></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s10">
+  <span class="sec-tag tag-orange">Step 10</span>
+  <h2>Java Implementation</h2>
+
+  <div class="code-label cl-yellow">Enums</div>
+<pre><span class="kw">public enum</span> <span class="ty">SeatStatus</span> { AVAILABLE, LOCKED, BOOKED }
+<span class="kw">public enum</span> <span class="ty">SeatType</span> { REGULAR, PREMIUM, RECLINER, ACCESSIBLE, EMERGENCY_EXIT }
+<span class="kw">public enum</span> <span class="ty">BookingStatus</span> { PENDING, CONFIRMED, CANCELED, EXPIRED }
+<span class="kw">public enum</span> <span class="ty">PaymentStatus</span> { PENDING, SUCCESS, FAILED, REFUNDED }
+</pre>
+
+  <div class="code-label cl-cyan">ShowSeat — State Machine + atomic lock</div>
+<pre><span class="kw">public class</span> <span class="ty">ShowSeat</span> {
+  <span class="kw">private final</span> <span class="ty">String</span> id;
+  <span class="kw">private</span> <span class="ty">SeatStatus</span> status = <span class="ty">SeatStatus</span>.AVAILABLE;
+  <span class="kw">private</span> <span class="ty">String</span> lockedBy;
+  <span class="kw">private</span> <span class="ty">LocalDateTime</span> lockedUntil;
+  <span class="kw">private final</span> <span class="ty">SeatType</span> type;
+
+  <span class="kw">public synchronized boolean</span> <span class="fn">tryLock</span>(<span class="ty">String</span> custId, <span class="ty">Duration</span> ttl) {
+    <span class="kw">if</span> (status == <span class="ty">SeatStatus</span>.LOCKED &amp;&amp; <span class="ty">LocalDateTime</span>.<span class="fn">now</span>().<span class="fn">isAfter</span>(lockedUntil)) {
+      <span class="fn">expireLock</span>();  <span class="cmt">// stale lock, sweep it</span>
+    }
+    <span class="kw">if</span> (status != <span class="ty">SeatStatus</span>.AVAILABLE) <span class="kw">return false</span>;
+    status = <span class="ty">SeatStatus</span>.LOCKED;
+    lockedBy = custId;
+    lockedUntil = <span class="ty">LocalDateTime</span>.<span class="fn">now</span>().<span class="fn">plus</span>(ttl);
+    <span class="kw">return true</span>;
+  }
+
+  <span class="kw">public synchronized void</span> <span class="fn">book</span>(<span class="ty">String</span> custId) {
+    <span class="kw">if</span> (status != <span class="ty">SeatStatus</span>.LOCKED) <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="str">"not locked"</span>);
+    <span class="kw">if</span> (!custId.<span class="fn">equals</span>(lockedBy)) <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="str">"wrong holder"</span>);
+    status = <span class="ty">SeatStatus</span>.BOOKED;
+    lockedUntil = <span class="kw">null</span>;
+  }
+
+  <span class="kw">public synchronized void</span> <span class="fn">release</span>(<span class="ty">String</span> custId) {
+    <span class="kw">if</span> (status == <span class="ty">SeatStatus</span>.LOCKED &amp;&amp; custId.<span class="fn">equals</span>(lockedBy)) <span class="fn">expireLock</span>();
+  }
+
+  <span class="kw">public synchronized void</span> <span class="fn">cancelBooking</span>() {
+    <span class="kw">if</span> (status != <span class="ty">SeatStatus</span>.BOOKED) <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>();
+    status = <span class="ty">SeatStatus</span>.AVAILABLE;
+  }
+
+  <span class="kw">private void</span> <span class="fn">expireLock</span>() { status = <span class="ty">SeatStatus</span>.AVAILABLE; lockedBy = <span class="kw">null</span>; lockedUntil = <span class="kw">null</span>; }
+}
+</pre>
+
+  <div class="code-label cl-yellow">SeatLockManager — atomic batch lock</div>
+<pre><span class="kw">public class</span> <span class="ty">SeatLockManager</span> {
+  <span class="kw">public</span> <span class="ty">List</span>&lt;<span class="ty">ShowSeat</span>&gt; <span class="fn">tryLockAll</span>(<span class="ty">List</span>&lt;<span class="ty">ShowSeat</span>&gt; seats, <span class="ty">String</span> custId, <span class="ty">Duration</span> ttl) {
+    <span class="cmt">// always lock in canonical (sorted) order to prevent deadlock</span>
+    seats.<span class="fn">sort</span>(<span class="ty">Comparator</span>.<span class="fn">comparing</span>(<span class="ty">ShowSeat</span>::getId));
+    <span class="ty">List</span>&lt;<span class="ty">ShowSeat</span>&gt; locked = <span class="kw">new</span> <span class="ty">ArrayList</span>&lt;&gt;();
+    <span class="kw">for</span> (<span class="ty">ShowSeat</span> s : seats) {
+      <span class="kw">if</span> (s.<span class="fn">tryLock</span>(custId, ttl)) locked.<span class="fn">add</span>(s);
+      <span class="kw">else</span> {
+        <span class="cmt">// rollback any partial locks — all-or-nothing</span>
+        locked.<span class="fn">forEach</span>(l -&gt; l.<span class="fn">release</span>(custId));
+        <span class="kw">throw new</span> <span class="ty">SeatNotAvailableException</span>(s.<span class="fn">getId</span>());
+      }
+    }
+    <span class="kw">return</span> locked;
+  }
+}
+</pre>
+
+  <div class="code-label cl-purple">PricingStrategy — Strategy + Decorator</div>
+<pre><span class="kw">public interface</span> <span class="ty">PricingStrategy</span> { <span class="ty">BigDecimal</span> <span class="fn">price</span>(<span class="ty">ShowSeat</span> s, <span class="ty">Show</span> sh); }
+
+<span class="kw">public class</span> <span class="ty">FlatRate</span> <span class="kw">implements</span> <span class="ty">PricingStrategy</span> {
+  <span class="kw">private final</span> <span class="ty">BigDecimal</span> base;
+  <span class="kw">public</span> <span class="fn">FlatRate</span>(<span class="ty">BigDecimal</span> b) { base = b; }
+  <span class="kw">public</span> <span class="ty">BigDecimal</span> <span class="fn">price</span>(<span class="ty">ShowSeat</span> s, <span class="ty">Show</span> sh) { <span class="kw">return</span> base; }
+}
+
+<span class="kw">public class</span> <span class="ty">SeatTypeMultiplier</span> <span class="kw">implements</span> <span class="ty">PricingStrategy</span> {
+  <span class="kw">private final</span> <span class="ty">PricingStrategy</span> inner;
+  <span class="kw">public</span> <span class="fn">SeatTypeMultiplier</span>(<span class="ty">PricingStrategy</span> i) { inner = i; }
+  <span class="kw">public</span> <span class="ty">BigDecimal</span> <span class="fn">price</span>(<span class="ty">ShowSeat</span> s, <span class="ty">Show</span> sh) {
+    <span class="ty">BigDecimal</span> mult = <span class="kw">switch</span> (s.<span class="fn">getType</span>()) {
+      <span class="kw">case</span> RECLINER -&gt; <span class="kw">new</span> <span class="ty">BigDecimal</span>(<span class="str">"2.5"</span>);
+      <span class="kw">case</span> PREMIUM  -&gt; <span class="kw">new</span> <span class="ty">BigDecimal</span>(<span class="str">"1.5"</span>);
+      <span class="kw">default</span>      -&gt; <span class="ty">BigDecimal</span>.ONE;
+    };
+    <span class="kw">return</span> inner.<span class="fn">price</span>(s, sh).<span class="fn">multiply</span>(mult);
+  }
+}
+
+<span class="kw">public class</span> <span class="ty">PeakHourMultiplier</span> <span class="kw">implements</span> <span class="ty">PricingStrategy</span> {
+  <span class="kw">private final</span> <span class="ty">PricingStrategy</span> inner;
+  <span class="kw">public</span> <span class="fn">PeakHourMultiplier</span>(<span class="ty">PricingStrategy</span> i) { inner = i; }
+  <span class="kw">public</span> <span class="ty">BigDecimal</span> <span class="fn">price</span>(<span class="ty">ShowSeat</span> s, <span class="ty">Show</span> sh) {
+    <span class="kw">boolean</span> peak = sh.<span class="fn">isWeekend</span>() || sh.<span class="fn">getStartTime</span>().<span class="fn">getHour</span>() &gt;= <span class="num">18</span>;
+    <span class="kw">return</span> peak ? inner.<span class="fn">price</span>(s, sh).<span class="fn">multiply</span>(<span class="kw">new</span> <span class="ty">BigDecimal</span>(<span class="str">"1.3"</span>)) : inner.<span class="fn">price</span>(s, sh);
+  }
+}
+</pre>
+
+  <div class="code-label cl-blue">BookingService — Saga</div>
+<pre><span class="kw">public class</span> <span class="ty">BookingService</span> {
+  <span class="kw">private final</span> <span class="ty">SeatLockManager</span> locker;
+  <span class="kw">private final</span> <span class="ty">PricingStrategy</span> pricer = <span class="kw">new</span> <span class="ty">PeakHourMultiplier</span>(<span class="kw">new</span> <span class="ty">SeatTypeMultiplier</span>(<span class="kw">new</span> <span class="ty">FlatRate</span>(<span class="kw">new</span> <span class="ty">BigDecimal</span>(<span class="str">"200"</span>))));
+  <span class="kw">private final</span> <span class="ty">PaymentAdapter</span> pay;
+  <span class="kw">private final</span> <span class="ty">EventBus</span> bus;
+
+  <span class="kw">public</span> <span class="ty">Booking</span> <span class="fn">book</span>(<span class="ty">String</span> showId, <span class="ty">List</span>&lt;<span class="ty">String</span>&gt; seatIds, <span class="ty">String</span> custId, <span class="ty">PaymentMethod</span> method) {
+    <span class="ty">Show</span> sh = <span class="ty">ShowRepo</span>.<span class="fn">find</span>(showId);
+    <span class="ty">List</span>&lt;<span class="ty">ShowSeat</span>&gt; seats = sh.<span class="fn">getSeats</span>(seatIds);
+    <span class="cmt">// 1. lock</span>
+    locker.<span class="fn">tryLockAll</span>(seats, custId, <span class="ty">Duration</span>.<span class="fn">ofMinutes</span>(<span class="num">8</span>));
+    <span class="kw">try</span> {
+      <span class="cmt">// 2. quote</span>
+      <span class="ty">BigDecimal</span> total = seats.<span class="fn">stream</span>().<span class="fn">map</span>(s -&gt; pricer.<span class="fn">price</span>(s, sh))
+        .<span class="fn">reduce</span>(<span class="ty">BigDecimal</span>.ZERO, <span class="ty">BigDecimal</span>::add);
+      <span class="ty">Booking</span> b = <span class="ty">Booking</span>.<span class="fn">create</span>(custId, showId, seatIds, total);
+      <span class="cmt">// 3. pay (idempotent via bookingId)</span>
+      <span class="ty">PaymentResult</span> pr = pay.<span class="fn">charge</span>(total, b.<span class="fn">getId</span>(), method);
+      <span class="kw">if</span> (!pr.<span class="fn">isSuccess</span>()) <span class="kw">throw new</span> <span class="ty">PaymentFailedException</span>(pr);
+      <span class="cmt">// 4. confirm</span>
+      seats.<span class="fn">forEach</span>(s -&gt; s.<span class="fn">book</span>(custId));
+      b.<span class="fn">confirm</span>();
+      bus.<span class="fn">publish</span>(<span class="kw">new</span> <span class="ty">BookingConfirmedEvent</span>(b));
+      <span class="kw">return</span> b;
+    } <span class="kw">catch</span> (<span class="ty">Exception</span> ex) {
+      seats.<span class="fn">forEach</span>(s -&gt; s.<span class="fn">release</span>(custId));  <span class="cmt">// compensate</span>
+      <span class="kw">throw</span> ex;
+    }
+  }
+
+  <span class="kw">public void</span> <span class="fn">cancel</span>(<span class="ty">String</span> bookingId) {
+    <span class="ty">Booking</span> b = <span class="ty">BookingRepo</span>.<span class="fn">find</span>(bookingId);
+    <span class="kw">if</span> (b.<span class="fn">minutesUntilShow</span>() &lt; <span class="num">30</span>) <span class="kw">throw new</span> <span class="ty">CancellationCutoffException</span>();
+    pay.<span class="fn">refund</span>(b.<span class="fn">getPaymentId</span>(), <span class="fn">refundAmount</span>(b));
+    b.<span class="fn">getSeats</span>().<span class="fn">forEach</span>(<span class="ty">ShowSeat</span>::cancelBooking);
+    b.<span class="fn">cancel</span>();
+    bus.<span class="fn">publish</span>(<span class="kw">new</span> <span class="ty">BookingCanceledEvent</span>(b));
+  }
+}
+</pre>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s11">
+  <span class="sec-tag tag-cyan">Step 11</span>
+  <h2>Intuition — How to arrive at this design from scratch</h2>
+  <div class="g2">
+    <div class="card"><h3>1️⃣ The interview is about the race</h3><p>Lead with seat-locking. "Two users on the same seat" is THE question.</p></div>
+    <div class="card"><h3>2️⃣ Lock has a TTL</h3><p>If users could lock forever, abandoned carts kill the business. 8 minutes is the industry default.</p></div>
+    <div class="card"><h3>3️⃣ Pay before book</h3><p>Lock → pay → book. Not pay-after-book. Otherwise you'd have a "paid but no seat" scenario.</p></div>
+    <div class="card"><h3>4️⃣ Saga for multi-step</h3><p>Lock → quote → pay → confirm; each step has a compensation. Failure is a first-class concern.</p></div>
+    <div class="card"><h3>5️⃣ Pricing decorates</h3><p>Base + seat type + peak time. Each is a decorator; new rules add a layer.</p></div>
+    <div class="card"><h3>6️⃣ All-or-nothing on multi-seat</h3><p>If user wants 4 seats and only 3 are available, fail the whole batch — don't lock 3 and stick them with a partial booking.</p></div>
+    <div class="card"><h3>7️⃣ Notifications are async</h3><p>SMTP slow → don't block booking. Pub/sub.</p></div>
+    <div class="card"><h3>8️⃣ Search at scale</h3><p>Repository over inverted index. "Thrillers in Mumbai this weekend" returns in 50ms, not 5s.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s12">
+  <span class="sec-tag tag-red">Step 12</span>
+  <h2>Improvements over the Grokking Reference Design</h2>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Area</th><th>Grokking</th><th>This design</th><th>Why it matters</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Seat lock</strong></td><td><em>Not addressed at all</em></td><td>SeatLockManager with atomic SETNX + TTL</td><td>The entire interview is about this race; not modeling it = automatic fail</td></tr>
+      <tr><td><strong>Payment hold</strong></td><td>None — booking and payment lumped</td><td>Lock → pay → book Saga with 8-minute hold</td><td>Allows the user to actually finish typing their card number without losing the seat</td></tr>
+      <tr><td><strong>Lock expiry</strong></td><td>Not modeled</td><td>LockExpiryWorker sweeps stale locks</td><td>Without this, abandoned carts permanently freeze inventory</td></tr>
+      <tr><td><strong>Pricing</strong></td><td>Single price field on ShowSeat</td><td>PricingStrategy with stackable decorators (SeatType, PeakHour)</td><td>Real cinemas charge differently for premium / IMAX / weekend; one column won't capture it</td></tr>
+      <tr><td><strong>Multi-seat atomicity</strong></td><td>No mention</td><td>tryLockAll — all-or-nothing batch lock with rollback</td><td>"Lock 3 of 4 seats" is worse than failing — user pays for 3, can't seat the family</td></tr>
+      <tr><td><strong>Cancellation</strong></td><td>Status enum has CANCELED but no policy</td><td>30-min cutoff + tiered refund + automatic seat release</td><td>Real cancellation policies are time-bound; no cutoff = abuse</td></tr>
+      <tr><td><strong>Search</strong></td><td>HashMap by exact title</td><td>Repository over inverted index</td><td>"thrillers in Mumbai this weekend" needs multi-field, not exact-match</td></tr>
+      <tr><td><strong>Payment</strong></td><td>Direct Payment class</td><td>PaymentAdapter with idempotent charge via bookingId</td><td>Network retries don't double-charge; gateway swap is one class</td></tr>
+      <tr><td><strong>Notifications</strong></td><td>Not mentioned</td><td>Observer via EventBus, async, multi-channel</td><td>Decouples + scalable; doesn't block booking endpoint</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s13">
+  <span class="sec-tag tag-purple">Step 13</span>
+  <h2>Extension Points</h2>
+  <div class="g3">
+    <div class="card"><h3>🎟️ Coupons</h3><p>New <code>CouponPricingDecorator</code> wraps the existing chain. Subtracts discount before total. No edits to BookingService.</p></div>
+    <div class="card"><h3>👨‍👩‍👧 Group bookings</h3><p>New endpoint accepting a group lease (longer TTL, larger seat batch). The lock manager already supports both.</p></div>
+    <div class="card"><h3>🍿 Food add-ons</h3><p>New <code>BookingItem</code> abstraction with <code>SeatItem</code> and <code>SnackItem</code> subclasses. Booking total stacks across both.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s14">
+  <span class="sec-tag tag-orange">Step 14</span>
+  <h2>Trade-offs &amp; Talking Points</h2>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Decision</th><th>Alternative</th><th>Why this choice</th></tr></thead>
+    <tbody>
+      <tr><td>TTL lock (8 min)</td><td>Pessimistic DB row-lock for the whole flow</td><td>Row-lock blocks other readers; TTL lock + state machine lets the seat <em>display</em> as locked while still being introspectable</td></tr>
+      <tr><td>Lock-then-pay</td><td>Pay-then-confirm</td><td>Pay-first risks "paid but no seat"; lock-first fences the inventory while payment runs</td></tr>
+      <tr><td>Saga pattern</td><td>Single transaction across services</td><td>Distributed transactions don't work across Razorpay + your DB. Saga + idempotent compensations is the realistic shape</td></tr>
+      <tr><td>Decorator pricing</td><td>Single big formula</td><td>Decorators stack; formula doesn't — and the formula is the thing that grows the most over time</td></tr>
+      <tr><td>Sort-then-lock</td><td>Lock in user-given order</td><td>Sorted order prevents A-then-B vs B-then-A deadlocks across concurrent bookings</td></tr>
+      <tr><td>Idempotency via bookingId</td><td>Idempotency via timestamp</td><td>BookingId is stable across retries; timestamp drifts</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s15">
+  <span class="sec-tag tag-blue">Step 15</span>
+  <h2>Interview Q &amp; A</h2>
+  <div class="iq">Two users click the same seat at the same instant. What happens?</div>
+  <div class="ans"><code>SeatLockManager.tryLock</code> calls a primitive that's <em>atomic</em> — Redis SETNX EX, or in SQL, <code>UPDATE show_seat SET status='LOCKED' WHERE id=? AND status='AVAILABLE'</code>. Exactly one of the two SQL statements affects 1 row; the other affects 0. The 0-affected user sees "seat unavailable" and is told to pick a different seat.</div>
+
+  <div class="iq">User locks seats but never pays. How does the seat come back?</div>
+  <div class="ans">Each lock has a <code>locked_until</code> timestamp set at <code>now() + 8 min</code>. <code>LockExpiryWorker</code> runs every 30 seconds, finds rows where <code>status='LOCKED' AND locked_until &lt; now()</code>, flips them back to AVAILABLE, and emits a SeatReleasedEvent so the UI updates.</div>
+
+  <div class="iq">What if payment succeeds but the confirm-seat call fails?</div>
+  <div class="ans">Saga compensation. The seats are still LOCKED at this point (we haven't called <code>book()</code> yet — the order is: lock → pay → book). If <code>book()</code> throws, we keep retrying it; the seats are still ours because we hold the lock. If retries exhaust, we call <code>refund(paymentId)</code> and release the locks. The customer's money is not lost.</div>
+
+  <div class="iq">Why lock-then-pay and not pay-then-book?</div>
+  <div class="ans">Pay-first means a user could pay and then someone else's booking races in and takes their seat. Lock-first ensures the seat is already ours when payment runs. The TTL on the lock prevents abandonment from breaking inventory.</div>
+
+  <div class="iq">User wants 4 seats but only 3 are available. What happens?</div>
+  <div class="ans"><code>tryLockAll</code> is all-or-nothing. It locks seats one by one in sorted order (sorting prevents deadlock between two concurrent multi-seat bookings). If any seat fails to lock, it releases all the previously-locked ones and throws. The user sees "not all 4 seats available; please pick again" — they don't get charged for 3.</div>
+
+  <div class="iq">How do you handle peak-hour pricing without rewriting?</div>
+  <div class="ans">Decorator. <code>PeakHourMultiplier</code> wraps any inner PricingStrategy and multiplies by 1.3 if the show is on a weekend or after 6pm. To enable, swap the bean: <code>new PeakHourMultiplier(new SeatTypeMultiplier(new FlatRate(...)))</code>. To disable, drop the outer wrapper. Zero edits to BookingService.</div>
+
+  <div class="iq">Cancellation 5 minutes before the show — refund?</div>
+  <div class="ans">Configurable cutoff. Default policy: &gt; 24h before = full refund, 1-24h = 50%, 30min-1h = 25%, &lt; 30min = no cancellation. The cutoff lives on a CancellationPolicy class, swappable per cinema chain. The refund amount is computed at cancel-time and called via <code>PaymentAdapter.refund(paymentId, amount)</code>.</div>
+
+  <div class="iq">Search "thriller in Mumbai this weekend" — how?</div>
+  <div class="ans">SearchService maintains an inverted index keyed on (city, genre, language, date-range). The query is a multi-field intersection. For 1M shows / 200 cities / 30 days the index fits in memory; otherwise Elasticsearch. Either way, the Repository facade lets the storage engine swap without callers changing.</div>
+</div>
+
+  </div>
+</div>
+
+</body>
+</html>

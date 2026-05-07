@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Library Management — LLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>mermaid.initialize({startOnLoad:true,theme:'dark',themeVariables:{fontSize:'13px',darkMode:true,background:'#11161e',primaryColor:'#171d27',primaryTextColor:'#d4dae5',primaryBorderColor:'#e8743b',lineColor:'#7b8599',secondaryColor:'#11161e',tertiaryColor:'#171d27'}});</script>
+<style>
+:root{--bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;--text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;--orange:#e8743b;--orange-d:rgba(232,116,59,.12);--green:#38b265;--green-d:rgba(56,178,101,.1);--blue:#4a90d9;--blue-d:rgba(74,144,217,.1);--purple:#9b72cf;--purple-d:rgba(155,114,207,.1);--red:#e05252;--red-d:rgba(224,82,82,.1);--yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);--cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);--r:10px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+.wrap{min-width:0}
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;font-size:.9rem;transition:color .15s}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}.tag-green{background:var(--green-d);color:var(--green)}.tag-blue{background:var(--blue-d);color:var(--blue)}.tag-purple{background:var(--purple-d);color:var(--purple)}.tag-yellow{background:var(--yellow-d);color:var(--yellow)}.tag-red{background:var(--red-d);color:var(--red)}.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.92rem;margin-bottom:1.5rem;max-width:760px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.3rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.88rem;color:var(--text);line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}.cl-blue{background:var(--blue-d);color:var(--blue)}.cl-purple{background:var(--purple-d);color:var(--purple)}.cl-orange{background:var(--orange-d);color:var(--orange)}.cl-yellow{background:var(--yellow-d);color:var(--yellow)}.cl-cyan{background:var(--cyan-d);color:var(--cyan)}.cl-red{background:var(--red-d);color:var(--red)}
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.88rem}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.highlight strong{font-weight:700}
+.divider{height:1px;background:var(--border);margin:3rem 0}
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.88rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.88rem;color:var(--text);border:1px solid var(--border)}
+.ans strong{color:var(--heading)}
+.tbl{width:100%;border-collapse:collapse;font-size:.84rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.6rem .85rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}.comp-num.blue{background:var(--blue-d);color:var(--blue);border:1px solid var(--blue)}.comp-num.green{background:var(--green-d);color:var(--green);border:1px solid var(--green)}.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}.comp-num.cyan{background:var(--cyan-d);color:var(--cyan);border:1px solid var(--cyan)}.comp-num.red{background:var(--red-d);color:var(--red);border:1px solid var(--red)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">Low-Level Design</div>
+  <h1>Library Management <span>System</span></h1>
+  <p class="sub">A real lending library — Repository search, Observer reservation queue, Strategy fines, State pattern for book lifecycle, full Java code &amp; every gap in Grokking's reference plugged.</p>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Clarify Requirements</a></li>
+      <li><a href="#s2">Actors &amp; Use Cases</a></li>
+      <li><a href="#s3">Story — From a Card File to a Catalog</a></li>
+      <li><a href="#s4">Core Entities</a></li>
+      <li><a href="#s5">ER / Schema Diagram</a></li>
+      <li><a href="#s6">Class Diagram</a></li>
+      <li><a href="#s7">Design Patterns Used</a></li>
+      <li><a href="#s8">Sequence — Reserve &amp; Notify</a></li>
+      <li><a href="#s9">State Diagram — BookItem</a></li>
+      <li><a href="#s10">Java Implementation</a></li>
+      <li><a href="#s11">Intuition Step-by-Step</a></li>
+      <li><a href="#s12">Improvements over Grokking</a></li>
+      <li><a href="#s13">Extension Points</a></li>
+      <li><a href="#s14">Trade-offs &amp; Talking Points</a></li>
+      <li><a href="#s15">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>Clarify Requirements</h2>
+  <p>Picture a college library on a Monday morning. Priya is hunting for "Introduction to Algorithms" — Cormen, of which the library has 3 copies. Two are checked out, one is on rack 4-B. She walks to the counter; the librarian scans her card, scans the book, prints a slip with a 10-day due date. Across town, Raj just returned a copy of the same book — and he gets an email because he was on the reservation waitlist. That's the system we're designing.</p>
+  <div class="g2">
+    <div class="card"><h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Search books by title, author, subject, publication date</li>
+        <li>Multiple copies per book — each is a "BookItem" with its own barcode &amp; rack</li>
+        <li>Members check out, return, renew, and reserve book items</li>
+        <li>Max 5 books per member; max 10 days lending</li>
+        <li>Reservation queue (FIFO) — when a book returns, head of queue is notified</li>
+        <li>Fines for late returns; rates differ by member type (Student / Faculty / Public)</li>
+        <li>Notifications (email/SMS) for: book available after reservation, due-date reminder, overdue fine</li>
+        <li>Librarians add/remove books, block/unblock members</li>
+      </ul>
+    </div>
+    <div class="card"><h3>🎯 Non-Functional &amp; 🚫 Out of Scope</h3>
+      <ul>
+        <li><strong>Concurrency:</strong> two members trying to check out the last copy must not both succeed</li>
+        <li><strong>Search latency &lt; 200ms</strong> for 1M books — needs an indexed Repository, not a HashMap of exact strings</li>
+        <li><strong>Auditability:</strong> every checkout/return/fine event logged</li>
+      </ul>
+      <h3 style="margin-top:1rem">🚫 Out of scope</h3>
+      <ul>
+        <li>Inter-library loans across branches</li>
+        <li>Reading-room seat booking</li>
+        <li>OCR / barcode hardware drivers</li>
+        <li>E-book DRM &amp; download infrastructure</li>
+      </ul>
+    </div>
+  </div>
+  <div class="highlight hl-orange"><strong>Interviewer trick:</strong> Reservation queueing and "what if 5 people reserved the same book" exposes whether you understand <em>state coordination</em>. If your reservation is a single record with no queue, you've already lost.</div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Actors &amp; Use Cases</h2>
+  <div class="diagram-box"><div class="mermaid">
+flowchart LR
+  M([Member])
+  L([Librarian])
+  S([System])
+
+  M --> SR[Search]
+  M --> CO[Check-out]
+  M --> RT[Return]
+  M --> RV[Reserve]
+  M --> RN[Renew]
+  M --> PF[Pay Fine]
+
+  L --> AB[Add / Remove Book]
+  L --> AM[Block / Unblock Member]
+  L --> SC[Scan at Counter]
+
+  S --> NT[Notify reservation available]
+  S --> NF[Notify overdue / fine]
+  S --> AF[Accrue fine daily]
+
+  style M fill:#e8743b,stroke:#e8743b,color:#fff
+  style L fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style S fill:#38b265,stroke:#38b265,color:#fff
+  </div></div>
+  <div class="g3">
+    <div class="card"><h3 style="color:var(--orange)">Member</h3><p>Student / Faculty / Public reader. Searches, borrows, reserves, returns, pays fines.</p></div>
+    <div class="card"><h3 style="color:var(--blue)">Librarian</h3><p>Counter staff. Adds books, processes check-outs, blocks bad-actor members, settles fines.</p></div>
+    <div class="card"><h3 style="color:var(--green)">System</h3><p>Silent actor. Runs the daily fine accrual job, fires reservation-available notifications, sends due-date reminders.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s3">
+  <span class="sec-tag tag-purple">Step 3</span>
+  <h2>Story — From a Card File to a Catalog</h2>
+  <p>The fastest way to design a library system: start with an actual paper card file, watch it break, and let each break suggest a class.</p>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:1.5rem 0 .8rem">Pass 1 — The naive design</h3>
+  <p>A single class <code>Library</code> with a list of books and a method <code>checkout(memberId, bookTitle)</code>. The method finds the first book matching the title and marks it taken. Done in 25 lines.</p>
+  <div class="diagram-box"><div class="mermaid">
+flowchart LR
+  Member --> Library[Library monolith]
+  Library --> Books[(Book list)]
+  Library --> Members[(Member list)]
+  style Library fill:#e05252,stroke:#e05252,color:#fff
+  </div></div>
+  <div class="g3">
+    <div class="card"><h3 style="color:var(--red)">💥 Multiple copies</h3><p>"Cormen" has 3 copies. The naive code can't tell you which one Priya took, where it was on the shelf, or if any are still available. <em>Books and copies are different concepts.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Search by author</h3><p>Member wants "anything by Sedgewick". The HashMap-by-title can't answer that. <em>Search needs proper indexing.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 5 reservations</h3><p>5 members reserve the same book. When it returns, who gets it? Naive code has one reservation field — newer overwrites older. <em>Reservation is a queue, not a slot.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Late return</h3><p>Faculty get longer grace; students don't. Public members pay double. <em>Fine is a strategy.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Concurrent check-out</h3><p>Two librarians at two counters scan the same last copy at the same instant. Both succeed. <em>No locking.</em></p></div>
+    <div class="card"><h3 style="color:var(--red)">💥 Notification spam</h3><p>System tightly calls email API inside checkout method. SMTP slow → counter slow. <em>Notification needs Observer + async.</em></p></div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:1.5rem 0 .8rem">Pass 2 — The mental split</h3>
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--blue)"><h3 style="color:var(--blue)">📖 Catalog plane</h3><p>What books exist, how to search them, where their copies live. Read-heavy, indexed by Repository. Source of truth = BookItem state machine.</p></div>
+    <div class="card" style="border-left:3px solid var(--orange)"><h3 style="color:var(--orange)">🤝 Lending plane</h3><p>Who has what right now, who's waiting, what fines are due. Write-heavy, audited, transactional. BookLending, BookReservation, Fine live here.</p></div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:1.5rem 0 .8rem">Pass 3 — The production shape</h3>
+  <div class="diagram-box"><div class="mermaid">
+flowchart TB
+  M([Member])
+  L([Librarian])
+  M --> CT[① Counter Service]
+  L --> CT
+  CT --> LIB[② Library Singleton]
+  LIB --> CAT[③ Catalog<br/>Repository]
+  CAT --> IDX[(④ Search Indexes<br/>title author subject)]
+  LIB --> BI[⑤ BookItem<br/>State machine]
+  LIB --> RES[⑥ ReservationQueue<br/>per-book FIFO]
+  LIB --> LEN[⑦ BookLending]
+  LIB --> FIN[⑧ FineStrategy]
+  RES -.notify.-> NT[⑨ NotificationService<br/>Observer]
+  LEN -.audit.-> AL[⑩ AuditLog]
+
+  style CT fill:#e8743b,stroke:#e8743b,color:#fff
+  style LIB fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style CAT fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style IDX fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style BI fill:#3cbfbf,stroke:#3cbfbf,color:#fff
+  style RES fill:#38b265,stroke:#38b265,color:#fff
+  style LEN fill:#d4a838,stroke:#d4a838,color:#000
+  style FIN fill:#d4a838,stroke:#d4a838,color:#000
+  style NT fill:#e05252,stroke:#e05252,color:#fff
+  style AL fill:#e05252,stroke:#e05252,color:#fff
+  </div></div>
+
+  <div class="g2">
+    <div class="card"><h3><span class="comp-num orange">①</span> Counter Service</h3><p>The API the librarian's terminal hits. Wraps every operation in a transaction so two simultaneous check-outs of the last copy can't both succeed.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Concurrency at the boundary — without one, race conditions live everywhere downstream.</p></div>
+    <div class="card"><h3><span class="comp-num blue">②</span> Library Singleton</h3><p>Root of the world. Owns the catalog, the lending records, the reservation queues, the fine strategies.</p><p style="margin-top:.55rem"><strong>Solves:</strong> One library = one process root. Subsystems can find each other without dependency-injection ceremony.</p></div>
+    <div class="card"><h3><span class="comp-num purple">③</span> Catalog (Repository)</h3><p>The browse / search interface. Thin facade over the search indexes; doesn't expose how data is stored.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Grokking's <code>HashMap&lt;title, List&lt;Book&gt;&gt;</code> only does exact match. A real Repository plugs into Lucene / Postgres FTS without changing callers.</p></div>
+    <div class="card"><h3><span class="comp-num purple">④</span> Search Indexes</h3><p>Inverted indexes per searchable field. Token-based, not exact-match.</p><p style="margin-top:.55rem"><strong>Solves:</strong> "Anything by Sedgewick" returns in 5ms across 1M books, not after a linear scan.</p></div>
+    <div class="card"><h3><span class="comp-num cyan">⑤</span> BookItem (State Machine)</h3><p>One physical copy. States: AVAILABLE → RESERVED → LOANED → AVAILABLE again, with a LOST detour. Transitions live as methods that throw on illegal moves.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Stops "check out a reserved book", "return a book that was never lent", "renew a lost book".</p></div>
+    <div class="card"><h3><span class="comp-num green">⑥</span> ReservationQueue</h3><p>A FIFO queue per Book (not per BookItem — any copy of "Cormen" satisfies the reservation). When a copy is returned, head is dequeued and notified.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Grokking's design has a single <code>BookReservation</code> per book item, and overwrites on second reservation. The queue handles "5 members all want the same book" correctly.</p></div>
+    <div class="card"><h3><span class="comp-num yellow">⑦</span> BookLending</h3><p>Records: which BookItem went to which Member, when, when it's due, when it returned. The audit substrate.</p><p style="margin-top:.55rem"><strong>Solves:</strong> "Who has my book?" and "all books Priya borrowed last year" become single SQL queries.</p></div>
+    <div class="card"><h3><span class="comp-num yellow">⑧</span> FineStrategy</h3><p>Interface. <code>FlatRateFine</code> charges ₹2/day. <code>StudentFineStrategy</code> waives the first 2 days. <code>FacultyFineStrategy</code> never charges. Plugged in per member-type.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Reference design has fine logic baked into one method. Strategy lets the librarian configure per category without recompiling.</p></div>
+    <div class="card"><h3><span class="comp-num red">⑨</span> NotificationService (Observer)</h3><p>BookItem state changes publish events. NotificationService listens — emails the head of the reservation queue when status flips to RESERVED. Sends due-date reminder 1 day before due.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Inline calls to email API inside checkout would block the counter. Observer + async queue keeps the UX snappy.</p></div>
+    <div class="card"><h3><span class="comp-num red">⑩</span> AuditLog</h3><p>Append-only record of every state change.</p><p style="margin-top:.55rem"><strong>Solves:</strong> Disputes ("I returned that book on Tuesday!") become evidence, not arguments.</p></div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>So in short —</strong> the catalog plane is read-heavy and indexed; the lending plane is write-heavy and transactional. BookItems are state machines that publish events; reservations are queues that consume them; fines are strategies; notifications are observers. The Library Singleton wires it all up at boot.</div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s4">
+  <span class="sec-tag tag-blue">Step 4</span>
+  <h2>Core Entities</h2>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Entity</th><th>Responsibility</th><th>Key Fields</th></tr></thead>
+    <tbody>
+      <tr><td><code>Library</code></td><td>Singleton root</td><td><code>String name</code>, <code>Address addr</code>, <code>Catalog catalog</code>, <code>Map&lt;String,ReservationQueue&gt; queues</code></td></tr>
+      <tr><td><code>Book</code></td><td>Abstract bibliographic record (one per ISBN)</td><td><code>String isbn</code>, <code>String title</code>, <code>List&lt;Author&gt; authors</code>, <code>String subject</code>, <code>BookFormat format</code></td></tr>
+      <tr><td><code>BookItem</code></td><td>One physical copy with a barcode</td><td><code>String barcode</code>, <code>Rack rack</code>, <code>BookStatus status</code>, <code>boolean isReferenceOnly</code></td></tr>
+      <tr><td><code>Member / Librarian</code></td><td>Account subclasses</td><td><code>Person person</code>, <code>MemberType type</code>, <code>int totalCheckedOut</code></td></tr>
+      <tr><td><code>BookLending</code></td><td>One checkout record</td><td><code>String barcode</code>, <code>String memberId</code>, <code>LocalDate borrowed</code>, <code>LocalDate dueDate</code>, <code>LocalDate returnedDate</code></td></tr>
+      <tr><td><code>BookReservation</code></td><td>One waitlist entry</td><td><code>String bookIsbn</code>, <code>String memberId</code>, <code>LocalDateTime createdAt</code>, <code>ReservationStatus status</code></td></tr>
+      <tr><td><code>Fine</code></td><td>One fine record</td><td><code>String memberId</code>, <code>BigDecimal amount</code>, <code>LocalDate accruedOn</code>, <code>FineStatus status</code></td></tr>
+      <tr><td><code>Catalog</code></td><td>Search facade</td><td><code>SearchIndex titleIdx, authorIdx, subjectIdx</code></td></tr>
+      <tr><td><code>FineStrategy</code></td><td>Pluggable fine calculator</td><td>(no fields, behavior only)</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>ER / Schema Diagram</h2>
+  <div class="diagram-box"><div class="mermaid">
+erDiagram
+  BOOK { string isbn PK string title string subject string format }
+  AUTHOR { string author_id PK string name }
+  BOOK_AUTHOR { string isbn FK string author_id FK }
+  BOOK_ITEM { string barcode PK string isbn FK string rack_id FK string status boolean reference_only }
+  RACK { string rack_id PK string location }
+  MEMBER { string member_id PK string name string email string member_type string status }
+  BOOK_LENDING { string lending_id PK string barcode FK string member_id FK date borrowed date due date returned }
+  BOOK_RESERVATION { string res_id PK string isbn FK string member_id FK datetime created_at string status int queue_pos }
+  FINE { string fine_id PK string lending_id FK string member_id FK decimal amount string status }
+  BOOK ||--o{ BOOK_ITEM : "has copies"
+  BOOK }o--o{ AUTHOR : "written by"
+  BOOK_ITEM }o--|| RACK : "shelved at"
+  BOOK_ITEM ||--o{ BOOK_LENDING : "lent as"
+  MEMBER ||--o{ BOOK_LENDING : "borrows"
+  MEMBER ||--o{ BOOK_RESERVATION : "reserves"
+  BOOK ||--o{ BOOK_RESERVATION : "queued for"
+  BOOK_LENDING ||--o| FINE : "may incur"
+  </div></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s6">
+  <span class="sec-tag tag-purple">Step 6</span>
+  <h2>Class Diagram</h2>
+  <div class="diagram-box"><div class="mermaid">
+classDiagram
+  class Library { -Catalog catalog -Map queues +checkout(member,barcode) +return(barcode) +reserve(member,isbn) }
+  class Catalog { +searchByTitle(q) +searchByAuthor(q) +searchBySubject(q) }
+  class Book { -String isbn -String title -List authors }
+  class BookItem { -String barcode -BookStatus status +checkout(memberId) +returnItem() +reserve() +markLost() }
+  class ReservationQueue { -Queue waitlist +enqueue(memberId) +dequeueNext() }
+  class FineStrategy { <<interface>> +compute(daysLate, member) BigDecimal }
+  class FlatRateFine
+  class StudentFine
+  class FacultyFine
+  class NotificationService { +onBookAvailable(memberId, isbn) }
+  class Account { <<abstract>> }
+  class Member
+  class Librarian
+  Account <|-- Member
+  Account <|-- Librarian
+  Book <|-- BookItem
+  FineStrategy <|.. FlatRateFine
+  FineStrategy <|.. StudentFine
+  FineStrategy <|.. FacultyFine
+  Library --> Catalog
+  Library --> ReservationQueue
+  Library --> FineStrategy
+  Library --> NotificationService
+  </div></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s7">
+  <span class="sec-tag tag-yellow">Step 7</span>
+  <h2>Design Patterns Used</h2>
+  <div class="g2">
+    <div class="card"><h3>📚 Repository — <code>Catalog</code></h3><p>Hides storage. Tomorrow when the catalog moves to Postgres + Elasticsearch, members and librarians don't notice.</p></div>
+    <div class="card"><h3>🚦 State — <code>BookItem</code></h3><p>AVAILABLE → RESERVED → LOANED → AVAILABLE; LOST is a sink. Illegal transitions throw — "checkout a reserved book by anyone but the head of queue" can't compile-pass.</p></div>
+    <div class="card"><h3>🎯 Strategy — <code>FineStrategy</code></h3><p>Per-member-type fine calculation. New rule? New class. No edits to lending logic.</p></div>
+    <div class="card"><h3>📡 Observer — <code>NotificationService</code></h3><p>BookItem fires "reserved-available" event; service emails the head of the queue. Async — doesn't block the librarian's counter.</p></div>
+    <div class="card"><h3>🔢 Singleton — <code>Library</code></h3><p>One library per process. Wires Catalog + queues + strategies at boot.</p></div>
+    <div class="card"><h3>🏭 Factory — <code>NotificationFactory</code></h3><p>Returns Email, SMS, or Push notifier based on member preferences.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s8">
+  <span class="sec-tag tag-green">Step 8</span>
+  <h2>Sequence — Reserve &amp; Notify</h2>
+  <p>Priya reserves a book that's currently checked out. 8 days later Raj returns it. Watch how the queue and the observer collaborate.</p>
+  <div class="diagram-box"><div class="mermaid">
+sequenceDiagram
+  actor Priya
+  participant LIB as Library
+  participant Q as ReservationQueue
+  participant BI as BookItem
+  participant NS as NotificationService
+  actor Raj
+
+  Priya->>LIB: reserve(isbn=Cormen)
+  LIB->>Q: enqueue(Priya)
+  Q-->>LIB: pos=1
+  LIB-->>Priya: "you are #1 in queue"
+
+  Note over Raj,LIB: 8 days later
+  Raj->>LIB: return(barcode-7)
+  LIB->>BI: returnItem()
+  BI->>BI: state = AVAILABLE
+  BI->>Q: anyWaiting()?
+  Q->>BI: yes - Priya
+  BI->>BI: state = RESERVED for Priya
+  BI->>NS: publish(BookAvailableEvent)
+  NS-->>Priya: email "Cormen is ready"
+  Note over Priya: has 24h hold; if expired, queue advances
+  </div></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s9">
+  <span class="sec-tag tag-red">Step 9</span>
+  <h2>State Diagram — BookItem</h2>
+  <div class="diagram-box"><div class="mermaid">
+stateDiagram-v2
+  [*] --> AVAILABLE : added to catalog
+  AVAILABLE --> LOANED : checkout()
+  AVAILABLE --> RESERVED : reserve() with no current loan
+  LOANED --> AVAILABLE : returnItem() & no waitlist
+  LOANED --> RESERVED : returnItem() & waitlist non-empty
+  RESERVED --> LOANED : checkout() by head of queue
+  RESERVED --> AVAILABLE : reservation hold expires
+  AVAILABLE --> LOST : markLost()
+  LOANED --> LOST : markLost()
+  LOST --> [*]
+  </div></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s10">
+  <span class="sec-tag tag-orange">Step 10</span>
+  <h2>Java Implementation</h2>
+
+  <div class="code-label cl-yellow">Enums</div>
+<pre><span class="kw">public enum</span> <span class="ty">BookStatus</span> { AVAILABLE, RESERVED, LOANED, LOST }
+<span class="kw">public enum</span> <span class="ty">ReservationStatus</span> { WAITING, READY_FOR_PICKUP, COMPLETED, CANCELED, EXPIRED }
+<span class="kw">public enum</span> <span class="ty">MemberType</span> { STUDENT, FACULTY, PUBLIC }
+<span class="kw">public enum</span> <span class="ty">BookFormat</span> { HARDCOVER, PAPERBACK, EBOOK, AUDIOBOOK, MAGAZINE }
+</pre>
+
+  <div class="code-label cl-cyan">BookItem — State Machine</div>
+<pre><span class="kw">public class</span> <span class="ty">BookItem</span> <span class="kw">extends</span> <span class="ty">Book</span> {
+  <span class="kw">private final</span> <span class="ty">String</span> barcode;
+  <span class="kw">private</span> <span class="ty">BookStatus</span> status = <span class="ty">BookStatus</span>.AVAILABLE;
+  <span class="kw">private</span> <span class="ty">String</span> reservedFor;       <span class="cmt">// memberId at head of queue</span>
+  <span class="kw">private</span> <span class="ty">LocalDateTime</span> reservedUntil;
+
+  <span class="kw">public synchronized void</span> <span class="fn">checkout</span>(<span class="ty">String</span> memberId) {
+    <span class="kw">if</span> (status == <span class="ty">BookStatus</span>.RESERVED &amp;&amp; !memberId.<span class="fn">equals</span>(reservedFor))
+      <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="str">"reserved for someone else"</span>);
+    <span class="kw">if</span> (status == <span class="ty">BookStatus</span>.LOANED || status == <span class="ty">BookStatus</span>.LOST)
+      <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="str">"cannot checkout in state "</span> + status);
+    status = <span class="ty">BookStatus</span>.LOANED;
+    reservedFor = <span class="kw">null</span>;
+  }
+
+  <span class="kw">public synchronized void</span> <span class="fn">returnItem</span>(<span class="ty">ReservationQueue</span> q, <span class="ty">EventBus</span> bus) {
+    <span class="kw">if</span> (status != <span class="ty">BookStatus</span>.LOANED)
+      <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="str">"only LOANED items can be returned"</span>);
+    <span class="ty">Optional</span>&lt;<span class="ty">String</span>&gt; next = q.<span class="fn">dequeueNext</span>();
+    <span class="kw">if</span> (next.<span class="fn">isPresent</span>()) {
+      status = <span class="ty">BookStatus</span>.RESERVED;
+      reservedFor = next.<span class="fn">get</span>();
+      reservedUntil = <span class="ty">LocalDateTime</span>.<span class="fn">now</span>().<span class="fn">plusHours</span>(<span class="num">24</span>);
+      bus.<span class="fn">publish</span>(<span class="kw">new</span> <span class="ty">BookAvailableEvent</span>(getIsbn(), barcode, reservedFor));
+    } <span class="kw">else</span> status = <span class="ty">BookStatus</span>.AVAILABLE;
+  }
+
+  <span class="kw">public synchronized void</span> <span class="fn">markLost</span>() { status = <span class="ty">BookStatus</span>.LOST; }
+}
+</pre>
+
+  <div class="code-label cl-green">ReservationQueue — FIFO per book</div>
+<pre><span class="kw">public class</span> <span class="ty">ReservationQueue</span> {
+  <span class="kw">private final</span> <span class="ty">Deque</span>&lt;<span class="ty">String</span>&gt; waitlist = <span class="kw">new</span> <span class="ty">ArrayDeque</span>&lt;&gt;();
+  <span class="kw">public synchronized void</span> <span class="fn">enqueue</span>(<span class="ty">String</span> memberId) {
+    <span class="kw">if</span> (!waitlist.<span class="fn">contains</span>(memberId)) waitlist.<span class="fn">addLast</span>(memberId);
+  }
+  <span class="kw">public synchronized</span> <span class="ty">Optional</span>&lt;<span class="ty">String</span>&gt; <span class="fn">dequeueNext</span>() {
+    <span class="kw">return</span> <span class="ty">Optional</span>.<span class="fn">ofNullable</span>(waitlist.<span class="fn">pollFirst</span>());
+  }
+  <span class="kw">public synchronized int</span> <span class="fn">positionOf</span>(<span class="ty">String</span> memberId) {
+    <span class="kw">int</span> i = <span class="num">1</span>;
+    <span class="kw">for</span> (<span class="ty">String</span> id : waitlist) { <span class="kw">if</span> (id.<span class="fn">equals</span>(memberId)) <span class="kw">return</span> i; i++; }
+    <span class="kw">return</span> -<span class="num">1</span>;
+  }
+}
+</pre>
+
+  <div class="code-label cl-purple">FineStrategy</div>
+<pre><span class="kw">public interface</span> <span class="ty">FineStrategy</span> {
+  <span class="ty">BigDecimal</span> <span class="fn">compute</span>(<span class="kw">long</span> daysLate, <span class="ty">Member</span> m);
+}
+<span class="kw">public class</span> <span class="ty">FlatRateFine</span> <span class="kw">implements</span> <span class="ty">FineStrategy</span> {
+  <span class="kw">public</span> <span class="ty">BigDecimal</span> <span class="fn">compute</span>(<span class="kw">long</span> d, <span class="ty">Member</span> m) {
+    <span class="kw">return new</span> <span class="ty">BigDecimal</span>(d).<span class="fn">multiply</span>(<span class="kw">new</span> <span class="ty">BigDecimal</span>(<span class="str">"5"</span>));
+  }
+}
+<span class="kw">public class</span> <span class="ty">StudentFine</span> <span class="kw">implements</span> <span class="ty">FineStrategy</span> {
+  <span class="kw">public</span> <span class="ty">BigDecimal</span> <span class="fn">compute</span>(<span class="kw">long</span> d, <span class="ty">Member</span> m) {
+    <span class="kw">long</span> chargeable = <span class="ty">Math</span>.<span class="fn">max</span>(<span class="num">0</span>, d - <span class="num">2</span>);  <span class="cmt">// 2-day grace</span>
+    <span class="kw">return new</span> <span class="ty">BigDecimal</span>(chargeable).<span class="fn">multiply</span>(<span class="kw">new</span> <span class="ty">BigDecimal</span>(<span class="str">"3"</span>));
+  }
+}
+<span class="kw">public class</span> <span class="ty">FacultyFine</span> <span class="kw">implements</span> <span class="ty">FineStrategy</span> {
+  <span class="kw">public</span> <span class="ty">BigDecimal</span> <span class="fn">compute</span>(<span class="kw">long</span> d, <span class="ty">Member</span> m) { <span class="kw">return</span> <span class="ty">BigDecimal</span>.ZERO; }
+}
+</pre>
+
+  <div class="code-label cl-blue">Library — orchestrator</div>
+<pre><span class="kw">public class</span> <span class="ty">Library</span> {
+  <span class="kw">private static volatile</span> <span class="ty">Library</span> instance;
+  <span class="kw">public static</span> <span class="ty">Library</span> <span class="fn">getInstance</span>() {
+    <span class="kw">if</span> (instance == <span class="kw">null</span>) <span class="kw">synchronized</span>(<span class="ty">Library</span>.<span class="kw">class</span>) {
+      <span class="kw">if</span> (instance == <span class="kw">null</span>) instance = <span class="kw">new</span> <span class="ty">Library</span>();
+    }
+    <span class="kw">return</span> instance;
+  }
+  <span class="kw">private final</span> <span class="ty">Catalog</span> catalog = <span class="kw">new</span> <span class="ty">Catalog</span>();
+  <span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">String</span>, <span class="ty">ReservationQueue</span>&gt; queues = <span class="kw">new</span> <span class="ty">ConcurrentHashMap</span>&lt;&gt;();
+  <span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">MemberType</span>, <span class="ty">FineStrategy</span>&gt; fines = <span class="ty">Map</span>.<span class="fn">of</span>(
+    <span class="ty">MemberType</span>.STUDENT, <span class="kw">new</span> <span class="ty">StudentFine</span>(),
+    <span class="ty">MemberType</span>.FACULTY, <span class="kw">new</span> <span class="ty">FacultyFine</span>(),
+    <span class="ty">MemberType</span>.PUBLIC,  <span class="kw">new</span> <span class="ty">FlatRateFine</span>()
+  );
+  <span class="kw">private final</span> <span class="ty">EventBus</span> bus = <span class="kw">new</span> <span class="ty">EventBus</span>();
+
+  <span class="kw">public</span> <span class="ty">BookLending</span> <span class="fn">checkout</span>(<span class="ty">Member</span> m, <span class="ty">String</span> barcode) {
+    <span class="kw">if</span> (m.<span class="fn">getCheckedOut</span>() &gt;= <span class="num">5</span>) <span class="kw">throw new</span> <span class="ty">LimitExceededException</span>();
+    <span class="ty">BookItem</span> bi = catalog.<span class="fn">find</span>(barcode);
+    bi.<span class="fn">checkout</span>(m.<span class="fn">getId</span>());
+    <span class="kw">return</span> <span class="ty">BookLending</span>.<span class="fn">create</span>(bi, m, <span class="ty">LocalDate</span>.<span class="fn">now</span>().<span class="fn">plusDays</span>(<span class="num">10</span>));
+  }
+
+  <span class="kw">public void</span> <span class="fn">returnItem</span>(<span class="ty">String</span> barcode) {
+    <span class="ty">BookItem</span> bi = catalog.<span class="fn">find</span>(barcode);
+    <span class="ty">BookLending</span> bl = <span class="ty">BookLending</span>.<span class="fn">currentFor</span>(barcode);
+    <span class="kw">long</span> daysLate = <span class="ty">Math</span>.<span class="fn">max</span>(<span class="num">0</span>, <span class="ty">ChronoUnit</span>.DAYS.<span class="fn">between</span>(bl.<span class="fn">getDueDate</span>(), <span class="ty">LocalDate</span>.<span class="fn">now</span>()));
+    <span class="kw">if</span> (daysLate &gt; <span class="num">0</span>) {
+      <span class="ty">FineStrategy</span> s = fines.<span class="fn">get</span>(bl.<span class="fn">getMember</span>().<span class="fn">getType</span>());
+      <span class="ty">Fine</span>.<span class="fn">accrue</span>(bl.<span class="fn">getMember</span>(), s.<span class="fn">compute</span>(daysLate, bl.<span class="fn">getMember</span>()));
+    }
+    bi.<span class="fn">returnItem</span>(queues.<span class="fn">computeIfAbsent</span>(bi.<span class="fn">getIsbn</span>(), k -&gt; <span class="kw">new</span> <span class="ty">ReservationQueue</span>()), bus);
+  }
+
+  <span class="kw">public int</span> <span class="fn">reserve</span>(<span class="ty">Member</span> m, <span class="ty">String</span> isbn) {
+    <span class="ty">ReservationQueue</span> q = queues.<span class="fn">computeIfAbsent</span>(isbn, k -&gt; <span class="kw">new</span> <span class="ty">ReservationQueue</span>());
+    q.<span class="fn">enqueue</span>(m.<span class="fn">getId</span>());
+    <span class="kw">return</span> q.<span class="fn">positionOf</span>(m.<span class="fn">getId</span>());
+  }
+}
+</pre>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s11">
+  <span class="sec-tag tag-cyan">Step 11</span>
+  <h2>Intuition — How to arrive at this design from scratch</h2>
+  <div class="g2">
+    <div class="card"><h3>1️⃣ Two planes</h3><p>Catalog (read-heavy, search) and Lending (write-heavy, transactional). Don't merge them.</p></div>
+    <div class="card"><h3>2️⃣ Book ≠ BookItem</h3><p>Book is the bibliographic record (one per ISBN); BookItem is a physical copy. The reservation is on the Book; the loan is on the BookItem.</p></div>
+    <div class="card"><h3>3️⃣ State machine on the copy</h3><p>BookItem is the only stateful entity that matters. AVAILABLE → LOANED → RESERVED → LOANED — every transition is a method.</p></div>
+    <div class="card"><h3>4️⃣ Reservation is a queue</h3><p>Multiple members reserve the same book. FIFO. Single-record reservation is a bug.</p></div>
+    <div class="card"><h3>5️⃣ Fine is variable</h3><p>Different rules per member type. Strategy.</p></div>
+    <div class="card"><h3>6️⃣ Notification is async</h3><p>Don't block the librarian's counter on SMTP. Observer + queue.</p></div>
+    <div class="card"><h3>7️⃣ Search is indexed</h3><p>HashMap of exact strings doesn't scale. Repository hides the index implementation.</p></div>
+    <div class="card"><h3>8️⃣ Concurrency at the boundary</h3><p>Counter Service starts a transaction; everything inside is single-threaded per BookItem.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s12">
+  <span class="sec-tag tag-red">Step 12</span>
+  <h2>Improvements over the Grokking Reference Design</h2>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Area</th><th>Grokking</th><th>This design</th><th>Why it matters</th></tr></thead>
+    <tbody>
+      <tr><td>Reservation</td><td>Single <code>BookReservation</code> record per item; second reservation overwrites</td><td>FIFO <code>ReservationQueue</code> per Book ISBN</td><td>5 students reserving "Cormen" all get a fair-order spot, not random overwrite</td></tr>
+      <tr><td>Search</td><td><code>HashMap&lt;query, List&lt;Book&gt;&gt;</code> — exact match only</td><td>Repository facade over inverted indexes (title/author/subject/date)</td><td>"anything by Sedgewick" is one query; partial-match works; scales to 1M books</td></tr>
+      <tr><td>Notifications</td><td>Inline call from <code>returnBookItem</code></td><td>Observer pattern via EventBus, async delivery</td><td>Slow SMTP doesn't block the counter; multiple subscribers (email+SMS+push) for free</td></tr>
+      <tr><td>Fines</td><td>One method <code>collectFine(memberId, days)</code> with hardcoded rate</td><td>FineStrategy per MemberType (Student / Faculty / Public)</td><td>Per-category rules without recompiling the lending code</td></tr>
+      <tr><td>BookItem state</td><td>Enum field; methods like <code>checkout</code> don't validate transitions</td><td>State machine — illegal transitions throw</td><td>"checkout a LOST item" or "return an AVAILABLE item" can't slip through</td></tr>
+      <tr><td>Renew flow</td><td>Decrements checkout count then re-lends — with a strange race</td><td>Renew is a single method that checks: no waitlist + no fine + within max-extensions</td><td>Reference design has a bug where it decrements before knowing the renew will succeed</td></tr>
+      <tr><td>Concurrency</td><td>Not addressed</td><td>Synchronized on BookItem; ConcurrentHashMap for queues</td><td>Two librarians scanning the last copy at the same instant — only one wins</td></tr>
+      <tr><td>E-book vs physical</td><td>Same <code>BookItem.checkout</code></td><td>Polymorphism — <code>EBookItem</code> has no Rack, infinite copies, no late fee</td><td>Mixed catalog without if/else everywhere</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s13">
+  <span class="sec-tag tag-purple">Step 13</span>
+  <h2>Extension Points</h2>
+  <div class="g3">
+    <div class="card"><h3>📱 SMS reminders</h3><p>New <code>SmsNotifier</code> subscribes to the same EventBus. No edits to BookItem or Library.</p></div>
+    <div class="card"><h3>🏫 Inter-library loans</h3><p>Add <code>BranchAdapter</code> as a new BookItem source; Catalog routes searches across branches.</p></div>
+    <div class="card"><h3>🎟️ Premium membership</h3><p>New <code>PremiumFineStrategy</code>, new <code>MemberType.PREMIUM</code>. Wired into the <code>fines</code> map; nothing else changes.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s14">
+  <span class="sec-tag tag-orange">Step 14</span>
+  <h2>Trade-offs &amp; Talking Points</h2>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Decision</th><th>Alternative</th><th>Why this choice</th></tr></thead>
+    <tbody>
+      <tr><td>Repository for search</td><td>HashMap by exact title</td><td>Real catalogs need fuzzy + multi-field; Repository is the abstraction that lets us swap engines</td></tr>
+      <tr><td>State machine on BookItem</td><td>Status enum + scattered checks</td><td>Centralized validation = fewer bugs, one place to add a state</td></tr>
+      <tr><td>FIFO queue per Book</td><td>Single reservation slot</td><td>Models the actual library policy; multiple reservations with priority ordering</td></tr>
+      <tr><td>Strategy for fines</td><td>If/else by member type</td><td>New rule = new class. No lending-code edits</td></tr>
+      <tr><td>Synchronized BookItem</td><td>Optimistic locking</td><td>One BookItem at a time is rare contention; the simpler primitive wins</td></tr>
+      <tr><td>EventBus for notifications</td><td>Direct call</td><td>Decouples + async; multiple subscribers without coupling them to BookItem</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<div class="divider"></div>
+
+<div class="sec" id="s15">
+  <span class="sec-tag tag-blue">Step 15</span>
+  <h2>Interview Q &amp; A</h2>
+  <div class="iq">5 members all reserve the same book. Who gets it when it returns?</div>
+  <div class="ans">FIFO. The reservation is a queue per Book ISBN, not a slot per BookItem. When the copy is returned, BookItem flips to RESERVED and binds itself to the head of the queue with a 24-hour pickup hold. If the head doesn't pick up in time, the hold expires and the queue advances.</div>
+
+  <div class="iq">Two librarians scan the last copy at the same time. What happens?</div>
+  <div class="ans"><code>BookItem.checkout</code> is synchronized on the BookItem instance. The second thread blocks; when it gets the lock, status is already LOANED, so it throws <code>IllegalStateException</code>. The Counter Service translates that into "this copy was just borrowed — try a different copy" on the second screen.</div>
+
+  <div class="iq">Why is fine a Strategy instead of a method on Member?</div>
+  <div class="ans">Fines change <em>independently</em> of member identity. The library may decide tomorrow to waive late fees during exam week — that's a strategy swap, not a member-data change. Strategy isolates the policy from the people.</div>
+
+  <div class="iq">A book is lost. What happens to the reservation queue?</div>
+  <div class="ans"><code>markLost()</code> moves the BookItem to LOST. The queue stays — there might be other copies. If <em>all</em> copies of the book are LOST, the librarian explicitly cancels the queue and notifies waiting members. We don't auto-cancel, because the library may purchase a replacement.</div>
+
+  <div class="iq">How do you support search across 1 million books with sub-200ms latency?</div>
+  <div class="ans">Behind the Repository, swap the in-memory HashMap for an inverted index — Lucene or Postgres FTS. Tokenize on insert; query against tokens. The Catalog interface stays the same; callers don't notice. The reference design's HashMap-by-string-key would linear-scan and time out.</div>
+
+  <div class="iq">Renew: what's the race condition?</div>
+  <div class="ans">Grokking's renew decrements the member's checkout count <em>before</em> checking the reservation queue. If renew fails (because someone reserved the book), the count is wrong. Our renew is a single transaction: check waitlist + check fine + extend due-date — all-or-nothing.</div>
+
+  <div class="iq">E-books?</div>
+  <div class="ans">Subclass: <code>EBookItem extends BookItem</code>. Override: <code>checkout</code> doesn't decrement availability (infinite copies); <code>returnItem</code> is a no-op (auto-revoke after due date); no Rack; no late fee. Polymorphism handles the rest — Library doesn't know or care.</div>
+</div>
+
+  </div>
+</div>
+
+</body>
+</html>

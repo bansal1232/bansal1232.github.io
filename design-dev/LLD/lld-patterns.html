@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LLD Patterns — The 8 GoF Patterns You'll Actually Use</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+
+.next-nav{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:2rem}
+.next-nav a{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem;text-decoration:none;color:var(--text);transition:border-color .2s,transform .2s}
+.next-nav a:hover{border-color:var(--orange);transform:translateY(-2px)}
+.next-nav .lbl{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:700;margin-bottom:.3rem;display:block}
+.next-nav .ttl{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--heading)}
+@media(max-width:700px){.next-nav{grid-template-columns:1fr}}
+
+/* Pattern card extras */
+.pat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem 1.8rem;margin-bottom:1.2rem}
+.pat-card h3{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--heading);margin-bottom:.3rem;display:flex;align-items:center;gap:.65rem}
+.pat-card .pat-num{display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;flex-shrink:0;line-height:1}
+.pat-card .pat-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.pat-card .pat-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.pat-card .pat-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.pat-card .pat-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.pat-card .pat-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.pat-card .pat-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.pat-card .pat-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+.pat-card .kind{font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-left:.35rem;padding:.18rem .55rem;border-radius:5px;background:var(--surface2);border:1px solid var(--border)}
+.pat-card p{color:var(--text);font-size:.93rem;line-height:1.78;margin-bottom:.55rem}
+.pat-card p strong{color:var(--heading)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">LLD · In a Hurry · Part 3 of 3</div>
+  <h1>Common <span>LLD Patterns</span></h1>
+  <p class="sub">The eight GoF patterns that show up in 90% of LLD interviews — when each one fits, the smell that summons it, and a one-page Java example.</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Why Only 8?</a></li>
+      <li><a href="#s2">The Cheat-Sheet</a></li>
+      <li><a href="#s3">① Strategy</a></li>
+      <li><a href="#s4">② Factory</a></li>
+      <li><a href="#s5">③ Singleton</a></li>
+      <li><a href="#s6">④ Observer</a></li>
+      <li><a href="#s7">⑤ State</a></li>
+      <li><a href="#s8">⑥ Decorator</a></li>
+      <li><a href="#s9">⑦ Builder</a></li>
+      <li><a href="#s10">⑧ Command</a></li>
+      <li><a href="#s11">Composing Patterns</a></li>
+      <li><a href="#s12">Anti-patterns</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ================================================ -->
+<!-- SECTION 1                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Why a Short List</span>
+  <h2>Why Only 8 Patterns? (And Not All 23)</h2>
+  <p>The original GoF book lists 23 patterns. If you tried to memorise all of them before an interview you'd burn out and remember none. The good news: <strong>most LLD interviews surface the same eight</strong>. The other fifteen exist — Bridge, Flyweight, Memento, Visitor, Mediator and friends — but if you reach for one of those in a 45-minute interview, the interviewer will ask "why?" and you'd better have a sharp answer because they're rarely the cleanest fit.</p>
+
+  <p>The eight on this page cover the four problem shapes that almost every LLD prompt reduces to:</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>Behavioural variation</h3>
+      <p>"This thing has many flavours that we'll keep adding." → <strong>Strategy</strong>, <strong>State</strong>, <strong>Command</strong></p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--green)">
+      <h3>Object construction</h3>
+      <p>"Choosing or building the right object is gnarly." → <strong>Factory</strong>, <strong>Builder</strong>, <strong>Singleton</strong></p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h3>Composition</h3>
+      <p>"I want to stack optional features on a base." → <strong>Decorator</strong></p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--purple)">
+      <h3>Notification fan-out</h3>
+      <p>"One thing changes, many things care." → <strong>Observer</strong></p>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>Pattern as vocabulary, not flex.</strong> The senior engineer doesn't drop pattern names to score points; they drop them to <em>compress</em> a design conversation. <em>"I'll use Strategy here"</em> is faster than five sentences explaining the same idea — and it tells the interviewer you've seen this shape before. But the moment the interviewer asks "why?", you'd better be able to translate the name back into the underlying mechanic. Patterns earn points only when they're load-bearing.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 2                                         -->
+<!-- ================================================ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-cyan">The Cheat-Sheet</span>
+  <h2>The Cheat-Sheet — Pattern Smells in One Table</h2>
+  <p>This is the table to keep open during practice. When you see the smell on the left, the pattern on the right is almost always the right reach. Skim it now; the rest of the page details each row.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>The Smell (in plain English)</th>
+          <th>Pattern</th>
+          <th>Canonical LLD Scenario</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>An <code>if/else</code> ladder over a "kind" enum</td>
+          <td><strong>Strategy</strong></td>
+          <td>Pricing rules in a parking lot, sort algorithms in a list</td>
+        </tr>
+        <tr>
+          <td>"Which subclass do I new-up?" logic in a constructor</td>
+          <td><strong>Factory</strong></td>
+          <td>Creating the right Spot subclass from VehicleSize</td>
+        </tr>
+        <tr>
+          <td>"I need exactly one of these, accessible globally"</td>
+          <td><strong>Singleton</strong></td>
+          <td>The ParkingLot registry, a config holder, a connection pool</td>
+        </tr>
+        <tr>
+          <td>"One write must update many readers" (no return value)</td>
+          <td><strong>Observer</strong></td>
+          <td>Spot freed → notify reservation holders; price change → push to UI</td>
+        </tr>
+        <tr>
+          <td>Behaviour changes based on a lifecycle stage</td>
+          <td><strong>State</strong></td>
+          <td>Vending machine: IDLE → COIN_INSERTED → DISPENSING</td>
+        </tr>
+        <tr>
+          <td>"Wrap a base with optional features that stack"</td>
+          <td><strong>Decorator</strong></td>
+          <td>Pricing → SurgeDecorator(pricing) → DiscountDecorator(...)</td>
+        </tr>
+        <tr>
+          <td>Constructor with &gt;3 params and many of them optional</td>
+          <td><strong>Builder</strong></td>
+          <td>Configuring a Pizza, an HTTP request, a complex Game</td>
+        </tr>
+        <tr>
+          <td>"I need to undo / queue / log this action"</td>
+          <td><strong>Command</strong></td>
+          <td>Text-editor undo, scheduled job dispatch, macro recording</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>The 30-second drill.</strong> Read the smells column out loud, eyes closed, and try to name the pattern. When you can do all eight in 30 seconds without peeking, you can pattern-recognise during a live interview. That's the bar.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 3 — STRATEGY                              -->
+<!-- ================================================ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-orange">Behavioural · #1 most-used</span>
+  <h2>① Strategy — Swap an Algorithm Without Touching Its Caller</h2>
+
+  <div class="pat-card">
+    <h3><span class="pat-num orange">①</span> Strategy<span class="kind">Behavioural</span></h3>
+    <p><strong>The story.</strong> Sarah's parking lot launches with one flat hourly rate. Three months later marketing wants weekend pricing. Six months later legal demands a separate EV rate. Without a pattern, every new rule means editing <code>ParkingLot.calculateBill()</code> — by year two it's a 400-line method nobody dares touch. Strategy says: pull the algorithm out into its own object behind an interface, hold the interface by reference, and let new rules be new files.</p>
+    <p><strong>When to reach for it.</strong> Whenever you have an <code>if/else</code> ladder over a "kind" enum where each branch does the same <em>kind</em> of work (compute, validate, route, format) but with different rules.</p>
+    <p><strong>The mechanic.</strong> One interface with one method (<code>calculate</code>, <code>route</code>, <code>format</code>). Many implementations. The host class holds the interface as a field — set in the constructor, swappable at runtime.</p>
+  </div>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+classDiagram
+  class ParkingLot {
+    -PricingStrategy pricing
+    +setPricing(PricingStrategy)
+    +bill(Ticket) Bill
+  }
+  class PricingStrategy {
+    <<interface>>
+    +calculate(Duration,VehicleSize) double
+  }
+  class HourlyPricing
+  class WeekendPricing
+  class EvPricing
+  ParkingLot --> PricingStrategy : holds
+  PricingStrategy <|.. HourlyPricing
+  PricingStrategy <|.. WeekendPricing
+  PricingStrategy <|.. EvPricing
+    </div>
+  </div>
+
+  <span class="code-label cl-orange">Java sketch — Strategy in 15 lines</span>
+<pre><span class="kw">interface</span> <span class="ty">PricingStrategy</span> {
+  <span class="ty">double</span> <span class="fn">calculate</span>(<span class="ty">Duration</span> stay, <span class="ty">VehicleSize</span> size);
+}
+
+<span class="kw">class</span> <span class="ty">HourlyPricing</span> <span class="kw">implements</span> <span class="ty">PricingStrategy</span> {
+  <span class="kw">private final</span> <span class="ty">double</span> rate;
+  <span class="ty">HourlyPricing</span>(<span class="ty">double</span> rate) { <span class="kw">this</span>.rate = rate; }
+  <span class="kw">public</span> <span class="ty">double</span> <span class="fn">calculate</span>(<span class="ty">Duration</span> d, <span class="ty">VehicleSize</span> s) {
+    <span class="kw">return</span> <span class="ty">Math</span>.ceil(d.toMinutes() / <span class="num">60.0</span>) * rate;
+  }
+}
+
+<span class="cmt">// Adding weekend pricing = one new file. Zero edits to ParkingLot.</span>
+<span class="kw">class</span> <span class="ty">WeekendPricing</span> <span class="kw">implements</span> <span class="ty">PricingStrategy</span> { <span class="cmt">/* ... */</span> }</pre>
+
+  <div class="highlight hl-orange"><strong>Interview-killer follow-up:</strong> "Can I change the strategy at runtime?" Answer: <em>"Yes — the lot exposes <code>setPricing()</code>, which is just a field assignment. As long as no thread is mid-calculation, it's a single CAS. For perfectly atomic switchover, wrap the field in <code>AtomicReference&lt;PricingStrategy&gt;</code>."</em></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 4 — FACTORY                               -->
+<!-- ================================================ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-green">Creational</span>
+  <h2>② Factory — Hide the "new" From the Caller</h2>
+
+  <div class="pat-card">
+    <h3><span class="pat-num green">②</span> Factory<span class="kind">Creational</span></h3>
+    <p><strong>The story.</strong> The parking lot's allocator needs a Spot for a vehicle of size <code>CAR</code>. Without a Factory, every caller writes <code>if (size == CAR) new CarSpot() else if (size == TRUCK) new TruckSpot() ...</code>. That switch lives in five places. Add an EV spot — five edits. Forget one — production bug. A Factory centralises the switch in one method so new types add a single branch in a single file.</p>
+    <p><strong>When to reach for it.</strong> When (a) the caller doesn't (and shouldn't) know the concrete subclass, (b) the choice depends on input data, and (c) you want to add new variants without touching the call sites.</p>
+    <p><strong>The mechanic.</strong> A static method (or a dedicated factory class) takes input parameters and returns the abstract type, internally choosing the concrete subclass.</p>
+  </div>
+
+  <span class="code-label cl-green">Java sketch — a switch-expression Factory (Java 17+)</span>
+<pre><span class="kw">class</span> <span class="ty">SpotFactory</span> {
+  <span class="kw">static</span> <span class="ty">Spot</span> <span class="fn">create</span>(<span class="ty">String</span> id, <span class="ty">VehicleSize</span> size) {
+    <span class="kw">return switch</span> (size) {
+      <span class="kw">case</span> <span class="num">BIKE</span>  -&gt; <span class="kw">new</span> <span class="ty">BikeSpot</span>(id);
+      <span class="kw">case</span> <span class="num">CAR</span>   -&gt; <span class="kw">new</span> <span class="ty">CarSpot</span>(id);
+      <span class="kw">case</span> <span class="num">TRUCK</span> -&gt; <span class="kw">new</span> <span class="ty">TruckSpot</span>(id);
+    };
+  }
+}
+
+<span class="cmt">// Caller never sees the subclasses</span>
+<span class="ty">Spot</span> s = <span class="ty">SpotFactory</span>.create(<span class="str">"S-42"</span>, <span class="ty">VehicleSize</span>.<span class="num">CAR</span>);</pre>
+
+  <div class="highlight hl-green"><strong>The Factory ↔ Strategy distinction interviewers love to test.</strong> Factory chooses <em>which class to instantiate</em>. Strategy chooses <em>which algorithm to call on an already-instantiated object</em>. They're often used together: a Factory builds a Strategy. <em>"<code>PricingFactory.forRegion("US-CA")</code> returns the right <code>PricingStrategy</code> for California."</em></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 5 — SINGLETON                             -->
+<!-- ================================================ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-blue">Creational</span>
+  <h2>③ Singleton — Exactly One, Globally Reachable</h2>
+
+  <div class="pat-card">
+    <h3><span class="pat-num blue">③</span> Singleton<span class="kind">Creational</span></h3>
+    <p><strong>The story.</strong> The parking lot facility has exactly one <code>ParkingLot</code> object — there isn't a second copy somewhere. If two threads each instantiated their own <code>ParkingLot</code>, you'd have two separate ticket registries and two cars could legally occupy the same physical spot. Singleton enforces <em>"there is one"</em> at the language level so the rest of the code can't accidentally violate the invariant.</p>
+    <p><strong>When to reach for it.</strong> Configuration holders, registry-style services (<code>ParkingLot</code>, <code>Logger</code>), connection pools, or any global resource that must be shared.</p>
+    <p><strong>The mechanic.</strong> Private constructor + a static accessor that returns the one instance. In Java the cleanest version is the <code>enum</code> singleton — thread-safe, serialisation-safe, free.</p>
+  </div>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--green)">
+      <h3 style="color:var(--green)">✅ The right Singleton (Java)</h3>
+<pre style="margin-top:.4rem"><span class="kw">enum</span> <span class="ty">ParkingLot</span> {
+  <span class="num">INSTANCE</span>;
+  <span class="kw">private final</span> <span class="ty">List</span>&lt;<span class="ty">Floor</span>&gt; floors = <span class="kw">new</span> <span class="ty">ArrayList</span>&lt;&gt;();
+  <span class="kw">public</span> <span class="ty">Ticket</span> <span class="fn">park</span>(<span class="ty">Vehicle</span> v) { <span class="cmt">/* ... */</span> }
+}
+
+<span class="cmt">// Usage</span>
+<span class="ty">ParkingLot</span>.<span class="num">INSTANCE</span>.park(car);</pre>
+    </div>
+    <div class="card" style="border-left:3px solid var(--red)">
+      <h3 style="color:var(--red)">❌ The broken Singleton</h3>
+<pre style="margin-top:.4rem"><span class="kw">class</span> <span class="ty">ParkingLot</span> {
+  <span class="kw">private static</span> <span class="ty">ParkingLot</span> instance;
+  <span class="kw">public static</span> <span class="ty">ParkingLot</span> <span class="fn">get</span>() {
+    <span class="kw">if</span> (instance == <span class="kw">null</span>)         <span class="cmt">// race!</span>
+      instance = <span class="kw">new</span> <span class="ty">ParkingLot</span>();
+    <span class="kw">return</span> instance;
+  }
+}</pre>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The trap.</strong> Singletons are easy to overuse. They're global mutable state, which makes unit testing harder (you can't easily inject a fake) and hides dependencies (the consumer's signature doesn't say <em>"I need a ParkingLot"</em>). Use Singleton only when there's a true one-instance invariant in the domain. For "I want to share an instance", prefer dependency injection — pass it in.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 6 — OBSERVER                              -->
+<!-- ================================================ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-purple">Behavioural</span>
+  <h2>④ Observer — One Publisher, Many Subscribers</h2>
+
+  <div class="pat-card">
+    <h3><span class="pat-num purple">④</span> Observer<span class="kind">Behavioural</span></h3>
+    <p><strong>The story.</strong> A spot becomes free at 11:42pm. Three things should happen, all asynchronous to the vacating driver: (1) the digital signboard near the entrance updates the "spaces available" count, (2) any reservations for that spot get confirmed, (3) the analytics service logs the duration. Without Observer, <code>Spot.vacate()</code> would have to know about all three and call each one — adding a fourth subscriber means editing <code>vacate()</code>. Observer flips it: <code>vacate()</code> just emits an event, and any object that wants to know subscribes.</p>
+    <p><strong>When to reach for it.</strong> Pub/sub, notifications, UI redraws on data change, anything where one write fans out to many readers and you don't want the writer to know who's listening.</p>
+    <p><strong>The mechanic.</strong> A <code>Subject</code> holds a list of <code>Observer</code> references. <code>subject.notify(event)</code> iterates and calls <code>observer.onEvent(...)</code> on each. Subscribers register/unregister themselves; the subject doesn't know what they do with the event.</p>
+  </div>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+classDiagram
+  class Spot {
+    -List~SpotListener~ listeners
+    +subscribe(SpotListener)
+    +vacate()
+  }
+  class SpotListener {
+    <<interface>>
+    +onSpotFreed(Spot)
+  }
+  class SignBoard
+  class ReservationService
+  class AnalyticsService
+  Spot --> SpotListener : notifies
+  SpotListener <|.. SignBoard
+  SpotListener <|.. ReservationService
+  SpotListener <|.. AnalyticsService
+    </div>
+  </div>
+
+  <span class="code-label cl-purple">Java sketch — Spot fans out to subscribers</span>
+<pre><span class="kw">interface</span> <span class="ty">SpotListener</span> { <span class="kw">void</span> <span class="fn">onSpotFreed</span>(<span class="ty">Spot</span> s); }
+
+<span class="kw">abstract class</span> <span class="ty">Spot</span> {
+  <span class="kw">private final</span> <span class="ty">List</span>&lt;<span class="ty">SpotListener</span>&gt; listeners = <span class="kw">new</span> <span class="ty">CopyOnWriteArrayList</span>&lt;&gt;();
+  <span class="kw">public void</span> <span class="fn">subscribe</span>(<span class="ty">SpotListener</span> l) { listeners.add(l); }
+  <span class="kw">public void</span> <span class="fn">vacate</span>() {
+    occupant.set(<span class="kw">null</span>);
+    listeners.forEach(l -&gt; l.onSpotFreed(<span class="kw">this</span>));   <span class="cmt">// fire-and-forget</span>
+  }
+}</pre>
+
+  <div class="highlight hl-purple"><strong>The "synchronous Observer is a footgun" tell.</strong> If a subscriber's <code>onSpotFreed()</code> is slow (say, an HTTP call), <code>vacate()</code> blocks until it returns. In production you'd push the event onto a queue and have subscribers consume from there. Mention this even if not asked — <em>"in production I'd publish to a Kafka topic; for the LLD I'm keeping it inline so the call stack is visible."</em></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 7 — STATE                                 -->
+<!-- ================================================ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-yellow">Behavioural</span>
+  <h2>⑤ State — Behaviour Changes With the Lifecycle Stage</h2>
+
+  <div class="pat-card">
+    <h3><span class="pat-num yellow">⑤</span> State<span class="kind">Behavioural</span></h3>
+    <p><strong>The story.</strong> A vending machine's <code>insertCoin()</code> button does different things depending on what's happening: in <code>IDLE</code> it accepts the coin and moves to <code>COIN_INSERTED</code>; in <code>DISPENSING</code> it rejects the coin; in <code>OUT_OF_STOCK</code> it returns the coin. Without State, every method is an <code>if/else</code> over the current stage and adding a new stage means editing every method. State pulls the per-stage logic into its own class so adding a stage means adding a class — the existing classes are unchanged.</p>
+    <p><strong>When to reach for it.</strong> Any entity with 3+ lifecycle stages where the same action means something different in each stage. Vending machine, ATM, order/booking lifecycles, traffic light, document workflow.</p>
+    <p><strong>The mechanic.</strong> An interface (<code>VendingState</code>) with one method per event (<code>insertCoin</code>, <code>selectItem</code>, <code>dispense</code>). Each state is a class implementing the interface. The context (<code>VendingMachine</code>) holds the current state and delegates each event to it. Transitions happen by the state object reassigning the context's state field.</p>
+  </div>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> CoinInserted : insertCoin()
+  CoinInserted --> Dispensing : selectItem()
+  CoinInserted --> Idle : refund()
+  Dispensing --> Idle : itemDispensed()
+  Idle --> OutOfStock : stockEmpty()
+  OutOfStock --> Idle : restocked()
+    </div>
+  </div>
+
+  <span class="code-label cl-yellow">Java sketch — State pattern in a vending machine</span>
+<pre><span class="kw">interface</span> <span class="ty">VendingState</span> {
+  <span class="kw">void</span> <span class="fn">insertCoin</span>(<span class="ty">VendingMachine</span> m, <span class="ty">Coin</span> c);
+  <span class="kw">void</span> <span class="fn">selectItem</span>(<span class="ty">VendingMachine</span> m, <span class="ty">String</span> code);
+}
+
+<span class="kw">class</span> <span class="ty">IdleState</span> <span class="kw">implements</span> <span class="ty">VendingState</span> {
+  <span class="kw">public void</span> <span class="fn">insertCoin</span>(<span class="ty">VendingMachine</span> m, <span class="ty">Coin</span> c) {
+    m.addBalance(c);
+    m.setState(<span class="kw">new</span> <span class="ty">CoinInsertedState</span>());     <span class="cmt">// state owns the transition</span>
+  }
+  <span class="kw">public void</span> <span class="fn">selectItem</span>(<span class="ty">VendingMachine</span> m, <span class="ty">String</span> code) {
+    <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="str">"Insert coin first"</span>);
+  }
+}
+
+<span class="kw">class</span> <span class="ty">VendingMachine</span> {
+  <span class="kw">private</span> <span class="ty">VendingState</span> state = <span class="kw">new</span> <span class="ty">IdleState</span>();
+  <span class="kw">public void</span> <span class="fn">insertCoin</span>(<span class="ty">Coin</span> c)        { state.insertCoin(<span class="kw">this</span>, c); }
+  <span class="kw">public void</span> <span class="fn">selectItem</span>(<span class="ty">String</span> code)    { state.selectItem(<span class="kw">this</span>, code); }
+  <span class="kw">public void</span> <span class="fn">setState</span>(<span class="ty">VendingState</span> s)   { <span class="kw">this</span>.state = s; }
+}</pre>
+
+  <div class="highlight hl-yellow"><strong>State vs enum-with-switch.</strong> Interviewers love asking <em>"why not just an enum and a switch in each method?"</em> Two answers: (1) Adding a new state with the switch approach edits every method — Open/Closed violation. With State, you add one new class. (2) The enum version forces every method to handle every state, even when the state is irrelevant to that event — most cases become "throw IllegalStateException". The State pattern lets each state class only implement what's meaningful.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 8 — DECORATOR                             -->
+<!-- ================================================ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-cyan">Structural</span>
+  <h2>⑥ Decorator — Stack Optional Features Around a Base</h2>
+
+  <div class="pat-card">
+    <h3><span class="pat-num cyan">⑥</span> Decorator<span class="kind">Structural</span></h3>
+    <p><strong>The story.</strong> The parking lot has hourly pricing. Then peak-hour surcharge. Then weekend discount. Then a corporate flat rate that overrides everything. Naively you'd subclass <code>HourlyPricing</code> for each combination — but with three orthogonal modifiers you'd need eight subclasses (2³). Decorator lets each modifier be its own class that <em>wraps</em> a strategy and tweaks the result, so the combinations multiply without the class count exploding.</p>
+    <p><strong>When to reach for it.</strong> Optional features that combine in any order, and you want to compose them at runtime rather than choose a subclass at compile time.</p>
+    <p><strong>The mechanic.</strong> The decorator implements the same interface as the thing it wraps and holds a reference to it. Its method calls the wrapped object first, then modifies the result (or short-circuits it). Decorators stack — each one wraps the previous.</p>
+  </div>
+
+  <span class="code-label cl-cyan">Java sketch — Decorator stack on PricingStrategy</span>
+<pre><span class="kw">class</span> <span class="ty">PeakHourSurcharge</span> <span class="kw">implements</span> <span class="ty">PricingStrategy</span> {
+  <span class="kw">private final</span> <span class="ty">PricingStrategy</span> wrapped;
+  <span class="ty">PeakHourSurcharge</span>(<span class="ty">PricingStrategy</span> w) { <span class="kw">this</span>.wrapped = w; }
+  <span class="kw">public</span> <span class="ty">double</span> <span class="fn">calculate</span>(<span class="ty">Duration</span> d, <span class="ty">VehicleSize</span> s) {
+    <span class="ty">double</span> base = wrapped.calculate(d, s);
+    <span class="kw">return</span> isPeakHour() ? base * <span class="num">1.30</span> : base;
+  }
+}
+
+<span class="kw">class</span> <span class="ty">WeekendDiscount</span> <span class="kw">implements</span> <span class="ty">PricingStrategy</span> {
+  <span class="kw">private final</span> <span class="ty">PricingStrategy</span> wrapped;
+  <span class="ty">WeekendDiscount</span>(<span class="ty">PricingStrategy</span> w) { <span class="kw">this</span>.wrapped = w; }
+  <span class="kw">public</span> <span class="ty">double</span> <span class="fn">calculate</span>(<span class="ty">Duration</span> d, <span class="ty">VehicleSize</span> s) {
+    <span class="ty">double</span> base = wrapped.calculate(d, s);
+    <span class="kw">return</span> isWeekend() ? base * <span class="num">0.80</span> : base;
+  }
+}
+
+<span class="cmt">// Compose at runtime — order matters</span>
+<span class="ty">PricingStrategy</span> p = <span class="kw">new</span> <span class="ty">WeekendDiscount</span>(
+                       <span class="kw">new</span> <span class="ty">PeakHourSurcharge</span>(
+                         <span class="kw">new</span> <span class="ty">HourlyPricing</span>(<span class="num">40.0</span>)));</pre>
+
+  <div class="highlight hl-cyan"><strong>Decorator vs Strategy.</strong> They look alike on the diagram (both implement an interface, both held by reference) — the difference is composition. Strategy <em>replaces</em> the algorithm. Decorator <em>augments</em> it by wrapping the previous one. If you find yourself writing <code>if (peakHour) usePeakStrategy() else useNormalStrategy()</code>, you're hand-rolling a Decorator badly.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 9 — BUILDER                               -->
+<!-- ================================================ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-green">Creational</span>
+  <h2>⑦ Builder — Object Construction When You Have More Than 3 Params</h2>
+
+  <div class="pat-card">
+    <h3><span class="pat-num green">⑦</span> Builder<span class="kind">Creational</span></h3>
+    <p><strong>The story.</strong> A pizza has a size, crust, sauce, cheese, up to 8 toppings, an optional stuffed crust, an optional dessert add-on. Modelling this with a constructor means an 11-parameter <code>Pizza(...)</code> call — the caller can't tell which boolean is "extra cheese" vs "extra mushrooms" without counting positions. Builder gives you a fluent step-by-step build that reads like the order: <code>new PizzaBuilder().size(LARGE).crust(THIN).addTopping(MUSHROOM).build()</code>.</p>
+    <p><strong>When to reach for it.</strong> Constructors with more than 3 parameters, especially when many are optional or have sensible defaults. Configuring a parking lot at startup, building an HTTP request, configuring a chess game.</p>
+    <p><strong>The mechanic.</strong> A nested static <code>Builder</code> class with one setter per field that returns <code>this</code>, terminating in <code>build()</code> which returns the constructed (immutable) object. Validation happens in <code>build()</code>.</p>
+  </div>
+
+  <span class="code-label cl-green">Java sketch — Builder for a complex Pizza</span>
+<pre><span class="kw">class</span> <span class="ty">Pizza</span> {
+  <span class="kw">private final</span> <span class="ty">Size</span> size;
+  <span class="kw">private final</span> <span class="ty">Crust</span> crust;
+  <span class="kw">private final</span> <span class="ty">List</span>&lt;<span class="ty">Topping</span>&gt; toppings;
+
+  <span class="kw">private</span> <span class="ty">Pizza</span>(<span class="ty">Builder</span> b) {           <span class="cmt">// private — only Builder constructs</span>
+    <span class="kw">this</span>.size = b.size; <span class="kw">this</span>.crust = b.crust; <span class="kw">this</span>.toppings = <span class="ty">List</span>.copyOf(b.toppings);
+  }
+
+  <span class="kw">public static class</span> <span class="ty">Builder</span> {
+    <span class="kw">private</span> <span class="ty">Size</span> size = <span class="ty">Size</span>.<span class="num">MEDIUM</span>;
+    <span class="kw">private</span> <span class="ty">Crust</span> crust = <span class="ty">Crust</span>.<span class="num">REGULAR</span>;
+    <span class="kw">private final</span> <span class="ty">List</span>&lt;<span class="ty">Topping</span>&gt; toppings = <span class="kw">new</span> <span class="ty">ArrayList</span>&lt;&gt;();
+
+    <span class="kw">public</span> <span class="ty">Builder</span> <span class="fn">size</span>(<span class="ty">Size</span> s)            { <span class="kw">this</span>.size = s;  <span class="kw">return this</span>; }
+    <span class="kw">public</span> <span class="ty">Builder</span> <span class="fn">crust</span>(<span class="ty">Crust</span> c)          { <span class="kw">this</span>.crust = c; <span class="kw">return this</span>; }
+    <span class="kw">public</span> <span class="ty">Builder</span> <span class="fn">addTopping</span>(<span class="ty">Topping</span> t)   { toppings.add(t); <span class="kw">return this</span>; }
+
+    <span class="kw">public</span> <span class="ty">Pizza</span> <span class="fn">build</span>() {
+      <span class="kw">if</span> (toppings.size() &gt; <span class="num">8</span>) <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="str">"Max 8"</span>);
+      <span class="kw">return new</span> <span class="ty">Pizza</span>(<span class="kw">this</span>);
+    }
+  }
+}
+
+<span class="ty">Pizza</span> p = <span class="kw">new</span> <span class="ty">Pizza</span>.<span class="ty">Builder</span>()
+            .size(<span class="ty">Size</span>.<span class="num">LARGE</span>).crust(<span class="ty">Crust</span>.<span class="num">THIN</span>)
+            .addTopping(<span class="ty">Topping</span>.<span class="num">MUSHROOM</span>).addTopping(<span class="ty">Topping</span>.<span class="num">PEPPER</span>)
+            .build();</pre>
+
+  <div class="highlight hl-green"><strong>The "why not just records?" follow-up.</strong> Java records solve the boilerplate problem for value objects with a fixed set of fields. Builder solves a different problem — <em>incremental, optional, validated</em> construction. Use records when every field is required and the order is obvious; use Builder when many fields are optional or when you need cross-field validation in <code>build()</code>.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 10 — COMMAND                              -->
+<!-- ================================================ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-red">Behavioural</span>
+  <h2>⑧ Command — Wrap an Action so You Can Queue, Log, or Undo It</h2>
+
+  <div class="pat-card">
+    <h3><span class="pat-num red">⑧</span> Command<span class="kind">Behavioural</span></h3>
+    <p><strong>The story.</strong> A text editor needs <code>Ctrl+Z</code>. Naively you'd add an <code>undo()</code> method to every action, but then you have to remember the inverse of every action, scattered everywhere. Command says: every user action becomes a Command object that knows how to <code>execute()</code> itself <em>and</em> how to <code>undo()</code> itself. Push every executed command onto a stack; <code>Ctrl+Z</code> pops and calls <code>undo()</code>. Now undo, redo, replay, macro recording, and remote execution are the same problem.</p>
+    <p><strong>When to reach for it.</strong> Whenever an action needs to be queued (job dispatcher), logged for replay (event sourcing), undone (text editor, paint app), or sent across a network (RPC).</p>
+    <p><strong>The mechanic.</strong> An interface (<code>Command</code>) with <code>execute()</code> and optionally <code>undo()</code>. Each command class encapsulates the receiver (what to act on) and the args (the state needed to undo). The invoker holds a list of commands and executes them on demand.</p>
+  </div>
+
+  <span class="code-label cl-red">Java sketch — Command for a text editor's undo</span>
+<pre><span class="kw">interface</span> <span class="ty">Command</span> { <span class="kw">void</span> <span class="fn">execute</span>(); <span class="kw">void</span> <span class="fn">undo</span>(); }
+
+<span class="kw">class</span> <span class="ty">InsertTextCommand</span> <span class="kw">implements</span> <span class="ty">Command</span> {
+  <span class="kw">private final</span> <span class="ty">Document</span> doc;
+  <span class="kw">private final</span> <span class="ty">int</span> pos;
+  <span class="kw">private final</span> <span class="ty">String</span> text;
+  <span class="ty">InsertTextCommand</span>(<span class="ty">Document</span> d, <span class="ty">int</span> p, <span class="ty">String</span> t) { doc=d; pos=p; text=t; }
+  <span class="kw">public void</span> <span class="fn">execute</span>() { doc.insert(pos, text); }
+  <span class="kw">public void</span> <span class="fn">undo</span>()    { doc.delete(pos, text.length()); }
+}
+
+<span class="kw">class</span> <span class="ty">Editor</span> {
+  <span class="kw">private final</span> <span class="ty">Deque</span>&lt;<span class="ty">Command</span>&gt; history = <span class="kw">new</span> <span class="ty">ArrayDeque</span>&lt;&gt;();
+  <span class="kw">public void</span> <span class="fn">run</span>(<span class="ty">Command</span> c) { c.execute(); history.push(c); }
+  <span class="kw">public void</span> <span class="fn">undoLast</span>()         { history.pop().undo(); }
+}</pre>
+
+  <div class="highlight hl-red"><strong>Command's killer feature is symmetry.</strong> Once every action is a Command, you get <em>queueing</em> for free (push to a queue instead of executing immediately), <em>logging</em> for free (serialise the command to disk), <em>distributed execution</em> for free (send the command over the wire). That's why Command is the heart of distributed job systems and event-sourced architectures — a humble whiteboard pattern that scales surprisingly far.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 11 — COMPOSING                            -->
+<!-- ================================================ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-blue">The Real World</span>
+  <h2>Composing Patterns — How They Stack in Real Designs</h2>
+  <p>The interview move that separates senior from mid-level isn't naming patterns in isolation — it's showing how two or three of them <em>compose</em> to solve one problem. Real designs always layer patterns. Here are three common stacks you'll see across the LLD case studies on this site.</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">Parking Lot</h3>
+      <p><strong>Singleton</strong> for the lot itself · <strong>Factory</strong> creates the right Spot subclass · <strong>Strategy</strong> for pricing rules · <strong>Decorator</strong> for surge/discount on top of pricing · <strong>Observer</strong> when a spot frees up.</p>
+      <p>The lesson: each pattern handles one variation axis. Patterns don't fight each other; they sit on different axes of change.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">Vending Machine</h3>
+      <p><strong>State</strong> pattern owns the lifecycle (Idle → CoinInserted → Dispensing) · <strong>Strategy</strong> for refund-vs-dispense logic per item · <strong>Singleton</strong> for the machine instance · <strong>Observer</strong> for stock-low alerts to the operator's dashboard.</p>
+      <p>The lesson: State handles <em>how the machine behaves</em>, Strategy handles <em>which policy applies</em>. They're complementary, not competing.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">Notification Service</h3>
+      <p><strong>Strategy</strong> per channel (Email, SMS, Push) · <strong>Factory</strong> picks the channel from the request · <strong>Decorator</strong> wraps a channel with retry+backoff · <strong>Observer</strong> for delivery-status callbacks · <strong>Command</strong> when notifications go through a queue.</p>
+      <p>The lesson: marketplace-style designs always stack 4+ patterns because they have many independent variation axes.</p>
+    </div>
+  </div>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  A([Vehicle arrives]) --> F[Factory · build right Spot]
+  F --> S[Singleton · ParkingLot.park]
+  S --> P[Strategy · Pricing]
+  P --> D[Decorator · Surge wraps Pricing]
+  D --> B[Bill]
+  S -.event.-> O[Observer · spot occupied]
+  O --> SB[Sign Board]
+  O --> AS[Analytics]
+
+  style F fill:#171d27,stroke:#38b265,color:#d4dae5
+  style S fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style P fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style D fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style O fill:#171d27,stroke:#9b72cf,color:#d4dae5
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>The narration that scores points:</strong> <em>"Each pattern is on its own axis of change. Pricing rules change quarterly — Strategy. Spot subclass varies with vehicle size — Factory. The lot is one-per-facility — Singleton. New observers want to react to spots — Observer. None of them step on each other because they own different axes."</em></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================ -->
+<!-- SECTION 12 — ANTI-PATTERNS                        -->
+<!-- ================================================ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-red">Anti-patterns</span>
+  <h2>Anti-patterns — Pattern Misuse That Loses Loops</h2>
+  <p>Knowing patterns is half the skill; knowing when <em>not</em> to use them is the other half. Here are the four patterns-mistakes interviewers actively flag.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 Singleton everywhere</h3>
+      <p>Candidate makes <code>PricingStrategy</code>, <code>NotificationService</code>, and <code>UserRepository</code> all Singletons. Every dependency is now hidden global state, every unit test needs an awkward reset hook, and any swap-for-a-fake requires reflection. Singleton is for <em>true</em> one-instance invariants (the parking lot, a hardware controller); for "I want to share an instance", use dependency injection — pass it in.</p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 Strategy with one implementation</h3>
+      <p>Candidate creates <code>PricingStrategy</code> interface but only ever implements <code>HourlyPricing</code>, with no concrete plan to add another. That's premature abstraction — extra indentation for no flexibility you'll actually use. Wait until you have at least one real second variant <em>or</em> a clearly imminent one before introducing the interface.</p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 Observer in single-threaded synchronous code</h3>
+      <p>Candidate adds Observer to a system where the publisher and subscribers always run on the same thread. The "decoupling" is illusory — the publisher still pays the full latency of every subscriber. Observer earns its keep when subscribers are unknown to the publisher <em>and</em> can run independently (different threads, different services, async).</p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 State pattern for two states</h3>
+      <p>Candidate uses State pattern for a Spot that only has FREE and OCCUPIED. That's two if-statements wearing five files of overhead. State earns its weight at 3+ states with non-trivial per-state behaviour. For binary, just use a boolean field.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The meta-rule.</strong> Patterns are answers, not questions. Never start a design with "let me add a Strategy here" — start with "what's the variation point?" If there's no variation, there's no pattern. The best LLD answers use 2–4 patterns, each one earning its place. The worst use 8 patterns to look smart and end up brittle.</div>
+
+  <div class="next-nav">
+    <a href="lld-introduction.html">
+      <span class="lbl">Part 1 of 3</span>
+      <div class="ttl">← LLD Introduction</div>
+      <p style="font-size:.85rem;color:var(--muted);margin-top:.4rem">Re-read what LLD is, the four scoring pillars, and the common question types.</p>
+    </a>
+    <a href="lld-framework.html">
+      <span class="lbl">Part 2 of 3</span>
+      <div class="ttl">← The 5-Step Framework</div>
+      <p style="font-size:.85rem;color:var(--muted);margin-top:.4rem">The minute-by-minute playbook with the Parking Lot walkthrough.</p>
+    </a>
+  </div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>
