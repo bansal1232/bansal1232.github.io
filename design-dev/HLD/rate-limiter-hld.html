@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>API Rate Limiter — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>API <span>Rate Limiter</span></h1>
+  <p class="sub">From "one attacker can brute-force a password in 90 seconds" to a Redis-backed sliding-window limiter that protects every endpoint at sub-5ms latency</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is a Rate Limiter?</a></li>
+      <li><a href="#s2">Why We Need It</a></li>
+      <li><a href="#s3">Requirements &amp; Goals</a></li>
+      <li><a href="#s4">Throttling Types</a></li>
+      <li><a href="#s5">Algorithms — the Core Choice</a></li>
+      <li><a href="#s6">System APIs</a></li>
+      <li><a href="#s7">High-Level Architecture</a></li>
+      <li><a href="#s8">Sliding Window in Detail</a></li>
+      <li><a href="#s9">Atomicity &amp; Race Conditions</a></li>
+      <li><a href="#s10">Sharding &amp; Caching</a></li>
+      <li><a href="#s11">By IP vs. User vs. API Key</a></li>
+      <li><a href="#s12">Tiering &amp; Configuration</a></li>
+      <li><a href="#s13">Failure Modes</a></li>
+      <li><a href="#s14">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS A RATE LIMITER?             -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is a Rate Limiter?</h2>
+  <p>It's 02:14 AM. An attacker sitting behind a botnet starts hammering Sarah's bank login at <strong>10,000 password guesses per second</strong>. With a six-character password, the entire keyspace is brute-forceable in under 90 seconds. Sarah's password is "summer22" — it falls on guess number 4,200,000, and her savings drain into a wallet in another country before her phone even buzzes. A rate limiter is the small piece of code that, between request #5 and request #6 in any 60-second window, says: <em>"that's enough"</em> and returns <code>HTTP 429 Too Many Requests</code>. The attack stops dead.</p>
+
+  <p>More formally: a <strong>rate limiter is a gate</strong> that decides — for every incoming request — whether the caller has stayed within an allowed budget (e.g., "100 requests per minute per user"). If yes, the request flows through. If no, the gate slams shut and returns 429, often with a <code>Retry-After</code> header telling the client when to try again. Conceptually it's the same thing as the bouncer at a club checking how many people from your group already went in tonight.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How do we count requests accurately, in a way that doesn't itself become the bottleneck? (2) How do we keep that counter consistent across dozens of API gateway pods that all see different slices of the same user's traffic?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: WHY WE NEED IT                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-red">Step 2</span>
+  <h2>Why We Need It</h2>
+  <p>Rate limiting isn't a "nice to have" — it sits between your app and a long list of disasters. Some of those disasters are malicious; some are friendly fire from your own customers' buggy code. Either way, the symptoms look the same: traffic spike, latency tank, paged on-calls.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🛡️ DDoS &amp; brute-force</h3>
+      <p>Distributed denial-of-service attacks try to drown your servers in traffic. Brute-force attacks try to drown a single endpoint (login, password reset, OTP verify) in guesses. Rate limiting throttles both at the edge before they reach app code.</p>
+    </div>
+    <div class="card">
+      <h3>🤖 Abusive scrapers</h3>
+      <p>A scraper that ignores <code>robots.txt</code> can hit <code>/products/:id</code> for every product in your catalog in minutes — pushing your DB cache hit rate from 95% to 30% and slowing every other user. Rate limit by IP and the scraper crawls you at human speed instead.</p>
+    </div>
+    <div class="card">
+      <h3>🐞 Runaway clients</h3>
+      <p>The most common offender isn't malicious — it's a customer's mobile app stuck in a retry loop after a backend hiccup. One bug pushes 2 million phones to retry every 100ms. Without a limiter, that takes you down. With one, each phone gets 429ed until the app ships a fix.</p>
+    </div>
+    <div class="card">
+      <h3>💸 Revenue &amp; cost control</h3>
+      <p>Every request you serve costs CPU, bandwidth, and downstream API calls (Stripe, Twilio, OpenAI). A scraper hammering an endpoint that internally calls GPT-4 can ring up $50K in a weekend. Rate limits cap that exposure to a known maximum.</p>
+    </div>
+    <div class="card">
+      <h3>💰 Tiered pricing</h3>
+      <p>"Free tier: 100 req/min. Pro: 10K req/min. Enterprise: unmetered." That entire SaaS pricing model is enforced by — and only by — a rate limiter. Without it, free users consume paid-tier capacity and your unit economics collapse.</p>
+    </div>
+    <div class="card">
+      <h3>📉 Smoothing spikes</h3>
+      <p>A flash sale, a viral tweet, a Black Friday rush — sudden 10× spikes can melt downstream services that scale slower than the front door. Rate limiting acts as a back-pressure valve, holding excess traffic at 429 while autoscalers catch up.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>Before-and-after numbers:</strong> a typical login endpoint without rate limiting accepts 10,000 brute-force attempts/sec. With "5 failed attempts per IP per minute", the attacker gets 5 × 1,440 minutes = <strong>7,200 attempts per day</strong> from one IP — a 100× slowdown that turns a 90-second crack into 16 years.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-green">Step 3</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Before drawing a single box, pin down exactly what the limiter must do. The non-functional requirements are where this design gets hard.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Limit requests per <strong>entity</strong> (user, IP, API key, or any combination) within a sliding time window</li>
+        <li>Limits must work across a <strong>distributed cluster</strong> — a user calling 10 different gateway pods still hits one shared budget</li>
+        <li>Return a <strong>clear error</strong> on throttle (HTTP 429 + <code>Retry-After</code> header)</li>
+        <li>Per-endpoint and per-tier limits (e.g., free tier gets 100/min, paid 10K/min; <code>/search</code> costs 1 token, <code>/generate-image</code> costs 50)</li>
+        <li>Hot-reload config — admins can change limits without restarting anything</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Highly available</strong> — if the limiter goes down, the app it protects must NOT go down with it</li>
+        <li><strong>Low latency</strong> — adds under <span class="metric">5ms</span> to every request, p99</li>
+        <li><strong>Accurate</strong> — must not let a clever attacker game the time-window boundary to send 2× the limit</li>
+        <li><strong>Memory-efficient</strong> — counter storage must scale to millions of unique limiter keys</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>The hardest non-functional requirement is the first one:</strong> the rate limiter is on the critical path of every single request. If it adds 50ms, your whole API gets 50ms slower. If its database goes down, you have a choice between "block all traffic" (safe, but takes you down) or "let all traffic through" (available, but you lose protection). That trade-off is §13.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: THROTTLING TYPES                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-yellow">Step 4</span>
+  <h2>Throttling Types</h2>
+  <p>"What does throttling mean?" sounds like a one-word answer, but production systems pick from three flavors depending on what kind of system they're protecting. The choice changes the user experience and the strictness of the guarantee.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🪨 Hard Throttling</h3>
+      <p>The number of API requests cannot exceed the limit — ever. Period. Request 101 in a "100/min" window gets a flat 429. <strong>Use when:</strong> the resource you're protecting is a non-negotiable budget (paid OpenAI tokens, third-party SMS sends, financial transactions). <strong>Trade-off:</strong> a momentary 1-request overage on a benign user feels jarring; you waste no resources but lose some good will.</p>
+    </div>
+    <div class="card">
+      <h3>🪶 Soft Throttling</h3>
+      <p>Allow some buffer — say, 10% — over the configured limit. A 100/min limiter actually only 429s at request 111. <strong>Use when:</strong> the protected resource is elastic (a stateless service that can stretch a bit) and you'd rather forgive a benign burst than punish honest users. <strong>Trade-off:</strong> the "real" cap is fuzzy, which makes capacity planning slightly harder.</p>
+    </div>
+    <div class="card">
+      <h3>🌊 Elastic / Dynamic</h3>
+      <p>Allow exceeding the limit if the system has spare capacity right now. Look at downstream CPU/queue depth — if all green, let the burst through; if any sign of stress, drop to hard cap. <strong>Use when:</strong> you have great real-time observability and want to maximize throughput. <strong>Trade-off:</strong> harder to implement; users can't predict whether a request will be allowed, which complicates client retry logic.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>Pick one based on what the limiter protects:</strong> third-party paid APIs → hard. Your own stateless web tier → elastic. SaaS pricing tiers → hard (otherwise free users drift into paid territory and your billing falls apart).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: ALGORITHMS                          -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-purple">Step 5 · CORE</span>
+  <h2>Algorithms — the Core Design Choice</h2>
+  <p>Five algorithms compete for the rate limiter's job. Each is a different answer to the same question: <em>"how do we count requests in a time window?"</em> The trade-offs are <strong>accuracy vs. memory vs. burst-tolerance</strong>. Production systems almost universally pick Sliding Window with Counters — but it helps to walk through why the simpler ones fail first.</p>
+
+  <h3 class="subh">Algorithm 1 — Fixed Window Counter</h3>
+  <p>The naive approach. Bucket time into fixed windows (e.g., one bucket per minute). Maintain a counter per <code>(user, minute)</code>. Increment on each request; reset to zero when the minute rolls over. If the count exceeds the limit, 429.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  R1["Request at 0:59"] --> B1["Bucket 0:00 — 0:59 — count = 10"]
+  R2["Request at 1:00"] --> B2["Bucket 1:00 — 1:59 — count = 10"]
+  B1 -.problem.-> X["20 requests in 1 second through a 10-per-minute limiter"]
+
+  style B1 fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style B2 fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style X fill:#171d27,stroke:#e05252,color:#d4dae5
+    </div>
+  </div>
+
+  <p><strong>The boundary attack:</strong> a clever attacker sends 10 requests at 0:59:59 (filling the first minute's budget) and 10 more at 1:00:00 (the new bucket's fresh budget). In a 1-second window straddling the boundary, they pushed <strong>20 requests through a 10-per-minute limiter</strong>. The limit is broken by 2× at the worst possible time.</p>
+  <p><strong>Memory:</strong> tiny — one counter per user. <strong>Accuracy:</strong> bad. <strong>Verdict:</strong> only for very loose, non-critical limits.</p>
+
+  <h3 class="subh">Algorithm 2 — Rolling / Sliding Window Log</h3>
+  <p>Store the timestamp of <em>every single request</em> from a user. On a new request: drop timestamps older than <code>now - 60s</code>, count what's left, allow if under limit, append the new timestamp. Perfectly accurate — the count is exactly "how many requests in the last 60 seconds".</p>
+
+  <p><strong>Memory disaster:</strong> for a user making 500 req/hour at the limit, you store 500 timestamps. At 8 bytes each plus Redis sorted-set overhead (~40 bytes/entry) that's <strong>24KB per active user</strong>. With 1M active users: <strong>24GB</strong>. With 10M: 240GB. Memory blows up linearly with traffic — a free-tier user with 1 req/min costs 60 bytes; a power user with 500 costs 24KB. Workable for small scale, painful at internet scale.</p>
+
+  <h3 class="subh">Algorithm 3 — Sliding Window with Counters <span style="color:var(--green);font-size:.9rem">← production winner</span></h3>
+  <p>The hybrid that wins. Bucket time at <strong>fine granularity</strong> (e.g., one bucket per minute, or per 10 seconds). For a "500 req/hour" limit using 1-minute buckets: store 60 counters per user (one per minute in the last hour). On a new request, sum the last 60 buckets — if the total is under 500, allow and increment the current bucket; otherwise 429.</p>
+
+  <p><strong>Why this wins:</strong> as buckets roll off the back, the count adjusts smoothly — there's no "boundary moment" where 2× the limit slips through. And memory is bounded — <strong>60 counters per user, regardless of how many requests they make</strong>.</p>
+
+  <h3 class="subh">Algorithm 4 — Token Bucket</h3>
+  <p>Imagine a <strong>literal water bucket with a tap dripping in at constant rate R</strong>. The bucket has capacity B. Each request consumes one token (one drop). If the bucket has at least one token, the request succeeds and a token is removed. Empty bucket = 429.</p>
+
+  <p><strong>Burst-tolerant by design:</strong> if a user is idle for 60 seconds and the tap fills the bucket to capacity B, they can fire B requests in quick succession before being throttled. Used heavily in API gateways (AWS API Gateway, Stripe) because it matches real user behavior — bursty work followed by quiet periods.</p>
+
+  <h3 class="subh">Algorithm 5 — Leaky Bucket</h3>
+  <p>The opposite shape: a queue with a hole in the bottom that drains at constant rate R. Requests enter the queue; if the queue is full, they get 429. Requests leave the queue at rate R, smoothing any input burst into a perfectly steady output.</p>
+
+  <p><strong>Use when:</strong> the downstream system can only handle a steady rate (e.g., a third-party API that hates bursts). <strong>Trade-off:</strong> adds queueing latency — a request might wait in the bucket before getting served.</p>
+
+  <h3 class="subh">Side-by-side</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Algorithm</th><th>Accuracy</th><th>Memory / user</th><th>Burst tolerance</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>Fixed Window</td><td>❌ 2× breach at boundary</td><td><code>~10 B</code></td><td>None</td><td>Loose limits only</td></tr>
+        <tr><td>Sliding Window Log</td><td>✅ Perfect</td><td><code>~24 KB</code></td><td>Low</td><td>Memory disaster at scale</td></tr>
+        <tr><td>Sliding Window Counters</td><td>✅ Within 1 bucket</td><td><code>~1.6 KB</code></td><td>Low</td><td>🏆 Production default</td></tr>
+        <tr><td>Token Bucket</td><td>✅ Good</td><td><code>~20 B</code></td><td>High (configurable)</td><td>Best for bursty APIs</td></tr>
+        <tr><td>Leaky Bucket</td><td>✅ Smooths perfectly</td><td><code>~20 B + queue</code></td><td>Buffers, doesn't allow</td><td>Best for steady downstream</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The interview move:</strong> volunteer Fixed Window first, walk through the boundary attack, propose Sliding Window Log as the "perfectly accurate" answer, point out its memory problem, then arrive at Sliding Window Counters as the production winner. If asked about bursty APIs (Stripe, Twilio), pivot to Token Bucket.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-cyan">Step 6</span>
+  <h2>System APIs</h2>
+  <p>The rate limiter exposes one synchronous call that every API request hits before reaching app code. Treat it as middleware — invisible from the outside, but called millions of times a second internally.</p>
+
+  <span class="code-label cl-green">Internal API surface</span>
+<pre><span class="cmt">// Called by API gateway / app server middleware before any business logic</span>
+checkRateLimit(api_key, identifier, endpoint) → {
+  "allowed":      <span class="ty">boolean</span>,
+  "limit":        <span class="num">100</span>,         <span class="cmt">// configured cap</span>
+  "remaining":    <span class="num">42</span>,          <span class="cmt">// requests left in current window</span>
+  "retry_after":  <span class="num">17</span>           <span class="cmt">// seconds until next slot opens (only when allowed=false)</span>
+}
+
+<span class="cmt">// On allow → forward request to app server, set response headers:</span>
+X-RateLimit-Limit:     100
+X-RateLimit-Remaining: 42
+X-RateLimit-Reset:     1730000000
+
+<span class="cmt">// On deny → return immediately with:</span>
+HTTP/1.1 429 Too Many Requests
+Retry-After: 17
+{ "error": "rate_limit_exceeded", "retry_after_seconds": 17 }</pre>
+
+  <div class="highlight hl-cyan"><strong>Why three identifiers?</strong> <code>api_key</code> identifies the caller (and which tier they're on). <code>identifier</code> is the entity being limited — usually the same as the API key, but sometimes the user_id or IP for hybrid limits. <code>endpoint</code> lets us apply per-endpoint multipliers (a <code>/search</code> request costs 1 token, a <code>/generate-image</code> costs 50). All three combine into the limiter key — typically <code>{tier}:{identifier}:{endpoint_class}</code>.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-orange">Step 7 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart in a multi-server world, and the production shape where every box justifies itself.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Sketch the simplest possible system: each app server keeps an <strong>in-memory hashmap</strong> <code>userId → count</code>. On every request, the server increments its local counter and 429s if the count exceeds the limit. No network calls, no external state, blazing fast.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C["Client"] --> LB["Load Balancer"]
+  LB --> A1["App Server 1 — local map"]
+  LB --> A2["App Server 2 — local map"]
+  LB --> A3["App Server 3 — local map"]
+
+  style A1 fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style A2 fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style A3 fill:#171d27,stroke:#e8743b,color:#d4dae5
+    </div>
+  </div>
+
+  <p>Three concrete failures emerge the moment traffic shows up:</p>
+  <div class="g3">
+    <div class="card">
+      <h3>💥 N× breach across N servers</h3>
+      <p>The load balancer sprays the user's requests across 10 app pods. Each pod sees only 1/10 of the traffic and counts only its own slice. A user with a "100/min" limit can hit each of 10 pods 100 times = <strong>1,000 requests/min through the limiter</strong>. The limit is meaningless in any cluster bigger than one.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Pod restart loses all counts</h3>
+      <p>Counts live only in RAM. A deploy, a crash, or an autoscaler scale-down wipes them. An attacker who's used 99/100 of their budget can force a pod restart (or just wait for the next deploy) and get a fresh budget. Worse — the budget is silently reset, with no audit trail.</p>
+    </div>
+    <div class="card">
+      <h3>💥 No central view for analytics</h3>
+      <p>Operations needs to answer "who's getting throttled the most? which endpoints? which tier?" With per-pod counters, that data is fragmented across 50 pods and gone the moment any of them restart. No dashboards, no abuse detection, no capacity planning.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: Centralized state vs. Distributed counters</h3>
+  <p>The single most important insight in this design is that <strong>rate limiting is fundamentally a shared-state problem</strong>. Multiple app servers must agree on a single counter per limiter key. There are exactly two architectural shapes:</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">🏛️ Centralized counter store</h3>
+      <p>One Redis cluster holds every counter. Every app server hits Redis on every request to atomically increment and check. <strong>Pros:</strong> dead-simple semantics, perfect accuracy, single source of truth for analytics. <strong>Cons:</strong> Redis is now on the critical path — its latency and uptime are yours; bursty traffic creates contention on hot keys.</p>
+      <p><em>Used by:</em> the vast majority of production systems (Stripe, GitHub, AWS API Gateway).</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">🌐 Per-server counters with periodic sync</h3>
+      <p>Each app server keeps a local count and periodically (every 100ms or so) syncs deltas to a central aggregator. The local check is a microsecond; the cluster-wide view is eventually consistent. <strong>Pros:</strong> sub-millisecond latency, no per-request network hop. <strong>Cons:</strong> brief over-limit possible during sync intervals; harder to reason about; rarely worth the complexity.</p>
+      <p><em>Used by:</em> ultra-high-throughput edge systems (Cloudflare's older limiters) where the network hop to a central store is itself the bottleneck.</p>
+    </div>
+  </div>
+
+  <p>Most production systems pick the centralized Redis path. Redis pipelining, Lua scripting, and proximity (same data center as the app pods) keep the latency tax to <strong>under 1ms p99</strong>, which is well within the 5ms budget. We'll build the rest of this design around that choice.</p>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered — find its matching card below to see what it does and crucially what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client — Browser, Mobile App, Server SDK"]
+
+  subgraph EDGE["Request Plane"]
+    GW["② API Gateway / Web Server"]
+    MW["③ Rate Limiter Middleware"]
+    APP["⑥ App Server"]
+    TR["⑦ Throttle Response Service"]
+  end
+
+  subgraph COUNT["Counter Plane"]
+    REDIS[("⑤ Counter Store — Redis Cluster, sharded")]
+  end
+
+  subgraph CFG["Config Plane"]
+    CONF["④ Limit Configuration Service"]
+    UI["⑨ Configuration UI / API"]
+  end
+
+  subgraph OBS["Observability"]
+    AN["⑧ Analytics Pipeline — Kafka, Dashboards"]
+  end
+
+  CL --> GW
+  GW --> MW
+  MW -->|"INCR + check"| REDIS
+  MW -->|"allowed"| APP
+  MW -->|"denied"| TR
+  TR -->|"429 + Retry-After"| CL
+  APP -->|"200 OK"| CL
+
+  MW -.reads limits.-> CONF
+  UI -.publishes.-> CONF
+  MW -.throttle events.-> AN
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style GW fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style MW fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style APP fill:#171d27,stroke:#38b265,color:#d4dae5
+  style TR fill:#171d27,stroke:#e05252,color:#d4dae5
+  style REDIS fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style CONF fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style UI fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style AN fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client</h3>
+      <p>Anything that calls our API — a browser, a mobile app, a partner's server-side SDK, or a malicious script. From the client's point of view, the rate limiter is invisible until it isn't: most requests get a 200, but a small percentage come back as 429 with a <code>Retry-After</code> header telling them when to back off. Well-behaved clients honor that header; abusive ones ignore it and burn through 429s until they give up.</p>
+      <p><strong>Solves:</strong> nothing on its own — but the client experience drives the whole 429+Retry-After contract. If the limiter just dropped requests silently, clients would retry harder and make things worse.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> API Gateway / Web Server</h3>
+      <p>The front door. Terminates TLS, parses the HTTP request, extracts the <code>api_key</code> and user identity from headers/JWTs. In production this is nginx, Envoy, or a managed gateway like AWS API Gateway or Kong. The gateway runs the rate-limiter middleware as the very first plugin in its filter chain — before any auth, routing, or app code.</p>
+      <p><strong>Solves:</strong> a single chokepoint where every external request must pass. Without a gateway tier, you'd have to bolt rate limiting into every microservice — duplicated code, inconsistent behavior, easy to miss.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">③</span> Rate Limiter Middleware</h3>
+      <p>The brain. A small library (or sidecar) loaded into the API gateway that runs on every request. Per request, it: builds the limiter key (e.g., <code>"free:user-42:/search"</code>), looks up the limit from the <strong>Configuration Service</strong>, runs the sliding-window algorithm against the <strong>Counter Store</strong>, and returns <code>{allowed, retry_after}</code>. Stays in-process for latency reasons — a sidecar adds 1-2ms of localhost loopback that we'd rather not pay.</p>
+      <p><strong>Solves:</strong> running the algorithm itself. Without this layer, you'd be embedding rate-limit logic inside each handler — guaranteed to drift, guaranteed to be inconsistent across services.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">④</span> Limit Configuration Service</h3>
+      <p>Holds the rules: "free tier = 100/min on /search, 5/min on /login; paid tier = 10K/min and 100/min". Backed by a small DB (Postgres, etcd) and aggressively cached in the middleware (refreshed every 10 seconds). When an admin changes a limit in the UI, every middleware instance picks up the new value within seconds — no restarts.</p>
+      <p><strong>Solves:</strong> hot-reloading limits and per-tier/per-endpoint customization. Without a config service, every limit change would require a code deploy across every gateway pod — a bad afternoon waiting to happen.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑤</span> Counter Store (Redis Cluster)</h3>
+      <p>Where the actual counts live. A Redis cluster sharded by limiter key (consistent hashing) — for a "1 million users" workload at 1.6KB per user, that's 1.6GB of hot data, easily a small Redis cluster of 3 shards. Each request hits Redis exactly once via an <strong>atomic Lua script</strong> that does the read-window-sum-and-INCR in a single round trip. Redis's single-threaded event loop guarantees atomicity for free.</p>
+      <p><strong>Solves:</strong> the shared-state problem from Pass 2. Every gateway pod writes to and reads from the same Redis, so 10 pods seeing 10 slices of one user's traffic still agree on the total. Without a centralized store, you're back to the N× breach.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑥</span> App Server</h3>
+      <p>The actual business logic — the thing the rate limiter exists to protect. Search service, payment service, ML inference, whatever. Receives only the requests that survived the rate-limiter check. From its point of view, traffic looks pre-shaped — no spikes above the cluster-wide cap.</p>
+      <p><strong>Solves:</strong> being able to do its real job. Without rate limiting in front, the app server has to defensively size for peak abusive load (e.g., a 10× DDoS) — meaning 10× the infrastructure bill, idle most of the time.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑦</span> Throttle Response Service</h3>
+      <p>The "you're throttled" responder. When the middleware decides a request should be denied, the throttle responder constructs the 429 response with the right headers (<code>Retry-After</code>, <code>X-RateLimit-Reset</code>), maybe a friendly JSON body, and sends it directly back to the client — without ever touching the app server. Often this is just a helper function inside the middleware, but conceptually it's its own concern.</p>
+      <p><strong>Solves:</strong> giving clients machine-readable information about when to retry. Without proper headers, clients fall back to exponential backoff with jitter and may take minutes to recover from a 1-second throttle.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑧</span> Analytics Pipeline</h3>
+      <p>Every throttle event is fired async to a Kafka topic: <code>{ts, key, endpoint, tier, count, limit}</code>. Downstream consumers fan out: real-time dashboards ("which API keys are getting throttled the most right now?"), abuse detection ("this IP just hit 429 a thousand times — likely a script"), and capacity planning ("free-tier traffic is approaching 70% of capacity, time to push the upsell"). Crucially this is fire-and-forget — the middleware never waits for the event to be acknowledged.</p>
+      <p><strong>Solves:</strong> visibility into <em>why</em> the system is throttling. Without analytics you can see throttles happening but never know which keys, which endpoints, or whether a customer is about to churn because they keep hitting their cap.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑨</span> Configuration UI / API</h3>
+      <p>An admin interface where ops can adjust limits ("bump enterprise customer X to 50K/min"), maintain blacklists ("permanently block IP 192.0.2.1"), maintain allowlists ("internal services skip rate limiting"), and roll out new limit policies. Changes go through the Configuration Service ④ which then propagates to every middleware ③ within ~10 seconds.</p>
+      <p><strong>Solves:</strong> giving humans control. Without it, every limit change requires a code review, deploy, and rollout — making the system unable to react in real time when an enterprise customer needs an emergency bump or an attack pattern is detected.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Sarah's runaway script at 14:02</h3>
+  <p>Sarah's data-pipeline script has a bug — instead of polling <code>/api/orders</code> once a minute, it polls every 100ms after a backend hiccup confused its retry logic. At 14:02:00 the script has fired 600 requests/sec for the last two seconds. Her plan limit is <strong>100 req/min</strong>. Here's what happens:</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>Single request — request #101 at 14:02:01</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah's script ① fires <code>GET /api/orders</code> with her API key.</li>
+        <li>Request lands on one of 8 <strong>API Gateway</strong> ② pods via the load balancer.</li>
+        <li>The <strong>Rate Limiter Middleware</strong> ③ reads from its in-process cache: <strong>Configuration Service</strong> ④ says her tier is "free, 100/min on this endpoint".</li>
+        <li>Middleware builds key <code>free:sarah-api-key:orders</code> and runs the Lua script against <strong>Redis</strong> ⑤. Lua atomically: sums the last 60 1-minute buckets → result = <span class="metric">147</span>.</li>
+        <li>147 &gt; 100 → middleware tells the <strong>Throttle Response Service</strong> ⑦: deny.</li>
+        <li>Response: <code>HTTP 429</code>, <code>Retry-After: 38</code> (next slot opens in 38 seconds), <code>X-RateLimit-Remaining: 0</code>. Sent directly to Sarah's client. <strong>App Server</strong> ⑥ never saw the request.</li>
+        <li>Middleware fires a fire-and-forget event to Kafka → <strong>Analytics</strong> ⑧ sees Sarah's key throttled. <em>Total elapsed: 3.2ms.</em></li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h3>Cluster view — how all 8 pods stay in sync</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah's 600 req/sec is sprayed across 8 gateway pods by the LB — each pod sees roughly 75 req/sec from her.</li>
+        <li>Each pod's middleware computes the same key <code>free:sarah-api-key:orders</code> (deterministic from the request).</li>
+        <li>All 8 pods INCR the same Redis key — Redis's single-threaded event loop serializes the writes.</li>
+        <li>Whichever pod increments past 100 first sees a count over the limit; it 429s. The next pod's INCR returns 101+ and also 429s.</li>
+        <li>Within ~150ms, all 8 pods are 429-ing all of Sarah's traffic — the cluster behaves as if it were one server with one counter.</li>
+        <li>Meanwhile a different user, Raj, who's well under his quota, sails through unaffected — his key hashes to a different Redis shard and his counter is independent.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around three insights — (1) <strong>rate limiting is a shared-state problem</strong>, so we centralize counters in Redis instead of per-pod maps; (2) <strong>the algorithm runs in-process</strong> in the gateway middleware to keep the per-request latency under 5ms; (3) <strong>config and analytics live on separate planes</strong>, so admins can change limits in real time and ops can see what's being throttled, without slowing down the request path. Every box in the production diagram removes one of the failure modes from Pass 1.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: SLIDING WINDOW DETAIL               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-yellow">Step 8</span>
+  <h2>Sliding Window with Counters — The Algorithm in Detail</h2>
+  <p>Now we look inside the middleware. For a "500 req/hour" limit at 1-minute granularity, we maintain 60 counters per limiter key. The algorithm in pseudocode:</p>
+
+  <span class="code-label cl-yellow">Sliding window with counters</span>
+<pre><span class="kw">function</span> <span class="fn">checkAndIncrement</span>(key, limit, windowSec, granularitySec):
+  now      = currentTimeSec()
+  bucket   = now / granularitySec               <span class="cmt">// e.g. 1-min bucket id</span>
+  windowStart = now - windowSec                 <span class="cmt">// 1 hour ago</span>
+
+  <span class="cmt">// 1. Drop buckets older than windowStart</span>
+  redis.<span class="fn">ZREMRANGEBYSCORE</span>(key, <span class="num">0</span>, windowStart)
+
+  <span class="cmt">// 2. Sum surviving buckets</span>
+  buckets = redis.<span class="fn">ZRANGE</span>(key, <span class="num">0</span>, <span class="num">-1</span>, WITHSCORES)
+  total   = <span class="fn">sum</span>(buckets.values())
+
+  <span class="cmt">// 3. Decide</span>
+  <span class="kw">if</span> total &gt;= limit:
+    <span class="kw">return</span> { allowed: <span class="kw">false</span>, retryAfter: <span class="fn">computeRetryAfter</span>(buckets) }
+
+  <span class="cmt">// 4. Increment current bucket</span>
+  redis.<span class="fn">ZINCRBY</span>(key, <span class="num">1</span>, bucket)
+  redis.<span class="fn">EXPIRE</span>(key, windowSec + granularitySec)
+  <span class="kw">return</span> { allowed: <span class="kw">true</span>, remaining: limit - total - <span class="num">1</span> }</pre>
+
+  <p>In production all four Redis ops are wrapped in a <strong>single Lua script</strong> sent to Redis once — atomic by construction (next section), and exactly one network round trip.</p>
+
+  <h3 class="subh">Memory math — the punch line of why this algorithm wins</h3>
+  <p>Per limiter key: 60 buckets × (timestamp 4B + counter 2B + Redis sorted-set overhead ~20B) = <span class="metric">~1.6 KB / key</span>.</p>
+  <p>At 1 million active users (one key per user): <span class="metric">~1.6 GB</span> of hot data — fits on a single Redis node with room to spare.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Algorithm</th><th>Memory / user</th><th>1M users</th><th>10M users</th></tr></thead>
+      <tbody>
+        <tr><td>Sliding Window Log (one entry per request, 500 req/hr cap)</td><td><code>~12 KB</code></td><td><code>12 GB</code></td><td><code>120 GB</code></td></tr>
+        <tr><td>Sliding Window Counters (60 buckets at 1-min granularity)</td><td><code>~1.6 KB</code></td><td><code>1.6 GB</code></td><td><code>16 GB</code></td></tr>
+        <tr><td><strong>Memory savings</strong></td><td><strong>~86%</strong></td><td><strong>~10 GB saved</strong></td><td><strong>~104 GB saved</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>And the accuracy cost is <strong>at most one bucket's width of slop</strong> — at 1-minute granularity, a user might briefly see their effective limit be off by up to ~8 requests in a 500/hour cap (well under 2%). For most production use cases this is invisible.</p>
+
+  <div class="highlight hl-yellow"><strong>The granularity dial:</strong> finer buckets (10s instead of 60s) → more accurate, more memory (360 buckets/key × 26B = 9KB/key). Coarser buckets (5min) → less accurate, less memory. Pick the smallest bucket whose total memory still fits comfortably — usually 1 minute for hour-window limits.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: ATOMICITY                           -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-red">Step 9</span>
+  <h2>Atomicity &amp; Race Conditions</h2>
+  <p>Here's a subtle bug that bites every naive implementation. Picture two API gateway pods, each receiving one of Sarah's requests at the same millisecond. Both fetch <code>count = 99</code> from Redis. Both check "99 &lt; 100, allowed". Both increment to 100. Sarah just made <strong>request 101 in a 100/min window</strong> — and worse, <em>two separate gateways each think they enforced the limit correctly</em>. The bug is invisible, intermittent, and gets worse as you add more gateway pods.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant G1 as Gateway A
+  participant G2 as Gateway B
+  participant R as Redis
+
+  Note over G1,G2: Both receive request at the same millisecond
+  G1->>R: GET counter
+  R-->>G1: 99
+  G2->>R: GET counter
+  R-->>G2: 99
+  Note over G1,G2: Both check "99 &lt; 100, allowed"
+  G1->>R: SET counter = 100
+  G2->>R: SET counter = 100
+  Note over R: Counter = 100 — but TWO requests went through!
+    </div>
+  </div>
+
+  <h3 class="subh">Three ways to fix it</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>🟢 Lua script (winner)</h3>
+      <p>Bundle "read window sum, check, INCR" into a single Lua script and ship it to Redis with <code>EVAL</code>. Redis runs Lua scripts atomically on its single-threaded event loop — nothing else can interleave. One network round trip. Simple to reason about. <strong>This is the production default.</strong></p>
+    </div>
+    <div class="card">
+      <h3>🟡 MULTI / EXEC</h3>
+      <p>Wrap the ops in a Redis transaction. Atomic execution, but no <em>conditional logic</em> inside — you can't say "INCR only if the sum is below the limit" in a MULTI block. Forces a two-phase pattern (read, compute, write) with optimistic retry, which gets ugly fast.</p>
+    </div>
+    <div class="card">
+      <h3>🟡 WATCH + CAS</h3>
+      <p>Optimistic concurrency: WATCH the key, read, decide, EXEC. If anyone modified the key between WATCH and EXEC, the EXEC fails and you retry. Works but performance degrades sharply under contention — for hot keys (e.g., a viral API key getting hammered), retry storms can destroy throughput.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>Lua wins for one reason above all:</strong> it's the only option that lets you express "atomically: do the math, decide, mutate, and tell me the result, in one network call." MULTI lacks the conditional; WATCH lacks the contention safety. In every production rate limiter I've ever read the source of, Lua is the answer.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: SHARDING & CACHING                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-green">Step 10</span>
+  <h2>Data Sharding &amp; Caching</h2>
+  <p>One Redis box can comfortably do ~100K ops/sec. At 50K req/sec across all our endpoints, one node holds. At 500K req/sec, it doesn't. We shard.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Shard by limiter key (consistent hashing)</h3>
+      <p>Compute <code>shard = consistent_hash(limiter_key) mod N</code>. The same key always goes to the same shard, so reads and writes for one user always coordinate on one Redis node. Use <strong>consistent hashing</strong> (not modulo) so adding/removing a shard relocates only 1/N of keys, not all of them — important when you grow from 3 to 6 shards next year.</p>
+    </div>
+    <div class="card">
+      <h3>❌ Read replicas don't help</h3>
+      <p>Rate limiting is <em>always</em> a write — every request increments a counter. Read replicas only buy you free read scaling, which we don't need. Stick with primaries; scale horizontally by sharding instead. Replicas only earn their keep as failover targets.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">In-process L1 cache for limit configuration</h3>
+  <p>The <em>limit values</em> ("free tier = 100/min") change rarely — every middleware caches them in-process for ~10 seconds, refreshing in the background. This avoids hitting the Configuration Service ④ on every request. The <em>counter</em> can never be cached in-process for the reasons in §7 Pass 1, but the <em>limit lookup</em> absolutely should be.</p>
+
+  <div class="highlight hl-green"><strong>Sharding strategy summary:</strong> per-user limits → shard by user_id. Per-IP limits → shard by IP. Per-API-key limits → shard by api_key. The choice of identifier is also the choice of partitioning key — pick the one that distributes hot keys evenly.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: BY IP vs USER vs API KEY           -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-blue">Step 11</span>
+  <h2>Limit by IP vs. User vs. API Key</h2>
+  <p>"Limit by what?" is one of the most consequential design questions and it's surprisingly nuanced. Each identifier has a different blast radius and different blind spots.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🌐 By IP</h3>
+      <p><strong>Pros:</strong> works before any login or auth — the only option for protecting <code>/login</code>, <code>/signup</code>, and anonymous endpoints. Catches attackers who haven't signed up.</p>
+      <p><strong>Cons:</strong> <em>NAT / shared IPs</em> — an entire office building, college campus, or coffee shop sits behind one IP. Throttling that IP punishes hundreds of innocent users. <em>IPv6</em> — the address space is huge, an attacker can rotate through millions of IPs trivially. <em>Mobile carriers</em> rotate IPs frequently.</p>
+    </div>
+    <div class="card">
+      <h3>👤 By User ID</h3>
+      <p><strong>Pros:</strong> precise and fair — tied to one human, regardless of network. The right choice for any authenticated endpoint where you can identify the user.</p>
+      <p><strong>Cons:</strong> requires login first — useless on the auth endpoints themselves. An attacker brute-forcing <code>POST /login {user: "sarah"}</code> doesn't have <em>their</em> user_id; they have Sarah's email. You'd be limiting Sarah, not the attacker.</p>
+    </div>
+    <div class="card">
+      <h3>🔑 By API Key</h3>
+      <p><strong>Pros:</strong> the right choice for B2B APIs — every paying customer gets a key, and the limit ties to billing. Perfect for SaaS pricing tiers.</p>
+      <p><strong>Cons:</strong> useless for unauthenticated traffic. Also, customers may share keys across many services — you can't distinguish noisy-neighbor microservices behind one key.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">The hybrid pattern — login endpoints</h3>
+  <p>Login is the perfect storm: you can't limit by user_id (the attacker doesn't have their own — they're guessing Sarah's), and limiting only by IP gives an attacker on a botnet free reign. The production answer: <strong>limit by both IP AND target username, simultaneously</strong>.</p>
+
+  <span class="code-label cl-blue">Login endpoint hybrid limit</span>
+<pre>POST /login { "username": "sarah", "password": "..." }
+
+<span class="cmt">// Two independent limiter checks — fail if either trips</span>
+checkRateLimit(key=<span class="str">"login:ip:"</span> + request.ip,         limit=<span class="num">20</span>, window=<span class="num">60</span>)
+checkRateLimit(key=<span class="str">"login:user:"</span> + body.username,    limit=<span class="num">5</span>,  window=<span class="num">60</span>)
+
+<span class="cmt">// IP cap = 20/min: stops one attacker from hammering many users</span>
+<span class="cmt">// User cap = 5/min: stops a botnet from each-trying-once at one target user</span></pre>
+
+  <p>The IP limit catches credential-stuffing scripts. The username limit catches distributed brute-force where each bot tries Sarah's password once. Together they close both holes.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: TIERING & CONFIGURATION            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-cyan">Step 12</span>
+  <h2>Tiering &amp; Configuration</h2>
+  <p>Not all customers are equal, and not all endpoints are equal. The configuration service holds a 2D matrix: <strong>tier × endpoint → limit</strong>.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Tier</th><th>/search (cheap)</th><th>/api/orders (medium)</th><th>/generate-image (expensive)</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Free</strong></td><td><code>100 / min</code></td><td><code>20 / min</code></td><td><code>5 / hour</code></td></tr>
+        <tr><td><strong>Pro</strong></td><td><code>10K / min</code></td><td><code>1K / min</code></td><td><code>100 / hour</code></td></tr>
+        <tr><td><strong>Enterprise</strong></td><td>unmetered</td><td><code>50K / min</code></td><td><code>5K / hour</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="subh">Per-endpoint cost multipliers</h3>
+  <p>Some requests cost more downstream than others. A search query touches Elasticsearch for ~5ms; an image-generation request burns 2 seconds of GPU. Model the difference with <strong>token costs</strong>: <code>/search</code> consumes 1 token, <code>/generate-image</code> consumes 50. The user has a single per-minute budget of N tokens, deducted per request. This is exactly how OpenAI's API limits work.</p>
+
+  <h3 class="subh">Hot-reload config without restart</h3>
+  <p>The middleware polls the Configuration Service every 10 seconds for updates (or subscribes to a pub/sub channel for instant invalidation). Admin changes a limit in the UI ⑨ → Configuration Service ④ writes new value → all middleware ③ instances pick it up within seconds. <strong>Critical:</strong> never restart gateway pods to push a limit change — that's an operational nightmare and the whole reason this service exists.</p>
+
+  <div class="highlight hl-cyan"><strong>The "noisy neighbor enterprise" pattern:</strong> sometimes a single enterprise customer has a legitimate need for a bump (Black Friday, product launch). The UI makes this a one-click operation: admin types "bump customer X to 5× normal for 4 hours". The change propagates in 10 seconds and auto-reverts after the window closes.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: FAILURE MODES                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-red">Step 13</span>
+  <h2>Failure Modes — What if Redis Dies?</h2>
+  <p>The rate limiter sits on the critical path of every request. If Redis goes down, the middleware can't check limits. You have <strong>two choices</strong>, and they're both painful.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✅ Fail Open — let traffic through</h3>
+      <p>If Redis is unreachable, the middleware logs a loud alarm and <strong>allows the request</strong>. The protected service handles the traffic without rate limiting for the duration of the outage.</p>
+      <p><strong>Pros:</strong> users see no impact from a limiter outage. Your availability SLO is preserved. Your engineers can fix Redis without the entire site being down.</p>
+      <p><strong>Cons:</strong> during the outage, you have no protection — an attacker who notices could pile on. A noisy customer could exhaust downstream capacity.</p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">⚠️ Fail Closed — 429 everyone</h3>
+      <p>If Redis is unreachable, the middleware <strong>denies all requests</strong> with 429 (or 503). The protected service stays safe but the user-visible service is effectively down.</p>
+      <p><strong>Pros:</strong> backend is protected from any abuse during the outage. Strong consistency with the "limits are sacred" promise.</p>
+      <p><strong>Cons:</strong> a Redis blip takes down your entire API. Your availability SLO craters. Customers churn.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">The production answer: fail open + circuit breaker + L1 fallback</h3>
+  <p>Almost every production system picks <strong>fail open</strong>. The reasoning: rate limiting is a defense, not a feature — losing it for 60 seconds is a manageable security risk; losing your entire API is a business disaster. Three additional safeguards make fail-open less scary:</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🔌 Circuit breaker</h3>
+      <p>Wrap Redis calls in a circuit breaker. After 5 consecutive failures, the breaker opens and the middleware stops calling Redis for 30 seconds — saving the latency of timeout-waiting on every request. Auto-recovery via probe requests.</p>
+    </div>
+    <div class="card">
+      <h3>💾 In-process L1 fallback</h3>
+      <p>Each middleware also runs a tiny per-pod sliding-window counter as a fallback. When Redis is down, the middleware uses local counts only. The cluster-wide guarantee weakens to "each pod still enforces its share" — not perfect but much better than zero protection.</p>
+    </div>
+    <div class="card">
+      <h3>🚨 Loud alarming</h3>
+      <p>Every fail-open event pages on-call. The expectation is: "we're vulnerable right now, fix Redis NOW". Combined with the L1 fallback, the window of total exposure is short.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The decision is industry-wide:</strong> Stripe, GitHub, Cloudflare, AWS — all fail open. The one exception is regulated workloads (banking, healthcare) where over-limit traffic could cause regulatory issues; those occasionally fail closed and accept the availability hit.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-blue">Step 14</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">Fixed window vs. sliding window — when do you pick each?</div>
+  <div class="ans"><strong>Fixed window</strong> only when the limit is loose and the boundary attack is acceptable (e.g., "max 10K requests/day for batch reporting"). <strong>Sliding window with counters</strong> for everything else — it's strictly better than fixed at a tiny memory cost. <strong>Sliding window log</strong> only when perfect accuracy is required and you have very few entities to track (e.g., a financial trading API with 100 institutional clients).</div>
+
+  <div class="iq">Why Redis over MySQL or DynamoDB for the counter store?</div>
+  <div class="ans"><strong>Three reasons.</strong> (1) <strong>Latency:</strong> Redis is in-memory with ~0.5ms p99 ops; MySQL on disk is 5-10ms minimum. We have a 5ms total budget. (2) <strong>Atomicity:</strong> Redis Lua scripts give us free serializable atomicity on a single key, no transaction overhead. (3) <strong>Throughput:</strong> a single Redis node does 100K+ ops/sec on commodity hardware; MySQL tops out 10× lower. DynamoDB is fast but adds ~5ms of network hop and you pay per request — at our QPS that bill becomes silly fast.</div>
+
+  <div class="iq">How do you handle Redis being completely down?</div>
+  <div class="ans"><strong>Fail open with safeguards</strong> (see §13). Circuit-break after 5 failed Redis calls so we stop wasting latency on timeouts. Each middleware pod runs a tiny per-pod fallback counter so we still have <em>some</em> protection during the outage. Pages fire immediately to on-call. The reasoning: a rate limiter outage shouldn't take down the service it's protecting — that turns a small security risk into a total availability disaster.</div>
+
+  <div class="iq">How do you do distributed rate limiting across regions?</div>
+  <div class="ans">Two patterns. <strong>Pattern A — per-region limits with N× cap:</strong> if global cap is 1000/min, give each of 4 regions 250/min — no cross-region coordination needed. Easy, but a customer can hit 250 in one region and 250 in another simultaneously. Acceptable for soft limits. <strong>Pattern B — central global counter with regional CRDT-style sync:</strong> regions periodically push deltas to a global Redis. Eventually consistent, brief over-cap possible. Use Pattern A unless the limit must be globally exact.</div>
+
+  <div class="iq">How do you avoid the thundering herd at the top of the hour?</div>
+  <div class="ans">Two things. (1) <strong>Counters expire naturally</strong> in sliding-window — old buckets just roll off, so there's no "reset everyone at once" event. This is a built-in advantage of sliding window over fixed window. (2) When clients <em>do</em> retry after a 429, our <code>Retry-After</code> header includes a <strong>random jitter</strong> (e.g., 17 ± 5 seconds) so even a million clients hitting 429 at the same second don't all retry at the same second. Standard backoff-with-jitter pattern.</div>
+
+  <div class="iq">How do you rate-limit the login endpoint when login itself needs protecting?</div>
+  <div class="ans"><strong>Hybrid limit by both IP and target username</strong> (§11). The IP limit (e.g., 20 attempts/min) catches credential-stuffing scripts hammering one IP. The username limit (e.g., 5 attempts/min on Sarah's email) catches distributed botnets where each bot tries Sarah's password once. Both checks run; either trip causes a 429. CAPTCHA after the first 429 is the production-grade addition — degrades the attack to one-attempt-per-CAPTCHA-solve.</div>
+
+  <div class="iq">How does the limiter add only 5ms when it's on every request?</div>
+  <div class="ans"><strong>Co-locate Redis with the gateway tier.</strong> Same VPC, same AZ if possible — RTT is sub-millisecond. <strong>Lua script for one round-trip</strong> instead of multiple. <strong>In-process cache for limit values</strong> so we don't hit the Configuration Service. <strong>Connection pooling and pipelining</strong> for Redis. Add it all up: typical p99 is 1-2ms, well under the 5ms budget.</div>
+
+  <div class="iq">A user complains they're being throttled but their dashboard shows they're under quota. What's likely wrong?</div>
+  <div class="ans"><strong>Three usual suspects.</strong> (1) <strong>Cluster-wide vs. per-region counts:</strong> their dashboard shows their per-region count, but the limit is global, and they're hitting a different region too. (2) <strong>Token cost not visible:</strong> they think they're at 50 requests/100 limit, but each request to <code>/heavy-endpoint</code> costs 5 tokens — they're actually at 250/100. (3) <strong>Time skew:</strong> their dashboard polls every 60s but the sliding window updates every second; the dashboard lags. Fix: surface "tokens remaining" not "requests remaining" in the dashboard, with a real-time counter from the same Redis the limiter reads.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "It's a sliding-window-with-counters algorithm running as in-process middleware in the API gateway, with state centralized in a sharded Redis cluster, made atomic via Lua scripts, configured by a hot-reloadable config service, and designed to fail open behind a circuit breaker so a Redis outage never takes the API down."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

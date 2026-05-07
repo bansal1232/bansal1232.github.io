@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Distributed Cache (Memcached / Redis Cluster) — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* HERO */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* LAYOUT */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* SIDEBAR TOC */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* SECTION */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* CODE */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* DIAGRAM */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* HIGHLIGHT BOX */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* INTERVIEW Q */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* COMPONENT NUMBER BADGE */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* METRIC PILL */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Distributed <span>Cache</span></h1>
+  <p class="sub">From "one Redis box" to a sharded, replicated, consistent-hashed cluster — how Memcached and Redis Cluster deliver sub-millisecond reads at 100M QPS</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is a Distributed Cache?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">High-Level Architecture</a></li>
+      <li><a href="#s6">Consistent Hashing</a></li>
+      <li><a href="#s7">Replication Strategies</a></li>
+      <li><a href="#s8">Eviction Policies</a></li>
+      <li><a href="#s9">Cache Invalidation</a></li>
+      <li><a href="#s10">Cache Aside Pattern</a></li>
+      <li><a href="#s11">Hot Key Problem</a></li>
+      <li><a href="#s12">Thundering Herd</a></li>
+      <li><a href="#s13">Persistence &amp; Recovery</a></li>
+      <li><a href="#s14">Topology Changes</a></li>
+      <li><a href="#s15">Multi-Region</a></li>
+      <li><a href="#s16">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS A DISTRIBUTED CACHE?        -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is a Distributed Cache?</h2>
+  <p>It's 7:30pm on Cyber Monday. A new product page goes viral on TikTok and the link starts pinging Maya's e-commerce site at <strong>1 million requests per second</strong>. Without a cache, every single page load runs the same Postgres query — <code>SELECT * FROM products WHERE id = 42</code> — and a single Postgres box that comfortably serves 20K reads per second now drowns in fifty times its rated load. The DB CPU pegs at 100%, queries pile up in the wait queue, and within 90 seconds the entire shop returns 503s. A multi-million-dollar sales day, gone.</p>
+
+  <p>Now imagine the same scenario with a <strong>distributed cache</strong> sitting in front of Postgres. The first user who loads the page runs the DB query — 8 milliseconds — and the result gets stashed in the cache. Every other user for the next hour gets the cached copy in <strong>0.4 milliseconds</strong>, served straight from RAM on a cache server. 99% of those 1M requests never touch Postgres at all. The DB sees its normal trickle, the page stays fast, and Maya keeps every dollar.</p>
+
+  <p>A distributed cache is, in plain English, a <strong>network-accessible, in-memory key-value store that sits between your application and your slower database</strong>. "Distributed" because no single box has enough RAM (or enough network bandwidth) to serve all the traffic — so we spread the data across many boxes and route each key to the right one. Memcached and Redis Cluster are the two most famous open-source examples; AWS ElastiCache and Google Memorystore are the managed equivalents.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How do we split the data across N boxes so that adding or removing a box doesn't melt the cluster? (2) How do we keep the cache "fresh enough" so users don't see stale prices, stale inventory, or yesterday's tweet count?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Before drawing a single ring or arrow, pin down what the cache must do — and what it explicitly will not do. A cache is not a database; setting that boundary up front prevents half the design mistakes.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li><code>GET key</code> — fetch a value by key, return null on miss</li>
+        <li><code>SET key value [TTL]</code> — store a value, optionally with time-to-live</li>
+        <li><code>DELETE key</code> — explicit invalidation</li>
+        <li><strong>Batch ops</strong> — <code>MGET k1 k2 k3</code>, <code>MSET</code> — amortize network round trips</li>
+        <li><strong>Atomic ops</strong> — <code>INCR key</code>, <code>CAS key version value</code> for counters and optimistic locks</li>
+        <li>TTL-based expiration so stale entries clean themselves up</li>
+        <li><em>Optional:</em> pub/sub channels for fan-out notifications (Redis only)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Sub-millisecond latency p99</strong> — anything slower defeats the point of a cache</li>
+        <li><strong>1M+ QPS per node</strong>, scaling linearly to 100M+ across the cluster</li>
+        <li><strong>Horizontally scalable</strong> to hundreds of nodes</li>
+        <li><strong>99.99% availability</strong> — any single node can die without taking the cluster down</li>
+        <li><strong>Fault-tolerant</strong> — no permanent data loss for replicated entries</li>
+      </ul>
+      <h3 style="margin-top:1rem">🚫 Out of Scope</h3>
+      <ul>
+        <li>Strong durability — caches are not the source of truth</li>
+        <li>Complex queries, joins, secondary indexes</li>
+        <li>ACID transactions across multiple keys</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The mental anchor:</strong> a cache trades durability for speed. If the cluster lost everything tomorrow, the application should keep working — slower, hammering the DB, but working. Anything you cannot afford to lose belongs in the database, not the cache.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers drive every box on the diagram. Let's size for a realistic large-scale deployment — what you'd find at a top-100 web property.</p>
+
+  <h3 class="subh">Traffic &amp; data targets</h3>
+  <p>Target: <strong>100 million requests per second</strong> across the cluster, with <strong>1 TB of total cached data</strong>, ~95% read / 5% write split (typical for read-through caches). Average value size: 1 KB.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Cluster QPS</h3><p><span class="metric">100M req/sec</span></p><p>Aggregate read+write</p></div>
+    <div class="card"><h3>Per-Node QPS</h3><p><span class="metric">~200K req/sec</span></p><p>Headroom for hot shards</p></div>
+    <div class="card"><h3>Per-Node RAM</h3><p><span class="metric">64 GB</span></p><p>1 TB / 16 primaries</p></div>
+    <div class="card"><h3>Cluster Size</h3><p><span class="metric">32 nodes</span></p><p>16 primary + 16 replica</p></div>
+  </div>
+
+  <h3 class="subh">Network bandwidth</h3>
+  <p>200K req/sec × 1 KB/value = <code>200 MB/sec</code> per node, or <strong>~1.6 Gbps</strong>. That fits comfortably within a 10 Gbps NIC — but it's a real number that constrains how hot a single shard can get before we have to split it.</p>
+
+  <h3 class="subh">Why 16 primaries (not 8, not 32)?</h3>
+  <p>Pick the smallest cluster that meets every constraint with headroom. 8 nodes × 200K = 1.6M QPS — way under target. 32 nodes — overspending and harder to operate. 16 nodes × ~200K = 3.2M sustained, with bursting room to 100M during traffic spikes assisted by the application's own request pipelining and batching. Each primary gets a replica, so the operational cluster is 32 nodes total.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Total cached data</td><td><code>1 TB</code></td><td>Forces sharding — no single box has 1 TB of RAM</td></tr>
+        <tr><td>Per-node RAM</td><td><code>64 GB</code></td><td>Standard cache instance class (r6g.2xlarge, etc.)</td></tr>
+        <tr><td>Cluster QPS</td><td><code>100M</code></td><td>Drives node count and replication degree</td></tr>
+        <tr><td>p99 latency target</td><td><code>under 1ms</code></td><td>Forces in-memory storage and same-AZ deployment</td></tr>
+        <tr><td>Replicas per primary</td><td><code>1-2</code></td><td>Survives node + AZ failure without data loss</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>The Redis/Memcached protocol is delightfully boring, which is the point — clients connect over a single TCP socket, send text commands, and parse text responses. No HTTP overhead, no JSON, no auth handshake on every call. The protocol is so thin that a single CPU core can serve 200K+ commands/sec.</p>
+
+  <span class="code-label cl-green">Cache command surface</span>
+<pre><span class="cmt">// Read — the bread and butter</span>
+GET user:42                       <span class="cmt">// → "{name:'Sarah',email:'...'}"  or null</span>
+MGET user:42 user:43 user:44      <span class="cmt">// batch — one round trip for N keys</span>
+
+<span class="cmt">// Write — populate or update</span>
+SET user:42 "<value>" EX 3600     <span class="cmt">// EX = expire in seconds</span>
+MSET user:42 "v1" user:43 "v2"    <span class="cmt">// batch write</span>
+SETNX lock:order:99 "owner-A"     <span class="cmt">// SET if Not eXists — atomic lock</span>
+
+<span class="cmt">// Delete / invalidate</span>
+DEL user:42                       <span class="cmt">// remove a key</span>
+
+<span class="cmt">// Atomic counters — the killer feature</span>
+INCR page:home:views              <span class="cmt">// atomic +1, returns new value</span>
+INCRBY rate:user:42 1             <span class="cmt">// rate-limit token-bucket math</span>
+
+<span class="cmt">// Compare-and-set (optimistic lock)</span>
+GETS cart:99                      <span class="cmt">// returns value + version (CAS token)</span>
+CAS cart:99 v=37 "<new value>"    <span class="cmt">// succeeds only if version still 37</span>
+
+<span class="cmt">// Pub/sub (Redis only — fan-out notifications)</span>
+PUBLISH channel:orders "order-99-paid"
+SUBSCRIBE channel:orders</pre>
+
+  <div class="highlight hl-blue"><strong>Why <code>MGET</code> matters more than people realize:</strong> rendering a single web page often needs 20-50 cache lookups (user, profile, recent orders, friend list, ...). Doing them one by one is 20 round trips × 0.5ms = 10ms wasted on network. <code>MGET</code> bundles them into one round trip — 0.6ms total. That's a 16× speedup at zero cost. Always batch.</div>
+
+  <div class="highlight hl-orange"><strong>Why CAS exists:</strong> two web requests both load <code>cart:99</code>, both add an item, both write back — last write wins, one item silently lost. CAS includes a version token in the read; the write only succeeds if the version still matches. Race resolved without a heavyweight lock.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-orange">Step 5 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart, and the production shape where every box justifies itself. The numbers from §3 drive every decision.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Sketch the simplest possible cache: <strong>one Redis box</strong> that the entire application connects to. App servers send <code>GET</code>/<code>SET</code> commands over TCP, the box answers from RAM, everyone goes home happy.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  A1["App Server 1"] --> R[("Single Redis Box")]
+  A2["App Server 2"] --> R
+  A3["App Server N"] --> R
+  R --> DB[("Backing DB")]
+    </div>
+  </div>
+
+  <p>Four concrete failures emerge the moment real traffic shows up:</p>
+  <div class="g2">
+    <div class="card">
+      <h3>💥 One pipe, 100K QPS ceiling</h3>
+      <p>Every app server in the fleet hits the same box. A single 10 Gbps NIC tops out around 100K requests/sec at 1 KB values once you account for TCP overhead and CPU pinning. Need 100M? You'd need a 10 Tbps link to one machine — which doesn't exist.</p>
+    </div>
+    <div class="card">
+      <h3>💥 256 GB RAM ceiling</h3>
+      <p>Even high-end cache instances cap at ~256 GB RAM. We need 1 TB. There is no single machine you can buy that holds the dataset — physics says we must shard.</p>
+    </div>
+    <div class="card">
+      <h3>💥 One crash = total cache loss</h3>
+      <p>The box reboots after a kernel panic. RAM clears. Suddenly every app server starts hitting the backing DB on every request. Postgres, sized for 5% of traffic, drowns under 100% — a "cache stampede" cascade outage that takes down the whole service.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Cold-start thundering herd</h3>
+      <p>Day 1 of a new deploy: cache is empty, every app request misses. Backing DB sees the full 100M req/sec for the first few minutes — long enough to crash it. Same problem hits a fresh node added to expand capacity.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: Sharded ring with replicated shards</h3>
+  <p>The single most important set of insights in distributed cache design boils down to <strong>three ideas working together</strong>. Internalize these and the rest of the architecture writes itself.</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">🔑 1. Sharding via consistent hashing</h3>
+      <p>Distribute keys across N nodes by hashing each key onto a circular ring. Each node owns an arc of the ring. <strong>The magic property:</strong> adding a node only relocates 1/N of keys — vs. nearly 100% with naive <code>hash % N</code>. This is what lets us grow the cluster without an outage.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">🛡️ 2. Each shard replicated 1-2x</h3>
+      <p>Every primary node has a replica that mirrors its data via async replication. When a primary dies, the replica gets promoted in seconds. The shard's slice of the cache survives the failure — no cold-start, no DB stampede.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">🧭 3. Smart routing</h3>
+      <p>Either the client driver knows the ring (Redis Cluster's "smart client") and connects directly to the right shard, or a thin <strong>routing proxy</strong> (Twemproxy, Envoy) fronts the cluster. Either way, no extra hop — keys land on their owning shard in one network call.</p>
+    </div>
+  </div>
+
+  <p>The <em>ring + replication + smart routing</em> trio gives us horizontal scale, fault tolerance, and sub-millisecond latency simultaneously. Every other component on the production diagram is in service of one of these three ideas.</p>
+
+  <div class="highlight hl-cyan"><strong>The clock-face analogy:</strong> picture the ring as a 24-hour clock. We hash node IDs onto the clock face — node A lands at 3 o'clock, node B at 9, node C at 11. We hash each key the same way; whichever node sits clockwise from the key owns it. Add a fourth node at 6 — it steals the 3-to-6 arc from B; everything else stays put. Remove a node — its arc gets absorbed by its clockwise neighbor. Tiny rebalancing, no cluster-wide reshuffle.</div>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered — find its matching card below to see what it does and what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client App — Smart Driver"]
+  CAL["⑪ Cache-Aside Layer (in app code)"]
+  CL --> CAL
+
+  PROXY["② Routing Proxy — Twemproxy / Envoy (optional)"]
+  CAL --> PROXY
+
+  TOPO["③ Topology Service — ZooKeeper / etcd / Sentinel"]
+  CAL -.refresh ring.-> TOPO
+  PROXY -.refresh ring.-> TOPO
+
+  subgraph CACHE["Cache Tier"]
+    direction LR
+    P1["④ Primary 1 — arc 0-90°"]
+    P2["④ Primary 2 — arc 90-180°"]
+    P3["④ Primary 3 — arc 180-270°"]
+    P4["④ Primary 4 — arc 270-360°"]
+  end
+  PROXY --> P1
+  PROXY --> P2
+  PROXY --> P3
+  PROXY --> P4
+
+  subgraph REPL["Replicas"]
+    direction LR
+    R1["⑤ Replica 1"]
+    R2["⑤ Replica 2"]
+    R3["⑤ Replica 3"]
+    R4["⑤ Replica 4"]
+  end
+  P1 -.async repl.-> R1
+  P2 -.async repl.-> R2
+  P3 -.async repl.-> R3
+  P4 -.async repl.-> R4
+
+  EVICT["⑥ Eviction Manager — LRU/LFU/TTL"]
+  P1 -.- EVICT
+
+  PERSIST[("⑦ Persistence — RDB + AOF")]
+  P1 -.snapshot.-> PERSIST
+
+  SENT["⑧ Failover Coordinator — Sentinel"]
+  SENT -.health.-> P1
+  SENT -.health.-> P2
+  SENT -.promote.-> R1
+  SENT -.update.-> TOPO
+
+  METRIC["⑨ Metrics — hit rate, evictions"]
+  P1 -.- METRIC
+
+  DB[("⑩ Backing Store — Postgres / Cassandra")]
+  CAL -.miss path.-> DB
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style CAL fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style PROXY fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style TOPO fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style P1 fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style P2 fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style P3 fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style P4 fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style R1 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style R2 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style R3 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style R4 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style EVICT fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style PERSIST fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style SENT fill:#171d27,stroke:#e05252,color:#d4dae5
+  style METRIC fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style DB fill:#171d27,stroke:#38b265,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client App with Smart Driver</h3>
+      <p>The application — a web server, mobile API gateway, batch worker — that wants to read or write a cache entry. The "smart driver" (e.g., Jedis, lettuce, redis-py-cluster) holds an in-memory copy of the ring topology. When the app calls <code>GET user:42</code>, the driver hashes <code>user:42</code>, looks up which primary owns that arc of the ring, and opens a TCP connection straight to that node — no extra hop, no proxy needed.</p>
+      <p><strong>Solves:</strong> the routing problem with zero added latency. Without smart drivers, every client would either need to know all nodes (and risk hitting the wrong one) or pay for a proxy hop. Smart drivers make the cluster look like a single logical cache to the application.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">⑪</span> Cache-Aside Layer (in app code)</h3>
+      <p>A thin abstraction inside the application that implements the <strong>cache-aside</strong> pattern: try cache first, on miss fetch from DB and populate the cache, return the value. On writes, update the DB then <code>DEL</code> the cache key (don't try to update the cache value directly — that's a race condition waiting to happen). This is application code, not infrastructure, but it's drawn in the architecture because the choice of pattern materially shapes the system.</p>
+      <p><strong>Solves:</strong> the "cache is just a side store" mental model. Without an explicit pattern, developers do ad-hoc caching, forget invalidation, and ship stale-data bugs. Having one well-tested helper (<code>getOrFetch(key, () -&gt; db.load(key))</code>) makes correctness the default.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> Routing Proxy (Twemproxy / Envoy)</h3>
+      <p>An optional thin TCP proxy that fronts the cluster for clients that don't have smart drivers (legacy apps, scripting languages, multi-language polyglot fleets). The proxy reads the topology from ZooKeeper/etcd, accepts plain Redis or Memcached protocol, and forwards each command to the right shard. Adds ~0.1-0.3ms per call.</p>
+      <p><strong>Solves:</strong> heterogeneous client environments. A 200-microservice fleet in 8 languages can't all upgrade to smart drivers simultaneously — the proxy lets them keep using a vanilla Redis client and still get sharded routing. Without it, you'd either run 200 driver upgrade projects or accept dumb routing.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">③</span> Cluster Topology Service</h3>
+      <p>A small, highly-available coordination service (ZooKeeper, etcd, Consul, or Redis Sentinel for Redis-specific deployments) that holds the canonical mapping from <em>ring arc → primary node → replica node</em>. Smart drivers and proxies refresh this every few seconds (or on a routing miss). When Sentinel promotes a replica during a failover, it updates the topology here, and clients pick up the change on their next refresh.</p>
+      <p><strong>Solves:</strong> the "where does this key live <em>right now</em>?" problem in a cluster where membership is changing. Without it, a client whose driver was cached an hour ago would route to a dead node forever. Topology services are the cluster's nervous system.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">④</span> Cache Node Cluster (Primary nodes)</h3>
+      <p>The 16 primary nodes that actually hold the cached data. Each owns an arc of the consistent-hash ring — typically 1/16th of the keyspace, but adjusted with virtual nodes (~256 vnodes per physical node) for uniform distribution. Each primary holds ~64 GB of data and serves ~200K req/sec on commodity hardware. Single-threaded event loop (Redis) or multi-threaded with per-thread cache (Memcached) — both squeeze enormous throughput out of one CPU socket.</p>
+      <p><strong>Solves:</strong> the throughput-and-RAM ceiling from Pass 1. 16 primaries collectively serve 100M req/sec and hold 1 TB. Without sharding, you'd need a single machine with impossible specs.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑤</span> Replica Nodes</h3>
+      <p>Each primary has 1-2 replicas in different availability zones. The replica subscribes to the primary's write stream — every <code>SET</code>, <code>DEL</code>, <code>INCR</code> is asynchronously shipped over and replayed on the replica. Lag is typically under 100ms. When a primary dies, the failover coordinator promotes the replica and the cluster keeps serving from RAM — no DB stampede.</p>
+      <p><strong>Solves:</strong> the "one crash = total cache loss" failure mode. With replication, a primary death loses 0 - 100ms of in-flight writes (acceptable for a cache), and the replicated 64 GB of hot data stays warm. Cluster availability stays at 99.99%.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑥</span> Eviction Manager</h3>
+      <p>A per-node component that runs when memory pressure crosses a configured threshold (e.g., 95% of <code>maxmemory</code>). It picks victims based on the configured policy — <strong>LRU</strong> (default), LFU, TTL-first, or random — and removes them to make room for incoming writes. Implemented internally as a sampled probabilistic algorithm (Redis samples N keys and evicts the worst), not a strict global LRU, because true LRU would require a doubly-linked list of every key in RAM.</p>
+      <p><strong>Solves:</strong> the bounded-memory problem. A cache with no eviction either OOMs or starts rejecting writes — both of which break the application. Eviction lets the cache always accept new entries while gracefully shedding cold ones.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑦</span> Persistence Layer</h3>
+      <p>Optional disk-backed storage for crash recovery (Redis supports it; Memcached does not). Two modes: <strong>RDB snapshots</strong> dump a point-in-time copy of all keys to disk every N minutes; <strong>AOF (append-only file)</strong> logs every write command so the cache can replay them on restart. Most production deployments run AOF + occasional RDB.</p>
+      <p><strong>Solves:</strong> the cold-start problem after a planned restart or a region-wide power loss. Without persistence, a restarted node serves zero traffic for the first 10 minutes while organic reads slowly repopulate it — and the backing DB pays for that warm-up. With AOF, the node restarts already-warm.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑧</span> Failover Coordinator (Sentinel)</h3>
+      <p>A small cluster of 3-5 monitor processes that ping every primary every second. When a quorum of Sentinels agrees a primary is down, they pick the most up-to-date replica, promote it (it becomes the new primary), update the topology service, and notify clients to refresh. Failover typically completes in 5-30 seconds.</p>
+      <p><strong>Solves:</strong> automated failover. Without it, a dead primary requires a human to manually promote a replica and update DNS — minutes-to-hours of partial outage. Sentinel turns that into seconds, fully automated.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑨</span> Metrics &amp; Monitoring</h3>
+      <p>Per-node telemetry pushed to Prometheus / Datadog / CloudWatch. The signals that matter: <strong>hit rate</strong> (cached / total reads — under 90% is a smell), <strong>eviction rate</strong> (high evictions = under-provisioned RAM), <strong>memory pressure</strong> (close to maxmemory = imminent eviction storm), <strong>p99 latency</strong> (sudden spike = hot key or slow command), <strong>replication lag</strong> (high lag = imminent data loss on failover).</p>
+      <p><strong>Solves:</strong> visibility. Without metrics, you find out the cache is broken when the application starts timing out — minutes after it actually stopped working. With them, alerts fire before users notice.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑩</span> Backing Store (the DB)</h3>
+      <p>The source of truth — Postgres, Cassandra, MySQL, whatever the application's primary store happens to be. The cache fronts it; on cache miss the app falls back here. Sized for the <strong>cold-tail</strong> traffic that misses the cache (typically 5-10% of total reads) plus the full write rate, not the full read rate. This is the entire reason caches exist: they let you size the DB for "miss traffic" instead of "all traffic", which is often a 10-20× cost savings.</p>
+      <p><strong>Solves:</strong> nothing on its own — but the cache exists to protect <em>it</em>. Without the DB, the cache has no source of truth; without the cache, the DB has to be 10× bigger.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Sarah loads a product page, then a node dies</h3>
+  <p>Two real flows mapped to the numbered components above:</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h3>📖 Read flow — Sarah loads product 42 at 14:02:06</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah's browser hits the app server. The <strong>Cache-Aside Layer</strong> ⑪ in the app code calls <code>cache.get("product:42")</code>.</li>
+        <li>The <strong>Smart Driver</strong> ① hashes <code>product:42</code> → ring position 142° → owned by <strong>Primary 2</strong> ④ (<code>arc 90-180°</code>).</li>
+        <li>Driver opens (or reuses) a TCP connection to Primary 2, sends <code>GET product:42</code>. Primary 2 looks up the key in its hash table — <strong>HIT</strong> — returns the value in <strong>0.4 ms</strong>.</li>
+        <li>Cache-Aside Layer returns the value to the app, which renders the page. Sarah sees product 42 in <strong>under 50 ms total</strong> end-to-end.</li>
+        <li><em>If it had been a miss:</em> Cache-Aside Layer would call <strong>Backing Store</strong> ⑩ (Postgres) — 8 ms — populate the cache with <code>SET product:42 ... EX 3600</code>, then return. Next read for product 42 in the next hour is a hit.</li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--red)">
+      <h3>💀 Failover flow — Primary 2 dies at 14:05:00</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Primary 2's host reboots due to a hardware fault. All TCP connections to it drop instantly.</li>
+        <li>Within 1 second, the <strong>Failover Coordinator</strong> ⑧ (Sentinel) notices health checks failing. It waits for quorum (3 of 5 Sentinels agreeing) — ~5 seconds — to avoid false-positive flaps.</li>
+        <li>Sentinel picks <strong>Replica 2</strong> ⑤ (most up-to-date) and sends <code>SLAVEOF NO ONE</code> — Replica 2 is now a primary.</li>
+        <li>Sentinel writes the new mapping (<code>arc 90-180° → Replica-2</code>) to the <strong>Topology Service</strong> ③.</li>
+        <li>The <strong>Smart Driver</strong> ① on each app server gets a connection error → refreshes topology → discovers the new primary → routes the next <code>GET product:42</code> to Replica 2.</li>
+        <li>Total user-visible blast radius: ~5-30 seconds of elevated errors for the 1/16th of keyspace owned by Primary 2. The other 15/16 of the cluster never noticed. <strong>Zero data loss</strong> for keys replicated before the crash.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around three insights — (1) <strong>sharding via consistent hashing</strong> distributes load and shrinks the blast radius of topology changes; (2) <strong>per-shard replication</strong> turns a node death into a 10-second blip instead of an outage; (3) <strong>smart routing</strong> keeps every read at one network hop. Every box in the diagram earns its place by removing one of the four failure modes from Pass 1.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: CONSISTENT HASHING                  -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-cyan">Step 6</span>
+  <h2>Consistent Hashing — The Core Algorithm</h2>
+  <p>Of every idea in distributed systems, consistent hashing is the one most worth understanding deeply — it powers Cassandra, DynamoDB, Memcached, Redis Cluster, and CDN routing. The whole idea is one trick that solves one problem.</p>
+
+  <h3 class="subh">The problem with naive <code>hash % N</code></h3>
+  <p>Suppose you have 4 cache nodes and use <code>shard = hash(key) % 4</code>. <code>user:42</code> hashes to 7 → shard 3. Easy. Now add a fifth node and switch to <code>% 5</code>. <code>user:42</code> now hashes to 7 → shard 2. <strong>The key just moved to a different node.</strong> Worse — almost <em>every</em> key now lives on a different node. You've invalidated nearly your entire cache, the new node has to be populated from scratch, the backing DB takes the full traffic for hours. Adding capacity has caused an outage.</p>
+
+  <h3 class="subh">The consistent-hashing trick</h3>
+  <p>Imagine a circular number line from 0 to 2³² (the output range of a 32-bit hash). Now:</p>
+  <ol style="padding-left:1.5rem;line-height:1.85;color:var(--text);font-size:.95rem">
+    <li>Hash each <strong>node ID</strong> onto the ring → node A lands at position 12B, node B at 800M, node C at 3.1B.</li>
+    <li>Hash each <strong>key</strong> onto the ring the same way.</li>
+    <li>The key's owner is the <strong>first node clockwise</strong> from the key's position.</li>
+  </ol>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  subgraph RING["Consistent Hash Ring"]
+    direction TB
+    A["Node A — pos 12B"]
+    B["Node B — pos 800M"]
+    C["Node C — pos 3.1B"]
+    K1["key user:42 — pos 1.5B — owned by Node C"]
+    K2["key product:99 — pos 200M — owned by Node B"]
+    K3["key cart:7 — pos 3.5B — owned by Node A"]
+  end
+
+  K1 --> C
+  K2 --> B
+  K3 --> A
+
+  style A fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style B fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style C fill:#171d27,stroke:#38b265,color:#d4dae5
+  style K1 fill:#171d27,stroke:#7b8599,color:#d4dae5
+  style K2 fill:#171d27,stroke:#7b8599,color:#d4dae5
+  style K3 fill:#171d27,stroke:#7b8599,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Why it survives node addition</h3>
+  <p>Add Node D at position 2.0B. Only the keys whose ring positions fall <strong>between Node B (800M) and Node D (2.0B)</strong> change ownership — they move from C to D. Every other key stays put. With N evenly-distributed nodes, adding a node moves <strong>1/N of keys</strong> — vs. ~100% with mod-N hashing. At 16 nodes, that's 6.25% rebalanced instead of 100%. The cache stays warm.</p>
+
+  <h3 class="subh">Virtual nodes — fixing distribution skew</h3>
+  <p>Plain consistent hashing has a problem: if you only have 3 nodes, their random ring positions might leave one node with 60% of the arc and another with 10% — load imbalance. The fix: each physical node is hashed onto the ring at <strong>~256 different positions</strong> ("virtual nodes" or "vnodes"). With thousands of points scattered around the ring, the law of large numbers makes the per-node arc length nearly uniform. Each physical node ends up owning ~1/N of the total arc, just split into 256 small pieces instead of one big one.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>❌ <code>hash(key) % N</code></h3>
+      <p>Simple, fast. <strong>But:</strong> changing N means rehomeing nearly every key. A 4→5 node migration moves ~80% of the cache. Useless in a growing cluster.</p>
+    </div>
+    <div class="card">
+      <h3>✅ Consistent hashing with vnodes</h3>
+      <p>Slightly more complex (need to maintain a sorted ring data structure). <strong>Wins:</strong> 4→5 node migration moves ~20% of keys (1/N of the new size). Distribution is uniform thanks to vnodes. Production-grade.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>The "so what" line:</strong> consistent hashing is what lets you add a cache node at 2 PM on a Tuesday without taking the site down. It's the difference between scaling being a routine deploy versus a midnight maintenance window.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: REPLICATION                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-green">Step 7</span>
+  <h2>Replication Strategies</h2>
+  <p>Replication is the answer to "what happens when a node dies?" but the choice of <em>sync vs async</em> is one of the deepest trade-offs in distributed systems — latency vs durability, picked once and lived with for years.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">⚡ Async replication (default for caches)</h3>
+      <p>The primary writes to its own RAM, returns success to the client immediately, and ships the change to the replica in the background. <strong>Write latency:</strong> ~0.2 ms (the local write only). <strong>Risk:</strong> if the primary crashes after acking but before replicating, the last few milliseconds of writes are lost.</p>
+      <p><strong>When this is right:</strong> caches. Losing a few writes during a node crash is acceptable — the application will repopulate from the DB on the next read. The latency win (every write is fast) is worth far more than the durability cost.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🔒 Sync replication</h3>
+      <p>The primary writes to its own RAM AND ships the change to the replica, waits for the replica's ack, then returns success to the client. <strong>Write latency:</strong> ~1-2 ms (one extra network round trip). <strong>Risk:</strong> none for data loss; but a slow/dead replica makes <em>every</em> write slow.</p>
+      <p><strong>When this is right:</strong> when the cache holds something you can't easily reconstruct — session tokens, rate-limit counters, distributed locks. The strict consistency guarantee is worth the latency penalty.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">The default — async, with smart caveats</h3>
+  <p>Most production caches default to async because the typical use case (database query results, rendered HTML fragments, computed values) is fully reconstructable from the source of truth. The 1-100ms of writes potentially lost on a crash are recovered by the next cache miss naturally.</p>
+
+  <p>The clever middle ground used by Redis: <strong>WAIT N timeout_ms</strong> — a write is async by default, but the application can opt-in to "wait for N replicas to ack before continuing" for specific critical writes (e.g., committing a payment session). Best of both worlds — fast by default, durable when it matters.</p>
+
+  <div class="highlight hl-green"><strong>The mental model:</strong> a cache is not a database. Async replication trades a small data-loss risk for huge latency wins, and that trade is almost always correct because <strong>the data isn't unique to the cache</strong> — the database has the canonical copy.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: EVICTION                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-yellow">Step 8</span>
+  <h2>Eviction Policies — When Memory Fills Up</h2>
+  <p>The cache holds 64 GB. The application is writing 200K SETs/sec. Eventually 64 GB gets full. What do we drop to make room? This is the eviction problem, and the answer matters because the <em>wrong</em> policy can tank your hit rate by 30%.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🥇 LRU — Least Recently Used (default)</h3>
+      <p>Drop the entry that has gone the longest without being read. Implemented as a hash map plus a doubly-linked list — every access bumps the entry to the head of the list; eviction always pops the tail. O(1) for both operations.</p>
+      <p><strong>Wins for:</strong> "things you used recently are likely to be used again soon" workloads — most web caches, session stores, rendered-page caches. Default for Memcached and Redis.</p>
+      <p><strong>Trap:</strong> a one-time scan that touches a million cold keys (e.g., a backup job) bumps every cold key to "recently used", evicting genuinely-hot entries. Workaround: use <code>RESP CLIENT NO-TOUCH</code> for batch jobs.</p>
+    </div>
+    <div class="card">
+      <h3>🥈 LFU — Least Frequently Used</h3>
+      <p>Drop the entry with the fewest total reads (over a recent window). Tracks per-key access counter that decays over time.</p>
+      <p><strong>Wins for:</strong> highly-skewed access patterns where a small set of keys is consistently hot — celebrity profiles, top-100 product pages, viral video metadata. Outperforms LRU by 5-15% hit rate when the long tail is dominated by a small head.</p>
+      <p><strong>Cost:</strong> more bookkeeping per key (counter + decay). Redis 4+ supports it as <code>maxmemory-policy allkeys-lfu</code>.</p>
+    </div>
+    <div class="card">
+      <h3>🥉 TTL-based — drop expiring keys first</h3>
+      <p>If multiple keys are eligible, prefer the one with the soonest expiration time. Often combined with LRU as a tie-breaker (<code>volatile-lru</code>: only evict keys that have a TTL set).</p>
+      <p><strong>Wins for:</strong> caches that mix permanent reference data and short-TTL session data — evict the sessions first, leave the permanent stuff alone.</p>
+    </div>
+    <div class="card">
+      <h3>🎲 Random — surprisingly OK</h3>
+      <p>Pick a random victim. Zero bookkeeping. Sounds dumb, but at high hit rates (over 95%) the difference between Random and LRU is tiny — most keys are hot, so any one you pick to evict was probably cold. Used by Redis as <code>allkeys-random</code> for low-overhead deployments.</p>
+      <p><strong>Wins for:</strong> low-overhead workloads where the hit rate is dominated by working-set size, not by access recency.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Probabilistic LRU — the production reality</h3>
+  <p>True LRU requires a doubly-linked list of every key, which costs ~32 bytes of overhead per key. With 64 GB of values, that overhead can be gigabytes. So Redis cheats: when eviction is needed, it samples 5 random keys, evicts the one with the oldest access time, and moves on. Not a true global LRU, but statistically close — and it costs zero per-key overhead. The <code>maxmemory-samples</code> tunable controls the sample size.</p>
+
+  <div class="highlight hl-yellow"><strong>The pragmatic default:</strong> start with <code>allkeys-lru</code>, watch your hit rate. If you have a clear power-law access pattern (some keys always hot), switch to <code>allkeys-lfu</code> — typically 5-10% hit-rate gain. Don't agonize over the choice initially; eviction policy matters less than having enough RAM in the first place.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: INVALIDATION                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-red">Step 9</span>
+  <h2>Cache Invalidation Strategies</h2>
+  <p>"There are only two hard things in computer science: cache invalidation and naming things." The reason it's hard: when the database changes, the cached copy must somehow learn about it — and there's no universally right way to do that. Three patterns dominate.</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🔒 Write-through</h3>
+      <p>Every write goes to the cache AND the DB synchronously, in the same code path. App returns success only after both succeed.</p>
+      <p><strong>Pros:</strong> cache is always consistent with DB. No stale reads ever.</p>
+      <p><strong>Cons:</strong> writes are slower (two systems instead of one). Both must be available — cache outage blocks all writes.</p>
+      <p><strong>Use when:</strong> read-after-write consistency is mandatory (e.g., e-commerce inventory, account balances).</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">🚀 Write-around</h3>
+      <p>Write goes to the DB only. Cache is populated lazily on the next read (cache miss → fetch from DB → store).</p>
+      <p><strong>Pros:</strong> writes are fast (one system). No "writing data nobody will ever read" wasted RAM.</p>
+      <p><strong>Cons:</strong> first read after a write is a miss. For a few microseconds, a stale cached entry might still be served if invalidation is missed.</p>
+      <p><strong>Use when:</strong> write-heavy workloads where writes are rarely re-read soon (logs, infrequent profile updates). Most common pattern in practice.</p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">⚡ Write-back / write-behind</h3>
+      <p>Write goes to the cache only. A background process flushes dirty entries to the DB asynchronously.</p>
+      <p><strong>Pros:</strong> fastest possible writes — RAM speed.</p>
+      <p><strong>Cons:</strong> if the cache crashes before flushing, those writes are lost forever. Most caches don't support this safely.</p>
+      <p><strong>Use when:</strong> you can tolerate data loss (analytics counters, click counts) and absolutely need RAM-speed writes.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The dirty secret of cache invalidation:</strong> there's a race condition in every pattern. Even write-through has a window where the DB has acked but the cache write is in flight — a concurrent reader might see the old cached value. The pragmatic answer is short TTLs (60-300 seconds) so any leaked staleness self-heals, plus explicit <code>DEL</code> on writes. Combining write-around with TTL covers 95% of cases.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: CACHE ASIDE                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-orange">Step 10</span>
+  <h2>The Cache-Aside Pattern</h2>
+  <p>The single most common cache integration in production code. Every senior engineer should have this written into muscle memory. Here it is in 12 lines.</p>
+
+  <span class="code-label cl-orange">Cache-aside — read path</span>
+<pre><span class="kw">function</span> <span class="fn">getUser</span>(<span class="ty">long</span> userId) {
+  <span class="ty">String</span> key = <span class="str">"user:"</span> + userId;
+
+  <span class="cmt">// 1. Try cache first</span>
+  <span class="ty">User</span> cached = cache.<span class="fn">get</span>(key);
+  <span class="kw">if</span> (cached != <span class="kw">null</span>) <span class="kw">return</span> cached;   <span class="cmt">// HIT — done in 0.4ms</span>
+
+  <span class="cmt">// 2. MISS — load from DB</span>
+  <span class="ty">User</span> user = db.<span class="fn">findById</span>(userId);          <span class="cmt">// ~8ms</span>
+  <span class="kw">if</span> (user == <span class="kw">null</span>) <span class="kw">return</span> <span class="kw">null</span>;
+
+  <span class="cmt">// 3. Populate cache for next time, with TTL</span>
+  cache.<span class="fn">set</span>(key, user, <span class="num">3600</span>);          <span class="cmt">// 1 hour TTL</span>
+  <span class="kw">return</span> user;
+}</pre>
+
+  <span class="code-label cl-red">Cache-aside — write path (the trick)</span>
+<pre><span class="kw">function</span> <span class="fn">updateUser</span>(<span class="ty">User</span> user) {
+  <span class="cmt">// 1. Write to DB first (source of truth)</span>
+  db.<span class="fn">save</span>(user);
+
+  <span class="cmt">// 2. INVALIDATE the cache, do NOT update it</span>
+  cache.<span class="fn">delete</span>(<span class="str">"user:"</span> + user.id);   <span class="cmt">// next read will repopulate</span>
+}</pre>
+
+  <h3 class="subh">Why <code>DEL</code> and not <code>SET</code> on writes?</h3>
+  <p>This is the subtle part that catches most engineers. Updating the cache directly seems faster — "write to DB and cache in parallel". But consider this race:</p>
+  <ol style="padding-left:1.5rem;line-height:1.85;color:var(--text);font-size:.95rem">
+    <li>Request A reads user from DB: <code>{name: "Sarah"}</code>.</li>
+    <li>Request B updates user in DB to <code>{name: "Sarah Smith"}</code>, then sets cache.</li>
+    <li>Request A (delayed) now sets the cache to <code>{name: "Sarah"}</code> — <strong>stomping on the newer write</strong>.</li>
+    <li>Cache now permanently holds the wrong value until TTL.</li>
+  </ol>
+  <p>Using <code>DEL</code> instead of <code>SET</code> on writes eliminates this entire class of bug — there's no value to stomp on, just a hole the next reader will fill from the DB (which has the truth).</p>
+
+  <div class="highlight hl-orange"><strong>The fridge analogy:</strong> cache-aside is like checking the fridge before going to the store. If milk's there, drink it (cache hit). If not, go buy some, put it in the fridge for next time (cache miss + populate). When you finish a carton (write/delete), throw it away — don't try to refill it with whatever you had lying around (that's stomping). The fridge is always either empty (miss) or holds the latest carton you bought (always fresh).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: HOT KEY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-red">Step 11</span>
+  <h2>The Hot Key Problem</h2>
+  <p>It's 9 PM. A celebrity tweets a link to your top-trending video. The key <code>video:viral_42</code> goes from 100 req/sec to 100,000 req/sec in under a minute. That single key's owner — one shard out of 16 — is now saturating its 10 Gbps NIC, while the other 15 shards sit at 5% utilization. Welcome to the <strong>hot key problem</strong> — the most common production headache in cached systems.</p>
+
+  <h3 class="subh">Why sharding doesn't help here</h3>
+  <p>Sharding distributes load across shards, but a <em>single key</em> has only one home. No matter how many nodes you add, all 100K req/sec land on the one shard that owns <code>video:viral_42</code>. Adding more nodes literally cannot help.</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">🛡️ Solution 1 — Client-side cache (L1)</h3>
+      <p>The app server itself caches ultra-hot keys in its local process memory for 1-5 seconds. With 1000 app servers each holding the value locally, the distributed cache sees almost zero traffic for that key — 1 fetch per app server every 5 seconds, instead of 100K fetches/sec aggregate. Caffeine, Guava Cache, or a small <code>HashMap</code> with TTL.</p>
+      <p><strong>Trade-off:</strong> 1-5 seconds of staleness across the fleet. Acceptable for views, dangerous for prices.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">🌊 Solution 2 — Replica reads</h3>
+      <p>Configure the smart driver to spread reads across the primary <em>and</em> all its replicas (e.g., <code>READONLY</code> mode in Redis Cluster). With 1 primary + 2 replicas, hot-key load divides by 3. Helps but doesn't scale infinitely.</p>
+      <p><strong>Trade-off:</strong> replicas are slightly stale (async replication), so this can return last-second data.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">🔀 Solution 3 — Key sharding</h3>
+      <p>Store the hot value under N suffixed keys: <code>video:viral_42:v1</code> through <code>video:viral_42:v10</code>. On read, pick a random suffix → load divides by 10 across 10 different shards. On write, update all 10 copies (acceptable cost for a single hot record).</p>
+      <p><strong>Trade-off:</strong> 10× write amplification for hot keys, plus invalidation must touch all replicas.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">How do you even detect a hot key?</h3>
+  <p>The cache emits per-key access samples (Redis <code>--hotkeys</code>, Memcached <code>stats slabs</code>, or eBPF probes on the network layer). A monitoring service watches for any key whose req/sec exceeds, say, 5× the average. Some advanced systems automatically apply solution 3 (auto-shard the key) when a threshold is crossed — Twitter's old "Cache+Cassandra" stack famously did this.</p>
+
+  <div class="highlight hl-red"><strong>The newbie pitfall:</strong> people see "100K req/sec on one shard" and try to add more shards. It doesn't help — sharding splits across <em>keys</em>, not within a single key. The fix is one of the three above, not a bigger cluster.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: STAMPEDE                           -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-purple">Step 12</span>
+  <h2>Thundering Herd / Cache Stampede</h2>
+  <p>It's 3:00:00 AM. The cached entry for <code>homepage:html</code> has a 1-hour TTL and just expired. In the same millisecond, 1,000 concurrent web requests all try to load the homepage. They all hit the cache → all miss → all hammer the database with the same query simultaneously. The DB, sized for normal cache-fronted load, gets clobbered by 1,000× normal traffic. p99 spikes from 50ms to 30 seconds. The DB CPU pegs and replication lag explodes.</p>
+
+  <p>This is the <strong>cache stampede</strong> (also called "dogpile" or "thundering herd"), and it's the most dangerous failure mode in cache-fronted systems because it always strikes at the worst possible time — when something hot just expired.</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🤝 Solution 1 — Request coalescing</h3>
+      <p>When 1,000 requests miss the same key simultaneously, only the <strong>first</strong> one fetches from the DB. The other 999 wait on a shared <code>CompletableFuture</code> that the first request will complete. When the first request finishes, all 1,000 get the same answer. DB load: 1, not 1000.</p>
+      <p>Implemented in-process with a <code>ConcurrentHashMap&lt;Key, Future&gt;</code>; some libraries (Caffeine, Guava) have it built in.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">🎲 Solution 2 — Probabilistic early refresh</h3>
+      <p>Don't let the entry actually expire. Each read computes a probability of refresh based on remaining TTL: <code>p = exp(-TTL_remaining / mean_lifetime)</code>. Most reads do nothing. A random few reads, becoming more likely as expiry approaches, asynchronously refresh the entry. The cache is statistically never empty — no stampede.</p>
+      <p>This is the XFetch algorithm; brilliant once you see it.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">⏰ Solution 3 — Stale-while-revalidate</h3>
+      <p>Serve the stale entry to readers while one async worker refreshes it in the background. Readers never wait for the DB; they get an old (but recent) value while the refresh happens out-of-band. Pattern made famous by HTTP <code>Cache-Control: stale-while-revalidate</code> and adopted by most modern caches.</p>
+      <p>Requires storing a "soft TTL" (refresh after) and a "hard TTL" (expire after) for each entry.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">The lock-based variant — single-flight</h3>
+  <p>A simple version of request coalescing: when you miss, try to <code>SETNX recompute_lock:key</code>. If you got the lock, recompute and write the entry. If you didn't get the lock, sleep 50ms and retry the cache. Works well for moderate concurrency; falls over above ~10K concurrent waiters per key (use Solution 1 instead).</p>
+
+  <div class="highlight hl-purple"><strong>The "so what" line:</strong> a stampede is a cache miss multiplied by your request concurrency. The fix is always to ensure that <strong>only one fetch happens per key per time window</strong>, no matter how many readers are waiting. Pick whichever solution matches your stack — but pick one, because production traffic will find the unprotected key sooner or later.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: PERSISTENCE                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-yellow">Step 13</span>
+  <h2>Persistence &amp; Recovery</h2>
+  <p>Most caches are pure RAM. Some optionally persist to disk so a node restart doesn't mean cold-start. The two patterns and the do-nothing case:</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>📸 RDB — point-in-time snapshot</h3>
+      <p>Every N minutes (configurable), the cache forks and writes its full RAM contents to a compact binary file on disk. On restart, load the file into RAM in seconds and resume.</p>
+      <p><strong>Pros:</strong> compact files, fast warm-up. <strong>Cons:</strong> all writes between snapshots are lost on crash. Forking briefly doubles memory usage during the snapshot.</p>
+    </div>
+    <div class="card">
+      <h3>📜 AOF — append-only log</h3>
+      <p>Every write command (<code>SET</code>, <code>DEL</code>, <code>INCR</code>) is appended to a log file as it happens. On restart, replay the log to reconstruct state.</p>
+      <p><strong>Pros:</strong> minimal data loss (down to last command with <code>fsync always</code>). <strong>Cons:</strong> file grows large, replay is slow, fsync hurts write throughput.</p>
+    </div>
+    <div class="card">
+      <h3>🚫 No persistence (Memcached default)</h3>
+      <p>Cache is pure RAM. Restart = empty cache. Application falls back to DB until the cache repopulates organically over a few minutes.</p>
+      <p><strong>Pros:</strong> simpler, faster, no disk I/O. <strong>Cons:</strong> cold-start hammers the DB; planned reboots cause brief latency spikes.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">The hybrid Redis approach</h3>
+  <p>Run AOF + occasional RDB. AOF provides safety (~1s data loss with <code>fsync everysec</code>), RDB provides fast restart (load the snapshot, then replay only the AOF entries since the snapshot). When AOF gets too big, the cache rewrites it from the current state — keeping the file size bounded. Best of both worlds at modest disk I/O cost.</p>
+
+  <div class="highlight hl-yellow"><strong>The pragmatic call:</strong> for a pure cache (data exists in DB), no persistence is fine — accept cold-start cost. For a cache that holds non-reconstructable data (sessions, rate-limit counters, distributed locks), persistence is mandatory. Most teams default to AOF + RDB and never think about it again.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: TOPOLOGY CHANGES                   -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-cyan">Step 14</span>
+  <h2>Topology Changes — Adding &amp; Removing Nodes</h2>
+  <p>The cluster grew. Or it shrank. Or a node died and we replaced it. How does the cluster handle membership changes without dropping requests?</p>
+
+  <h3 class="subh">Adding a node — gradual migration</h3>
+  <p>The new node joins the ring at position <em>X</em>, claiming an arc that was previously owned by its clockwise neighbor. The migration:</p>
+  <ol style="padding-left:1.5rem;line-height:1.85;color:var(--text);font-size:.95rem">
+    <li><strong>Add to topology</strong> — the topology service records the new node. Clients see the new ring on next refresh.</li>
+    <li><strong>Old owner serves until handoff</strong> — for the migrating arc, both old and new nodes are valid. Reads still hit the old owner. Writes can dual-write to both during the transition.</li>
+    <li><strong>Background copy</strong> — the new node pulls keys from the old owner in batches. Throttled to avoid saturating the network.</li>
+    <li><strong>Cutover</strong> — once 99%+ of keys are copied, flip the topology so reads go to the new node. Old node serves any remaining requests as a fallback for ~1 minute, then drops the keys.</li>
+  </ol>
+
+  <h3 class="subh">Removing a node — drain first, then remove</h3>
+  <p>The reverse: <strong>drain</strong> the leaving node by copying its keys to its clockwise neighbor first. Once empty, update topology to skip the node. Clients never see a missing-shard error.</p>
+
+  <h3 class="subh">Node death — replica promotion</h3>
+  <p>If a primary dies suddenly (no graceful drain), Sentinel promotes its replica. Topology updates. Clients refresh. The keys on the dead primary that hadn't yet replicated are lost (acceptable for cache use cases). Replication factor stays at 1 until a new replica is provisioned and caught up.</p>
+
+  <div class="highlight hl-cyan"><strong>The user-visible impact:</strong> with proper migration, adding or removing a node should cause <strong>zero visible errors</strong> — just a few minutes of slightly elevated cache miss rate (because some keys are temporarily in transition and miss-then-repopulate). Killing a node causes 5-30s of elevated errors for ~1/N of keyspace, then back to normal. The cluster has no global outage at any size.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 15: MULTI-REGION                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s15">
+  <span class="sec-tag tag-purple">Step 15</span>
+  <h2>Multi-Region Deployment</h2>
+  <p>Users in Tokyo shouldn't pay 200ms transpacific latency to hit a US-East cache. The fix is regional clusters with cross-region replication — and the choice of replication topology is a classic CAP-theorem trade-off.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🌐 Active-Active (multi-master)</h3>
+      <p>Every region accepts both reads and writes. Writes replicate to all other regions asynchronously. Eventually consistent — a write in US might take 200ms to show up in Tokyo.</p>
+      <p><strong>Pros:</strong> low-latency writes everywhere; no single-region failure mode. <strong>Cons:</strong> conflict resolution gets ugly (two regions write to the same key) — needs CRDTs or last-write-wins. <strong>Use when:</strong> regional independence matters more than global consistency (social feeds, content metadata).</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">🎯 Active-Passive (single-writer)</h3>
+      <p>One region accepts writes; others are read-only replicas. Writes flow from the primary region to all secondaries asynchronously. A regional failover process promotes a secondary on disaster.</p>
+      <p><strong>Pros:</strong> no conflicts, simple consistency model, strict global ordering. <strong>Cons:</strong> writes from far-away regions pay the round-trip; primary region failure needs orchestrated failover. <strong>Use when:</strong> consistency matters (financial caches, account state).</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The classic question to ask:</strong> "if a write happens in Tokyo and a read happens in Frankfurt 100ms later, can the read return the old value?" If yes — active-active is fine. If no — active-passive with all writes funneled to one region. There is no third option, and the trade-off is fundamental to physics, not engineering.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 16: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s16">
+  <span class="sec-tag tag-blue">Step 16</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">Why consistent hashing over <code>hash % N</code>?</div>
+  <div class="ans"><strong>Adding or removing a node moves only 1/N of keys instead of nearly all of them.</strong> With <code>hash % N</code>, going from 4 nodes to 5 changes nearly every key's home — invalidating ~80% of the cache and forcing a stampede on the backing DB. Consistent hashing maps keys to a ring; adding a node only steals an arc from one neighbor. At 16 nodes, that's 6.25% rebalanced vs 100%. Combined with virtual nodes for uniform distribution, this is the difference between scaling being a routine deploy and a midnight outage.</div>
+
+  <div class="iq">What happens to cache hit rate when you add a node?</div>
+  <div class="ans"><strong>It briefly drops, then recovers.</strong> The newly-added node's arc claims keys that used to live on its neighbor. Until those keys are migrated (or repopulated organically by misses + DB fetches), reads to that arc miss. With consistent hashing, only ~1/(N+1) of keyspace is affected — a 5-10% temporary hit-rate dip for a few minutes. Without consistent hashing (mod-N), nearly the entire cache invalidates and the DB takes the full miss traffic, often crashing it.</div>
+
+  <div class="iq">Cache-aside vs write-through — when each?</div>
+  <div class="ans"><strong>Cache-aside</strong> (write to DB, delete from cache; read populates cache on miss) is the default for ~95% of cases. Simple, predictable, no race conditions because <code>DEL</code>-not-<code>SET</code>. <strong>Write-through</strong> (write to both atomically) is for cases where readers must <em>never</em> see a stale value — financial balances, inventory counts. The cost: every write is slower (two systems), and a cache outage blocks all writes. Most production code defaults to cache-aside + short TTL because it's resilient to half-broken cache infrastructure; write-through is reserved for the few keys where staleness is unacceptable.</div>
+
+  <div class="iq">How do you handle a hot key getting 100K req/sec?</div>
+  <div class="ans"><strong>Sharding doesn't help — a single key has one home.</strong> Three real fixes: (1) <strong>Client-side L1 cache</strong> in each app server holds the hot value for 1-5 seconds, reducing distributed-cache load by ~1000×. (2) <strong>Replica reads</strong> spread the load across primary + replicas (1 primary + 2 replicas = 3× capacity per shard). (3) <strong>Key sharding</strong> — store the value under 10 suffixed keys (<code>key:v1</code>...<code>key:v10</code>), random suffix on read; load divides by 10 across multiple physical shards. Detection: monitor per-key QPS, alert at 5× average. Often combine all three for true-viral content.</div>
+
+  <div class="iq">What's the cache stampede problem and how do you fix it?</div>
+  <div class="ans"><strong>When a hot key expires, hundreds of concurrent reads all miss simultaneously and hammer the DB.</strong> The DB, sized for cache-fronted load, gets crushed. Three fixes: (1) <strong>Request coalescing</strong> — only the first request fetches; the other N-1 wait on a shared <code>Future</code> and get the same result. DB load: 1, not N. (2) <strong>Probabilistic early refresh</strong> — random reads near expiry asynchronously refresh the entry, so it never actually empties. (3) <strong>Stale-while-revalidate</strong> — serve the old value while one async worker refreshes. Implementations like Caffeine and Redis Lock-and-Refresh have these built in. Pick one — production traffic will find unprotected hot keys eventually.</div>
+
+  <div class="iq">Sync vs async replication for caches — when to choose each?</div>
+  <div class="ans"><strong>Async by default — the data isn't unique to the cache.</strong> If a primary crashes after acking a write but before replicating, you lose ~1-100ms of writes — but the application repopulates from the DB on the next read, so users never notice. Async wins ~5× on write latency. <strong>Sync</strong> for the rare cases where the cache holds non-reconstructable data: distributed locks, rate-limit counters, session tokens. Redis offers a middle ground: <code>WAIT N timeout</code> opts a single critical write into sync replication while keeping everything else fast. Always default to async; explicitly opt-in to sync when you can't afford the data loss window.</div>
+
+  <div class="iq">What's the failure mode if Sentinel itself crashes?</div>
+  <div class="ans"><strong>You always run a Sentinel quorum (3 or 5 nodes), never just one.</strong> Sentinel decisions require majority agreement — losing 1 of 3 or 2 of 5 still leaves a working quorum. If quorum is lost (network partition splitting Sentinels), no failover happens — primaries continue serving but no automated recovery is possible until the partition heals. The data plane (cache nodes) is unaffected by Sentinel issues; you just lose the ability to auto-failover during the Sentinel outage. For critical deployments, run Sentinels in 3+ availability zones so any single AZ failure leaves quorum intact.</div>
+
+  <div class="iq">How do you decide what to cache vs. what to leave on the DB?</div>
+  <div class="ans"><strong>Three criteria.</strong> (1) <strong>Read frequency</strong> — items read more than ~10× their write rate benefit from caching; rarely-read items don't earn their RAM. (2) <strong>Cost of regeneration</strong> — expensive joins, ML model outputs, rendered HTML are huge wins; raw row lookups by primary key on a fast DB are marginal. (3) <strong>Tolerance for staleness</strong> — if you can accept seconds-stale data, almost anything is cacheable; if you need always-fresh, write-through or skip caching. Combine these: high read freq + expensive to compute + can tolerate seconds of staleness = cache it aggressively. Low on any one = think twice.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "It's a sharded ring of in-memory nodes using consistent hashing for stable routing, async-replicated for fault tolerance, accessed via smart drivers or a thin proxy, with cache-aside as the default integration pattern — protected from hot keys with client-side L1 and from stampedes with request coalescing."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

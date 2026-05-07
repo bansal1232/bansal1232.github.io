@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Youtube / Netflix — Video Streaming HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Youtube / <span>Netflix</span></h1>
+  <p class="sub">From "store one MP4 on a disk" to a globally-distributed, transcode-driven, CDN-served streaming platform — the architecture that turns 25GB of uploads per second into 1080p that starts in 200ms anywhere on Earth</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is Youtube?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">Database Schema</a></li>
+      <li><a href="#s6">High-Level Architecture</a></li>
+      <li><a href="#s7">Metadata Sharding</a></li>
+      <li><a href="#s8">Video Deduplication</a></li>
+      <li><a href="#s9">Load Balancing</a></li>
+      <li><a href="#s10">Cache</a></li>
+      <li><a href="#s11">CDN — Content Delivery</a></li>
+      <li><a href="#s12">Fault Tolerance</a></li>
+      <li><a href="#s13">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS YOUTUBE?                    -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is Youtube?</h2>
+  <p>Imagine Priya, a creator in Bangalore, finishes editing a 1GB 4K travel vlog at 14:00 IST. She hits "Upload". Twelve hours later, Raj — a viewer in Mumbai sitting on a wobbly 6 Mbps mobile connection — taps her thumbnail. He expects the video to start playing in under a second, at the highest quality his bandwidth can sustain, with zero rebuffering. Those are wildly different bytes traveling wildly different paths: Priya's pristine 4K source has to be sliced, transcoded into half a dozen resolutions, replicated worldwide, and cached at the edge — so that by the time Raj presses play, there's a 720p version sitting on a server 30 km from his phone, ready to stream chunk by chunk.</p>
+
+  <p>That entire journey — from one creator's "Upload" click to a billion viewers tapping "Play" — is what we're designing. Youtube and Netflix differ in catalog (user-generated vs. licensed) but the streaming spine is identical: <strong>ingest → transcode → store → serve from edge</strong>.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How do we ingest 500 hours of new video <em>every minute</em> and turn each upload into 5+ resolution variants without a backlog? (2) How do we serve a sustained <strong>~1 TB/sec</strong> of outgoing video bytes when no single data center on Earth has the egress bandwidth to do it from one origin?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Before drawing a single box, lock down what the system must do. In an interview, asking these questions out loud shows you're not memory-dumping a solution — you're scoping the problem.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li><strong>Upload</strong> videos (any size, any common format)</li>
+        <li><strong>View &amp; share</strong> videos with anyone</li>
+        <li><strong>Search</strong> videos by title, description, tags</li>
+        <li>Record <strong>view counts, likes &amp; dislikes</strong></li>
+        <li>Allow viewers to <strong>add &amp; view comments</strong></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Highly reliable</strong> — once a video is uploaded, it must never be lost</li>
+        <li><strong>Highly available</strong> — eventual consistency is acceptable for view counts &amp; likes (a viewer in Tokyo seeing 1,000,002 views while one in NYC sees 1,000,005 is fine)</li>
+        <li><strong>Real-time playback</strong> — viewers expect zero lag, sub-second start, no buffering on a stable connection</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card" style="border-color:rgba(224,82,82,.4)">
+    <h3 style="color:var(--red)">🚫 Out of Scope</h3>
+    <ul>
+      <li><strong>Recommendations</strong> — the "Up Next" panel and personalized homepage</li>
+      <li><strong>Channels &amp; subscriptions</strong> — creator following, notification fan-out</li>
+      <li><strong>Live streaming</strong> — different ingest path entirely (we'll touch on it in Q&amp;A)</li>
+      <li><strong>Monetization &amp; ads</strong> — separate ad-serving system</li>
+    </ul>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The non-functional requirements are the harder ones.</strong> Storing one MP4 is trivial. Storing 25GB/sec of new uploads while simultaneously serving 1TB/sec of outgoing playback to viewers in 200 countries — that's the part that requires architecture.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers are not optional in HLD. They drive every architectural choice — sharding, caching, CDN sizing — so do them out loud, even if rough. Video streaming is wildly <strong>read-heavy</strong>: assume a 200:1 view-to-upload ratio.</p>
+
+  <h3 class="subh">Traffic estimates</h3>
+  <p>Assume <strong>1.5B total users</strong>, <strong>800M daily active users</strong>, each watching <strong>5 videos/day</strong>. That's <strong>4 billion video views/day</strong> — roughly <strong>46K views/sec</strong>. With a 1:200 upload-to-view ratio, we get <strong>~230 uploads/sec</strong>.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Daily Active Users</h3><p><span class="metric">800 M</span></p><p>Out of 1.5B total</p></div>
+    <div class="card"><h3>Views/sec</h3><p><span class="metric">~46 K</span></p><p>800M × 5 / 86400</p></div>
+    <div class="card"><h3>Uploads/sec</h3><p><span class="metric">~230</span></p><p>1:200 view ratio</p></div>
+    <div class="card"><h3>Hours/min uploaded</h3><p><span class="metric">~500 hrs</span></p><p>Real-world Youtube number</p></div>
+  </div>
+
+  <h3 class="subh">Storage estimate</h3>
+  <p>If 500 hours of video are uploaded per minute, and we assume an average bitrate of ~50 MB/min (a mid-range encode for 1080p), that's a raw ingest of:</p>
+  <p><code>500 hrs × 60 min × 50 MB = 1,500,000 MB/min ≈ 25 GB/sec</code> of raw upload bytes.</p>
+  <p>But we don't store just the original — we transcode each upload into <strong>5 resolution variants</strong> (240p, 480p, 720p, 1080p, 4K) and 2-3 codecs (H.264, VP9, AV1). After dedup and smarter encoding, total stored bytes per minute of source video roughly <strong>2-3×</strong> the raw size. Over a year that's hundreds of petabytes — a number only large object stores can hold.</p>
+
+  <h3 class="subh">Bandwidth estimate (the scary one)</h3>
+  <p>Inbound (uploads): <code>230 × ~25 MB avg = ~5 GB/sec</code> ingress. That's manageable.</p>
+  <p>Outbound (playback): with a 200:1 view-to-upload ratio, egress is <strong>200×</strong> ingress: <span class="metric">~1 TB/sec</span> sustained outgoing. That number is the single most important constraint in the design — and it explains why <strong>CDN is non-negotiable</strong>, not optional.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Views/sec</td><td><code>46 K/s</code></td><td>Drives CDN edge fleet sizing</td></tr>
+        <tr><td>Uploads/sec</td><td><code>230/s</code></td><td>Drives upload service &amp; transcode farm sizing</td></tr>
+        <tr><td>Raw ingest</td><td><code>25 GB/s</code></td><td>Forces distributed object store, not a SAN</td></tr>
+        <tr><td>Egress</td><td><code>~1 TB/s</code></td><td>Physically requires a CDN — no origin can do this</td></tr>
+        <tr><td>Hot cache</td><td><code>tens of TB</code></td><td>Justifies multi-tier cache: edge → regional → origin</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-blue"><strong>Why 1 TB/s is the design's center of gravity:</strong> a top-of-rack 100 Gbps switch saturates at ~12.5 GB/s. To serve 1 TB/s from one origin you'd need <em>80 of them</em> in parallel, plus power, plus cross-continent fiber the whole way to every viewer. That's why every byte of video must go through a CDN. The origin <em>never</em> sees viewer traffic in steady state — only cache fills.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>Three endpoints carry the system: <strong>upload</strong> a video, <strong>search</strong> the catalog, and <strong>stream</strong> a video. The third is the unusual one — it returns a stream of bytes, not JSON.</p>
+
+  <span class="code-label cl-green">REST API surface</span>
+<pre><span class="cmt">// Upload — slow, large payload, resumable</span>
+POST /api/v1/videos
+Headers: { "X-API-Key": "abc123..." }
+Body (multipart):
+{
+  "title":        "Goa Travel Vlog 2026",
+  "description":  "Sunsets, beaches, and street food",
+  "tags":         ["travel","goa","vlog","2026"],
+  "category":     "Travel",
+  "language":     "en",
+  "video_blob":   &lt;binary 1 GB MP4&gt;
+}
+→ 202 Accepted  { "video_id": "v_8f2a1c", "state": "PROCESSING" }
+
+<span class="cmt">// Search — keyword query against the catalog</span>
+GET /api/v1/search?q=goa+sunset&amp;count=20&amp;page_token=...
+→ 200 OK
+{
+  "results": [
+    { "video_id": "v_8f2a1c", "title": "Goa Travel Vlog 2026",
+      "thumbnail_url": "https://cdn.../thumb_8f2a1c.jpg",
+      "duration_sec": 612, "views": 1250 },
+    ...
+  ],
+  "next_page_token": "eyJ..."
+}
+
+<span class="cmt">// Stream — returns BYTES not JSON; HLS/DASH manifest + chunked video</span>
+GET /api/v1/videos/:video_id/stream?codec=h264&amp;resolution=720p&amp;offset=0
+→ 200 OK
+Content-Type: application/vnd.apple.mpegurl   <span class="cmt">// HLS manifest</span>
+   <span class="cmt">// or video/mp4 for a single chunk</span>
+   <span class="cmt">// CDN serves this; origin never sees it in steady state</span></pre>
+
+  <div class="highlight hl-purple"><strong>Why <code>streamVideo</code> returns a STREAM not JSON:</strong> a 1080p video is hundreds of MB. We don't ship it in one response — we ship a tiny <strong>manifest</strong> (HLS <code>.m3u8</code> or DASH <code>.mpd</code>) that lists 10-second chunk URLs. The player downloads chunks on demand, picks resolution per chunk based on current bandwidth (<em>adaptive bitrate</em>), and buffers ~30 seconds ahead. This is what makes "real-time playback" possible — the first chunk is served in 200ms while the rest is fetched in the background.</div>
+
+  <div class="highlight hl-orange"><strong>Abuse prevention via <code>X-API-Key</code>:</strong> upload is expensive (storage + transcode + CDN). Tie every upload to an authenticated user and rate-limit per user (e.g., 10 uploads/hour for free tier). Search is rate-limited per IP to deter scrapers building competitor catalogs.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: DATABASE                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>Database Schema</h2>
+  <p>Three completely different data shapes live in this system, and trying to put them in one database is the first instinct to override:</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">📋 Metadata</h3>
+      <p>Small rows (a few KB each), billions of them, frequent reads, occasional updates (view count, likes). Goes in <strong>MySQL or Cassandra</strong> — Cassandra wins at our scale because of native sharding + multi-region replication.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🎬 Video Blobs</h3>
+      <p>Huge files (50 MB - several GB), written once, read many times, served by CDN. Goes in a <strong>distributed object store</strong> — HDFS, GlusterFS, or S3. Optimized for sequential reads and durability, not for low-latency lookups.</p>
+    </div>
+    <div class="card" style="border-color:rgba(60,191,191,.4)">
+      <h3 style="color:var(--cyan)">🖼️ Thumbnails</h3>
+      <p>Tiny files (5-20 KB), <em>many per video</em> (one per playback resolution + scrubber preview frames), absurdly hot (every search result page loads dozens). Goes in a <strong>BigTable-style store</strong> tuned for small files + high read rate.</p>
+    </div>
+  </div>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  USER {
+    bigint user_id PK
+    string name
+    string email
+    timestamp created_at
+    timestamp last_login
+  }
+  VIDEO {
+    string video_id PK
+    string title
+    string description
+    bigint size_bytes
+    int duration_sec
+    string thumbnail_id
+    bigint uploader_user_id FK
+    bigint likes
+    bigint dislikes
+    bigint views
+    timestamp created_at
+    string state
+  }
+  COMMENT {
+    bigint comment_id PK
+    string video_id FK
+    bigint user_id FK
+    string text
+    timestamp created_at
+  }
+  VIDEO_VARIANT {
+    string variant_id PK
+    string video_id FK
+    string resolution
+    string codec
+    string blob_url
+    bigint size_bytes
+  }
+  USER ||--o{ VIDEO : "uploads"
+  USER ||--o{ COMMENT : "writes"
+  VIDEO ||--o{ COMMENT : "has"
+  VIDEO ||--o{ VIDEO_VARIANT : "transcoded into"
+    </div>
+  </div>
+
+  <h3 class="subh">Why thumbnails get their own store</h3>
+  <p>One Youtube page can render <strong>20+ thumbnails</strong> in the search grid. At 46K views/sec, the thumbnail read rate is several hundred K/sec — far higher than video reads. A general-purpose object store (S3) is tuned for big files; small files there pay metadata overhead per request. <strong>BigTable / HBase</strong> coalesces millions of small files into wide-column rows with internal compression — orders of magnitude better small-file read throughput.</p>
+
+  <div class="highlight hl-cyan"><strong>Before / after of splitting storage by data shape:</strong> putting everything in one MySQL DB → search queries compete with view-count writes for the same lock table; thumbnail reads compete with video metadata for IO. After splitting → metadata sits in Cassandra (45 ms p99), video blobs in S3 (no DB hit at all, served by CDN), thumbnails in BigTable (5 ms p99). Each tier scales on its own clock.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart, and the production shape where every box justifies itself. Numbers from §3 drive every decision.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Sketch the simplest possible system. One app server. It accepts an upload, stores the MP4 on its local disk, and serves the file back when someone hits the play URL.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C["Client"] --> APP["App Server"]
+  APP --> DISK[("Local Disk — MP4 files")]
+  APP --> META[("MySQL — metadata")]
+    </div>
+  </div>
+
+  <p>Three concrete failures emerge the moment a few thousand viewers show up:</p>
+  <div class="g3">
+    <div class="card">
+      <h3>💥 One disk, one bandwidth pipe</h3>
+      <p>A single server has roughly <strong>10 Gbps</strong> of network egress — about 1.25 GB/s. We need 1 TB/s. To serve our actual playback load from one box you'd need 800 of these in parallel and a way to synchronize them — which is just "build a CDN", but worse.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Mumbai viewer, US server, 200 ms RTT</h3>
+      <p>If the only origin is in Virginia, every Mumbai viewer pays a <strong>200 ms round-trip</strong> just for DNS and TCP setup before the first video byte arrives. Add TLS handshake and the player waits ~600 ms before showing frame 1. Users abandon at 2 seconds — we'd be losing them before video starts.</p>
+    </div>
+    <div class="card">
+      <h3>💥 One server crash = videos gone forever</h3>
+      <p>A single disk failure deletes every video on it. There are no backups, no replicas. A creator who uploaded their wedding 5 years ago opens a 404. The product's core promise — "your videos live forever" — dies in one hardware fault.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: three planes (Upload / Process / Serve)</h3>
+  <p>The most important insight in this design is that <strong>video has three completely different workloads happening simultaneously, and they must scale independently</strong>:</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">⬆️ Upload Plane</h3>
+      <p><strong>Slow ingest, durable.</strong> 230 uploads/sec, each potentially gigabytes. Latency budget: minutes (users tolerate "uploading… 47%" for a long file). Must be resumable (if their wifi blips at 80% we don't restart). Optimized for write throughput and durability.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">⚙️ Processing Plane</h3>
+      <p><strong>Heavy async work.</strong> Transcode each upload into 5+ resolutions × 2-3 codecs = ~15 output variants. Generate thumbnails. Run dedup checks. CPU-bound (transcoding is expensive). Scales horizontally with a worker pool draining a queue.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">⬇️ Serve Plane</h3>
+      <p><strong>Fast, massive egress.</strong> 1 TB/s sustained, sub-200ms first byte, geographically everywhere. Must be served from <em>edge POPs</em> not origin. This plane is dominated by CDN infrastructure; origin servers are only ever cache-fill sources.</p>
+    </div>
+  </div>
+
+  <p>The KEY insights this split surfaces:</p>
+  <div class="g3">
+    <div class="card">
+      <h3>🎬 Transcoding must be async</h3>
+      <p>Encoding a 10-minute 4K video into 5 lower resolutions takes several minutes of CPU even on a fast machine. We can't do it inline during upload — the request would time out. So uploads are <strong>accepted first, processed later</strong>, with state transitions visible to the user.</p>
+    </div>
+    <div class="card">
+      <h3>🌍 Serving must happen at the edge</h3>
+      <p>Bandwidth physics: no single origin can do petabit egress. We <em>must</em> push video bytes out to hundreds of POPs (Points of Presence) close to viewers. The CDN isn't a performance optimization — it's the only physically possible serving model.</p>
+    </div>
+    <div class="card">
+      <h3>📋 Metadata and blobs live separately</h3>
+      <p>Metadata is small, hot, queryable — it goes in Cassandra. Video bytes are huge, sequential, served via CDN — they go in object storage. Trying to share infrastructure between the two slows both down. Splitting them is mandatory, not optional.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered ①–⑫ — find the matching card below to see what it does and crucially what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client — Browser, Mobile, Smart TV"]
+
+  subgraph EDGE["Edge"]
+    LB["② Load Balancer"]
+    CDN["⑪ CDN — Akamai / CloudFront"]
+  end
+
+  subgraph UPLOAD["Upload Plane"]
+    UP["③ Upload Service"]
+    RAW[("④ Raw Video Storage — S3")]
+  end
+
+  subgraph PROCESS["Processing Plane"]
+    Q["⑤ Processing Queue — Kafka"]
+    TR["⑥ Transcoding Workers"]
+    ENC[("⑦ Encoded Video Storage — S3")]
+    THUMB[("⑧ Thumbnail Storage — BigTable")]
+  end
+
+  subgraph SERVE["Serve Plane"]
+    META[("⑨ Video Metadata DB — Cassandra")]
+    SEARCH[("⑩ Search Index — Elasticsearch")]
+    CMT["⑫ Comment and Like Service"]
+  end
+
+  CL -->|"upload + search"| LB
+  CL -->|"playback"| CDN
+  LB --> UP
+  LB --> SEARCH
+  LB --> CMT
+  UP --> RAW
+  UP --> META
+  RAW --> Q
+  Q --> TR
+  TR --> ENC
+  TR --> THUMB
+  TR --> META
+  META --> SEARCH
+  CDN -.cache miss.-> ENC
+  CDN -.thumbnails.-> THUMB
+  CMT --> META
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style UP fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style RAW fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style Q fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style TR fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style ENC fill:#171d27,stroke:#38b265,color:#d4dae5
+  style THUMB fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style META fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style SEARCH fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style CDN fill:#171d27,stroke:#38b265,color:#d4dae5
+  style CMT fill:#171d27,stroke:#e05252,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client</h3>
+      <p>Anything that uploads or plays a video — a desktop browser, a mobile app, a smart TV, a game console. The client is more sophisticated than in most systems: it runs an HLS/DASH player that watches its own bandwidth, fetches the next 10-second chunk at the right quality, and re-requests at lower quality if the buffer drains. The client is the first half of "adaptive bitrate streaming".</p>
+      <p><strong>Solves:</strong> nothing on its own — but the client's intelligence is what makes the rest of the system feasible. By picking its own quality per chunk, the client lets us serve one set of pre-encoded variants and let the player negotiate. Without a smart client we'd have to do server-side bitrate switching, which can't scale.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> Load Balancer</h3>
+      <p>The traffic cop in front of the application tier (upload service, search, comments). It distributes incoming HTTPS, terminates TLS, health-checks every backend every few seconds, and yanks unhealthy pods out of rotation. <em>Note: the LB does NOT sit in front of video playback</em> — viewers go directly to the CDN, not our origin. The LB only sees the small fraction of traffic that needs application logic.</p>
+      <p><strong>Solves:</strong> single-server bottleneck and single-server failure for the application tier. Without an LB, one app crash takes down uploads, search, and comments. With it, we lose 1/N of capacity for a few seconds.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">③</span> Upload Service</h3>
+      <p>A stateless service whose only job is to ingest video bytes from creators. It supports <strong>resumable uploads</strong> via the tus protocol — the client sends the file in 5 MB chunks with a session ID, and if a chunk fails it just retries that chunk. Once all chunks are received, the service writes the full blob to <strong>Raw Video Storage</strong> ④, creates a metadata row in <strong>Video Metadata DB</strong> ⑨ with state <code>PROCESSING</code>, and drops a message onto the <strong>Processing Queue</strong> ⑤.</p>
+      <p><strong>Solves:</strong> the slow-ingest problem. Mobile uploaders on 4G drop bytes constantly. A non-resumable upload would force them to restart from 0% on every flake — an unusable product. Resumable uploads + a dedicated upload tier (separated from the rest of the API) means no single user's 1 GB upload can starve the read tier of CPU.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">④</span> Raw Video Storage (S3)</h3>
+      <p>A durable object store that holds the <em>original</em> uploaded blob exactly as the creator sent it — pre-transcode, full quality. S3-class storage replicates to 3+ availability zones automatically; once a write returns OK, the bytes are safe even if a whole zone burns down. We keep the raw forever (or for some retention period) so we can re-transcode in the future when better codecs land (AV1 today, something else tomorrow).</p>
+      <p><strong>Solves:</strong> the "never lose a video" reliability requirement. If we transcoded directly into final variants and discarded the raw, a future codec improvement would force creators to re-upload — broken trust. Keeping the raw also makes transcode failures recoverable: if a worker crashes mid-encode we just retry from the source.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑤</span> Processing Queue (Kafka)</h3>
+      <p>A durable, partitioned message queue. The Upload Service drops a job per video — <code>{video_id, raw_blob_url, target_resolutions, target_codecs}</code> — and Transcoding Workers consume the queue. Kafka's partitioning gives us parallelism: 100 partitions = up to 100 workers consuming in parallel without coordination. Messages survive worker crashes (acked only after a worker completes the transcode), so a worker dying mid-job means the next one picks the work up.</p>
+      <p><strong>Solves:</strong> decoupling upload speed from transcode speed. A spike of 10× normal uploads (think a Coachella weekend) doesn't break uploads — it just lets the queue grow, and workers drain it as fast as they can. Without a queue, every upload would hang until its transcode finished, and the upload service would melt under back-pressure.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑥</span> Transcoding Workers</h3>
+      <p>A horizontally-scaled fleet of CPU-heavy workers. Each one pulls a job from the queue, downloads the raw blob from ④, and runs <code>ffmpeg</code> (or hardware-accelerated equivalents) to produce: <strong>240p, 480p, 720p, 1080p, 4K variants × H.264, VP9, AV1 codecs</strong> — roughly 15 output files. It also extracts thumbnail frames at fixed intervals. Outputs are written to <strong>Encoded Video Storage</strong> ⑦ and <strong>Thumbnail Storage</strong> ⑧, then the worker updates the video state in <strong>Metadata DB</strong> ⑨ from <code>PROCESSING</code> to <code>READY</code>.</p>
+      <p><strong>Solves:</strong> the "play smoothly on any device, any bandwidth" requirement. A single 1080p file would be unwatchable on a slow phone (rebuffers constantly) and bandwidth-wasting on a TV that can do 4K. Pre-transcoding into a ladder of resolutions lets the player pick what fits — adaptive bitrate streaming literally cannot exist without this stage.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑦</span> Encoded Video Storage (S3)</h3>
+      <p>An object store holding the <em>output</em> of transcoding — multiple resolution variants per video, each chunked into 10-second fragments for HLS/DASH. This is the bucket the CDN pulls from on cache misses. Storage layout: <code>video_id/720p/h264/segment_0001.ts, segment_0002.ts, ...</code>. Replicated across regions so any CDN POP worldwide can pull a missing chunk from a nearby replica without a transatlantic round-trip.</p>
+      <p><strong>Solves:</strong> being the CDN origin without being the bottleneck. Because the CDN absorbs ~95%+ of viewer traffic, this store only sees cache-fill reads — a tiny fraction of the 1 TB/s playback load. Cross-region replication ensures even cache fills are local.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑧</span> Thumbnail Storage (BigTable)</h3>
+      <p>A wide-column store optimized for billions of small files (5-20 KB each). Each video produces dozens of thumbnails: one main thumb + scrubber-bar previews + per-resolution variants. Read rate is much higher than video reads (every search result page loads 20+ thumbnails). BigTable coalesces millions of small files into compressed wide rows, giving us 5 ms p99 reads at any scale.</p>
+      <p><strong>Solves:</strong> the small-file read storm. If thumbnails lived in S3 alongside videos, every page load would issue 20+ S3 GETs — billable, slow, and rate-limited by S3's per-prefix limits. BigTable is purpose-built for this access pattern.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑨</span> Video Metadata DB (Cassandra)</h3>
+      <p>The source of truth for everything-but-bytes about each video: title, description, tags, uploader, duration, view count, like count, dislike count, current state (<code>PROCESSING</code> / <code>READY</code> / <code>FAILED</code>), thumbnail ID, list of encoded-variant URLs. Sharded by <code>video_id</code> via <strong>consistent hashing</strong>, replicated 3× across availability zones. Cassandra's quorum reads/writes (<code>R=2, W=2, N=3</code>) give us strong-enough consistency without sacrificing availability.</p>
+      <p><strong>Solves:</strong> serving the small-row, high-rate metadata workload that doesn't fit on a single MySQL box. View counts are write-heavy on the hottest videos; Cassandra's tunable consistency lets us accept "eventually consistent view counts" (a viewer in Tokyo seeing 1,000,002 while NYC sees 1,000,005 is fine) which lets writes scale linearly.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑩</span> Search Index (Elasticsearch)</h3>
+      <p>An inverted-index search engine. Every time the metadata DB writes a new video (state transitions to <code>READY</code>), a CDC stream feeds the title, description, and tags into Elasticsearch. Search queries hit ES, which returns ranked <code>video_id</code>s in milliseconds; the API then enriches those IDs with the latest metadata from Cassandra.</p>
+      <p><strong>Solves:</strong> "find videos about X" at scale. Cassandra cannot answer keyword queries efficiently — it's a key-value store, not a search engine. Without ES, every search would be a full-table scan — impossible at billions of rows. ES handles fuzzy matching, ranking, faceting, and language analysis natively.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑪</span> CDN (Akamai / CloudFront)</h3>
+      <p>A globally-distributed network of edge POPs in 200+ cities. Each POP caches the most-watched video chunks for its region. When Raj in Mumbai requests <code>video_id/720p/segment_42.ts</code>, his player connects to a Mumbai-area POP — which (most likely) already has the chunk and serves it in 20 ms. On a cache miss, the POP fetches from the nearest <strong>Encoded Video Storage</strong> ⑦ replica, populates its cache, and serves the viewer. Once a chunk is in the POP, every subsequent Mumbai viewer of that video gets it from cache.</p>
+      <p><strong>Solves:</strong> the 1 TB/s egress problem. Without the CDN, our origin would need petabit egress — physically impossible at any cost. With the CDN, origin egress is roughly the cache-fill rate (a few percent of total) — manageable on commodity infrastructure. The CDN is also the latency story: a Mumbai POP is 20 ms away, our US origin is 200 ms.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑫</span> Comment &amp; Like Service</h3>
+      <p>A separate microservice with its own data store. Comments are append-mostly with low write rate per video; likes/dislikes are atomic counter increments. Likes update the metadata DB's counter via async aggregation (the same pattern as URL-shortener click counts) — never an inline <code>UPDATE</code> on the video row, which would melt under viral load.</p>
+      <p><strong>Solves:</strong> isolating a noisy social workload from the playback critical path. A viral video getting 100K likes/sec must not slow down its own playback. Putting comments &amp; likes in their own service with their own store + async aggregation keeps the core <code>video_id → variants</code> path fast.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Priya uploads, Raj plays</h3>
+  <p>Two real flows, mapped to the numbered components above:</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>⬆️ Upload flow — Priya posts her vlog at 14:00 IST</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Priya's <strong>Client</strong> ① splits her 1 GB MP4 into 5 MB chunks and POSTs them to <strong>Upload Service</strong> ③ via the <strong>Load Balancer</strong> ②.</li>
+        <li>Each chunk is appended to her resumable session. When the last chunk lands, Upload Service writes the full blob into <strong>Raw Video Storage</strong> ④ as <code>raw/v_8f2a1c.mp4</code>.</li>
+        <li>Upload Service creates a row in <strong>Video Metadata DB</strong> ⑨ — <code>{video_id: v_8f2a1c, title: "Goa Travel Vlog", state: PROCESSING}</code> — and replies <code>202 Accepted</code> to Priya. <em>Total elapsed: ~12 minutes (mostly upload bandwidth).</em></li>
+        <li>Upload Service publishes a job to <strong>Processing Queue</strong> ⑤. A free <strong>Transcoding Worker</strong> ⑥ picks it up.</li>
+        <li>Worker downloads the raw blob, runs <code>ffmpeg</code> to produce 240p/480p/720p/1080p/4K × H.264/VP9/AV1, plus 8 thumbnail frames. Outputs go to <strong>Encoded Video Storage</strong> ⑦ and <strong>Thumbnail Storage</strong> ⑧.</li>
+        <li>Worker flips the metadata state from <code>PROCESSING</code> to <code>READY</code>. CDC stream propagates the new title/tags into <strong>Search Index</strong> ⑩. <em>Total elapsed: ~25 minutes total. Video is now playable worldwide.</em></li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--green)">
+      <h3>▶️ Playback flow — Raj in Mumbai presses Play at 14:30 IST</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Raj's <strong>Client</strong> ① searches "goa travel" — request goes through <strong>LB</strong> ② to <strong>Search Index</strong> ⑩, which returns <code>video_id v_8f2a1c</code> in 30 ms.</li>
+        <li>Client fetches the HLS manifest (<code>.m3u8</code>) — a tiny text file listing chunk URLs at all available qualities. Manifest is served by <strong>CDN</strong> ⑪ from the Mumbai POP.</li>
+        <li>Client measures Raj's bandwidth (~6 Mbps), picks <strong>720p</strong>, and requests <code>v_8f2a1c/720p/h264/segment_0001.ts</code> from CDN.</li>
+        <li><strong>CDN cache hit?</strong> The video is hot in Mumbai (other viewers watched it earlier). Chunk returns in <strong>~30 ms</strong>. Player starts decoding. <em>First frame on screen: ~200 ms after tap.</em></li>
+        <li>Client buffers the next ~30 seconds in the background. If Raj's bandwidth drops to 2 Mbps mid-watch, the next chunk request switches to <strong>480p</strong> — same video, same offset, lower quality. Adaptive bitrate in action.</li>
+        <li>Player asynchronously POSTs a "view" event. <strong>Comment &amp; Like Service</strong> ⑫ aggregates it; the metadata DB's view counter is updated in batches, not per-event.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> Youtube's architecture is built around three insights — (1) <strong>uploads are async pipelines</strong>, not request/response, so transcoding never blocks ingest; (2) <strong>video bytes never travel through application servers</strong> — they live in object storage and are served by the CDN, which keeps origin cost flat as viewer traffic explodes; (3) <strong>metadata, blobs, and thumbnails have wildly different shapes</strong> and each gets a purpose-built store. Every box in the diagram exists to remove one of the three failures from Pass 1.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: METADATA SHARDING                   -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-yellow">Step 7</span>
+  <h2>Metadata Sharding</h2>
+  <p>The video metadata DB will hold billions of rows and serve hundreds of thousands of reads per second. We must <strong>shard</strong> it across many nodes — but which column do we shard <em>on</em>? That choice has consequences for years.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">❌ Shard by user_id</h3>
+      <p>"All videos uploaded by user X live on shard <code>hash(X) % N</code>." Easy: every uploader's catalog is co-located, perfect for "show me my videos" queries.</p>
+      <p><strong>The fatal flaw — hot creators.</strong> A megastar uploader with 100M subscribers has every one of their videos on the same shard. When their new video drops, that single shard takes <strong>all</strong> the read traffic. The shard melts; every other user on it goes down too. This is the textbook <em>celebrity hot-shard problem</em>.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✅ Shard by video_id (winner)</h3>
+      <p>"Each video lives on shard <code>consistent_hash(video_id)</code>." Each new video lands on a uniformly-random shard, regardless of who uploaded it. Even MrBeast's videos are spread across all shards.</p>
+      <p><strong>The trade-off:</strong> "show me all videos by user X" can no longer be answered by hitting one shard — it must <strong>scatter-gather</strong> across all shards (or be answered by a separate index/projection). For a search-heavy product like Youtube, that's a fine trade — search already hits Elasticsearch, not the metadata DB directly.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Generating video_id — a separate ID service</h3>
+  <p>If <code>video_id</code> is the shard key, it had better be globally unique and well-distributed. We generate it via a <strong>separate ID Generation Service</strong> (similar pattern to the URL shortener's KGS) that produces 64-bit IDs by combining: <em>timestamp (41 bits) + machine_id (10 bits) + sequence (12 bits)</em> — Snowflake-style. Embedding the timestamp lets us also use the ID for time-range queries ("videos uploaded last hour") without an index scan.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  UP["Upload Service"] --> IDS["ID Generation Service"]
+  IDS --> UP
+  UP --> META[("Metadata DB — sharded by video_id")]
+  META -.consistent hash ring.-> S1[("Shard 1")]
+  META -.consistent hash ring.-> S2[("Shard 2")]
+  META -.consistent hash ring.-> S3[("Shard 3")]
+  META -.consistent hash ring.-> SN[("Shard N")]
+
+  style IDS fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style META fill:#171d27,stroke:#4a90d9,color:#d4dae5
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>The interview move:</strong> volunteer "shard by user_id" first as the obvious-looking choice, then identify the hot-creator problem, then switch to "shard by video_id with consistent hashing". This shows you understand <em>why</em> the production answer wins — most candidates jump straight to the answer and miss the failure case that motivates it.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: VIDEO DEDUPLICATION                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-cyan">Step 8</span>
+  <h2>Video Deduplication</h2>
+  <p>Many uploaders submit the same video — movie clips ripped from the same source, viral memes shared by ten thousand reposters, news footage everyone re-uploads. Without dedup, we'd transcode and store the same bytes thousands of times: <strong>wasted storage, wasted CPU, wasted CDN bandwidth</strong>. Inline dedup at upload time is the single biggest cost saver in the system.</p>
+
+  <h3 class="subh">Two layers of dedup</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>🔍 Layer 1 — Cryptographic hash (fast, byte-exact)</h3>
+      <p>As bytes arrive at the Upload Service, we compute a <strong>SHA-256</strong> of the file contents. Before transcoding, we look up the hash in a dedup index: if a video with this exact hash already exists, we skip transcoding entirely and just point the new metadata row at the existing variants. Zero storage, zero CPU.</p>
+      <p><strong>Catches:</strong> bit-for-bit identical re-uploads (the same WhatsApp meme passed around 10K times). <strong>Misses:</strong> anything re-encoded — a different bitrate, a watermark, even a 1-byte metadata change.</p>
+    </div>
+    <div class="card">
+      <h3>🎯 Layer 2 — Perceptual hashing + frame fingerprinting</h3>
+      <p>For each video we compute a <strong>perceptual hash</strong> — a fingerprint based on visual features (luminance histograms, motion vectors) that's stable under re-encoding, watermarking, and small crops. Sample frames every few seconds and fingerprint each one. Compare against known fingerprints with a similarity threshold (e.g., 95%). If matched, we link to the existing variants and only store the new metadata.</p>
+      <p><strong>Catches:</strong> the same movie clip uploaded at different bitrates, with different watermarks, with different intro/outro crops. <strong>Cost:</strong> CPU per upload to fingerprint, plus an approximate-search index (FAISS, ScaNN). Worth every cycle: at our scale this saves petabytes.</p>
+    </div>
+  </div>
+
+  <p>This is the same conceptual approach Dropbox uses for file dedup, only adapted for video — a known viral clip uploaded by 10,000 different users gets transcoded <em>once</em>, stored once, served from one set of CDN-cached variants for all 10,000 metadata pointers.</p>
+
+  <div class="highlight hl-cyan"><strong>Before / after of inline dedup:</strong> without dedup, 230 uploads/sec × 25 MB avg × 5 transcoded variants = ~30 GB/sec of new storage forever. With perceptual dedup catching a conservative 30% of uploads as duplicates, we save ~9 GB/sec — over a year, that's roughly 280 PB of storage we never paid to provision and never paid to transcode.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: LOAD BALANCING                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-purple">Step 9</span>
+  <h2>Load Balancing</h2>
+  <p>Load balancers sit at three layers in our system, and each plays a different role.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>① Client → App tier</h3>
+      <p>Public-facing LB (AWS ALB / nginx). Distributes incoming HTTPS for upload, search, comments, and metadata APIs across the application pods. Health-checks every 5s, evicts unhealthy pods. Terminates TLS so backends don't pay the crypto cost.</p>
+    </div>
+    <div class="card">
+      <h3>② CDN edge selection</h3>
+      <p>DNS-level steering routes the viewer's player to the nearest CDN POP based on geo-IP. Inside a POP, requests are balanced across cache nodes using <strong>consistent hashing on the chunk URL</strong> — so the same chunk always hits the same cache node, maximizing hit rate.</p>
+    </div>
+    <div class="card">
+      <h3>③ App → DB / Cache</h3>
+      <p>Cassandra and Memcached drivers do this themselves — clients know the cluster topology and route to the right shard's coordinator. For read-heavy paths the driver also balances across replicas to avoid hammering the primary.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Why consistent hashing matters at the CDN edge</h3>
+  <p>The CDN's job is to keep the most-watched chunks in cache. If incoming chunk requests are randomly assigned to cache nodes inside a POP (round-robin), the same chunk ends up cached on <em>every</em> node — wasting cache capacity. With consistent hashing on the chunk URL, every cache node holds a disjoint slice of the keyspace, multiplying effective cache size by the node count.</p>
+
+  <p>Smart LBs at the CDN level also use <strong>predictive analytics</strong>: if the Mumbai POP is approaching saturation (say a viral cricket match clip), DNS steering temporarily redirects new viewers to the Singapore POP — slightly higher latency, but no rebuffering. The viewer sees a smooth experience even as the network reshapes itself.</p>
+
+  <div class="highlight hl-purple"><strong>The LB is itself a single point of failure</strong> — solved with active-passive pairs using virtual IP failover, or natively in cloud LBs (ALB is multi-AZ by default). At the CDN layer, anycast routing means many POPs share the same IP and BGP automatically routes around a failed POP.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: CACHE                              -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-cyan">Step 10</span>
+  <h2>Cache</h2>
+  <p>Caching at Youtube has two completely different jobs: <strong>caching small hot metadata</strong> (titles, view counts, search results) and <strong>caching huge video chunks at the edge</strong>. Both follow the 80/20 rule — a small fraction of content drives most reads — but they live on different infrastructure.</p>
+
+  <h3 class="subh">Multi-tier cache for video chunks</h3>
+  <div class="g3">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">🥇 Edge tier (smallest, fastest)</h3>
+      <p>Each CDN POP holds a few TB of the most-watched chunks <em>for that region</em>. A trending music video in Brazil sits in São Paulo POPs but not Tokyo POPs. <strong>Latency: ~20 ms.</strong> Eviction: LRU.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">🥈 Regional tier (larger)</h3>
+      <p>Per-region "shield" cache that backs many edge POPs. If a chunk misses at an edge POP, the POP first asks the regional shield before going to origin. Catches the long tail that any one POP doesn't have room for. <strong>Latency: ~40 ms.</strong></p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🥉 Origin tier (huge, source of truth)</h3>
+      <p><strong>Encoded Video Storage</strong> ⑦ itself — multi-region S3. Hit rarely (only on cold-tail content or new videos before they're cached anywhere). <strong>Latency: ~100 ms.</strong> Sized for total catalog, not for traffic.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Memcached for hot metadata</h3>
+  <p>The metadata DB is fronted by a Memcached/Redis cluster. The hottest 20% of <code>video_id → metadata</code> rows fit in tens of GB of RAM — easily holding millions of trending videos. Read flow: app server <code>GET video_id</code> → cache hit returns in microseconds; cache miss falls through to Cassandra and back-fills.</p>
+
+  <p>Eviction is <strong>LRU</strong> — newly trending videos push old ones out naturally. Search result snippets are also cached: <code>"goa travel" → [video_id_1, video_id_2, ...]</code> with a 60-second TTL, so a viral search query (the next World Cup final highlights) hits memory rather than Elasticsearch.</p>
+
+  <div class="highlight hl-cyan"><strong>Before / after of multi-tier cache:</strong> without caching, every chunk request goes to S3 — at 46K views/sec × ~10 chunks/min, that's hundreds of K of S3 GETs per second, each at 100 ms. Browsers would buffer for seconds. With multi-tier caching, &gt;95% of chunk requests are served from the nearest POP in 20 ms; S3 sees only the cold-tail miss rate. The same architecture serves 100× the load with the same origin sizing.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: CDN                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-green">Step 11</span>
+  <h2>CDN — Content Delivery Network</h2>
+  <p>The CDN is the single most important piece of infrastructure in any video service. Without a CDN, this whole design collapses — there's literally no way to serve 1 TB/s of egress from a single origin. With a CDN, viewer traffic terminates at edge POPs near the viewer, and our origin only sees a tiny cache-fill trickle.</p>
+
+  <h3 class="subh">How a CDN actually serves a video</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor R as Raj — Mumbai
+  participant DNS as DNS — geo-aware
+  participant POP as CDN POP — Mumbai
+  participant SHLD as Regional Shield — APAC
+  participant ORIG as Origin — Encoded Storage
+
+  R->>DNS: Resolve cdn.youtube.com
+  DNS-->>R: 1.2.3.4 — Mumbai POP IP
+  R->>POP: GET video_8f2a1c/720p/seg_42.ts
+  alt Edge cache hit
+    POP-->>R: 200 OK — 30 ms total
+  else Edge miss
+    POP->>SHLD: GET video_8f2a1c/720p/seg_42.ts
+    alt Shield hit
+      SHLD-->>POP: 200 OK
+      POP-->>R: 200 OK — 60 ms
+    else Shield miss
+      SHLD->>ORIG: GET seg_42.ts
+      ORIG-->>SHLD: 200 OK
+      SHLD-->>POP: 200 OK
+      POP-->>R: 200 OK — 150 ms first time
+      Note over POP,SHLD: Both cache the chunk for next viewer
+    end
+  end
+    </div>
+  </div>
+
+  <h3 class="subh">Adaptive bitrate streaming — HLS / DASH</h3>
+  <p>The CDN doesn't just serve files — it serves the <strong>adaptive streaming protocol</strong>. Each video is sliced into 10-second chunks, encoded at multiple bitrates. The player downloads a small <strong>manifest</strong> (HLS <code>.m3u8</code> or DASH <code>.mpd</code>) listing all the chunk URLs at all qualities, then:</p>
+  <ul style="margin-top:.6rem">
+    <li>Measures current bandwidth (bytes/sec of the last chunk)</li>
+    <li>Picks the highest quality that won't cause rebuffering — say 720p at 6 Mbps</li>
+    <li>Requests the next 10-second chunk at that quality</li>
+    <li>Re-measures every chunk; if bandwidth drops, switches to 480p mid-stream — same video, same offset, lower bitrate</li>
+    <li>If bandwidth surges, switches up to 1080p</li>
+  </ul>
+
+  <div class="highlight hl-green"><strong>Why CDN is non-negotiable for video:</strong> video isn't like web pages where a few hundred KB make the round trip. A single 1080p hour is ~3 GB. Multiply by 800M DAU watching multiple videos and the egress curve is petabit-class. Only a CDN — physically distributed across hundreds of cities, each with its own backbone connections — can sustain those numbers. There is no "we'll just buy bigger pipes" alternative.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: FAULT TOLERANCE                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-red">Step 12</span>
+  <h2>Fault Tolerance</h2>
+  <p>At our scale, failures aren't exceptions — they're a constant background. A disk dies somewhere every few minutes; a whole AZ goes dark every few months. The system must absorb these without users noticing.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔁 Consistent hashing for DB shards</h3>
+      <p>Cassandra's ring uses consistent hashing — when a node dies, only the keys that mapped to it need to be recovered (from replicas), and only the next node on the ring picks up the new write traffic. <strong>No global rebalancing.</strong> When we add a node to scale up, only 1/N of keys move. Compared to <code>hash % N</code>, this is the difference between a few hours of background work and a multi-day cluster-wide migration.</p>
+    </div>
+    <div class="card">
+      <h3>🌐 3+ AZ replication for video blobs</h3>
+      <p>Both Raw Video Storage ④ and Encoded Video Storage ⑦ replicate every blob to 3 availability zones (S3 does this automatically). A whole zone burning down doesn't lose a single video. For cross-region disasters, we replicate hot/critical content to 2+ regions; cold archive content lives in one region with cross-region backup.</p>
+    </div>
+    <div class="card">
+      <h3>🌍 CDN absorbs origin failures</h3>
+      <p>If the origin Encoded Storage in US-East goes offline, viewers don't notice — the CDN keeps serving cached chunks for hours from edge POPs. Cache TTLs of several hours mean even a multi-hour origin outage is invisible to viewers of currently-trending content. Only cold-tail viewers (first-ever play of an obscure video) see errors during the outage.</p>
+    </div>
+    <div class="card">
+      <h3>🔄 Idempotent transcode jobs</h3>
+      <p>Each transcode job in Kafka has a unique <code>video_id + variant_spec</code> key. If a worker crashes mid-encode, the job is re-delivered to another worker — which simply overwrites any partial output with a clean encode. No coordination needed. Workers themselves are stateless and disposable; we run on spot instances and tolerate kills.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The fault tolerance story in one line:</strong> nothing single-points the system — every tier has either replication, queues, or stateless redundancy. The CDN provides a large outage cushion; if our entire control plane went down for 30 minutes, viewers of cached videos wouldn't know.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-blue">Step 13</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">Why transcode into multiple resolutions instead of just one high-quality master?</div>
+  <div class="ans"><strong>Bandwidth heterogeneity.</strong> A single 4K master is 25 Mbps — unwatchable on a 3 Mbps phone (constant rebuffering) and wasteful on a TV that could play it natively but on a constrained home wifi. Pre-transcoding into a ladder (240p, 480p, 720p, 1080p, 4K) lets the player pick what fits the moment — adaptive bitrate streaming literally cannot exist without this. Storage cost is small (~3× single-master) and CPU cost is one-time at upload.</div>
+
+  <div class="iq">How does adaptive bitrate streaming work?</div>
+  <div class="ans"><strong>Three pieces working together.</strong> (1) At upload time, the video is encoded into multiple bitrates and chunked into 10-second segments. (2) The CDN serves a manifest file (HLS <code>.m3u8</code> / DASH <code>.mpd</code>) listing all chunk URLs at all qualities. (3) The player measures its bandwidth on each chunk, picks the highest bitrate that won't drain its buffer, and requests the next chunk at that bitrate. Quality changes are seamless because chunks align across bitrates — same time offset, just different file. The viewer sees video that "magically" matches their network.</div>
+
+  <div class="iq">Why is CDN non-negotiable for video?</div>
+  <div class="ans"><strong>Bandwidth physics.</strong> 800M DAU × ~5 videos/day × hundreds of MB each = ~1 TB/sec sustained egress, with peaks far higher. No data center on Earth has petabit egress to one location, and even if it did, the speed of light forces 200 ms RTT to cross-continent viewers. A CDN solves both: hundreds of POPs each handle a slice of the load, each one geographically close to its viewers. Origin only sees cache-fill traffic — a few percent of total.</div>
+
+  <div class="iq">How do you handle a video going viral — 1 billion views in a day?</div>
+  <div class="ans"><strong>The CDN absorbs it entirely, by design.</strong> A viral video is the definition of "hot" — within minutes it's cached at every CDN POP worldwide. Origin sees one cache-fill request per POP (a few hundred GETs total), then zero. Viewer traffic terminates at edges. View-count writes use async aggregation (Kafka → Redis sorted set) so the metadata DB never sees 1B inline updates. The bottleneck on a viral video isn't us — it's whether the viewer's own ISP has enough capacity.</div>
+
+  <div class="iq">How do you detect duplicate uploads?</div>
+  <div class="ans"><strong>Two layers.</strong> (1) <strong>SHA-256 hash</strong> at upload time catches byte-identical re-uploads — fast, cheap, but misses anything re-encoded. (2) <strong>Perceptual hashing + frame fingerprinting</strong> catches the same content with different bitrates, watermarks, or crops. We compute a fingerprint per video and search an approximate-nearest-neighbor index (FAISS) for matches above 95% similarity. Matched uploads skip transcoding entirely and just point metadata at the existing variants — saving petabytes of storage and millions of CPU-hours.</div>
+
+  <div class="iq">Why shard metadata by video_id and not user_id?</div>
+  <div class="ans"><strong>Hot-creator problem.</strong> Sharding by user_id puts every video from a popular creator on the same shard — when their new release drops, that one shard gets hammered while others sit idle. Sharding by video_id (with consistent hashing) spreads each creator's videos uniformly across all shards. The trade-off is "show me all videos by user X" can no longer be a single-shard query — it scatter-gathers, or is answered by Elasticsearch/a separate index. For Youtube, where search is the primary discovery path anyway, that trade is free.</div>
+
+  <div class="iq">Live streaming vs VOD — what's different architecturally?</div>
+  <div class="ans"><strong>Live skips the offline transcode step.</strong> VOD: upload → store raw → async transcode → store variants → serve via CDN. Live: ingest a continuous RTMP stream → transcode <em>in real time</em> on dedicated GPU encoders → push the latest 10-second chunk straight to the CDN with a low TTL. The whole pipeline runs with sub-5-second latency end-to-end. CDN caching still works (every POP caches the same live chunk for thousands of concurrent viewers) but the TTL is seconds, not days. Comments and likes also flow through real-time fan-out (websockets, not polling).</div>
+
+  <div class="iq">How do you ensure no video is ever lost?</div>
+  <div class="ans"><strong>Defense in depth.</strong> (1) The raw upload writes to S3 with multi-AZ replication before the user gets a 200 — if any single zone fails, the bytes are still there. (2) The transcode pipeline is idempotent and can re-run from raw at any time, so a transcode failure is recoverable. (3) Encoded variants are also multi-AZ replicated. (4) For high-tier creators we cross-region replicate to a second continent — a meteor hitting US-East doesn't lose Beyoncé's catalog. Combined durability is ~11 nines (1 in 100 billion year loss probability per object).</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "It's three planes — Upload, Process, Serve — connected by an async queue. Uploads land in S3, a transcode farm fans them out into a resolution ladder, and the CDN serves chunks from edge POPs at petabit scale. Metadata sits in Cassandra sharded by video_id, thumbnails in BigTable, search in Elasticsearch. Origin never sees viewer traffic in steady state."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

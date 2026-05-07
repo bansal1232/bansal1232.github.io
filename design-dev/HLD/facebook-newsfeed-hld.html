@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Facebook Newsfeed — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Facebook <span>Newsfeed</span></h1>
+  <p class="sub">From "JOIN every friend's posts on read" to a hybrid push/pull feed with ML ranking — the architecture, the trade-offs, and why every box earns its place</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is Newsfeed?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">Database Schema</a></li>
+      <li><a href="#s6">High-Level Architecture</a></li>
+      <li><a href="#s7">Feed Generation</a></li>
+      <li><a href="#s8">Pull vs Push vs Hybrid</a></li>
+      <li><a href="#s9">Feed Ranking</a></li>
+      <li><a href="#s10">Data Partitioning</a></li>
+      <li><a href="#s11">Cache Strategy</a></li>
+      <li><a href="#s12">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS NEWSFEED?                   -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is Newsfeed?</h2>
+  <p>Imagine Sarah opens Facebook on her phone over morning coffee. The first thing she sees is a feed: Raj's vacation photo from Bali at the top, then her mom's birthday post (with 47 comments already), then her favorite cooking page's latest recipe video, then a friend's status from yesterday she missed. None of these are sorted by raw time. They're ranked — by what's most relevant to <em>her</em>, right now. Behind that one swipe is a system that picks 50 stories out of potentially 50,000 candidate posts, scores each one with an ML model, and assembles the result in under 2 seconds, 1.5 billion times a day.</p>
+
+  <p>Beyond just being chronological, the Newsfeed is a <strong>personalized newspaper printed for each reader</strong> — Raj's morning paper looks nothing like Sarah's, even though they share dozens of friends. The system has to handle text posts, photos, videos, and shared links from <strong>people, pages, and groups</strong> a user follows, and surface them in the order they're most likely to engage with.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How do we assemble a personalized feed from thousands of follows in under 2 seconds, when every refresh has to look fresh? (2) How do we make a celebrity post (Cristiano Ronaldo, 600M followers) reach every fan's feed without melting the system?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Before drawing a single box, pin down what the system must do. The Newsfeed has more moving parts than most because each user's feed is unique, content types are heterogeneous, and the ranking is the product.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Generate a personalized feed for each user from <strong>people, pages, and groups</strong> they follow</li>
+        <li>Support multiple content types — <strong>text posts, images, videos, shared links</strong></li>
+        <li>New posts from a user's network appear in their feed for active users</li>
+        <li>Feed is ranked by relevance, not strict chronological order</li>
+        <li>Pagination — users can scroll back through older items</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Real-time generation</strong> — feed loads in under 2 seconds end-to-end</li>
+        <li><strong>Low publish latency</strong> — a new post becomes visible in followers' feeds within 5 seconds</li>
+        <li><strong>Scale</strong> — average user has ~300 friends + ~200 pages followed; some have thousands</li>
+        <li><strong>High availability</strong> — Facebook without a feed is Facebook with nothing</li>
+      </ul>
+      <h3 style="margin-top:1rem">🚫 Out of Scope</h3>
+      <ul>
+        <li>Comments, likes, reactions UX (separate service)</li>
+        <li>Direct messaging, stories, marketplace</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The hard requirement is the combination.</strong> Generating a feed offline in 30 seconds is easy. Generating one in 2 seconds at request time is hard. Doing it for 300M people simultaneously, with a 5-second freshness guarantee on new posts, is the part that requires architecture.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers are not optional. The Newsfeed is read-heavy and fan-out heavy — both shape every architectural choice that follows.</p>
+
+  <h3 class="subh">User and traffic estimates</h3>
+  <p>Assume <strong>300 million daily active users (DAU)</strong>. Each user fetches their feed roughly <strong>5 times per day</strong> (open the app, scroll, leave, come back). That's <strong>1.5 billion feed fetches/day</strong>.</p>
+
+  <div class="g4">
+    <div class="card"><h3>DAU</h3><p><span class="metric">300M users/day</span></p><p>Active users who hit the feed</p></div>
+    <div class="card"><h3>Feed fetches</h3><p><span class="metric">1.5B / day</span></p><p>5 fetches × 300M users</p></div>
+    <div class="card"><h3>QPS</h3><p><span class="metric">~17,500 req/sec</span></p><p>1.5B / 86,400</p></div>
+    <div class="card"><h3>Avg follows</h3><p><span class="metric">300 + 200</span></p><p>Friends + pages per user</p></div>
+  </div>
+
+  <h3 class="subh">Cache sizing — pre-computed feeds</h3>
+  <p>The biggest design lever in this system is <strong>pre-computing each user's feed and caching it</strong> instead of building it from scratch on every request. If we cache the top <strong>500 items per user</strong> at ~1KB each (post id + metadata + media URLs):</p>
+  <p><code>500 × 1KB = 500KB per user × 300M active users ≈</code> <span class="metric">150 TB of cache</span>. At 100GB per cache server, that's <span class="metric">~1,500 cache servers</span> in the user-feed cache tier. Big number, but Facebook-scale, and the alternative (rebuilding on every request) costs 100× more in compute.</p>
+
+  <h3 class="subh">Write traffic — new posts</h3>
+  <p>If 10% of DAU posts something each day, that's <strong>30 million new posts/day = ~350 posts/sec</strong>. Each post may fan out to hundreds of followers' feed caches — so the <em>fan-out</em> write rate is enormous: <code>350 × ~500 followers avg = ~175K cache writes/sec</code>. This is why the fan-out service is a separate, async tier.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Feed fetch QPS</td><td><code>17.5K/s</code></td><td>Drives read tier sizing &amp; cache hit rate target</td></tr>
+        <tr><td>Per-user cache</td><td><code>500 KB</code></td><td>500 pre-ranked feed item ids + minimal metadata</td></tr>
+        <tr><td>Total cache</td><td><code>150 TB</code></td><td>Forces sharding across ~1,500 Redis nodes</td></tr>
+        <tr><td>New posts/sec</td><td><code>~350/s</code></td><td>Drives Post Service throughput</td></tr>
+        <tr><td>Fan-out writes/sec</td><td><code>~175K/s</code></td><td>Forces async fan-out tier — can't run inline</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>One endpoint carries the bulk of feed traffic — <code>getUserFeed</code>. Another writes posts. The read API is paginated using cursor-style <code>since_id</code>/<code>max_id</code> markers, not page numbers, because the feed grows under the user's feet.</p>
+
+  <span class="code-label cl-green">REST API surface</span>
+<pre><span class="cmt">// Read — feed fetch, ~17.5K QPS</span>
+GET /api/v1/feed
+{
+  "api_key":         "abc123...",
+  "user_id":         42,
+  "since_id":        "post_99812",  <span class="cmt">// only items newer than this</span>
+  "count":           50,             <span class="cmt">// page size</span>
+  "max_id":          null,           <span class="cmt">// for scrolling backward</span>
+  "exclude_replies": true
+}
+→ 200 OK
+{
+  "items": [
+    { "post_id": "...", "author_id": 88, "type": "image", "score": 0.91, ... },
+    ...
+  ],
+  "next_cursor": "post_98477"
+}
+
+<span class="cmt">// Write — new post, ~350 QPS</span>
+POST /api/v1/posts
+{
+  "api_key":   "abc123...",
+  "user_id":   42,
+  "content":   "Birthday photo from mom!",
+  "media_ids": ["m_771", "m_772"],
+  "audience":  "friends"
+}
+→ 201 Created  { "post_id": "post_99813" }</pre>
+
+  <div class="highlight hl-blue"><strong>Why <code>since_id</code> instead of <code>page=N</code>?</strong> The feed is a moving target — by the time a user scrolls to "page 3", the system has injected 12 new posts at the top, shifting everything down. Page numbers would show duplicates or skip items. A cursor anchored to <code>since_id</code> says "give me 50 items strictly older than this one I already saw", which is stable across scrolls.</div>
+
+  <div class="highlight hl-orange"><strong>Why is <code>score</code> on every item?</strong> Because the feed isn't strictly chronological — the client may want to display the score (rare) or use it for client-side re-ordering after the user marks a post as "not interested". The server is the source of truth for ranking, but exposing the score keeps the contract honest.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: DATABASE                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>Database Schema</h2>
+  <p>Six core entities. Notice that the schema looks broadly relational — there <em>are</em> relationships (a post belongs to a user, a follow links two users) — but at our scale we'll partition each table aggressively and skip cross-table joins entirely. Most lookups are by primary key.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  USER {
+    bigint user_id PK
+    string name
+    string email
+    timestamp created_at
+    timestamp last_login
+  }
+  ENTITY {
+    bigint entity_id PK
+    string name
+    string type
+    timestamp created_at
+  }
+  USER_FOLLOW {
+    bigint user_id PK
+    bigint target_id PK
+    string target_type
+    timestamp followed_at
+  }
+  FEED_ITEM {
+    string post_id PK
+    bigint user_id FK
+    bigint entity_id FK
+    text content
+    string location
+    int num_likes
+    timestamp created_at
+  }
+  FEED_MEDIA {
+    string post_id PK
+    bigint media_id PK
+  }
+  MEDIA {
+    bigint media_id PK
+    string type
+    string s3_url
+    int width
+    int height
+  }
+  USER ||--o{ USER_FOLLOW : "follows"
+  USER ||--o{ FEED_ITEM : "authors"
+  ENTITY ||--o{ FEED_ITEM : "publishes"
+  FEED_ITEM ||--o{ FEED_MEDIA : "has"
+  MEDIA ||--o{ FEED_MEDIA : "referenced by"
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>👤 USER &amp; ENTITY</h3>
+      <p><strong>USER</strong> holds people accounts. <strong>ENTITY</strong> holds pages and groups — anything a user can follow that isn't itself a user. We could merge these, but separating them lets us evolve their lifecycle independently (a Page has admins, monetization, and verification flags that a User does not).</p>
+    </div>
+    <div class="card">
+      <h3>🔗 USER_FOLLOW</h3>
+      <p>The follow graph. <code>(user_id, target_id, target_type)</code> — so Sarah follows person 88, page 451, and group 99 in three rows. <code>target_type</code> distinguishes them. This table is read on every fan-out: "who follows post-author 42?" and "which entities does Sarah follow?". Indexed both directions.</p>
+    </div>
+    <div class="card">
+      <h3>📝 FEED_ITEM</h3>
+      <p>The post itself. PK is <code>post_id</code> (Snowflake-style: timestamp + shard + sequence, monotonically increasing). Stored in <strong>Cassandra</strong>, sharded by <code>post_id</code> for uniform write distribution. The content text lives here; media is referenced by id.</p>
+    </div>
+    <div class="card">
+      <h3>🖼️ FEED_MEDIA + MEDIA</h3>
+      <p>One post can have many media files (a 5-photo album), so we model it as a join: <strong>FEED_MEDIA</strong> links <code>post_id ↔ media_id</code>, and <strong>MEDIA</strong> stores the metadata (s3 URL, dimensions, MIME). The actual bytes live in S3 and are served via CDN — never through our app servers.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>Why mostly relational but partitioned?</strong> The data <em>is</em> relational — posts have authors, users follow entities — but we never run "JOIN posts ON users WHERE follows" at query time. Instead, we resolve relationships at <strong>fan-out time</strong> (asynchronously, on write) and at <strong>read time</strong> we just look up pre-computed feed-item ids by user_id. The relational schema is for clarity; the storage engine is partitioned NoSQL (Cassandra for posts, Redis for cached feeds).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart, and the production shape where every box justifies itself. The capacity numbers from §3 drive every decision.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Sketch the simplest possible system: when Sarah opens Facebook, an app server runs a single SQL query — <em>"give me all posts authored by users Sarah follows, ordered by date, limit 100"</em>. One database holds everything.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C["Client"] --> APP["App Server"]
+  APP -->|"SELECT posts WHERE author_id IN (Sarah follows) ORDER BY date DESC LIMIT 100"| DB[("Single SQL DB")]
+  DB --> APP
+  APP --> C
+    </div>
+  </div>
+
+  <p>Four concrete failures emerge the moment real traffic shows up:</p>
+  <div class="g2">
+    <div class="card">
+      <h3>💥 Fan-in across thousands of follows</h3>
+      <p>Sarah follows 300 people + 200 pages = 500 sources. The query becomes <code>WHERE author_id IN (... 500 ids ...)</code>. The DB has to gather, merge-sort, and rank posts from 500 partitions for every single fetch. At 17K req/sec each fanning into 500 sources, the DB is doing 8.5M sub-lookups per second. Latency goes from 50ms to 5+ seconds — feed never loads.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Every fetch hits the DB</h3>
+      <p>No cache means 17,500 req/sec slamming the database directly. Each query touches hundreds of rows. A single Postgres node tops out around 5K simple SELECTs/sec; we need <em>thousands</em> of complex multi-source queries/sec. The DB CPU pegs and p99 explodes.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Celebrity posts melt fan-out</h3>
+      <p>Cristiano Ronaldo posts. He has 600M followers. If we tried to push his post to each follower's feed inline, that's 600M cache writes triggered by one HTTP POST. The post would take 30+ minutes to "publish", and during that time the fan-out service blocks every other write.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Strict chronological is a worse product</h3>
+      <p>Even if we could serve the SQL fast, sorting purely by <code>created_at</code> shows Sarah a stranger-in-her-group's promo post above her mom's birthday photo. Engagement collapses. The feed must be <strong>ranked by relevance</strong> — and ranking adds 50ms+ of ML scoring per item, making Pass 1 even less viable.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: pre-compute on write, not on read</h3>
+  <p>The single insight that unlocks the whole design: <strong>feeds are read 100× more often than they're written to</strong>. So move the work to write time. When a user posts, fan out to all their followers' pre-computed feed caches <em>asynchronously</em>. When a user opens the app, the feed is just a single cache fetch — already assembled, already ranked.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">📤 Push (fan-out-on-write)</h3>
+      <p><strong>Used for normal users.</strong> When mom posts a birthday photo, the system writes the post id into all 200 followers' feed caches. <em>Read becomes O(1).</em> Works beautifully when fan-out per post is bounded — say under 10K followers.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">📥 Pull (fan-out-on-load)</h3>
+      <p><strong>Used for celebrities.</strong> Ronaldo's posts are <em>not</em> pushed. Instead, on every feed read, the system fetches Ronaldo's 50 most-recent posts directly from the post DB and merges them with the reader's pre-computed cache. <em>Write becomes O(1) regardless of follower count.</em></p>
+    </div>
+  </div>
+
+  <p>The hybrid model wins. <strong>Push for the long tail of normal users; pull for the head of celebrities</strong>; merge both at read time. This is the same pattern Twitter uses for its home timeline, but Facebook adds a second layer — <strong>ML ranking</strong> — so the merged set is then scored and re-ordered before returning the top 50.</p>
+
+  <div class="highlight hl-purple"><strong>So what's the threshold?</strong> A common rule: if a user has more than ~1 million followers, switch them to the pull side. Push fan-out for 1M followers means 1M cache writes per post — slow but feasible. Above that (Ronaldo at 600M, Taylor Swift at 280M) it's untenable. The threshold is configurable per region and adjusts with capacity.</div>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered — find its matching card below to see what it does and what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client — Web / iOS / Android"]
+
+  subgraph EDGE["Edge Tier"]
+    LB["② Load Balancer"]
+    WEB["③ Web Server"]
+  end
+
+  subgraph APP["Application Tier"]
+    AS["④ Application Server"]
+    PS["⑤ Post Service"]
+    FGS["⑩ Feed Generation Service"]
+    RS["⑪ Ranking Service"]
+  end
+
+  subgraph DATA["Data Tier"]
+    PDB[("⑥ FeedItem DB — Cassandra")]
+    S3[("⑦ Media Storage — S3 + CDN")]
+    UFC[("⑨ User Feed Cache — Redis")]
+  end
+
+  subgraph ASYNC["Async Plane"]
+    FOS["⑧ Fan-out Service"]
+    NS["⑫ Notification Service"]
+  end
+
+  CL --> LB
+  LB --> WEB
+  WEB --> AS
+  AS -->|"new post"| PS
+  AS -->|"feed fetch"| FGS
+
+  PS --> PDB
+  PS --> S3
+  PS -.publish event.-> FOS
+  FOS -->|"push to followers"| UFC
+  FOS -.celeb posts skipped.-> PDB
+
+  FGS --> UFC
+  FGS -->|"pull celeb posts"| PDB
+  FGS --> RS
+  FGS --> S3
+
+  PS -.notify.-> NS
+  NS -.push.-> CL
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style WEB fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style AS fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style PS fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style PDB fill:#171d27,stroke:#38b265,color:#d4dae5
+  style S3 fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style FOS fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style UFC fill:#171d27,stroke:#e05252,color:#d4dae5
+  style FGS fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style RS fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style NS fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client (Web / iOS / Android)</h3>
+      <p>The Facebook app or web page. Issues a <code>GET /feed</code> when the user opens the app or pulls down to refresh, and a <code>POST /posts</code> when they publish. Holds a small client-side cache of the last fetched feed so a quick re-open doesn't always hit the network. Maintains a websocket for real-time notifications.</p>
+      <p><strong>Solves:</strong> nothing on its own — but every latency budget flows backward from "what does the client experience?" The 2-second feed-load goal is measured from the client's tap to first paint, not from the server's response.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> Load Balancer</h3>
+      <p>Public-facing layer-7 LB (e.g., AWS ALB or in-house equivalent). Distributes incoming HTTPS across web-server pods, terminates TLS, and yanks unhealthy backends via 5-second health checks. Sticky sessions are not needed because everything below is stateless.</p>
+      <p><strong>Solves:</strong> single-server failure and traffic-spike absorption. Without it, one app crash takes down the whole region. With it, we lose 1/N of capacity for a few seconds until health checks kick the bad pod out.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">③</span> Web Server</h3>
+      <p>Stateless edge service that handles the HTTP/HTTPS surface — auth, request validation, rate-limit enforcement, response compression. Hands the parsed request off to the application server tier. Easy to scale horizontally because no state lives here.</p>
+      <p><strong>Solves:</strong> isolating protocol concerns (TLS, HTTP parsing, auth) from business logic. Without this split, every app-server pod would have to ship a TLS termination stack and rate-limit Redis client — wasteful and harder to upgrade.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">④</span> Application Server</h3>
+      <p>The orchestrator. For a feed fetch, it calls <strong>Feed Generation</strong>, applies user-level filters (muted authors, language preference), and returns the response. For a new post, it forwards to <strong>Post Service</strong>. Holds zero per-user state — every request is independent.</p>
+      <p><strong>Solves:</strong> a clean seam between "what the client asked for" and "which downstream services do the work". Without it, web servers would have to know about Cassandra, Redis, S3, and the ranking model — coupling that breaks every refactor.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">⑤</span> Post Service</h3>
+      <p>Handles the <code>POST /posts</code> write path. Validates content, generates a Snowflake-style <code>post_id</code>, writes the row to <strong>FeedItem DB</strong>, uploads any media to <strong>S3</strong>, and emits a "post created" event onto the fan-out queue. Latency budget: under 200ms — the user is staring at a spinner.</p>
+      <p><strong>Solves:</strong> isolating the write path so it scales independently of reads. Without a dedicated post tier, write spikes (e.g., a major news event) would compete with feed-read traffic on the same pods, and reads would slow during the spike.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑥</span> FeedItem DB (Cassandra)</h3>
+      <p>The source of truth for posts — a partitioned, replicated NoSQL store sharded by <code>post_id</code>. Cassandra was chosen because the access pattern is "look up post by id" + "list recent posts by author" — both indexable, neither needing joins. Replicated 3× across availability zones with quorum reads/writes for durability without sacrificing availability.</p>
+      <p><strong>Solves:</strong> durable post storage at petabyte scale. A single MySQL box maxes out around 1TB; we have decades of posts to keep. Cassandra spreads it across hundreds of nodes and survives single-node failure transparently.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑦</span> Media Storage (S3 + CDN)</h3>
+      <p>Photos and videos go to S3. URLs are then cached at edge POPs by a CDN (CloudFront / Akamai). When Sarah's feed includes mom's photo, the feed response carries the CDN URL — Sarah's browser fetches the bytes directly from her nearest edge node, never through our app servers.</p>
+      <p><strong>Solves:</strong> the bandwidth problem. A single 4MB photo viewed by 10K followers is 40GB of egress. Pushing that through our app-server tier would saturate it instantly. The CDN absorbs it at the edge — that's the entire reason CDNs exist.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑧</span> Fan-out Service</h3>
+      <p>The async heart of the push side. Consumes "post created" events from a Kafka topic. For each event: look up the author's followers, filter out anyone above the celebrity threshold, and write the new <code>post_id</code> into each remaining follower's <strong>User Feed Cache</strong>. Capped at e.g. 500 entries per user, oldest evicted. Runs on hundreds of worker pods — embarrassingly parallel across posts.</p>
+      <p><strong>Solves:</strong> the "make new posts visible to followers fast" requirement without blocking the publish HTTP request. Without async fan-out, mom's post couldn't return 201 until 200 cache writes completed — slow on the happy path and catastrophic if any cache shard is briefly unhealthy.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑨</span> User Feed Cache (Redis)</h3>
+      <p>The crown jewel. Per-user pre-computed list of feed-item ids — a Redis sorted set keyed by <code>user:{id}:feed</code>, scored by post timestamp, capped at 500 entries. Sharded by <code>user_id</code> across ~1,500 nodes. A feed fetch is one <code>ZREVRANGE</code> on the right shard — sub-millisecond.</p>
+      <p><strong>Solves:</strong> the 17.5K-req/sec read load. Without this cache, every fetch would hit Cassandra with a fan-in query across hundreds of authors — orders of magnitude slower and impossible to scale linearly. The cache makes the read path effectively free.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑩</span> Feed Generation Service</h3>
+      <p>The read-path orchestrator. For each feed fetch: (1) <code>ZREVRANGE</code> the user's pre-computed cache for the top 500 ids; (2) for each celebrity the user follows, <code>SELECT</code> the celebrity's last 50 posts from FeedItem DB; (3) merge both sets; (4) hand to <strong>Ranking Service</strong>; (5) hydrate the top-N with full post bodies and media URLs. Total budget: under 500ms.</p>
+      <p><strong>Solves:</strong> the merge-and-rank step that the cache alone can't do. The cache holds <em>candidates</em>; ranking picks the winners. This service also handles cache misses (regenerate on the fly for inactive users) and pagination.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑪</span> Ranking Service</h3>
+      <p>The ML brain. Given a candidate list of post ids and a viewer id, returns each post's relevance score — a function of recency, post engagement (likes, comments, shares), viewer-author affinity (how often Sarah interacts with mom), content type (Sarah loves videos), and predicted dwell time. Implemented as a model server (e.g., TorchServe) with a feature store. Scoring 500 candidates takes ~30-50ms.</p>
+      <p><strong>Solves:</strong> the relevance problem. Without ranking, the feed is reverse-chronological — and reverse-chrono is empirically worse for engagement than ranked. Personalization is the product.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑫</span> Notification Service</h3>
+      <p>Pushes "your friend just posted" alerts to active users via websocket / APNs / FCM. Subscribes to the same fan-out events as the cache writers, but emits user-visible notifications instead of cache mutations. Throttled per-user so a friend who posts 10 times in an hour doesn't generate 10 buzz notifications.</p>
+      <p><strong>Solves:</strong> the "new post visible within 5 seconds" goal for users who already have the app open. Without it, fresh posts only appear when the user manually refreshes — defeating the freshness requirement.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — mom posts, Sarah scrolls</h3>
+  <p>Two real flows mapped to the numbered components above.</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>📤 Write flow — mom posts a birthday photo at 14:02:06</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Mom's <strong>phone</strong> ① POSTs <code>/api/v1/posts</code> with text + photo bytes.</li>
+        <li><strong>Load Balancer</strong> ② → <strong>Web Server</strong> ③ → <strong>Application Server</strong> ④ → <strong>Post Service</strong> ⑤.</li>
+        <li>Post Service uploads the photo to <strong>S3</strong> ⑦ (a few hundred ms), gets back a media id.</li>
+        <li>Post Service generates <code>post_id = post_99813</code>, writes <code>{post_id, user_id, content, media_id, created_at}</code> into <strong>FeedItem DB</strong> ⑥.</li>
+        <li>Post Service emits a "post created" event onto Kafka and returns <code>201 {post_id}</code> to mom. <em>Total: ~250ms — mom sees her post on screen.</em></li>
+        <li>The <strong>Fan-out Service</strong> ⑧ picks up the event asynchronously, looks up mom's 200 followers (Sarah is one), and pushes <code>post_99813</code> into each one's <strong>User Feed Cache</strong> ⑨ via <code>ZADD user:{id}:feed</code>. <em>Total fan-out: under 5 seconds.</em></li>
+        <li>The <strong>Notification Service</strong> ⑫ pushes a websocket message to active followers — Sarah's app shows a "1 new post" banner.</li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h3>📥 Read flow — Sarah opens Facebook at 14:03:30</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah's <strong>app</strong> ① GETs <code>/api/v1/feed</code> with her <code>user_id</code> and a <code>since_id</code> cursor.</li>
+        <li><strong>LB</strong> ② → <strong>Web Server</strong> ③ → <strong>Application Server</strong> ④ → <strong>Feed Generation Service</strong> ⑩.</li>
+        <li>Feed Gen issues <code>ZREVRANGE user:42:feed 0 499</code> against <strong>User Feed Cache</strong> ⑨ → 500 candidate post ids back, including mom's brand-new <code>post_99813</code>.</li>
+        <li>Feed Gen identifies the 3 celebrities Sarah follows, queries <strong>FeedItem DB</strong> ⑥ for each celebrity's 50 most-recent posts → merges them with the cached candidates.</li>
+        <li>Feed Gen passes the merged ~650 candidates + Sarah's user features to <strong>Ranking Service</strong> ⑪ → gets back 50 winners, scored.</li>
+        <li>Feed Gen hydrates the 50 winners — fetches post bodies from <strong>FeedItem DB</strong> ⑥ and replaces media ids with <strong>CDN</strong> ⑦ URLs.</li>
+        <li>Response returned to Sarah's app. Mom's birthday photo is at position #2. <em>Total: ~800ms.</em></li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around three insights — (1) <strong>writes are 100× rarer than reads</strong>, so we move feed assembly to write-time via fan-out; (2) <strong>celebrities break naive fan-out</strong>, so we use a hybrid push/pull model with a follower-count threshold; (3) <strong>chronological is a worse product than ranked</strong>, so a dedicated ML scoring tier sits between the candidate cache and the response. Every box in the diagram earns its place by removing one of those failure modes from Pass 1.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: FEED GENERATION                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-yellow">Step 7</span>
+  <h2>Feed Generation — Pre-compute vs. On-Demand</h2>
+  <p>The core trade-off: do we keep a pre-computed feed for every user 24/7, or only for active ones? Storage vs. compute.</p>
+
+  <h3 class="subh">Active users — pre-compute and keep warm</h3>
+  <p>For users who open Facebook at least once a week, we maintain a continuously-updated feed cache. Every time the fan-out service receives a new post from someone they follow, the user's cache is updated immediately. By the time Sarah opens the app, her feed is already assembled — the read path is just a cache fetch + ranking.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📦 Cache size per active user</h3>
+      <p>Top <strong>500 candidates</strong> (post ids + lightweight metadata). 500 × ~1KB = <strong>~500KB per user</strong>. Why 500? Because even a heavy scroller rarely goes past 200 items in one session, and 500 gives us headroom for ranking to discard half of them.</p>
+    </div>
+    <div class="card">
+      <h3>♻️ Cache refresh on new post</h3>
+      <p>The fan-out service is the only writer. It does <code>ZADD user:{id}:feed score=timestamp post_id</code> and <code>ZREMRANGEBYRANK user:{id}:feed 0 -501</code> to keep the cap at 500. Old entries are evicted automatically as new ones arrive.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Inactive users — LRU eviction, regenerate on return</h3>
+  <p>What about a user who hasn't opened Facebook in 6 months? Keeping their feed cache live is wasted memory. We let inactive users <strong>fall out of cache</strong> via an LRU policy on the cache cluster — if their entry hasn't been read in 30 days, it's evicted. When they finally return, the Feed Generation Service detects the cache miss and rebuilds the feed on demand: query FeedItem DB for the last 200 posts from each followed entity, merge, rank, return. Slower (~3-5 seconds) but only happens once per dormant user per session.</p>
+
+  <div class="highlight hl-yellow"><strong>The trade-off in plain English:</strong> we pay 150TB of cache memory to give 300M active users sub-second feed loads. We accept a 3-5 second cold-start for the long tail of dormant users. If we tried to cache <em>everyone</em> (3 billion total accounts), the memory bill would be 10× higher for users who'd never read it.</div>
+
+  <h3 class="subh">Pre-warming on app open</h3>
+  <p>An optimization: when a dormant user logs in, the auth flow fires an async "warm cache" job in parallel with serving the login response. By the time the user navigates to the feed (a second or two later), the cache may already be populated, hiding the cold-start latency.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: PULL VS PUSH VS HYBRID              -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-green">Step 8</span>
+  <h2>Pull vs. Push vs. Hybrid — The Defining Trade-off</h2>
+  <p>This is the question every Newsfeed/timeline interview circles back to. The honest answer is "hybrid" — but you only earn that answer by walking through the two extremes first.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant Mom as "Mom (200 followers)"
+  participant Ronaldo as "Ronaldo (600M followers)"
+  participant FOS as "Fan-out Service"
+  participant UFC as "User Feed Cache"
+  participant FGS as "Feed Generation"
+  participant PDB as "FeedItem DB"
+  participant Sarah as "Sarah (reader)"
+
+  Note over Mom,FOS: Push path — normal user
+  Mom->>FOS: post created
+  FOS->>UFC: ZADD into 200 follower caches
+  Note over UFC: Sarah's cache now has mom's post
+
+  Note over Ronaldo,FOS: Pull path — celebrity
+  Ronaldo->>FOS: post created
+  FOS-->>FOS: skip fan-out (above threshold)
+  FOS->>PDB: just persist the post
+
+  Note over Sarah,FGS: Read merges both
+  Sarah->>FGS: GET /feed
+  FGS->>UFC: ZREVRANGE Sarah's cache (mom's post)
+  FGS->>PDB: SELECT latest from each celeb Sarah follows (Ronaldo)
+  FGS->>FGS: merge + rank
+  FGS-->>Sarah: top 50 ranked items
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">📥 Pure Pull (fan-out-on-load)</h3>
+      <p><strong>How:</strong> on every feed read, query each followed entity's recent posts and merge.</p>
+      <p><strong>Pros:</strong> trivially handles celebrities; no wasted work for dormant users; fresh by definition.</p>
+      <p><strong>Cons:</strong> read latency scales with follower count — Sarah's 500 follows = 500 sub-queries per fetch. At 17.5K req/sec, that's 8.75M sub-queries/sec slamming the DB.</p>
+    </div>
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">📤 Pure Push (fan-out-on-write)</h3>
+      <p><strong>How:</strong> on every post, write the post id into all followers' pre-computed feed caches.</p>
+      <p><strong>Pros:</strong> read is O(1) — just a cache fetch.</p>
+      <p><strong>Cons:</strong> celebrities are catastrophic — Ronaldo's post triggers 600M cache writes. Also wasteful: dormant users' caches are constantly updated for posts they'll never see.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🔀 Hybrid (production winner)</h3>
+      <p><strong>How:</strong> push for users with under 1M followers, pull for celebrities, merge at read time.</p>
+      <p><strong>Pros:</strong> bounded fan-out cost per write, bounded read cost (cache + small celeb pull).</p>
+      <p><strong>Cons:</strong> two code paths, threshold tuning, complexity in the merge step.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">When to use each — concrete thresholds</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Author follower count</th><th>Strategy</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><code>&lt; 10K</code></td><td>Push to all</td><td>Fan-out is cheap; bounded cost</td></tr>
+        <tr><td><code>10K – 1M</code></td><td>Push to active followers only</td><td>Skip dormant followers via the same LRU rule from §7 — saves memory without hurting any active user</td></tr>
+        <tr><td><code>&gt; 1M (celebrity)</code></td><td>Pull on read</td><td>Push would be 1M+ cache writes per post — too expensive</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-green"><strong>The interview move:</strong> volunteer pure pull first ("simplest thing that could work"), explain why it can't hit the 2-second SLA. Volunteer pure push next, explain the celebrity catastrophe. Land on hybrid as the answer that fixes both. Bonus points for noting that <em>which side a user is on can change over time</em> as their follower count grows.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: FEED RANKING                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-purple">Step 9</span>
+  <h2>Feed Ranking — Why Two Friends See Different Orders</h2>
+  <p>The feed isn't sorted by <code>created_at DESC</code>. It's sorted by a <strong>relevance score</strong> computed per (viewer, post) pair — meaning Sarah and Raj could both follow mom and both see her birthday post, but at different positions in their respective feeds.</p>
+
+  <h3 class="subh">The score function — what goes into it</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>📅 Recency</h3>
+      <p>Decay factor on <code>now - created_at</code>. A post from 30 minutes ago beats one from yesterday, all else equal. Half-life around a few hours for friends, longer for groups.</p>
+    </div>
+    <div class="card">
+      <h3>📈 Post engagement</h3>
+      <p>Total likes, comments, shares. Higher engagement = the network has signaled this is interesting. Normalized so a celebrity's 10K likes don't always beat a friend's 50.</p>
+    </div>
+    <div class="card">
+      <h3>🤝 Viewer-author affinity</h3>
+      <p>How often does Sarah interact with this author? Mom (Sarah's mom, lots of likes) scores way higher than a high-school acquaintance she never engages with. Computed offline daily and fetched from a feature store.</p>
+    </div>
+    <div class="card">
+      <h3>🎬 Content type preference</h3>
+      <p>Sarah watches videos to completion; Raj scrolls past them. The model learns each viewer's content-type lean and boosts matching content.</p>
+    </div>
+    <div class="card">
+      <h3>⏱️ Predicted dwell time</h3>
+      <p>The model predicts how long Sarah will stop on this post. Long predicted dwell = boost. Used to penalize clickbait that gets clicks but no read-time.</p>
+    </div>
+    <div class="card">
+      <h3>🚫 Negative signals</h3>
+      <p>Does Sarah hide posts from this author? Has she marked similar content "not interested"? Has the author been recently rate-limited for low-quality content? All subtract from the score.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">How it runs at request time</h3>
+  <p>The Feed Generation Service hands the Ranking Service a batch — viewer features + 500 candidate post features. The model is a gradient-boosted tree or a small neural network served by a model server (TorchServe, TensorFlow Serving). Scoring 500 candidates in a single batch takes ~30-50ms on a modern GPU/CPU. The top 50 by score come back; the rest are discarded.</p>
+
+  <div class="highlight hl-purple"><strong>Why personalized ranking matters specifically here:</strong> reverse-chronological worked in 2008 when users had 50 friends. With 500 follows, raw chrono drowns the meaningful posts in noise. Ranking is what makes the feed feel like a curated paper instead of a firehose. Trade-off: predictability — users sometimes complain "why didn't I see X's post?" — but the engagement gains far outweigh the friction.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: PARTITIONING                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-cyan">Step 10</span>
+  <h2>Data Partitioning</h2>
+  <p>Two storage tiers, two different partitioning keys. Choosing the wrong one for either tier breaks scaling.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📝 FeedItem DB — shard by <code>post_id</code></h3>
+      <p>Posts are written ~350/sec from millions of authors. Sharding by <code>post_id</code> (Snowflake-style id, includes timestamp + shard hint) gives <strong>uniform write distribution</strong> — no hot author can melt one shard. Reads are by post_id, which is also fast.</p>
+      <p><strong>What about "list posts by author"?</strong> Use a secondary index on <code>(author_id, created_at)</code> — Cassandra can index it natively. Slightly slower than primary-key reads but only used for the celebrity pull path, which is the long-tail traffic.</p>
+    </div>
+    <div class="card">
+      <h3>📦 User Feed Cache — shard by <code>user_id</code></h3>
+      <p>Each user's pre-computed feed lives entirely on one shard, keyed by <code>user:{user_id}:feed</code>. <strong>Why not shard by post?</strong> Because the read pattern is <em>"give me Sarah's feed"</em> — single-user, single-key. Spreading Sarah's feed across multiple shards would force a scatter-gather on every read.</p>
+      <p>Consistent hashing on <code>user_id</code> across the ~1,500-node Redis cluster. Adding/removing nodes only relocates 1/N of users instead of all of them.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Replication for fault tolerance</h3>
+  <p>Each Cassandra shard is replicated 3× across availability zones with quorum writes (W=2, N=3) and quorum reads (R=2). Each Redis cache node has a hot replica — if the primary dies, the replica takes over in seconds; we lose at most a few seconds of fan-out writes that hadn't replicated yet, which is acceptable for a feed cache.</p>
+
+  <div class="highlight hl-cyan"><strong>Why two different shard keys?</strong> Because <em>writes care about author distribution</em> (you want all authors writing to all shards uniformly), but <em>reads care about user locality</em> (you want all of one user's data on one shard). The two access patterns don't compose — so we use two stores, each sharded for its own pattern, and pay the cost of synchronizing them via the fan-out service.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: CACHE                              -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-red">Step 11</span>
+  <h2>Cache Strategy — Multi-Tier</h2>
+  <p>The cache isn't one box; it's a layered hierarchy. Each tier catches a different class of repeat work.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🟢 Tier 1 — In-process LRU</h3>
+      <p>On each Feed Generation pod, an in-memory LRU keyed by <code>user_id</code> with a 30-second TTL. If Sarah refreshes twice in a row, the second refresh hits the in-process cache and skips Redis entirely. Tiny (a few hundred MB per pod) but kills millisecond-level repeat-fetch noise.</p>
+    </div>
+    <div class="card">
+      <h3>🟡 Tier 2 — User Feed Cache (Redis)</h3>
+      <p>The big one. The 150TB sharded Redis cluster from §6 holding pre-computed feeds. Hit rate target: <strong>>95%</strong>. LRU eviction at the cluster level for inactive users.</p>
+    </div>
+    <div class="card">
+      <h3>🔴 Tier 3 — FeedItem DB (Cassandra)</h3>
+      <p>Last resort — only hit on cache miss (cold user) or for the celebrity pull path. Not technically a cache, but the source of truth that the upper tiers fall back on. Sized to handle the long-tail miss rate, not the full 17.5K req/sec.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pre-warm on app open</h3>
+  <p>When a user logs in, the auth service emits an async "user is active" event. The Feed Generation Service consumes it and pre-warms the in-process LRU for that user before they navigate to the feed. Hides the cold-start latency.</p>
+
+  <div class="highlight hl-red"><strong>The cache invalidation rule:</strong> we never invalidate. Posts are immutable (you can edit, but edits are rare and we tolerate brief staleness). New posts are <em>added</em> to the cache by fan-out, not replaced. Deletes are handled lazily — if Feed Generation hydrates a deleted post and gets a 404 from FeedItem DB, it filters that post out and removes its id from the user's cache entry.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-blue">Step 12</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">Push vs. pull for feed delivery — which would you pick?</div>
+  <div class="ans"><strong>Hybrid.</strong> Pure push catastrophes on celebrities (Ronaldo's 600M-follower fan-out). Pure pull catastrophes on read latency (500 sub-queries per fetch). Hybrid uses push for under-1M-follower authors and pull for celebrities, merging at read time. The threshold is tunable per region and adjusts as compute capacity changes. Same approach Twitter uses for the home timeline.</div>
+
+  <div class="iq">How do you handle a celebrity (Cristiano Ronaldo) posting?</div>
+  <div class="ans"><strong>Skip fan-out entirely.</strong> When Ronaldo posts, the post is written to FeedItem DB but the fan-out service skips writing to followers' caches (would be 600M writes, untenable). Instead, the Feed Generation Service knows Ronaldo is a "pull" author — every time a follower fetches their feed, FGS does a lightweight <code>SELECT</code> for Ronaldo's last 50 posts and merges them with the follower's cached feed. Post is delivered in the next read; latency budget unaffected because the celebrity-pull queries are tiny.</div>
+
+  <div class="iq">How does the ranking actually work?</div>
+  <div class="ans"><strong>ML model serving.</strong> Each candidate post's score is a function of recency, post engagement (likes/comments/shares), viewer-author affinity (how often the viewer interacts with the author), content-type preference (does the viewer prefer videos?), and predicted dwell time. Implemented as a gradient-boosted tree or small neural net served by TorchServe / TF Serving. Features come from an offline-computed feature store (affinity scores updated daily) plus realtime signals (post age, current like count). Scoring 500 candidates in a single batch takes ~30-50ms.</div>
+
+  <div class="iq">How do you ensure new posts appear in followers' feeds within 5 seconds?</div>
+  <div class="ans"><strong>Async fan-out with bounded queue depth.</strong> When a normal user posts, the Post Service emits a Kafka event and returns 201 immediately. A pool of fan-out workers consumes the event and writes the post id into each follower's Redis cache via <code>ZADD</code> — typically all 200-500 follower caches updated in 1-3 seconds. We monitor end-to-end p99 fan-out latency; if it creeps past 5 seconds we add workers. For active followers with the app open, the Notification Service also pushes a websocket message so they see "1 new post" instantly.</div>
+
+  <div class="iq">What's the trade-off of pre-computing feeds for inactive users?</div>
+  <div class="ans"><strong>Storage vs. cold-start latency.</strong> If we kept every account's feed warm, we'd 10× the cache bill for users who never read it. Instead we use LRU eviction — if a user hasn't fetched their feed in 30 days, their cache entry is dropped. When they return, Feed Generation rebuilds the feed on demand by querying FeedItem DB for each followed entity (a 3-5 second operation). The cold-start happens once per dormant session and is masked by an async "warm cache" job kicked off at login time. Net: 150TB cache instead of ~1.5PB, with <1% of users experiencing the slow first fetch.</div>
+
+  <div class="iq">How do you handle a feed cache miss?</div>
+  <div class="ans"><strong>Rebuild inline, then populate the cache.</strong> Feed Generation does <code>ZREVRANGE user:42:feed</code> against Redis. On miss (empty result), it falls back to: (1) query FeedItem DB for the last 200 posts from each entity user 42 follows; (2) merge, sort by timestamp, take top 500; (3) write the result back to Redis as the user's new feed cache; (4) hand to ranking and return. Latency: 3-5 seconds vs. 800ms warm. Acceptable because miss rate is <5% (only dormant users).</div>
+
+  <div class="iq">Why Cassandra for FeedItem DB and Redis for the feed cache — why not one store?</div>
+  <div class="ans"><strong>Different access patterns, different trade-offs.</strong> FeedItem DB needs <em>durable, petabyte-scale</em> storage with multi-region replication and 3× replication for fault tolerance. Cassandra excels at this. The feed cache needs <em>microsecond-latency, sorted-set semantics, in-memory speed</em> — that's Redis territory. Forcing one store to do both means either Cassandra is too slow for the read path or Redis is too expensive (RAM-priced) for petabyte storage. Two stores, each optimized for its workload, beats one compromise store.</div>
+
+  <div class="iq">How would you handle a "trending" event — say, a viral post during the Super Bowl?</div>
+  <div class="ans"><strong>The cache + CDN absorb it.</strong> A viral post is pulled from FeedItem DB once per cache miss and then served from Redis to every subsequent reader. Media (the photo or video) is in S3 and CDN-cached at edge POPs — even if 50M people view it in an hour, the origin sees thousands of fetches, not millions. The Ranking Service may also boost the post's score given its engagement spike. The one risk is the <em>fan-out write storm</em> for the original post — if the viral author has 5M followers, fan-out takes longer; we either accept a 30-second freshness lag or pre-classify them above the celebrity threshold and switch to pull mode.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "It's a hybrid push/pull model — fan-out-on-write to followers' Redis-cached feeds for normal users, fan-out-on-load for celebrities, merged and ML-ranked at read time. The cache makes reads O(1); the celebrity threshold makes writes bounded; the ranker makes the feed feel personal."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

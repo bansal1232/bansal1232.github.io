@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Facebook Messenger — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Facebook <span>Messenger</span></h1>
+  <p class="sub">From "poll the server every 3 seconds" to 500 million open WebSockets, HBase-backed history, and Kafka-stitched chat servers — the architecture that earns every box</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is Messenger?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">Database Design</a></li>
+      <li><a href="#s6">High-Level Architecture</a></li>
+      <li><a href="#s7">Message Handling Flow</a></li>
+      <li><a href="#s8">Storing &amp; Retrieving Messages</a></li>
+      <li><a href="#s9">Managing User Status</a></li>
+      <li><a href="#s10">Data Partitioning</a></li>
+      <li><a href="#s11">Fault Tolerance</a></li>
+      <li><a href="#s12">Group Chat &amp; Push</a></li>
+      <li><a href="#s13">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS MESSENGER?                  -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is Facebook Messenger?</h2>
+  <p>Sarah is sitting on the couch in San Francisco. She types "are you free for dinner?" into the Messenger app and taps send. Two hundred milliseconds later, Raj's phone in Bangalore buzzes with the message — already showing the little "delivered" check next to it. He thumbs back "yes — 8pm?" and Sarah sees it appear at the bottom of her chat thread before she's even finished setting her phone down. That round-trip — text in, text out, the world over — is what we're designing.</p>
+
+  <p>Messenger is a real-time text messaging service. Two people (or a group) carry on a conversation, with messages delivered instantly when both are online and queued for later when one isn't. The chat history is the same on every device they own — phone, laptop, tablet — so Sarah can start a conversation on her commute and finish it on her work laptop. Behind that simple experience is a system that has to: hold open hundreds of millions of network connections at the same time, route each message to the right recipient (who may or may not be online), persist every word forever, and never deliver the same message twice.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How do you push a message from server to client in under 200ms when the client doesn't ask for it? (2) How do you store 20 billion messages a day and still retrieve any given conversation's history in under 50ms?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Pin the contract down before drawing boxes. Asking these questions in an interview signals you're going to design for the actual workload, not a memorized solution.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Support <strong>1-on-1 conversations</strong> between any two users</li>
+        <li>Track and broadcast <strong>online / offline status</strong> for each user</li>
+        <li><strong>Persist chat history</strong> — same view on every device the user owns</li>
+        <li>Show <strong>delivered / read receipts</strong> per message</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Real-time</strong> chat experience — minimum end-to-end latency, target under 200ms</li>
+        <li><strong>Highly consistent</strong> — every device shows the same chat history in the same order</li>
+        <li><strong>Highly available</strong> — but we are willing to sacrifice some availability for consistency (a missing-message bug is worse than a 30-second outage)</li>
+      </ul>
+      <h3 style="margin-top:1rem">➕ Extended</h3>
+      <ul>
+        <li><strong>Group chat</strong> — N participants, message fanout to all members</li>
+        <li><strong>Push notifications</strong> — wake the recipient's phone via APNS / FCM when they're offline</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The "consistency over availability" choice matters.</strong> If Raj's phone shows messages 4, 5, 6 but his laptop shows 4, 6 (skipping 5), he loses trust in the product forever. Getting the order and completeness right is more important than 100% uptime. We'll lean on Kafka and HBase because both are built around durability-first.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers shape architecture. Doing them out loud forces the conversation about sharding, connection pooling, and storage tiering.</p>
+
+  <h3 class="subh">Traffic estimates</h3>
+  <p>Assume <strong>500 million daily active users (DAU)</strong>, each sending <strong>40 messages per day</strong>. That's <strong>20 billion messages/day</strong>, or roughly <strong>230,000 messages/second</strong> on average — and 2-3× that at peak.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Messages/day</h3><p><span class="metric">~20 billion</span></p><p>500M × 40</p></div>
+    <div class="card"><h3>Avg msg size</h3><p><span class="metric">~100 bytes</span></p><p>Text only</p></div>
+    <div class="card"><h3>Ingress</h3><p><span class="metric">~25 MB/s</span></p><p>230K × 100B</p></div>
+    <div class="card"><h3>Egress</h3><p><span class="metric">~25 MB/s</span></p><p>Each msg goes out once</p></div>
+  </div>
+
+  <h3 class="subh">Storage estimate (5 years)</h3>
+  <p>20B messages × 100 bytes = <span class="metric">~2 TB/day</span>. Over 5 years: <span class="metric">~3.6 PB</span>. This rules out a single relational DB instantly — we need a horizontally-scalable wide-column store and tiered storage (hot recent messages vs. cold archived ones).</p>
+
+  <h3 class="subh">Connection estimate (the hidden monster)</h3>
+  <p>The non-obvious capacity number. To deliver messages instantly, every user needs an open <strong>WebSocket</strong> (a persistent TCP connection) to a chat server. At peak that's <strong>500M concurrent open connections</strong>. A single chat server typically holds 25K-50K connections before its socket buffers, file descriptor limits, and CPU give up. So we need at minimum <code>500M / 50K =</code> <span class="metric">~10,000 chat servers</span>. This number alone is what makes the architecture different from a normal REST app.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Messages/sec (avg)</td><td><code>230K/s</code></td><td>Drives Kafka throughput &amp; HBase write sizing</td></tr>
+        <tr><td>Concurrent connections</td><td><code>500M</code></td><td>Forces a dedicated chat-server tier separate from app servers</td></tr>
+        <tr><td>5-yr storage</td><td><code>3.6 PB</code></td><td>Mandates HBase/HDFS — single-box DBs don't fit at this scale</td></tr>
+        <tr><td>Bandwidth</td><td><code>25 MB/s in &amp; out</code></td><td>Modest — single LB tier handles it; hardware not a bottleneck, software is</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>Three functions cover the workload — but the protocol underneath is unusual. Unlike a typical REST API where the client always asks first, chat is a <strong>stateful, push-driven protocol</strong> built on WebSockets (or long-polling as a fallback). The client opens a connection once and keeps it open; the server pushes messages whenever they arrive.</p>
+
+  <span class="code-label cl-green">Conceptual API surface (over WebSocket frames or REST)</span>
+<pre><span class="cmt">// Send a message — client → server frame</span>
+sendMessage(api_key, sender_id, receiver_id, text)
+  → returns message_id once persisted
+  <span class="cmt">// Server then pushes the same message to receiver_id's open WebSocket
+  // (or queues a push notification if receiver is offline)</span>
+
+<span class="cmt">// Fetch chat history — REST, paginated by timestamp cursor</span>
+getConversation(api_key, user1_id, user2_id, before_timestamp, count)
+  → returns up to `count` messages older than `before_timestamp`
+  <span class="cmt">// Used on app start to load the last 50 messages of each open thread</span>
+
+<span class="cmt">// Get presence for a list of users — bulk lookup</span>
+getStatus(api_key, user_ids[])
+  → returns [{user_id, status: ONLINE|OFFLINE, last_seen}]
+  <span class="cmt">// Used when opening the friends list to show green dots</span></pre>
+
+  <div class="highlight hl-blue"><strong>Why WebSocket (or long-poll) and not plain REST?</strong> A naive REST design would have the client poll <code>GET /messages</code> every few seconds. At 500M users polling every 3s, that is 166M requests/sec just to ask "anything new?" — and 99% of those return empty. A WebSocket is a single TCP connection that stays open: zero overhead when idle, instant push when a message lands. The cost shifts from "request rate" to "connection count" — which we then engineer for with a dedicated chat-server tier.</div>
+
+  <div class="highlight hl-orange"><strong>Stateful protocol caveat:</strong> because the chat server holds open the user's connection, it is no longer a pure stateless web tier. Reconnection logic, sticky sessions, and connection-state replication all become first-class concerns — most of §6 and §11 are devoted to handling these.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: DATABASE                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>Database Design</h2>
+  <p>Three observations decide the database choice: (1) we have <strong>massive small writes</strong> — 230K tiny rows per second, (2) we read by <strong>conversation + time range</strong> — "give me the last 50 messages between Sarah and Raj", and (3) <strong>data volume is petabyte-scale</strong>. This points squarely at a wide-column NoSQL store like <strong>HBase</strong> (which Facebook actually uses for Messenger).</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  USER {
+    bigint id PK
+    string name
+    string email
+    timestamp last_seen
+    string status
+  }
+  CONVERSATION {
+    bigint id PK
+    bigint user_a_id FK
+    bigint user_b_id FK
+    timestamp created_at
+    timestamp last_message_at
+  }
+  MESSAGE {
+    bigint id PK
+    bigint conversation_id FK
+    bigint sender_id FK
+    string text
+    timestamp ts
+    string status
+  }
+  USER ||--o{ CONVERSATION : "participates"
+  CONVERSATION ||--o{ MESSAGE : "contains"
+    </div>
+  </div>
+
+  <p>The <code>MESSAGE</code> table is the giant — billions of rows added per day. In HBase the row key is engineered as <code>(conversation_id, reverse_timestamp)</code> so all messages for one conversation live on one region server, sorted newest-first. A "give me the last 50 messages" query becomes a single short range scan — O(50), not O(billions).</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">❌ Why not MySQL?</h3>
+      <p>A MySQL server tops out around 5K-10K writes/sec on commodity hardware. We need <strong>230K writes/sec sustained</strong>. Sharded MySQL could hit it, but we'd be reinventing what HBase ships with — region splits, replication, tombstoning. Operational nightmare.</p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">❌ Why not MongoDB?</h3>
+      <p>Document-style fine for a single message, but range scans across millions of messages in one conversation are slow and memory-hungry. HBase's columnar layout + row-key sort order is purpose-built for "scan the last N rows for key prefix X".</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✅ Why HBase + HDFS?</h3>
+      <p>(a) Write-optimized log-structured storage absorbs 230K writes/sec linearly. (b) Row-key range scans for chat history are O(N) on the result, not the dataset. (c) HDFS underneath gives us 3-way replication + petabyte-scale storage for free. (d) Battle-tested at Facebook for exactly this workload.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>The key insight:</strong> the choice of HBase isn't because it's "the cool NoSQL" — it's because the <em>access pattern</em> (small high-rate writes + bounded range reads sorted by time) maps perfectly to HBase's storage engine. Pick the database whose strengths match your dominant query, not the one with the best marketing.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart, and the production shape where every box justifies itself. The 500M-concurrent-connection number from §3 drives every decision.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>The simplest thing imaginable: clients <strong>poll</strong> the server. Every 3 seconds, Sarah's phone sends <code>GET /messages?since=last_id</code>. The server checks the DB and either returns new messages or returns empty. Same for Raj.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  S["Sarah's phone"] -->|"poll every 3s"| APP["App Server"]
+  R["Raj's phone"]   -->|"poll every 3s"| APP
+  APP --> DB[("Messages DB")]
+    </div>
+  </div>
+
+  <p>Three concrete failures show up the moment you do the math:</p>
+  <div class="g3">
+    <div class="card">
+      <h3>💥 Wasted polls</h3>
+      <p>500M users polling every 3 seconds is <strong>166 million requests/sec</strong>. 99% return empty because most people aren't getting messages most of the time. We'd be running a planetary-scale DDoS on ourselves to hear the answer "nothing new" 99% of the time.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Bad UX latency</h3>
+      <p>Latency = polling interval. A 3-second poll means a message takes on average <strong>1.5 seconds</strong> just to appear, and worst case 3. Sarah types "are you free?" and Raj sees it 3 seconds later — feels broken. Drop the interval to 500ms and the request rate becomes 1 billion/sec.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Cost scales with users, not activity</h3>
+      <p>Even if nobody is actually chatting, server load is proportional to user count. Idle users cost the same as active users. We're paying full price 24/7 to mostly say "still nothing".</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: persistent connections + push</h3>
+  <p>The single most important shift in this design is to <strong>flip the request/response model</strong>. Chat is fundamentally async <strong>push</strong> from server to client, not request/response. Instead of the client asking "anything new?" 1000 times, the server holds a connection open and shoves messages down it the instant they arrive.</p>
+
+  <p>Two ways to do this — both work, both are used in production:</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">🔁 Long Polling</h3>
+      <p>Client sends <code>GET /messages</code>; server <strong>holds the request open</strong> for up to 30 seconds. As soon as a message arrives for that user, server responds. If nothing arrives in 30s, server returns 204 and client immediately reconnects. Works through any HTTP-aware firewall — zero protocol changes — but each "long poll" still ties up one server-side request handler per user.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">⚡ WebSockets</h3>
+      <p>A real persistent TCP connection upgraded from HTTP. Bidirectional — server can push, client can send, both at any time, with nearly zero per-message overhead (a few bytes of frame header). One connection per user, lives for hours. The modern default — what Messenger, WhatsApp, and Slack all use.</p>
+    </div>
+  </div>
+
+  <p>Both options demand a brand-new tier of servers — <strong>chat servers</strong> — whose entire job is to hold open millions of connections at once. This is a fundamentally different shape from a stateless REST app server (which handles one request, returns, frees its memory). A chat server is more like a switchboard operator with 50,000 phone lines plugged in simultaneously.</p>
+
+  <div class="highlight hl-blue"><strong>So what changes in the architecture?</strong> We split the system into <strong>connection plane</strong> (chat servers + routing table) that holds state per-user, <strong>storage plane</strong> (HBase + cache) that persists messages, and <strong>async ops</strong> (Kafka + push service) that stitches chat servers together and handles offline delivery. Each plane scales differently and has different failure modes.</div>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered — find its matching card below to see what it does and crucially what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client — Mobile / Web with WebSocket"]
+
+  subgraph EDGE["Edge"]
+    LB["② Load Balancer — sticky sessions"]
+  end
+
+  subgraph CONN["Connection Plane"]
+    CS["③ Chat Server cluster — 50K connections each"]
+    RT[("④ User → ChatServer routing table — Redis")]
+  end
+
+  subgraph ASYNC["Async Ops"]
+    KAFKA[["⑤ Message Queue — Kafka"]]
+    PUSH["⑧ Push Notification Service"]
+    GRP["⑨ Group Chat Service"]
+    RR["⑪ Read Receipts Service"]
+  end
+
+  subgraph STORAGE["Storage Plane"]
+    HBASE[("⑥ HBase + HDFS — message history")]
+    CACHE[("⑩ Redis Cache — last 15 msgs per active convo")]
+  end
+
+  subgraph PRES["Presence"]
+    PS["⑦ Presence Service"]
+  end
+
+  CL -->|"WebSocket"| LB
+  LB --> CS
+  CS --> RT
+  CS --> KAFKA
+  KAFKA --> CS
+  CS --> HBASE
+  CS --> CACHE
+  CACHE -.miss.-> HBASE
+  CS --> PS
+  PS -.broadcast.-> CS
+  KAFKA --> PUSH
+  PUSH -.->|"APNS / FCM"| CL
+  CS --> GRP
+  GRP --> KAFKA
+  CS --> RR
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style CS fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style RT fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style KAFKA fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style HBASE fill:#171d27,stroke:#38b265,color:#d4dae5
+  style PS fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style PUSH fill:#171d27,stroke:#e05252,color:#d4dae5
+  style GRP fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style CACHE fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style RR fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card below. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client (Mobile / Web)</h3>
+      <p>The Messenger app on Sarah's iPhone, Raj's Android, or anyone's browser. On launch it authenticates, opens a single <strong>WebSocket</strong> to the load balancer, and keeps that connection alive with periodic ping frames. All sends and receives flow over this one socket. The client also caches recent messages locally for instant rendering when the user opens a thread.</p>
+      <p><strong>Solves:</strong> the user's window into the system. The WebSocket is what makes "instant" possible — the client never has to ask "anything new?", it just listens. Without a persistent client connection, we'd be back in polling hell.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> Load Balancer (sticky sessions)</h3>
+      <p>The traffic cop. Receives the initial HTTPS upgrade request and routes it to a chat server. Crucially it uses <strong>sticky sessions</strong> — once Sarah's WebSocket is bound to chat server #137, every subsequent frame from her client must reach the same server, because that server holds her open socket. Round-robin won't work; we need a hash on user_id or a cookie-based affinity.</p>
+      <p><strong>Solves:</strong> spreading 500M connections across 10K chat servers without any one being overloaded, while preserving the connection-server binding. Without stickiness, frame #2 from Sarah might land on server #138 — which has never heard of her socket — and the connection breaks.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">③</span> Chat Server cluster</h3>
+      <p>The heart of the connection plane. Each chat server is a long-running process that holds <strong>~50,000 open WebSockets</strong> in memory. When a client connects, the server registers the user in the <strong>routing table</strong> ④. When a message arrives from Sarah, the server looks up Raj's chat server in the routing table — if it's the same box, it's a direct in-memory push; if it's a different box (almost always), it publishes to Kafka ⑤. Stateless from the data's perspective (everything persists to HBase), but stateful from the connection's perspective.</p>
+      <p><strong>Solves:</strong> the "where does the push come from?" problem. A normal REST app server can't do push because it has no persistent link to the client. Chat servers exist exclusively to hold those links. Without them, every message would need to wait for the recipient to ask for it.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">④</span> User → ChatServer routing table (Redis)</h3>
+      <p>A simple in-memory map: <code>user_id → chat_server_id</code>. When Sarah's client connects to chat server #137, the server writes <code>sarah_id: 137</code> to Redis. When someone wants to push a message to Sarah, they read this entry and know which server to publish for. Updates on connect/disconnect/reconnect. Replicated for fault tolerance — losing it temporarily means we briefly can't deliver pushes (we fall back to push notifications), but doesn't lose messages because they're already in HBase.</p>
+      <p><strong>Solves:</strong> the cross-server addressing problem. With 10,000 chat servers, "which server holds Raj's connection right now?" is a question we ask millions of times per second. A Redis lookup answers it in under 1ms.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑤</span> Message Queue (Kafka)</h3>
+      <p>The async bus that stitches chat servers together. When Sarah on chat server X sends a message to Raj on chat server Y, server X doesn't call server Y directly — it <strong>publishes</strong> the message to a Kafka topic partitioned by recipient_id. Server Y is a Kafka consumer for the partitions that include Raj. This decouples senders from receivers and gives us at-least-once delivery semantics for free, even if a chat server crashes mid-delivery.</p>
+      <p><strong>Solves:</strong> reliable delivery across server boundaries. Without Kafka, server X would have to do an RPC to server Y; if server Y is down or slow, server X blocks; if the message lands but Y crashes before pushing, the message is lost. Kafka persists every message and lets the consumer retry safely.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑥</span> Message Storage (HBase + HDFS)</h3>
+      <p>The durable source of truth. Every message gets written here before any "delivered" ack is sent to the sender. Row key is <code>(conversation_id, reverse_timestamp)</code> so a thread's history is contiguous on one region server and sorted newest-first. HDFS underneath replicates each block 3× across racks. Petabyte-scale by design, write-optimized to absorb 230K writes/sec.</p>
+      <p><strong>Solves:</strong> persistent chat history. If we only kept messages in chat-server memory, a server crash would lose everything in flight. HBase is the safety net — once a write succeeds, the message survives any combination of server failures.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑦</span> Presence Service</h3>
+      <p>Tracks who is online and broadcasts changes to interested friends. When Sarah's chat server registers her connection, it notifies the Presence Service. When she disconnects (graceful logout, or 30s of socket silence), the service marks her offline. Friends viewing her profile or thread get the green/grey dot updated via a push down their own WebSocket. Heavily debounced — see §9 for why we don't broadcast every micro-state-change.</p>
+      <p><strong>Solves:</strong> the "is Raj online right now?" question that the UI asks constantly. Without a centralized presence service, every chat server would have to ask every other chat server "do you have user X?" every time the UI needed a status — quadratic chatter.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑧</span> Push Notification Service</h3>
+      <p>For when the recipient is offline. If Raj's app is closed and he has no open WebSocket, the chat server discovers (via routing table miss) that there's no active connection. It hands the message to the Push Notification Service, which sends it to <strong>APNS</strong> (Apple) or <strong>FCM</strong> (Google) — the OS-level push systems that wake up Raj's phone and pop a notification. When Raj taps it, the app opens, reconnects its WebSocket, and pulls the queued messages from HBase.</p>
+      <p><strong>Solves:</strong> the offline-delivery problem. Without push notifications, an offline user only sees the message when they next open the app — which might be hours later. With push, the message reaches them in seconds even if their app was killed.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑨</span> Group Chat Service</h3>
+      <p>Manages the metadata for group conversations: <code>group_id → [member_ids]</code>. When Sarah sends a message to "Dinner Squad" (a group of 8), the chat server asks the Group Chat Service for the member list, then publishes one Kafka event per recipient — fanout happens at the group service, not at the sender. Membership changes (add, remove, leave) flow through this service so all members see consistent group state.</p>
+      <p><strong>Solves:</strong> the fanout problem. Without a dedicated group service, each sender would need to know every group member — leaking the data model into every client. Centralizing fanout also lets us cap group size and enforce permissions in one place.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑩</span> Cache (Redis) — last 15 messages per active conversation</h3>
+      <p>An in-memory store holding the most recent ~15 messages of every currently-active conversation. When the chat server needs to render Sarah's open thread on her laptop reconnecting, it pulls from Redis (sub-millisecond) instead of HBase (10-30ms). On miss, it loads from HBase and populates the cache. Eviction: LRU; threads no one has touched in days roll out automatically.</p>
+      <p><strong>Solves:</strong> the "instant scroll" feel when opening a thread. Without this cache, every thread open would hit HBase — fine functionally but adds 30ms to every UI interaction. With it, thread switches feel weightless.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑪</span> Read Receipts Service</h3>
+      <p>Tracks the per-message <code>delivered</code> and <code>read</code> states that drive the little check-marks. When Raj's client receives a message, it sends a "delivered" ack down its WebSocket; when he scrolls the message into view, the client sends a "read" ack. Both update the message row in HBase and push a state-change frame to the original sender so Sarah's UI updates her checkmarks.</p>
+      <p><strong>Solves:</strong> the user-trust signal. The double-blue-tick is what tells Sarah her message landed. Without it, she'd have no way to know whether Raj saw it or whether the network ate it.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Sarah messages Raj at 14:02</h3>
+  <p>Two flows, mapped to the numbered components above. First the happy path (Raj online), then the offline path.</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--green)">
+      <h3>✅ Happy path — Raj is online (~200ms total)</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah's <strong>client</strong> ① sends a <code>SEND</code> frame over its WebSocket: "to=raj_id, text=are you free for dinner?"</li>
+        <li>Frame hits the <strong>Load Balancer</strong> ② which routes via sticky session to <strong>chat server X</strong> ③ (the one holding Sarah's socket).</li>
+        <li>Chat server X assigns a message_id, publishes to <strong>Kafka</strong> ⑤ (partitioned by Raj's user_id), and concurrently writes to <strong>HBase</strong> ⑥. Once Kafka acks, server X sends a "delivered to server" ack back to Sarah.</li>
+        <li>Chat server Y (consumer for Raj's Kafka partition) reads the message, looks up <strong>routing table</strong> ④: <code>raj_id → server Y</code>. Match! Server Y has Raj's open socket.</li>
+        <li>Server Y pushes the message frame down Raj's WebSocket. Raj's <strong>client</strong> ① renders it instantly and fires a "delivered" ack via <strong>Read Receipts</strong> ⑪.</li>
+        <li>Sarah's UI updates the checkmark from "sent" to "delivered". <em>Total elapsed: ~200ms.</em></li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--red)">
+      <h3>📵 Offline path — Raj's phone is asleep</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Steps 1-3 same as above — message is durably in <strong>HBase</strong> ⑥.</li>
+        <li>Chat server Y consumes from <strong>Kafka</strong> ⑤, looks up routing table ④: <code>raj_id → null</code> (no active connection).</li>
+        <li>Server Y hands the message to the <strong>Push Notification Service</strong> ⑧, which posts to APNS/FCM.</li>
+        <li>Apple's APNS wakes Raj's phone screen with a notification. Raj taps it 5 minutes later — his app opens, reconnects its WebSocket through the LB to some chat server Z.</li>
+        <li>Chat server Z queries <strong>HBase</strong> ⑥ for messages newer than Raj's last seen message_id, pushes them all down his WebSocket, then sends "delivered" acks back via Read Receipts ⑪.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> Messenger's architecture is built around three insights — (1) <strong>chat is push, not pull</strong>, so we hold a persistent WebSocket per user on dedicated chat servers; (2) <strong>delivery across servers needs a buffer</strong>, so Kafka stitches chat servers together with at-least-once durability; (3) <strong>online and offline recipients need different paths</strong>, so an explicit routing-table lookup decides between a WebSocket push and an APNS/FCM wake-up. Every box in the diagram exists to remove one failure mode from the polling-based naive design.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: MESSAGE HANDLING                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-blue">Step 7</span>
+  <h2>Detailed Component — Message Handling</h2>
+  <p>Zoom into what happens between the moment Sarah taps "send" and the moment Raj's UI ticks blue. Several invariants must hold simultaneously: messages must persist before any ack, must arrive in send-order within a conversation, and must never be delivered twice even if a server retries.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant S as Sarah Client
+  participant CSX as Chat Server X
+  participant K as Kafka
+  participant HB as HBase
+  participant CSY as Chat Server Y
+  participant R as Raj Client
+
+  Note over S,CSX: Sarah's WebSocket already open to server X
+  S->>CSX: SEND frame — "are you free?"
+  CSX->>CSX: assign message_id, set ts
+  par Persist + Route
+    CSX->>HB: PUT message row
+    CSX->>K: publish to topic for raj_id
+  end
+  HB-->>CSX: ack
+  K-->>CSX: ack
+  CSX-->>S: SENT ack — message_id
+
+  Note over CSY: Consumer for Raj's partition
+  K->>CSY: deliver message
+  CSY->>CSY: lookup routing table — raj_id online on me?
+  CSY->>R: PUSH frame
+  R-->>CSY: DELIVERED ack
+  CSY->>HB: update message status = DELIVERED
+  CSY->>CSX: forward DELIVERED via Kafka
+  CSX-->>S: status update — DELIVERED
+    </div>
+  </div>
+
+  <h3 class="subh">Invariants and how each is enforced</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>📌 Ordering within a conversation</h3>
+      <p>Two messages from Sarah to Raj must arrive in send order. Guaranteed by partitioning Kafka on <code>conversation_id</code> (or sender_id) — all messages for one conversation flow through one Kafka partition, which Kafka delivers in order. Within HBase, the row-key suffix is a strictly-increasing timestamp so reads also return in order.</p>
+    </div>
+    <div class="card">
+      <h3>📌 Idempotency on retry</h3>
+      <p>Network burps mean the chat server may retry a Kafka publish or HBase write. Each message carries a client-assigned <strong>idempotency key</strong> (UUID generated by the client on send). HBase uses it as part of the row key — a duplicate write is a no-op. Kafka consumers also dedupe on this key before pushing to the recipient.</p>
+    </div>
+    <div class="card">
+      <h3>📌 Persist-before-ack</h3>
+      <p>Sarah only sees "sent" once HBase has confirmed the write. If the chat server crashes between Kafka publish and HBase ack, the message is still in Kafka and will be re-consumed and re-written. If it crashes before either, Sarah's client times out and the user retries — same idempotency key, no duplicate.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: STORING & RETRIEVING                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-green">Step 8</span>
+  <h2>Storing &amp; Retrieving Messages</h2>
+  <p>Where the rubber meets the road for the storage plane. We must absorb 230K small writes/sec and serve "show me the last 50 messages of this thread" reads in under 50ms. Both at petabyte scale.</p>
+
+  <h3 class="subh">Why HBase wins for this exact workload</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>📝 Write throughput</h3>
+      <p>HBase is log-structured (LSM trees). Writes go to an in-memory MemStore and a write-ahead log (WAL) on HDFS — both append-only, no random disk seeks. A single region server absorbs tens of thousands of small writes/sec. Sharding across hundreds of region servers gives us the 230K/sec we need with linear scale-out.</p>
+    </div>
+    <div class="card">
+      <h3>📖 Range scans by row-key</h3>
+      <p>Row key = <code>(conversation_id, MAX_LONG - timestamp)</code>. The <code>MAX_LONG - timestamp</code> trick reverses sort order so the newest messages come first. Reading "last 50 messages of conv 12345" is a single short scan starting at row <code>(12345, 0)</code> — touches one region, returns 50 cells. O(50), not O(billions).</p>
+    </div>
+    <div class="card">
+      <h3>📦 Petabyte storage</h3>
+      <p>HDFS underneath HBase is built for multi-petabyte data with 3× replication. Adding capacity = adding nodes. Old, cold data automatically migrates to cheaper storage tiers via HDFS storage policies — recent messages on SSD, year-old messages on HDD or even S3 Glacier.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pagination via timestamp cursors</h3>
+  <p>The client never asks for "page 5" — it asks "give me 50 messages older than timestamp T". Server returns 50 messages and the timestamp of the oldest one. Client uses that as the cursor for the next request. This is robust to new messages arriving mid-pagination (no shifting page numbers) and trivially cacheable.</p>
+
+<pre><span class="cmt">// Read API</span>
+GET /conversations/{conv_id}/messages?before_ts=1736400000&limit=50
+→ 200 OK {
+    "messages": [...50 msgs...],
+    "next_cursor": "1736399650"  <span class="cmt">// ts of oldest msg returned</span>
+  }</pre>
+
+  <h3 class="subh">Hot conversation cache</h3>
+  <p>The 15 most recent messages of every active conversation live in <strong>Redis</strong> ⑩, keyed by <code>conv_id</code>. When Sarah opens her thread with Raj, the chat server hits Redis first; cache hit returns in under 1ms, miss falls back to HBase and warms the cache. Every new message also pushes onto the Redis list (and evicts the oldest if length > 15) so the cache stays current automatically.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: USER STATUS                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-purple">Step 9</span>
+  <h2>Managing User Status (Presence)</h2>
+  <p>Every user has hundreds of friends; every friend's UI wants to show a green/grey dot. The naïve approach — broadcast every state transition to every friend — would melt at 500M users. Three techniques tame it.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🚀 Pull on app start</h3>
+      <p>When Sarah opens Messenger, the client sends one bulk request: <code>getStatus([friend_ids])</code>. Server returns the current status of all her friends in one round trip. No subscription, no per-friend chatter — a single read against the Presence Service's in-memory map.</p>
+    </div>
+    <div class="card">
+      <h3>📢 Push only on real transitions</h3>
+      <p>Don't broadcast every micro-state-change. Push to friends only when the user transitions <code>OFFLINE → ONLINE</code> or <code>ONLINE → OFFLINE</code>. Heartbeat fluctuations don't count. Use a 5-second debounce on offline-detection so a quick subway-tunnel disconnect doesn't trigger a "left chat" broadcast.</p>
+    </div>
+    <div class="card">
+      <h3>👀 Lazy pull on conversation open</h3>
+      <p>When Sarah opens her thread with Raj specifically, the client refreshes Raj's status with a targeted call. This catches the case where Raj came online while Sarah's app was backgrounded and the broadcast didn't reach her.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>Why debouncing matters:</strong> at 500M users, even 1 status change per user per minute is 8.3M broadcasts/sec — and each broadcast fans out to maybe 100 friends, multiplying to 833M push frames/sec. A 5-second debounce cuts that 5×. Combined with broadcasting only to friends currently online (not all friends), we shave another 10× off. Without these the presence system alone would dwarf the message system.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: PARTITIONING                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-yellow">Step 10</span>
+  <h2>Data Partitioning &amp; Replication</h2>
+  <p>3.6 PB doesn't fit on one box, and even if it did we couldn't survive its failure. Sharding strategy decides everything downstream — query latency, hot-spot risk, rebalancing cost.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">❌ Shard by message_id</h3>
+      <p>Distributes individual messages randomly across shards. Each write hits one shard — perfect write distribution. <strong>But</strong> reading a chat history "last 50 messages between Sarah and Raj" now requires scanning every shard and merging — fan-out reads of <code>O(num_shards)</code>. With 100 shards, every chat-open is 100 simultaneous queries. Unworkable.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✅ Shard by user_id (or conversation_id)</h3>
+      <p>All of one user's messages live on the same shard. Chat-history reads touch exactly one shard — O(1) shard count, O(50) result rows. This is the right answer for a read-by-conversation workload. Trade-off: a hyperactive user (a celebrity, a bot) creates a hot shard.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Handling the hot-user problem</h3>
+  <p>What if a celebrity's account gets 100K messages/min and burns down their shard? Two mitigations:</p>
+  <div class="g2">
+    <div class="card">
+      <h3>🔄 Consistent hashing</h3>
+      <p>Use consistent hashing (not modulo) so adding a new shard only relocates 1/N of users instead of all of them. Spreads the "split the hot shard" operation over hours instead of days, with the cluster usable throughout.</p>
+    </div>
+    <div class="card">
+      <h3>👥 Replica nodes for hot keys</h3>
+      <p>For known-hot users, replicate their data to multiple read replicas. Reads round-robin across replicas; writes still go to the primary. Buys 3-5× headroom on read traffic for power users without re-sharding.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Replication strategy</h3>
+  <p>HDFS replicates each block 3× across racks by default — survives single-disk and single-rack failures with zero data loss. HBase region servers are stateless against the underlying HDFS, so a region-server crash means another server picks up the regions in seconds. For multi-region disaster recovery, HBase replication streams writes to a standby cluster in another data center asynchronously.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: FAULT TOLERANCE                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-red">Step 11</span>
+  <h2>Fault Tolerance &amp; Replication</h2>
+  <p>Things will break. The hard question is <em>which kind of break causes data loss</em> versus a brief interruption. Walk through each failure mode.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>💥 Chat server crashes with 50K open sockets</h3>
+      <p>The 50K clients see their WebSocket drop. They auto-reconnect (with exponential backoff) and the LB routes them to a healthy chat server. The new server registers them in the routing table ④, and any messages that arrived during the gap are pulled from HBase on the first read. <strong>Connection state is replicated</strong> to a standby chat server in real time so the routing-table updates have minimal lag.</p>
+      <p><strong>Data loss: zero.</strong> Messages already persisted to HBase are intact. In-flight messages still in Kafka get re-consumed. Messages that hadn't yet reached the chat server are retried by the client (idempotent).</p>
+    </div>
+    <div class="card">
+      <h3>💥 HBase region server crashes</h3>
+      <p>HBase auto-detects via ZooKeeper, reassigns the regions to a healthy server, replays the WAL from HDFS. Recovery takes seconds to a minute. During the gap, writes to those regions queue in the chat-server WAL or Kafka and replay once the region is back. <strong>HDFS 3× replication ensures no block is lost.</strong></p>
+    </div>
+    <div class="card">
+      <h3>💥 Kafka broker crashes</h3>
+      <p>Kafka topics are replicated across brokers (replication factor 3). A broker loss shifts leadership of its partitions to a replica in milliseconds. Producers retry transparently. <strong>At-least-once delivery is preserved</strong> — the dedup key catches the rare double-delivery that follows.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Routing table (Redis) loss</h3>
+      <p>Redis is replicated and persisted, but in the worst case if we lose it entirely, we don't lose <em>messages</em> — we just lose the ability to push them in real-time. Recipients fall back to push notifications via APNS/FCM. The table rebuilds itself within seconds as clients reconnect and re-register. Brief degraded mode, no data loss.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The data-loss budget is zero.</strong> Every component above either replicates synchronously or has an idempotent retry path. The cost is occasional latency spikes during failover (seconds, not minutes) and very rare double-delivery (caught by client-side dedup on idempotency key). Both are acceptable; losing a message is not.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: GROUP CHAT & PUSH                  -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-cyan">Step 12</span>
+  <h2>Extended — Group Chat &amp; Push Notifications</h2>
+
+  <h3 class="subh">Group Chat</h3>
+  <p>Conceptually a group is just "1-on-1 chat with N people". Implementation-wise, the <strong>Group Chat Service</strong> ⑨ holds a <code>GroupChat</code> object: <code>{group_id, name, members: [user_ids], created_at}</code>. When Sarah sends a message to "Dinner Squad" (8 members):</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant S as Sarah Client
+  participant CS as Chat Server
+  participant GS as Group Service
+  participant K as Kafka
+  participant HB as HBase
+  participant M as 7 other members chat servers
+
+  S->>CS: SEND to group_id=DinnerSquad
+  CS->>GS: getMembers(DinnerSquad)
+  GS-->>CS: [raj, alice, bob, ... 7 ids]
+  CS->>HB: PUT one message row, conv_id=DinnerSquad
+  loop For each member except sender
+    CS->>K: publish — recipient_id = member
+  end
+  K->>M: deliver to each member's chat server
+  M->>M: push down WebSocket
+    </div>
+  </div>
+
+  <p>One write to HBase (the message lives once in the group conversation's row family), N publishes to Kafka (one per recipient). Per-member <strong>delivered/read state</strong> is tracked separately in the Read Receipts service so Sarah can see "Raj read it, Alice didn't".</p>
+
+  <p><strong>Cap on group size:</strong> typically 250-500 members for performance. Beyond that, fanout becomes a meaningful cost — broadcast-style channels (Slack, Discord) use a different architecture where members "subscribe" to a channel rather than the sender fanning out.</p>
+
+  <h3 class="subh">Push Notifications</h3>
+  <p>The Push Notification Service ⑧ is a Kafka consumer for "undeliverable" messages — the ones whose recipient routing-table lookup returned null. For each, it:</p>
+
+  <ol style="padding-left:1.5rem;list-style:decimal;color:var(--text);max-width:760px;margin-bottom:1rem">
+    <li>Looks up the recipient's <strong>device tokens</strong> (one per registered phone/tablet — APNS for Apple, FCM for Android).</li>
+    <li>Builds a payload: sender name, snippet of message text, badge count.</li>
+    <li>POSTs to APNS or FCM with the device token. The OS push service delivers to the device, possibly with a few seconds of additional delay.</li>
+    <li>If the device has no token (signed out, uninstalled), drops the push silently. The message is still in HBase for next sign-in.</li>
+  </ol>
+
+  <p>Push is <strong>asynchronous and lossy by design</strong> — a missed push isn't catastrophic because the message still pulls down from HBase when the user opens the app. But the latency is meaningful: a 5-10s wake-up time is normal, vs. 200ms for a live WebSocket.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: STATE DIAGRAM                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-blue">Step 13</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <h3 class="subh">Message lifecycle — state diagram</h3>
+  <p>Every message moves through a small state machine driven by acks from each side:</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+stateDiagram-v2
+  [*] --> SENDING : user taps send
+  SENDING --> SENT : chat server acks persistence
+  SENT --> DELIVERED : recipient client acks receipt
+  DELIVERED --> READ : recipient scrolls into view
+  SENDING --> FAILED : timeout / error
+  FAILED --> SENDING : user retry
+  READ --> [*]
+    </div>
+  </div>
+
+  <p>The UI checkmarks track this state directly: clock icon = SENDING, single grey check = SENT, double grey check = DELIVERED, double blue check = READ, red exclamation = FAILED.</p>
+
+  <h3 class="subh">Common interview questions</h3>
+
+  <div class="iq">Why HBase over MongoDB or MySQL?</div>
+  <div class="ans"><strong>Workload fit.</strong> Our access pattern is "high-rate small writes + bounded range reads sorted by time". HBase's LSM-tree storage absorbs 230K writes/sec linearly; its row-key sort lets us read "last 50 messages of conv X" with one short range scan touching one region. MongoDB's document model handles individual messages fine but range scans across millions of rows are slow and memory-hungry. MySQL caps at ~10K writes/sec per box and would need extensive sharding work HBase ships out of the box. Facebook actually runs Messenger on HBase for exactly these reasons.</div>
+
+  <div class="iq">How do you handle a chat server crash with 50K open connections?</div>
+  <div class="ans"><strong>Three layers.</strong> (1) Clients auto-reconnect with exponential backoff; the LB routes them to a healthy server within seconds. (2) Connection state (user → server binding in the routing table) is replicated to a standby — failover happens before the cache is cold. (3) Any messages that were in-flight when the server died are still in Kafka and HBase — the new server pulls them on first reconnect. <strong>Zero message loss</strong>, brief delivery delay (5-10s) for the affected users.</div>
+
+  <div class="iq">How do you ensure message ordering within a conversation?</div>
+  <div class="ans"><strong>Single-partition serialization.</strong> Kafka is partitioned by <code>conversation_id</code>, so all messages for one conversation flow through one partition — Kafka guarantees in-order delivery within a partition. The chat server assigns a strictly-increasing timestamp before publishing, and HBase row keys use that timestamp so reads also return in order. Cross-conversation ordering isn't guaranteed (and doesn't need to be — they're independent threads).</div>
+
+  <div class="iq">Push notifications vs. polling vs. long-poll vs. WebSocket — when each?</div>
+  <div class="ans"><strong>Polling</strong> is fine for low-frequency, low-user-count cases (e.g., "check if my CI build finished" every 30s). <strong>Long-polling</strong> works through any HTTP firewall — good fallback when WebSockets are blocked, but each open poll ties up a request handler. <strong>WebSockets</strong> are the modern default for real-time chat — bidirectional, low overhead, scales to millions of connections per server cluster. <strong>Push notifications (APNS/FCM)</strong> are for when the app isn't running — they wake the device but have 5-10s latency and are lossy. Messenger uses WebSockets when the app is open, falls back to push when it's closed.</div>
+
+  <div class="iq">How would you scale to 1 billion users?</div>
+  <div class="ans"><strong>Three axes.</strong> (1) <strong>Chat servers</strong>: just add more — they're stateless against persistent storage, so horizontal scaling is trivial. 1B users at 50K connections/server = 20K servers. (2) <strong>HBase</strong>: scales by adding region servers and HDFS data nodes; consistent-hashing region splits handle redistribution. (3) <strong>Kafka</strong>: add brokers and re-partition topics; partition count = chat server count for clean ownership. <strong>The bottleneck shifts to operations</strong> — managing 20K chat servers and a multi-PB HBase cluster — which is why companies at this scale invest heavily in automation and observability.</div>
+
+  <div class="iq">How do you handle network partitions where two devices can't reach each other?</div>
+  <div class="ans"><strong>The system is partition-tolerant by design.</strong> Sarah and Raj never talk peer-to-peer — both talk to our servers. If the partition is between Sarah's device and our servers, her client buffers the outgoing message locally and retries with the same idempotency key once connectivity returns. If the partition is inside our DC (between two chat servers, say), Kafka and HBase are partition-tolerant CP systems — they may briefly refuse writes to maintain consistency, but no data is lost or reordered. We chose consistency over availability up front (§2) precisely so these scenarios resolve cleanly.</div>
+
+  <div class="iq">How do you prevent duplicate message delivery?</div>
+  <div class="ans"><strong>Client-generated idempotency keys.</strong> Each <code>SEND</code> frame from the client carries a UUID generated when the user first taps send. The chat server uses this UUID as part of the HBase row key — a duplicate write with the same key is a silent no-op. Kafka consumers also dedupe on this key in a small Redis set before pushing to recipients. So even if the chat server retries the publish or HBase write 5 times, the recipient sees the message exactly once.</div>
+
+  <div class="iq">How do you support sending messages while offline?</div>
+  <div class="ans"><strong>Client-side outbox queue.</strong> The Messenger client maintains a local outbox (SQLite or similar). When Sarah types a message with no connectivity, the message is enqueued locally and shown with the "clock" icon. When the WebSocket reconnects, the client drains the outbox in order, sending each message with its original idempotency key. The server processes them as if they had arrived in real time — they get their original send timestamp from the client (with light server-side clock-skew correction) so chat history shows them at the right point in the timeline.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "It's a tier of WebSocket-holding chat servers fronted by sticky load balancers, stitched together with Kafka for cross-server delivery, backed by HBase for petabyte-scale chat history, and routed via a Redis user-to-server table — with a separate push-notification path for offline recipients."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

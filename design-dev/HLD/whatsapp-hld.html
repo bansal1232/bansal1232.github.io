@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>WhatsApp — End-to-End Encrypted Messaging — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>WhatsApp — End-to-End <span>Encrypted Messaging</span></h1>
+  <p class="sub">2 billion users, 100B messages a day, and servers that physically cannot read a single one — the architecture that turns the Signal Protocol into a global product</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is WhatsApp?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">Database Design</a></li>
+      <li><a href="#s6">High-Level Architecture</a></li>
+      <li><a href="#s7">End-to-End Encryption</a></li>
+      <li><a href="#s8">Multi-Device Sync</a></li>
+      <li><a href="#s9">Group Chat Encryption</a></li>
+      <li><a href="#s10">Voice &amp; Video Calls</a></li>
+      <li><a href="#s11">Storage at Scale</a></li>
+      <li><a href="#s12">Data Partitioning</a></li>
+      <li><a href="#s13">Fault Tolerance</a></li>
+      <li><a href="#s14">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS WHATSAPP?                   -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is WhatsApp?</h2>
+  <p>It's a Tuesday afternoon. Sarah is in New York, scrolling through photos from her trip, and she taps a picture of the Brooklyn Bridge to send to her mom in Mumbai. The instant her thumb leaves the screen, something quietly remarkable happens: that photo is wrapped — bytes scrambled into ciphertext using a key that lives only on her mom's phone — handed to a WhatsApp server that physically cannot read it, relayed across continents, and 600 milliseconds later her mom's phone unwraps it back into a picture. Nobody in between, including WhatsApp itself, ever sees the photo. That trick — running a global messenger that handles 100 billion messages a day while being mathematically blind to all of them — is what we're designing.</p>
+
+  <p>WhatsApp is a phone-number-identified, end-to-end encrypted messaging app: <strong>2 billion users</strong>, <strong>1.5 billion daily actives</strong>, around <strong>100 billion messages per day</strong>, plus voice/video calls, status broadcasts, and now multi-device sync (your phone, web, and tablet all stay in sync without trusting the server). Think of the server as a sealed-envelope post office — it knows the from-address and the to-address, but the envelope itself is locked, and only the recipient has the key.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How does a server route a message to the right device(s) when it cannot read the message — not even the metadata of who-said-what-to-whom? (2) How do you sync messages across <em>my four devices</em> when each device must keep its own private key and the server holds nothing but ciphertext?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>WhatsApp looks deceptively simple — a chat app — but every requirement below is a constraint that bends the architecture in ways an unencrypted messenger never has to deal with.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li><strong>1-on-1 chats</strong> with text + media (photo, video, voice notes, files)</li>
+        <li><strong>Group chats</strong> up to 1024 members</li>
+        <li><strong>Read receipts</strong> (single tick → double tick → blue ticks) and <strong>online / last-seen</strong> presence</li>
+        <li><strong>Voice and video calls</strong>, 1-on-1 and group</li>
+        <li><strong>End-to-end encryption</strong> on every message and call (Signal Protocol)</li>
+        <li><strong>Multi-device sync</strong> — phone + WhatsApp Web + desktop + tablet all show the same conversations</li>
+        <li><strong>Status broadcasts</strong> — 24-hour ephemeral stories, also encrypted</li>
+        <li><strong>Phone-number identity</strong> — no usernames, just <code>+E.164</code> numbers verified via SMS OTP</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>End-to-end encryption</strong> — server is provably unable to read message contents</li>
+        <li><strong>Low latency</strong> — under 500ms p99 for in-region delivery</li>
+        <li><strong>High availability</strong> — 99.99%; messaging is critical infrastructure for 2B people</li>
+        <li><strong>Scale</strong> — 1.5B DAU, 100B msgs/day, peaks of millions of messages per second</li>
+        <li><strong>Offline delivery</strong> — recipient gets the message even if their phone was off when it was sent</li>
+        <li><strong>Bandwidth-cheap</strong> — many users on slow 2G/3G networks; avoid retransmissions</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The headline constraint is encryption.</strong> A non-encrypted chat app can do clever things on the server — search messages, deduplicate media, build a social graph, train a recommender. WhatsApp can do none of that, because the server only sees ciphertext. Every architectural choice from here on is shaped by "the server is blind, so where does this work happen?" The answer is almost always: on the device.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>The numbers below dictate sharding, fanout, and the choice of a persistent connection protocol over plain HTTP. Without them you cannot justify why we run 50K open sockets per server or why media has to live in S3 not the message store.</p>
+
+  <h3 class="subh">User &amp; traffic estimates</h3>
+  <p>Public stats: <strong>2 billion users</strong>, <strong>1.5B DAU</strong>, around <strong>100 billion messages per day</strong>.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Messages/day</h3><p><span class="metric">~100B</span></p><p>Roughly 65 msgs per DAU per day</p></div>
+    <div class="card"><h3>Messages/sec avg</h3><p><span class="metric">~1.16M/s</span></p><p>100B / 86400</p></div>
+    <div class="card"><h3>Peak msgs/sec</h3><p><span class="metric">~5M/s</span></p><p>3-5x avg during prime-time across regions</p></div>
+    <div class="card"><h3>Concurrent connections</h3><p><span class="metric">~500M+</span></p><p>1.5B DAU × ~33% online at any moment</p></div>
+  </div>
+
+  <h3 class="subh">Bandwidth estimates</h3>
+  <p>Average text message is ~100 bytes (after encryption overhead). About <strong>10% of messages carry media</strong> — average 1MB per media message but media flows through S3, not the messaging path.</p>
+
+  <div class="g3">
+    <div class="card"><h3>Text bandwidth (in)</h3><p><span class="metric">~116 MB/s</span></p><p>1.16M msgs/s × 100 bytes</p></div>
+    <div class="card"><h3>Media bandwidth (in)</h3><p><span class="metric">~116 GB/s</span></p><p>10% of msgs × 1MB → S3 directly</p></div>
+    <div class="card"><h3>Fanout factor</h3><p><span class="metric">~2.5×</span></p><p>Multi-device + groups multiply egress</p></div>
+  </div>
+
+  <h3 class="subh">Storage estimates</h3>
+  <p>WhatsApp's storage model is unusual: <strong>messages are deleted from the server once delivered</strong> to all recipient devices. Only undelivered messages are stored, plus optional encrypted backups in iCloud / Google Drive (managed outside WhatsApp's infrastructure).</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Concurrent sockets</td><td><code>500M+</code></td><td>Drives Connection Server count and per-server tuning (50K-1M sockets each)</td></tr>
+        <tr><td>Peak msgs/sec</td><td><code>5M/s</code></td><td>Drives sharding and Routing Service throughput</td></tr>
+        <tr><td>Media throughput</td><td><code>116 GB/s</code></td><td>Forces S3-class blob storage; cannot live in the messaging path</td></tr>
+        <tr><td>Pending msg storage</td><td><code>~5-10 TB</code></td><td>Only undelivered queue — small because messages are deleted post-delivery</td></tr>
+        <tr><td>User &amp; device registry</td><td><code>~500 GB</code></td><td>2B users × ~250 bytes (phone, name, public keys per device)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-blue"><strong>Why these numbers force a non-HTTP protocol.</strong> 500M concurrent users on plain HTTPS would mean 500M TLS handshakes per minute as connections cycle — physics says no. Instead, WhatsApp keeps a <strong>persistent, multiplexed</strong> socket open per device (originally XMPP, now a custom binary protocol called Noise Pipes). One handshake, then bidirectional frames forever. We'll see this drive the Connection Server tier in §6.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>WhatsApp's "API" is mostly a binary protocol over a persistent socket, not REST. But the conceptual operations are easy to enumerate. The signatures below are pseudocode — what each call does, who calls it, and what flows over the wire.</p>
+
+  <span class="code-label cl-green">Conceptual API surface</span>
+<pre><span class="cmt">// 1. REGISTER — phone-number identity, verified via SMS OTP</span>
+register(phone_number, device_metadata)
+  → { user_id, otp_token }
+verify_otp(otp_token, sms_code, device_public_key)
+  → { auth_token, user_id, device_id }
+
+<span class="cmt">// 2. GET KEYS — Signal Protocol pre-key fetch (X3DH)</span>
+<span class="cmt">// Sender calls this for each recipient device before sending the first message</span>
+get_keys(recipient_user_id)
+  → [ { device_id, identity_key, signed_pre_key, one_time_pre_key } , ... ]
+
+<span class="cmt">// 3. SEND MESSAGE — encrypted payload per recipient device</span>
+<span class="cmt">// Sender encrypts ONCE PER DEVICE in the recipient set</span>
+send_message({
+  conversation_id,
+  recipient_devices: [
+    { user_id, device_id, encrypted_payload },
+    { user_id, device_id, encrypted_payload },
+    ...
+  ],
+  timestamp
+})
+  → { message_id, server_timestamp }
+
+<span class="cmt">// 4. UPLOAD MEDIA — E2E-encrypted blob, key shipped inside the message</span>
+upload_media(content_type, encrypted_bytes)
+  → { s3_url, content_hash }
+
+<span class="cmt">// 5. SUBSCRIBE PRESENCE — last-seen / online indicators</span>
+subscribe_presence(user_id)
+  ← { user_id, online: bool, last_seen: timestamp }
+
+<span class="cmt">// 6. PUSH RECEIPT — message delivered / read</span>
+ack_receipt(message_id, type: "delivered" | "read")</pre>
+
+  <div class="highlight hl-blue"><strong>Notice what's NOT in the API.</strong> There's no <code>get_message_history</code> — the server doesn't keep history, the device does. There's no <code>search_messages</code> — the server cannot, only the device can search its own decrypted archive. There's no <code>get_group_members_chat</code> — group history lives only on members' devices. The API surface is starkly minimal because the server simply does not have most of the data a non-encrypted messenger would expose.</div>
+
+  <div class="highlight hl-orange"><strong>Why a separate <code>get_keys</code> call?</strong> Before Sarah can send her first message to her mom, her phone needs Mom's <strong>identity key</strong>, <strong>signed pre-key</strong>, and a <strong>one-time pre-key</strong> to run the X3DH handshake (Signal's initial key agreement). Mom may be offline at that moment — that's fine, her keys were uploaded to the Key Distribution Service ⑥ when she registered. This is the trick that lets Signal work asynchronously between people who have never connected at the same time.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: DATABASE                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>Database Design</h2>
+  <p>WhatsApp's data model has a quirky shape: the <strong>user/device registry is small and relational</strong> (good for PostgreSQL), the <strong>pending-message queues are huge but ephemeral</strong> (good for a Cassandra / HBase / Mnesia-style store), and <strong>media lives outside the DB entirely</strong> (S3 / blob storage). Each datastore is picked for the access pattern, not for uniformity.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  USER {
+    string phone_number PK
+    string user_id
+    string display_name
+    timestamp created_at
+    timestamp last_seen
+  }
+  DEVICE {
+    string device_id PK
+    string user_id FK
+    string identity_public_key
+    string signed_pre_key
+    string platform
+    timestamp registered_at
+  }
+  ONE_TIME_PRE_KEY {
+    string key_id PK
+    string device_id FK
+    string public_key
+    bool consumed
+  }
+  CONVERSATION {
+    string conversation_id PK
+    string type
+    timestamp created_at
+  }
+  PENDING_MESSAGE {
+    string message_id PK
+    string recipient_device_id FK
+    string sender_device_id
+    bytes encrypted_payload
+    timestamp ts
+  }
+  MEDIA_BLOB {
+    string blob_id PK
+    string s3_url
+    string content_hash
+    int size_bytes
+  }
+  USER ||--o{ DEVICE : "owns"
+  DEVICE ||--o{ ONE_TIME_PRE_KEY : "uploads"
+  DEVICE ||--o{ PENDING_MESSAGE : "to-deliver"
+  CONVERSATION ||--o{ PENDING_MESSAGE : "carries"
+    </div>
+  </div>
+
+  <h3 class="subh">Datastore choices</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>🟢 PostgreSQL — user &amp; device registry</h3>
+      <p>Small, relational, latency-sensitive. ~500GB total. Used to look up "what devices does <code>+1-555-...</code> have, and what are their public identity keys?" Sharded by phone number; each shard replicated across regions.</p>
+    </div>
+    <div class="card">
+      <h3>🟡 Cassandra / HBase — pending message queues</h3>
+      <p>Per-device offline message queue. Wide-column, cheap appends, sharded by <code>device_id</code>. Rows are deleted once the recipient's connection has acked delivery — rarely grows, even at 100B msgs/day.</p>
+    </div>
+    <div class="card">
+      <h3>🟣 S3-class object store — media blobs</h3>
+      <p>Photos, videos, voice notes, files. Stored as <strong>encrypted bytes</strong> — the AES key lives only inside the per-message E2E payload, never on the server. WhatsApp can host petabytes of media it cannot decrypt.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>The "to-deliver" queue is the unit of scale.</strong> When Sarah sends to a 50-person group, the message becomes <strong>50 rows</strong> in the pending-message table — one per recipient device. Each row is the ciphertext encrypted with that specific device's session key. As soon as a recipient's phone reconnects and acks, that row is deleted. Storage stays bounded because messages don't accumulate; they flow through.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that decides whether you understand WhatsApp or just kind of know what it is. We build the system in three passes: a naive central server that a textbook would draw, the failure modes that force the production split, and the final shape where every component earns its keep.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>A textbook chat server: clients open an HTTP connection, POST messages to a central server, the server stores them in a database and forwards them to the recipient. Just like SMS, but on the internet.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  S["Sarah's Phone"] --> SRV["Central Chat Server"]
+  SRV --> DB[("MySQL — all messages")]
+  SRV --> M["Mom's Phone"]
+    </div>
+  </div>
+
+  <p>Walk this through with two billion users and four concrete failures fall out:</p>
+  <div class="g2">
+    <div class="card">
+      <h3>💥 The server can read every message</h3>
+      <p>This is the <em>privacy</em> failure, and it's the one that disqualifies the design entirely. Every photo, every voice note, every message between a journalist and a source — visible to whoever runs the server, plus anyone who breaches it, plus any government that subpoenas it. WhatsApp's central promise breaks before you even get to scale.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Recipient is offline → message is lost</h3>
+      <p>Mom's phone is on a 2G network in Mumbai and her battery died at 3am. Sarah's message hits the server, the forward to Mom fails, and the textbook design just... drops it. We need a durable per-device offline queue that holds the message until Mom's phone comes back online, sometimes 12 hours later.</p>
+    </div>
+    <div class="card">
+      <h3>💥 1M msgs/sec crushes one server</h3>
+      <p>A single beefy server handles maybe 50K open WebSocket connections and a few hundred thousand msgs/sec at best. We need 500M+ concurrent connections and 5M peak msgs/sec. That's a horizontal-scaling problem — but if we just add more chat servers, how does Sarah's server know which server holds Mom's connection right now?</p>
+    </div>
+    <div class="card">
+      <h3>💥 No multi-device — Mom only has her phone</h3>
+      <p>Mom uses WhatsApp Web at her desk and the app on her phone. The naive design has one "Mom" — when Sarah sends, it goes to "Mom's connection." But Mom has two connections, both wanting the message, and each runs its own private key. The server cannot just clone the ciphertext to both — they were encrypted to different keys.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: encrypt on the device, fan out per-device on the server</h3>
+  <p>The single insight that makes WhatsApp possible is this: <strong>encryption happens on the devices, not on the server</strong>. Each device has its own key pair. The server is reduced to a router of opaque ciphertext. When a user has multiple devices, the message is encrypted multiple times — once per recipient device — before it leaves the sender. The server fans out the pre-encrypted ciphertexts to the right device queues.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">🔐 The Encryption Plane (on devices)</h3>
+      <p><strong>Where the actual privacy happens.</strong> Each device runs the Signal Protocol — X3DH for the initial handshake, Double Ratchet for per-message forward secrecy. To send to Mom (who has 3 devices), Sarah's phone produces 3 ciphertexts, one per device. The server never sees any plaintext. Even if the server is fully compromised, past messages stay secret.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">📡 The Connection &amp; Routing Plane (on servers)</h3>
+      <p><strong>Where the scaling happens.</strong> A pool of Connection Servers each holds tens of thousands of persistent sockets. A Routing Service maps <code>(user_id, device_id) → which connection server holds them right now</code>. To deliver, you look up the route, push the ciphertext blob to that connection server, and let it write to the device's socket. Server has zero visibility into the payload.</p>
+    </div>
+  </div>
+
+  <p>What travels where: <strong>plaintext lives only on devices</strong>. Ciphertext travels both directions over persistent sockets. The Routing Service has metadata (who is connected where) but never payload. Media bytes travel as a separate flow to S3, also pre-encrypted by the sender. This split lets the encryption story stay airtight while the messaging fabric scales like a normal pub-sub system.</p>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>The full architecture, with every node numbered. Match each circled digit in the diagram to a card below to see what the component does, why it exists, and what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client — Phone, Web, Desktop, Tablet"]
+
+  subgraph EDGE["Edge"]
+    LB["② L4 Load Balancer"]
+  end
+
+  subgraph CONN["Connection Plane"]
+    CS["③ Connection Server cluster — 50K+ sockets each"]
+    RT["④ Routing Service — user_id, device_id → conn_server"]
+  end
+
+  subgraph IDENT["Identity &amp; Keys"]
+    ID["⑤ Identity Service — phone OTP, registration"]
+    KDS["⑥ Key Distribution Service — pre-keys per device"]
+  end
+
+  subgraph STORE["Storage Plane"]
+    MS["⑦ Pending Message Store — per-device offline queue"]
+    GR["⑨ Group Chat Service — per-device fanout"]
+    PR["⑩ Presence Service — online, last-seen"]
+  end
+
+  subgraph MEDIA["Media Plane"]
+    MD["⑧ Media Service — presigned S3 URLs"]
+    S3[("S3 — encrypted blobs")]
+  end
+
+  subgraph CALLS["Calls"]
+    VC["⑪ Voice / Video Service — WebRTC signaling, TURN"]
+  end
+
+  PUSH["⑫ Push Notification Service — APNS / FCM"]
+
+  CL <--> LB
+  LB <--> CS
+  CS <--> RT
+  CS <--> MS
+  CS <--> GR
+  CS <--> PR
+
+  CL --> ID
+  CL --> KDS
+  CS -.lookup keys.-> KDS
+
+  CL --> MD
+  MD --> S3
+
+  CS --> VC
+  CL <--> VC
+
+  MS -.wake offline phones.-> PUSH
+  PUSH -.APNS/FCM.-> CL
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style CS fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style RT fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style ID fill:#171d27,stroke:#38b265,color:#d4dae5
+  style KDS fill:#171d27,stroke:#38b265,color:#d4dae5
+  style MS fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style GR fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style PR fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style MD fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style S3 fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style VC fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style PUSH fill:#171d27,stroke:#e05252,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Each card answers the four newbie questions: what is it, why does it exist, what would break without it, and where does it sit in the flow.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client (Phone, Web, Desktop, Tablet)</h3>
+      <p>The client is where the entire encryption story lives. It runs the Signal Protocol library, holds the device's <strong>private identity key</strong> (which never leaves the device), maintains a chat database on local disk, and keeps a persistent socket open to a Connection Server. Sarah's phone, her laptop, and her tablet are <strong>three independent clients</strong>, each with its own key pair.</p>
+      <p><strong>Solves:</strong> the privacy guarantee. Because the server holds no private key, even a full server breach cannot decrypt past messages. Every architectural decision elsewhere assumes the heavy work of encryption, decryption, and indexing happens here.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> L4 Load Balancer</h3>
+      <p>A layer-4 (TCP) load balancer that terminates TLS and forwards the persistent socket to a Connection Server. L4 not L7 because the traffic is a custom binary protocol, not HTTP — there are no URLs to inspect, just raw frames. Health-checks every few seconds and pulls dead Connection Servers from rotation.</p>
+      <p><strong>Solves:</strong> the entry point at scale. Without the LB, clients would have to know exact Connection Server IPs — meaning you couldn't add or rotate servers without updating every device. The LB also gives you a stable DNS name like <code>g.whatsapp.net</code> behind which the server fleet can change freely.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">③</span> Connection Server cluster</h3>
+      <p>Each Connection Server holds a small army of <strong>persistent sockets</strong> — historically tens of thousands per box, and on FreeBSD-tuned WhatsApp Erlang servers, famously up to <em>2 million</em> on one host. When Sarah's phone is online, exactly one socket on exactly one Connection Server is hers. Inbound messages from her are read off that socket; outbound messages to her are written to that socket.</p>
+      <p><strong>Solves:</strong> the "500M concurrent users" problem. HTTP request-response cannot scale to that many open conversations because every request pays a TLS-handshake tax. Persistent multiplexed sockets pay that tax once per device-week, then send millions of frames over the same socket. This is also where presence ("online") naturally lives — a socket open means online; closed means last-seen.</p>
+      <p><strong>What if a Connection Server dies?</strong> The 50K-1M clients on it reconnect (their phones detect the socket drop within seconds), the Load Balancer routes them to a healthy server, and the Routing Service updates their (user_id, device_id) → conn_server mapping. A few seconds of perceived latency on those devices, no message loss because pending messages are stored durably elsewhere.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">④</span> Routing Service</h3>
+      <p>A high-throughput key-value service whose only job is to answer "which Connection Server is currently holding the socket for <code>(user_id, device_id)</code>?" Backed by Redis or an in-memory distributed store like Mnesia, partitioned by user_id. Updated whenever a client connects or disconnects.</p>
+      <p><strong>Solves:</strong> message delivery across a horizontally scaled fleet. When Sarah's Connection Server in São Paulo needs to push her message to Mom in Mumbai, it does not broadcast to all servers — it asks Routing Service "where is Mom's phone right now?" and gets back <code>conn-mum-42</code>. Without this lookup, you would either fanout to every server (impossibly wasteful) or pin all of a user's traffic to a fixed server (no fault tolerance).</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑤</span> Identity Service</h3>
+      <p>Phone-number registration. When you install WhatsApp, this service sends an SMS OTP to your phone, you type it back, and the service issues an <code>auth_token</code> tied to <code>(phone_number, device_id)</code>. Phone numbers are the user-facing identity — there are no usernames. Stores the <code>+E.164</code> phone, a stable opaque <code>user_id</code>, and the device list.</p>
+      <p><strong>Solves:</strong> bootstrapping identity. Without it, anyone could register as any phone number, defeating contact-discovery (the killer feature: "all your phone contacts who are on WhatsApp appear automatically"). The OTP gates registration to the actual SIM holder.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑥</span> Key Distribution Service</h3>
+      <p>The Signal Protocol's <strong>X3DH handshake</strong> requires the sender to fetch three things about the recipient device: an <strong>identity public key</strong> (long-lived), a <strong>signed pre-key</strong> (rotated weekly), and a <strong>one-time pre-key</strong> (consumed per first-message). Devices upload batches of one-time pre-keys when they register and refill the pool periodically. The Key Distribution Service stores and serves these.</p>
+      <p><strong>Solves:</strong> asynchronous handshakes. Sarah may want to send Mom a message while Mom's phone is off — Signal still needs Mom's keys to derive a session. Pre-keys uploaded ahead of time make this work. Without the pre-key system, you could not start a Signal session with someone who is not currently online — Signal would devolve into a real-time-only protocol.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑦</span> Pending Message Store</h3>
+      <p>A per-device offline queue. When Sarah sends to Mom (who has 3 devices, all currently offline), the server writes 3 rows: <code>(mom-phone-device, ciphertext-A)</code>, <code>(mom-laptop-device, ciphertext-B)</code>, <code>(mom-tablet-device, ciphertext-C)</code>. Each row sits there until that device reconnects and acks delivery, at which point the row is deleted. Backed by Cassandra/HBase, sharded by <code>device_id</code>.</p>
+      <p><strong>Solves:</strong> "recipient is offline." Without a per-device queue, Sarah's message would be dropped any time Mom's phone was off. With it, Mom can be on a flight for 8 hours and still receive every message in order when she lands.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑧</span> Media Service</h3>
+      <p>Photos, videos, voice notes, and files don't travel through the messaging path — they would clog it. Instead, Sarah's phone <strong>encrypts the photo with a fresh random AES key</strong>, uploads the ciphertext to S3 via a presigned URL handed out by the Media Service, and gets back a blob URL. She then sends Mom a <em>regular text message</em> containing <code>{ s3_url, aes_key }</code> — and that message is itself end-to-end encrypted with Mom's device key. Mom's phone fetches the blob from S3 and decrypts it locally.</p>
+      <p><strong>Solves:</strong> media at scale, while preserving E2E. The server sees encrypted bytes in S3 and an encrypted little message in the queue — never the photo. Without this split, every 1MB photo would have to flow through the Connection Server fabric, multiplying messaging bandwidth by 100×.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑨</span> Group Chat Service</h3>
+      <p>Group fanout. When Sarah sends to a 50-member group, her client encrypts <strong>once per recipient device</strong> using the group's <em>sender key</em> (an additional Signal construct), and the Group Chat Service knows the group's device list and writes one Pending Message row per recipient device. New members get re-keyed; departed members are cut off via a sender-key rotation.</p>
+      <p><strong>Solves:</strong> efficient group encryption. Naive approach (encrypt N times for N members) works up to ~10 members but bogs down at 256+. Sender keys let Sarah encrypt the message body once with a symmetric key and only encrypt that <em>key</em> per recipient device — far cheaper. Without the Group Chat Service, every 1024-member group message would spawn a thousand-way client-side fanout that the sender's phone could not afford.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑩</span> Presence Service</h3>
+      <p>Tracks "online" and "last-seen" indicators. Subscribes to socket connect/disconnect events from Connection Servers and pushes updates to subscribed clients ("Mom went online at 14:03"). Stored in a fast in-memory cache because presence is ephemeral and high-churn.</p>
+      <p><strong>Solves:</strong> the small UX touches that make a chat app feel alive — the green dot, the typing indicator, "last seen 2m ago." Without it, you would not know whether your message was being read in the moment. Importantly, presence is opt-in and <strong>does not leak message content</strong> — it is a bit of metadata, not plaintext.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑪</span> Voice / Video Service</h3>
+      <p>WebRTC for the actual media (audio/video frames travel <strong>peer-to-peer</strong> when both endpoints can punch through NAT). Call setup signaling — "Sarah is calling, here are her ICE candidates" — flows through the WhatsApp servers, but is itself end-to-end encrypted. When direct P2P fails (strict corporate NATs, mobile carriers), traffic falls back to <strong>TURN relay servers</strong> run by WhatsApp, which still see only encrypted media.</p>
+      <p><strong>Solves:</strong> low-latency real-time calls without compromising encryption. Without WebRTC + TURN, calls would have to flow through an MCU (Multipoint Control Unit) that mixes audio — which would require decryption on the server. Peer-to-peer media keeps the encryption end-to-end.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑫</span> Push Notification Service</h3>
+      <p>If Mom's phone has its WhatsApp socket closed (app backgrounded, OS suspended it to save battery), the server cannot push messages directly — the OS owns the radio. Instead, the Pending Message Store fires a notification through <strong>APNS</strong> (iOS) or <strong>FCM</strong> (Android). The notification wakes the app, the app reconnects its socket, and pulls the queued ciphertexts. The notification itself contains <em>no message content</em> — just a "you have messages" wake-up signal.</p>
+      <p><strong>Solves:</strong> mobile reality. Phones aggressively suspend background apps; without OS-level push, your friends could message you all day and your phone would not buzz until you opened the app. APNS/FCM is the only legal way to bypass this. The cost: WhatsApp depends on Apple and Google's infrastructure for the wake-up step, but never trusts them with content.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthroughs — Sarah, Mom, and the Brooklyn Bridge photo</h3>
+  <p>Two flows. First, a 1-on-1 photo send to Mom (single device, simple case). Second, the same photo to a 50-person group chat. Both reference the numbered components above.</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>📷 1-on-1 photo to Mom (1 device) at 14:02:06 NY time</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah's phone ① picks a fresh random AES key, encrypts the JPEG with it, and uploads the ciphertext to <strong>Media Service</strong> ⑧ → returns <code>s3://wa-media/abc123.bin</code>.</li>
+        <li>Sarah's phone has no Signal session with Mom yet today, so it fetches Mom's pre-keys from <strong>Key Distribution Service</strong> ⑥ — gets <code>{identity_key, signed_pre_key, one_time_pre_key}</code> for Mom's phone device.</li>
+        <li>Sarah's phone runs <strong>X3DH</strong> to derive a shared session key, then uses <strong>Double Ratchet</strong> to encrypt the small message <code>{ s3_url, aes_key, "from Brooklyn ❤️" }</code> with Mom's session key. Result: ~200 bytes of ciphertext.</li>
+        <li>Sarah's phone sends the ciphertext over its persistent socket to <strong>Connection Server</strong> ③ in São Paulo (her current geo).</li>
+        <li>São Paulo connection server asks <strong>Routing Service</strong> ④ "where is Mom's phone?" → answer: Mumbai connection server <code>conn-mum-42</code>. But Mom's phone is currently offline (asleep), so the entry says "no socket."</li>
+        <li>São Paulo connection server writes the ciphertext to <strong>Pending Message Store</strong> ⑦ keyed by Mom's <code>device_id</code>, and triggers <strong>Push Notification Service</strong> ⑫ → APNS wakes Mom's iPhone with "1 new message."</li>
+        <li>Mom's iPhone reconnects its socket to <code>conn-mum-42</code>. Connection Server reads the pending row, writes the ciphertext to Mom's socket.</li>
+        <li>Mom's phone runs Double Ratchet decrypt → gets <code>{s3_url, aes_key, text}</code>. Phone fetches the encrypted blob from S3, decrypts with the AES key, displays the photo. <em>Total elapsed ~600ms from Mom's phone waking.</em></li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h3>👥 Same photo to a 50-person group chat (avg 1.5 devices each ≈ 75 devices)</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah's phone ① uploads the encrypted photo to <strong>Media Service</strong> ⑧ <em>once</em> — same as 1-on-1. The S3 URL and AES key will be sent inside each per-device message.</li>
+        <li>Sarah's phone fetches the group's <strong>device list</strong> from <strong>Group Chat Service</strong> ⑨ — 75 (user_id, device_id) pairs.</li>
+        <li>Using the group's <strong>sender key</strong> (Signal's group construct), Sarah's phone encrypts the message body once with a symmetric key, then encrypts that key for each of the 75 devices. Result: 1 body ciphertext + 75 small key envelopes.</li>
+        <li>Sarah's phone sends the bundle to her Connection Server ③, which iterates over the 75 envelopes:
+          <ul>
+            <li>For online devices → Routing Service ④ lookup → push directly to that device's Connection Server.</li>
+            <li>For offline devices → write to Pending Message Store ⑦ + trigger Push Notification Service ⑫.</li>
+          </ul>
+        </li>
+        <li>Each recipient device decrypts the small envelope to recover the sender key, then decrypts the body. Each device fetches the photo from S3 and decrypts with the embedded AES key. <em>End-to-end encrypted to every device with one body ciphertext + 75 tiny envelopes.</em></li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> WhatsApp's architecture is built around three insights — (1) <strong>encryption lives on devices</strong>, so the server is just a router of opaque blobs; (2) <strong>routing is decoupled from session-holding</strong> via a Routing Service that maps users to whichever Connection Server they're on right now; (3) <strong>media flows through S3 separately</strong> from the messaging path, with the AES key shipped inside the encrypted message. Every box in Pass 3 exists to remove one of the four Pass-1 failures while keeping the server provably blind to content.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: E2E ENCRYPTION                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-green">Step 7</span>
+  <h2>End-to-End Encryption — The Signal Protocol</h2>
+  <p>WhatsApp's encryption isn't bespoke — it's the open <strong>Signal Protocol</strong>, designed by Open Whisper Systems / Moxie Marlinspike and audited by the academic crypto community. The protocol does two jobs: <strong>set up a session</strong> when two devices first talk (X3DH), and <strong>encrypt every message</strong> with a fresh per-message key that gets thrown away after use (Double Ratchet).</p>
+
+  <h3 class="subh">X3DH — the asynchronous handshake</h3>
+  <p>Imagine Sarah wants to start a chat with her friend Raj, who is offline. In a typical TLS-style handshake, both parties must be online at the same time to exchange ephemeral keys. Signal can't require that — Raj might be on a plane. <strong>X3DH (Extended Triple Diffie-Hellman)</strong> solves this by having Raj <strong>pre-upload</strong> a bundle of public keys to the Key Distribution Service ⑥ when he registers his device:</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🔑 Identity Key</h3>
+      <p>Long-lived. Signs the pre-key. This is the public key Sarah sees on the "verify Raj" QR code.</p>
+    </div>
+    <div class="card">
+      <h3>🔑 Signed Pre-Key</h3>
+      <p>Rotated weekly. Mid-term key, signed by the identity key so Sarah knows it's authentic.</p>
+    </div>
+    <div class="card">
+      <h3>🔑 One-Time Pre-Keys</h3>
+      <p>Pool of 100+. Each used at most once. The one-time-ness gives <strong>forward secrecy</strong> for the very first message.</p>
+    </div>
+  </div>
+
+  <p>When Sarah wants to message Raj, her phone fetches Raj's bundle and runs three Diffie-Hellman computations whose results are mixed together to derive a shared session key. Crucially, Raj never had to be online — his pre-keys were sitting on the server waiting. As soon as Raj's phone wakes, it pulls Sarah's first message + her ephemeral key, runs the matching DH on its end, and arrives at the same session key.</p>
+
+  <h3 class="subh">Double Ratchet — per-message forward secrecy</h3>
+  <p>X3DH gives you a session key, but if that single key encrypted every message, a future compromise of either device would expose the whole chat history. <strong>Double Ratchet</strong> rotates the encryption key on every message. The "double" refers to two ratchets that mix together:</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔄 Symmetric ratchet (per message)</h3>
+      <p>After each message, derive the next message key from a hash of the current one and immediately destroy the previous. Even if today's message key leaks, yesterday's messages cannot be re-derived from it.</p>
+    </div>
+    <div class="card">
+      <h3>🔄 Diffie-Hellman ratchet (per round-trip)</h3>
+      <p>Every time a new message arrives in the other direction, a fresh DH exchange piggybacks on it, generating a new "chain key." This bounds how long a compromise can listen — at most until the next time the conversation goes the other way.</p>
+    </div>
+  </div>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor Sarah as Sarah (NY)
+  participant KDS as Key Distribution ⑥
+  participant CS as Connection Server ③
+  participant MS as Pending Msgs ⑦
+  participant Push as Push (APNS) ⑫
+  actor Raj as Raj (offline → online)
+
+  Note over Raj,KDS: Raj registered earlier — pre-keys uploaded
+  Sarah->>KDS: get_keys(raj_user_id)
+  KDS-->>Sarah: identity_key, signed_pre_key, one_time_pre_key
+
+  Note over Sarah: Run X3DH → derive session key<br>Encrypt with Double Ratchet
+  Sarah->>CS: send_message(ciphertext for raj_phone)
+  CS->>MS: write pending row(raj_device, ciphertext)
+  CS-->>Push: notify raj
+  Push-->>Raj: APNS wake-up
+
+  Note over Raj: phone wakes, reconnects
+  Raj->>CS: open socket
+  CS->>MS: read pending rows
+  MS-->>CS: ciphertext
+  CS-->>Raj: deliver ciphertext
+  Note over Raj: Run X3DH on his side → derive same session key<br>Decrypt
+  Raj->>CS: ack delivered
+  CS->>MS: delete row
+    </div>
+  </div>
+
+  <h3 class="subh">What the server sees vs. what the server cannot see</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Server CAN see</th><th>Server CANNOT see</th></tr></thead>
+      <tbody>
+        <tr><td>Sender phone number</td><td>Message text or media bytes</td></tr>
+        <tr><td>Recipient phone number(s)</td><td>Whether two messages have the same content</td></tr>
+        <tr><td>Timestamp of send</td><td>Whether a media file is the same as a previously sent one</td></tr>
+        <tr><td>Message size (in ciphertext)</td><td>Group chat names, member descriptions</td></tr>
+        <tr><td>That a call happened (signaling)</td><td>The audio/video of the call</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-green"><strong>Trade-off the server pays for being blind:</strong> backup and restore. WhatsApp cannot help you migrate to a new phone, because it has no readable copy of your history. The workaround: <strong>encrypted backups to iCloud / Google Drive</strong>, where the user holds the encryption key (a recently introduced 64-digit recovery code, or a password). The cloud provider stores the ciphertext but doesn't have the key. A weaker form of the same end-to-end principle, applied to backups.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: MULTI-DEVICE                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-blue">Step 8</span>
+  <h2>Multi-Device Sync</h2>
+  <p>For years, WhatsApp had a strict 1-user-1-device model: WhatsApp Web was a "mirror" of the phone, and if the phone was off the laptop did not work. In 2021 they shipped <strong>multi-device</strong>, and the architecture had to bend in interesting ways to keep encryption end-to-end.</p>
+
+  <h3 class="subh">The naive (rejected) approach: extract the private key from the phone</h3>
+  <p>The simplest thing would be: when Sarah pairs her laptop, copy her phone's private identity key over to the laptop. Now the laptop "is" the phone. But this <strong>weakens the security model</strong> — the key now exists in two places, and any compromise of either device exposes the other. It also makes the key transit (over the network) a juicy target.</p>
+
+  <h3 class="subh">The actual approach: each device gets its own key pair</h3>
+  <p>When Sarah pairs her laptop, the laptop generates its own identity key locally. Pairing only proves to the WhatsApp servers (and to her contacts) that "this new device is also Sarah." The laptop is treated as a <strong>peer device of Sarah's account</strong>, not a clone. From the protocol's view, Sarah is <em>multiple devices</em>.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor Sarah_Phone as Sarah's Phone (already trusted)
+  actor Sarah_Laptop as Sarah's Laptop (new device)
+  participant KDS as Key Distribution ⑥
+  participant ID as Identity Service ⑤
+
+  Sarah_Laptop->>Sarah_Laptop: generate new identity_key pair
+  Sarah_Laptop->>ID: show pairing QR
+  Sarah_Phone->>Sarah_Phone: scan QR — get laptop's public key
+  Sarah_Phone->>ID: sign laptop's public key with phone's identity key<br>("Sarah's phone vouches: this laptop is Sarah")
+  ID->>KDS: register laptop as a new device under sarah_user_id
+  Sarah_Laptop->>KDS: upload signed_pre_key + one_time_pre_keys
+    </div>
+  </div>
+
+  <h3 class="subh">What this means for senders</h3>
+  <p>When Raj sends Sarah a message, his phone fetches the <strong>device list</strong> for Sarah from the Key Distribution Service ⑥ — say, 4 devices: phone, laptop, tablet, desktop. Raj's phone runs Double Ratchet for <strong>each</strong> Sarah-device and produces 4 ciphertexts. The server fans out 4 rows, one per device queue. Each Sarah-device decrypts independently using its own private key.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor Raj as Raj's Phone
+  participant KDS as Key Distribution ⑥
+  participant CS as Connection Server ③
+  participant MS as Pending Msgs ⑦
+  actor S_Phone as Sarah Phone
+  actor S_Laptop as Sarah Laptop
+  actor S_Tablet as Sarah Tablet
+  actor S_Desk as Sarah Desktop
+
+  Raj->>KDS: get_devices(sarah_user_id)
+  KDS-->>Raj: [phone, laptop, tablet, desktop]
+  Note over Raj: encrypt 4 times,<br>once per device session
+  Raj->>CS: send_message(4 ciphertexts)
+  par fanout
+    CS->>MS: row for phone_device
+    CS->>MS: row for laptop_device
+    CS->>MS: row for tablet_device
+    CS->>MS: row for desktop_device
+  end
+  MS-->>S_Phone: ciphertext_1
+  MS-->>S_Laptop: ciphertext_2
+  MS-->>S_Tablet: ciphertext_3
+  MS-->>S_Desk: ciphertext_4
+    </div>
+  </div>
+
+  <h3 class="subh">Self-fanout — sending FROM one device must update the OTHER devices</h3>
+  <p>Sarah sends a message from her phone. Her laptop also needs to show "you sent: hi mom" in the chat thread. So when Sarah's phone sends to Mom (4 devices), it <em>also encrypts the message to its own peer devices</em> — laptop, tablet, desktop. That's 4 ciphertexts to Mom plus 3 ciphertexts to Sarah's other devices = 7 ciphertexts for one logical "send." The server fans them all out the same way.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🆕 New device → can it read past messages?</h3>
+      <p><strong>No.</strong> A laptop paired today does not gain Sarah's phone's history. The phone <em>can</em> optionally re-send some recent messages to the laptop (encrypted to the laptop's new key), and that's how WhatsApp Web shows recent threads after pairing — but nothing forces the phone to do this, and old conversations remain phone-only unless explicitly synced. This is the privacy floor: a stolen-then-paired device cannot retroactively read what came before its pairing.</p>
+    </div>
+    <div class="card">
+      <h3>❌ Removed device → revoke the keys</h3>
+      <p>When Sarah removes her stolen laptop from her account, the Identity Service ⑤ marks that device deleted, the Key Distribution Service ⑥ stops returning its pre-keys, and contacts' phones refresh their device lists on next send. The laptop's keys remain valid for already-sent-but-undelivered messages, but no new messages will be encrypted to it.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: GROUP CHAT                          -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-purple">Step 9</span>
+  <h2>Group Chat Encryption</h2>
+  <p>Encrypting a message for a 256-person group naively means encrypting it 256 times — once per device session. For small groups that's fine. For 1024-member groups (with multi-device, that's 1500+ recipient devices) it's a serious CPU + bandwidth burden on the sender's phone. Signal's <strong>Sender Keys</strong> construct fixes this.</p>
+
+  <h3 class="subh">Sender Keys — a hybrid approach</h3>
+  <p>For each group, every member's device generates a <strong>sender chain key</strong>: a symmetric key used to encrypt outgoing messages from that device to that group. The first time Sarah sends to "Family Group," her phone:</p>
+
+  <ol style="padding-left:1.5rem;list-style:decimal;color:var(--text);max-width:760px">
+    <li>Generates a fresh sender chain key for "Family Group."</li>
+    <li>Uses each member's pairwise Signal session (the one Double-Ratchet session per device pair) to <strong>distribute the sender key</strong> to every member device — encrypted individually per device.</li>
+    <li>From that point on, each new message from Sarah is encrypted <strong>once</strong> with the sender chain key, and the same ciphertext is fanned out to all members.</li>
+  </ol>
+
+  <p>The sender chain key itself ratchets per-message (forward secrecy preserved). Other members who want to send to the group each have their own sender chain key, distributed once.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>📥 New member joins</h3>
+      <p>The new member's device gets the current sender keys from each existing member, via pairwise Signal sessions. They can decrypt messages from this point forward — never older messages.</p>
+    </div>
+    <div class="card">
+      <h3>📤 Member leaves</h3>
+      <p>All remaining members <strong>rotate their sender keys</strong> so the departed member can no longer decrypt new messages. This is one of the more expensive operations in WhatsApp — N members each redistributing a new sender key to N-1 others.</p>
+    </div>
+    <div class="card">
+      <h3>📦 Server's role</h3>
+      <p>Group Chat Service ⑨ stores only the device list. Server fans out the (already encrypted) message to every member device's Pending Message Store ⑦ row. It cannot read the body — just like 1-on-1.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>Why this scales:</strong> for a 256-member group with avg 1.5 devices each (= 384 device sessions), naive Signal would do 384 Double Ratchet encryptions per message — heavy on a phone. With sender keys, it's <strong>1 symmetric encryption + 0 setup overhead</strong> per message after the initial sender-key distribution. The cost is paid once at group creation / member join, then amortized over thousands of messages.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: VOICE / VIDEO                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-yellow">Step 10</span>
+  <h2>Voice &amp; Video Calls</h2>
+  <p>Calls are a fundamentally different beast from text — they need <strong>real-time, low-latency, peer-to-peer media</strong> at 100s of kbps continuously. They use <strong>WebRTC</strong>, a web-standard P2P media stack, with WhatsApp servers handling only signaling and NAT-traversal fallback.</p>
+
+  <h3 class="subh">Call setup — signaling through WhatsApp</h3>
+  <p>When Sarah taps "video call" on Mom's chat:</p>
+
+  <ol style="padding-left:1.5rem;list-style:decimal;color:var(--text);max-width:760px">
+    <li>Sarah's phone gathers <strong>ICE candidates</strong> — the list of network addresses she could be reached at (local LAN IP, public NAT IP, TURN-relayed IP).</li>
+    <li>This candidate list is sent through WhatsApp's normal messaging path (encrypted to Mom) via the Voice/Video Service ⑪. Mom's phone gets a notification "incoming call from Sarah" + the ICE candidates.</li>
+    <li>Mom's phone gathers her own ICE candidates and sends them back. Both sides now know each other's possible addresses.</li>
+    <li>WebRTC tries pairs of candidates: direct LAN, then NAT-punched UDP, then TURN-relayed. Whichever connects first wins.</li>
+    <li>Once a path is established, audio/video frames flow <strong>peer-to-peer</strong>, bypassing WhatsApp servers entirely.</li>
+  </ol>
+
+  <h3 class="subh">When P2P fails — TURN relays</h3>
+  <p>Some networks (corporate firewalls, certain mobile carriers, symmetric NATs) block P2P UDP. In that case, both phones connect to a WhatsApp <strong>TURN relay server</strong> and forward their media through it. The TURN server is a dumb packet pump — it sees only the encrypted SRTP streams, not the audio. So even relayed calls remain end-to-end encrypted; the relay just shuffles bytes.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  S["Sarah's Phone"]
+  M["Mom's Phone"]
+  V["Voice/Video Service ⑪<br>(signaling only)"]
+  T["TURN Relay<br>(fallback packet pump)"]
+
+  S <-.signaling.-> V
+  V <-.signaling.-> M
+  S <==direct P2P media==> M
+  S -.if NAT blocks.-> T
+  T -.if NAT blocks.-> M
+
+  style S fill:#e8743b,stroke:#e8743b,color:#fff
+  style M fill:#e8743b,stroke:#e8743b,color:#fff
+  style V fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style T fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Group calls — Selective Forwarding Unit (SFU)</h3>
+  <p>For 1-on-1, P2P is enough. For group calls (8+ participants), full mesh P2P would mean each phone uploads its video stream N-1 times — kills mobile data plans. WhatsApp uses an <strong>SFU</strong>: each participant sends one upstream stream to the SFU, and the SFU forwards it to all other participants. The SFU does <em>not</em> decrypt — it only routes encrypted frames. (Compare to an MCU, which decodes and mixes — that would break E2E.)</p>
+
+  <div class="highlight hl-yellow"><strong>The honest caveat on group calls:</strong> while the streams remain individually E2E-encrypted between sender and each receiver, an SFU sees enough metadata (frame sizes, timing) to do some traffic analysis. For most users this is a non-issue; for a journalist on a sensitive call, it's a known limitation. WhatsApp offsets this with calls being short-lived and ephemeral.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: STORAGE                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-cyan">Step 11</span>
+  <h2>Storage at Scale</h2>
+  <p>Compared to other messengers, WhatsApp's server-side storage footprint is small — because most data lives on user devices, not on the server. Three storage tiers, each with very different growth curves.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🟢 User &amp; device registry — small, durable</h3>
+      <p>~500GB for 2B users × ~5 devices each × ~50 bytes per device record. PostgreSQL, sharded by phone number. Replicated across regions. Grows linearly with user count, not message count.</p>
+    </div>
+    <div class="card">
+      <h3>🟡 Pending message queues — bounded</h3>
+      <p>~5-10TB. Cassandra/HBase, sharded by <code>device_id</code>. Each row is one undelivered message for one device. Rows are <strong>deleted on delivery ack</strong>, so the table is <em>flow-through</em>, not accumulating. Even at 100B msgs/day, the queue rarely exceeds ~100M rows at any given second.</p>
+    </div>
+    <div class="card">
+      <h3>🟣 Media blobs — petabyte scale</h3>
+      <p>S3-class object store. Petabytes of encrypted media. Lifecycle policy: media is <strong>kept for ~30 days</strong> after delivery (so latecomers / new-device-syncs can fetch), then deleted. The encryption key is per-message and lost from the server immediately — after deletion, even subpoena-recovered S3 bytes are unreadable.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Why "delete on delivery" works</h3>
+  <p>The fundamental architectural choice is: <strong>the server is a pipe, not an archive.</strong> A user's full message history lives on their device(s). Once Mom's phone acks "got the photo," the server's copy is gone. This is what keeps the server storage manageable — without it, 100B msgs/day × 5 years would be <em>180 trillion messages</em> the server would need to durably hold, an unmanageable storage cost.</p>
+
+  <p>The flip side is the trade we already saw in §7: backup-and-restore must be implemented separately, by encrypted backups to iCloud/Google Drive, where the user holds the key.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: PARTITIONING                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-green">Step 12</span>
+  <h2>Data Partitioning</h2>
+  <p>2B users, 500M concurrent connections, 5M peak msgs/sec — there is no single-box version of any tier. Everything is sharded.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📞 Connection Servers — sharded by user_id (consistent hash)</h3>
+      <p>The Routing Service maps <code>user_id → connection_server_id</code> using consistent hashing on a virtual ring. Adding a new Connection Server only relocates 1/N of users (a brief reconnect for them), not the entire fleet. When a server dies, its share is redistributed and the affected clients reconnect.</p>
+    </div>
+    <div class="card">
+      <h3>📥 Pending Message Store — sharded by device_id</h3>
+      <p>Why <code>device_id</code> and not <code>user_id</code>? Because each device is its own delivery target — we want all of one device's pending messages co-located on one shard for fast read on reconnect. Cassandra wide-column rows keyed by <code>(device_id, message_id)</code>, replicated 3× per shard.</p>
+    </div>
+    <div class="card">
+      <h3>🆔 User registry — sharded by phone_number</h3>
+      <p>Phone numbers are uniformly distributed (modulo country-code skew), so simple hash sharding works. A user lookup is one shard hit. Replicated across regions for low-latency contact discovery.</p>
+    </div>
+    <div class="card">
+      <h3>🔑 Key Distribution — sharded by user_id</h3>
+      <p>Pre-key bundles for one user live on one shard. When Sarah's phone fetches Mom's keys, that's a single shard read. Pre-key pool refills from the device write a small batch back to the same shard.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>Why consistent hashing matters specifically for Connection Servers:</strong> the fleet scales up and down throughout the day (more capacity needed in the evening when more phones are on). With consistent hashing on the virtual ring, adding a node only forces ~1/N of users to reconnect to a different server — usually a sub-second blip. With plain modulo sharding, every scale-up event would force <em>all</em> users to reconnect simultaneously — a thundering herd that could saturate the LB.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: FAULT TOLERANCE                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-red">Step 13</span>
+  <h2>Fault Tolerance &amp; Multi-Region</h2>
+  <p>Messaging is critical infrastructure: 99.99% means no more than 53 minutes of downtime per year. Failure modes are handled at every tier.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔁 Connection Server failure</h3>
+      <p>50K-1M sockets drop simultaneously. Affected clients detect the TCP RST within seconds and reconnect via the Load Balancer to a healthy server. Routing Service ④ updates the new mappings. Pending messages were stored elsewhere, so no message loss — just a few seconds of perceived offline.</p>
+    </div>
+    <div class="card">
+      <h3>🗄️ Pending Message Store failure</h3>
+      <p>Replicated 3× per shard via Cassandra. Quorum writes (W=2) mean a single replica failure doesn't block writes. Quorum reads (R=2) heal divergent replicas on the fly. Region-level outages handled by cross-region replication.</p>
+    </div>
+    <div class="card">
+      <h3>🧭 Routing Service failure</h3>
+      <p>The most sensitive tier — without it, no message can be routed. Backed by ZooKeeper / etcd or Mnesia for consistent metadata. Quorum-based — tolerates minority node loss. Latency-sensitive enough that reads are usually served from in-memory Erlang / Redis caches at the Connection Server.</p>
+    </div>
+    <div class="card">
+      <h3>🌍 Multi-region active-active</h3>
+      <p>Connection Servers in NA, EU, APAC, LATAM. Clients connect to the geographically nearest region. Cross-region delivery flows: Sarah (NA region) → her local Connection Server → Routing Service says Mom is in APAC → push to APAC region's Connection Server → Mom's socket. Adds ~150ms intercontinental latency, still well under 500ms p99.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Disaster scenario — entire region offline</h3>
+  <p>Suppose APAC's Mumbai data center goes dark. Mom's phone immediately loses its socket. Within seconds, her phone's reconnect attempt routes (via DNS / GeoIP) to the next-closest region — say, Singapore. Routing Service updates <code>(mom_user, mom_device) → conn-sg-7</code>. New incoming messages for Mom from anywhere in the world now flow to Singapore. When Mumbai comes back, traffic gradually rebalances. <strong>No message loss</strong> because the Pending Message Store is multi-region replicated.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-blue">Step 14</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">How does the server fan out a message to a user with 5 devices without being able to read it?</div>
+  <div class="ans"><strong>The sender does the encryption work, the server does the routing.</strong> When Sarah sends to Mom, her phone first asks the Key Distribution Service ⑥ for Mom's <em>device list</em> — say 5 devices — and the public pre-keys for each. Sarah's phone then runs Double Ratchet 5 times, producing 5 ciphertexts (one per device session), and ships all 5 to her Connection Server in a single bundle. The server reads the routing envelope ("device A → ciphertext 1, device B → ciphertext 2, ..."), looks up each device's current Connection Server in the Routing Service ④, and writes the matching ciphertext to that server (or to the Pending Message Store ⑦ if offline). Server has no idea what's inside any of the ciphertexts — it just sees "blob for device A," "blob for device B," etc.</div>
+
+  <div class="iq">When Sarah adds a new device, can it read past messages?</div>
+  <div class="ans"><strong>No, not by default.</strong> The new device generates its own key pair locally; pairing with an existing device only signs the new key as "also Sarah's." Past messages were encrypted to the <em>old</em> devices' keys; the new device doesn't have those private keys, so the ciphertexts are unreadable to it. Optionally, an existing device may re-send recent messages to the new device by re-encrypting them to the new key — that's how WhatsApp Web shows recent threads after pairing. But this is a <em>cooperative push from a trusted device</em>, not a server-side capability. The server cannot offer history because it never had it in plaintext.</div>
+
+  <div class="iq">How does group chat encryption scale to a 1024-person group?</div>
+  <div class="ans"><strong>Sender Keys.</strong> Each member's device has a per-group symmetric "sender chain key" used to encrypt outgoing messages from that device to that group. The sender key is distributed once per pair (sender device → recipient device) via the existing pairwise Signal session, then reused for thousands of messages. Per message, that's <strong>one</strong> symmetric encryption on the sender's phone, not 1024 Double Ratchet ops. The server still fans out the same ciphertext to every recipient device's queue, and each recipient decrypts with the sender key it has on file. Member changes (joins/leaves) trigger a sender-key rotation, paid amortized over the group's lifetime.</div>
+
+  <div class="iq">Why a custom binary protocol over a persistent socket, not plain HTTP?</div>
+  <div class="ans"><strong>500M concurrent users.</strong> HTTP request-response forces a TLS handshake per connection, and you'd need to re-establish frequently because phones swap networks (Wi-Fi to cellular and back). Custom binary protocols (originally XMPP, now Noise Pipes) keep a single multiplexed socket open and reuse it for every frame in both directions — receive a message, send an ack, send a new message — for the lifetime of the connection. A single TLS handshake amortizes over thousands of frames. Add to that: HTTP can't easily push from server → client without long-polling or SSE hacks; persistent sockets let the server immediately push an inbound message the moment it arrives, with no client-side polling.</div>
+
+  <div class="iq">How does WhatsApp Web work without storing the private key on the web?</div>
+  <div class="ans"><strong>WhatsApp Web is its own device.</strong> When you scan the QR code on web.whatsapp.com, the browser <em>generates a fresh key pair locally</em> (in IndexedDB / browser storage) and your phone signs the new device's public key as "also yours." From then on, the web client receives messages encrypted to its own key, decrypted in-browser. The phone is no longer required to be online (post-2021 multi-device). The trade-off is that browser storage is less robust than mobile keystores — clearing site data wipes the keys, forcing a re-pair. WhatsApp mitigates by warning users before clearing storage on the web app.</div>
+
+  <div class="iq">How would you handle 1M concurrent voice/video calls?</div>
+  <div class="ans"><strong>P2P first, TURN/SFU only as fallback.</strong> 1-on-1 calls go peer-to-peer via WebRTC — server load is just signaling (~few KB per call setup), trivially scalable. Group calls hit an SFU that forwards encrypted streams without decoding — SFU bandwidth is the bottleneck, but each SFU box can handle thousands of streams, and SFUs are stateless / regionally deployed. TURN relays for NAT-blocked calls are pure UDP packet pumps, trivially scalable per region. The total server-side cost is tiny compared to messaging because calls are short-lived (avg 4 min) and the heavy lifting (encoding, encrypting frames) is on the phones. WhatsApp's call infrastructure regularly handles tens of millions of concurrent calls during peak New Year's Eve traffic.</div>
+
+  <div class="iq">If the server is blind, how do you handle abuse and spam?</div>
+  <div class="ans"><strong>Metadata heuristics, not content inspection.</strong> The server can see send-rates, recipient diversity, account age, device reputation, and "this account just messaged 5000 strangers in 10 minutes" — all without reading messages. Reactive: users can <em>report</em> a chat, which copies the offending messages out of their own device (decrypted by them, since they have the key) and uploads it for review. The reporting flow is the loophole that lets WhatsApp moderate without breaking E2E for everyone. Combined with phone-number-tied identity (each abusive account costs a SIM), this absorbs most spam without inspecting content.</div>
+
+  <div class="iq">What's the trade-off of "server cannot read messages" for backup/restore?</div>
+  <div class="ans"><strong>WhatsApp can't help you migrate, so the user has to.</strong> Historically, WhatsApp punted: phone-to-phone backups via the OS (iCloud / Google Drive) where Apple/Google held the data, often unencrypted at rest in the cloud. In 2021, WhatsApp shipped <strong>encrypted backups</strong>: backups uploaded to iCloud/Drive are encrypted with a key derived from a 64-digit recovery code (or password). The cloud provider stores the ciphertext but doesn't have the key — same E2E principle, applied to backups. Trade-off: lose your recovery code, lose your history forever. WhatsApp considers this an acceptable price for the privacy guarantee.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "WhatsApp is a fleet of stateless socket servers + a Routing Service that maps users to servers, fronted by a per-device offline message queue. Encryption — Signal Protocol's X3DH and Double Ratchet — happens on the devices, so the server is just a router of opaque ciphertext. Multi-device sync works by treating each device as its own peer with its own keys. Media bypasses the messaging path entirely via S3 with the AES key shipped inside the encrypted message."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

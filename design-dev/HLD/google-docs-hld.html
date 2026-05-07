@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Google Docs — Real-Time Collaborative Editor — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Google <span>Docs</span></h1>
+  <p class="sub">Five teammates typing in the same paragraph at the same instant — how the system orders every keystroke, never loses an edit, and converges everyone to the exact same final document</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is Google Docs?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">The CORE Problem — Conflicts</a></li>
+      <li><a href="#s6">High-Level Architecture</a></li>
+      <li><a href="#s7">OT — Deep Dive</a></li>
+      <li><a href="#s8">Doc Session Server</a></li>
+      <li><a href="#s9">Persistence Strategy</a></li>
+      <li><a href="#s10">Offline Support</a></li>
+      <li><a href="#s11">Cursor Presence</a></li>
+      <li><a href="#s12">Comments &amp; Suggestions</a></li>
+      <li><a href="#s13">Sharing &amp; Permissions</a></li>
+      <li><a href="#s14">Data Partitioning</a></li>
+      <li><a href="#s15">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS GOOGLE DOCS?                -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is Google Docs?</h2>
+  <p>Imagine a Friday afternoon at 4:53 PM. Sarah, Raj, Priya, Tom, and Maya are all racing to finish a quarterly product brief due at 5:00. Every one of them has the same Google Doc open in their browser. Sarah is rewriting the second paragraph. Raj is fixing typos in the introduction. Priya is adding bullet points at the bottom. Tom is highlighting Sarah's paragraph and leaving a comment. Maya has the doc open on her phone, watching from a meeting room. Every keystroke any of them types appears on every other person's screen within 200ms, with their cursor blinking in the right place and their name floating beside it. Nobody's edit is ever lost. Nobody's screen ever shows a different version of the document than anyone else's. That's the system we're designing.</p>
+
+  <p>It looks magical, but underneath there's an exact answer to a hard question: <strong>when two people type the same character at the same instant, whose edit wins, and how do we keep everyone's view consistent without anyone losing what they typed?</strong> A naive last-write-wins approach loses keystrokes; a "lock the doc while one person types" approach destroys the experience. The real answer is a beautiful algorithm called <strong>Operational Transformation (OT)</strong> — and an architecture built around the fact that edits are tiny operations, not whole-document uploads.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How do we resolve conflicts when two users edit the same position simultaneously, so everyone converges to the same final document? (2) How do we get every keystroke onto every collaborator's screen in under 200ms, even with 100 concurrent editors, while never losing a single edit even if a network drops?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Before drawing a single box, pin down exactly what the system must do. In an interview, asking these questions shows you understand that "real-time collaboration" hides a dozen sub-features.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li><strong>Real-time multi-user editing</strong> — multiple users type into the same doc, every keystroke streamed to everyone within 200ms</li>
+        <li><strong>Cursor presence</strong> — see who else is in the doc and where their cursor is, with their name and color</li>
+        <li><strong>Comments &amp; suggestions</strong> — threaded comments anchored to specific text; suggestions a reviewer can accept or reject</li>
+        <li><strong>Offline editing</strong> — keep editing if you lose Wi-Fi, then merge cleanly when you reconnect</li>
+        <li><strong>Revision history</strong> — see every named version and restore the doc to any past state</li>
+        <li><strong>Sharing</strong> — invite by email; permissions of view / comment / edit</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Low keystroke latency</strong> — local echo instant, remote sync under 200ms p99</li>
+        <li><strong>No edits ever lost</strong> — durability is non-negotiable; the user's contract is "if I typed it, it's saved"</li>
+        <li><strong>Conflict-free convergence</strong> — every editor must end up viewing the exact same byte-for-byte final document, regardless of order of arrival</li>
+        <li><strong>Scale</strong> — supports 100+ concurrent editors on a single doc; billions of docs system-wide</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The non-functional requirements are the architectural ones.</strong> "Type into a textarea" is a 5-line problem. "Type into a textarea where five other people are also typing and end up with the exact same document" is the part that requires Operational Transformation, a stateful session server per doc, an op log for durability, and a presence channel separate from the edit channel.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers force every architectural choice. Our system is <strong>write-heavy on the hot path</strong> (every keystroke is a write) but <strong>each write is tiny</strong> (a 5-byte operation, not the 100KB document). That asymmetry is the entire reason this design works at all.</p>
+
+  <h3 class="subh">User scale</h3>
+  <p>Assume <strong>1 billion total users</strong>, <strong>100 million daily active users</strong>, and <strong>100 million docs created per day</strong>. Average doc size after editing: <strong>100 KB</strong> (text + formatting + embedded objects).</p>
+
+  <div class="g4">
+    <div class="card"><h3>Daily new storage</h3><p><span class="metric">~10 TB/day</span></p><p>100M docs × 100KB</p></div>
+    <div class="card"><h3>5-yr storage</h3><p><span class="metric">~18 PB</span></p><p>10TB × 365 × 5</p></div>
+    <div class="card"><h3>Concurrent editors per doc</h3><p><span class="metric">1–5 typical</span></p><p>up to ~100 max</p></div>
+    <div class="card"><h3>Ops/sec per active doc</h3><p><span class="metric">~10 ops/sec</span></p><p>roughly one per keystroke</p></div>
+  </div>
+
+  <h3 class="subh">Hot-path traffic</h3>
+  <p>If only 1% of DAU are actively editing at peak — 1M concurrent editors — each emitting ~3 ops/sec, that's <span class="metric">~3M ops/sec system-wide</span>. Each op is small (op type + position + payload &lt; 100 bytes), so total ingress is <span class="metric">~300 MB/s</span>. Trivial for a fleet of session servers; impossible for a single box.</p>
+
+  <h3 class="subh">Op log volume</h3>
+  <p>Every op gets persisted for replay/history. At 3M ops/sec × 100 bytes × 86400s = <span class="metric">~25 TB/day of op log</span>. This grows fast; we'll snapshot periodically and prune old op logs (keeping snapshots for history).</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>DAU</td><td><code>100M</code></td><td>Drives total connection &amp; session-server count</td></tr>
+        <tr><td>Concurrent editors</td><td><code>~1M</code></td><td>Determines fleet size for Doc Session Servers and presence pub/sub</td></tr>
+        <tr><td>Ops/sec system-wide</td><td><code>~3M/s</code></td><td>Drives ingress bandwidth and op-log write throughput to Cassandra</td></tr>
+        <tr><td>Ops per editor</td><td><code>~3/s</code></td><td>Determines per-user WebSocket framing, batching opportunities</td></tr>
+        <tr><td>Op size</td><td><code>~100B</code></td><td>1000× smaller than the doc — the asymmetry that makes OT viable</td></tr>
+        <tr><td>5-year storage</td><td><code>~18 PB</code></td><td>Forces sharding by doc_id and tiered storage (hot SSD + cold S3)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>Two distinct API surfaces: a <strong>REST/HTTPS</strong> surface for one-shot operations (open the doc, read history, share with someone) and a <strong>WebSocket</strong> surface for the streaming hot path (every op flowing in both directions for the duration of the session).</p>
+
+  <span class="code-label cl-green">REST API surface</span>
+<pre><span class="cmt">// Open a document — happens once per session</span>
+GET /api/v1/docs/:doc_id
+→ 200 OK {
+    "doc_id": "abc123",
+    "snapshot": { ...latest snapshot of the doc... },
+    "snapshot_op_id": 1042,           <span class="cmt">// last op included in the snapshot</span>
+    "tail_ops": [ ...ops 1043..1058... ],  <span class="cmt">// to bring client up to head</span>
+    "ws_url": "wss://docs.example.com/sess/abc123",
+    "session_token": "eyJ..."
+  }
+
+<span class="cmt">// Revision history — read past versions</span>
+GET /api/v1/docs/:doc_id/revisions?from=&lt;ts&gt;&amp;to=&lt;ts&gt;
+→ 200 OK { "revisions": [ {ts, op_count, author_summary}, ... ] }
+
+<span class="cmt">// Share / change permissions</span>
+POST /api/v1/docs/:doc_id/share
+{ "user_email": "raj@x.com", "role": "editor" }
+→ 204 No Content</pre>
+
+  <span class="code-label cl-blue">WebSocket protocol — the streaming hot path</span>
+<pre><span class="cmt">// Client → server — apply a local edit</span>
+{
+  "type": "op",
+  "doc_id": "abc123",
+  "op": { "type": "insert", "pos": 42, "text": "h" },
+  "client_op_id": 17,         <span class="cmt">// monotonic per-client</span>
+  "based_on_server_op": 1058  <span class="cmt">// the latest server op the client has seen</span>
+}
+
+<span class="cmt">// Server → client — broadcast a transformed op</span>
+{
+  "type": "op",
+  "server_op_id": 1059,
+  "author_user_id": "u_sarah",
+  "op": { "type": "insert", "pos": 42, "text": "h" }
+}
+
+<span class="cmt">// Client → server — cursor position update (separate channel)</span>
+{
+  "type": "presence",
+  "cursor_pos": 156,
+  "selection_range": [156, 162]
+}
+
+<span class="cmt">// Server → client — broadcast another user's cursor</span>
+{
+  "type": "presence",
+  "user_id": "u_raj",
+  "cursor_pos": 89,
+  "color": "#4a90d9"
+}</pre>
+
+  <div class="highlight hl-blue"><strong>Why WebSocket and not HTTP polling?</strong> A keystroke is too small and too frequent for HTTP. Polling at 200ms would burn 5 round-trips per second per user just to ask "anything new?" — most returning empty. WebSocket gives us a single long-lived TCP connection in each direction, so an op leaving Sarah's keyboard arrives on Raj's screen in one network hop, not two. Trade-off: stateful connections complicate load balancing (sticky sessions to the right Doc Session Server), but the latency win is non-negotiable.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: THE CORE PROBLEM                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-red">Step 5 · CORE</span>
+  <h2>The CORE Problem — Conflict Resolution</h2>
+  <p>Picture the document as the string <code>"the cat sat"</code>. At the exact same instant, two collaborators do something different to it. Sarah inserts <code>"big "</code> at position 4 (between "the " and "cat"). Raj inserts <code>"red "</code> also at position 4. They both hit the keyboard within the same 10ms window. <strong>What should the document end up looking like to both of them?</strong></p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">💥 Naive: last-write-wins</h3>
+      <p>Server gets Sarah's op first, then Raj's. It applies Sarah's: "the big cat sat". It applies Raj's at position 4: "the redbig cat sat" — wrong, "red" got jammed into "big". Or worse, the server overwrites: it just stores Raj's version, Sarah's "big " is gone forever. <strong>An edit was silently lost.</strong></p>
+    </div>
+    <div class="card" style="border-color:rgba(212,168,56,.4)">
+      <h3 style="color:var(--yellow)">🔒 Naive: lock the doc</h3>
+      <p>One person edits at a time, others wait. Latency-wise correct, but nobody would use it — the entire point of Google Docs is real-time collaboration. Microsoft Word's pre-cloud behavior. Rejected as a product, not just an implementation.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✨ The right answer: transform, don't overwrite</h3>
+      <p>Order the ops globally (server picks: Sarah first, then Raj). Apply Sarah's as-is: "the big cat sat". Now <em>transform</em> Raj's against it: Sarah inserted 4 chars before Raj's position, so shift Raj's position from 4 to 8. Apply: "the big red cat sat". Both edits preserved, both clients converge. This is <strong>Operational Transformation (OT)</strong>.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Two famous solutions — OT vs CRDT</h3>
+  <p>The industry has converged on two approaches to this problem. Google Docs uses OT; newer collaborative tools (Notion, Linear via Liveblocks, Figma's text editor) often use CRDTs.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">🛠️ Operational Transformation (OT)</h3>
+      <p>Each op is a tiny instruction: <code>insert(pos, text)</code> or <code>delete(pos, length)</code>. A <strong>central server</strong> assigns every op a global sequence number using <strong>Lamport timestamps</strong> (clocks that respect causality). When two ops conflict, the server transforms the later one against the earlier one so they compose correctly. Server then broadcasts the (possibly-transformed) op to everyone.</p>
+      <p><strong>Analogy:</strong> OT is like <em>airline overbooking</em> — when two passengers claim the same seat, a single coordinator (the gate agent) decides who got it and reroutes the other in a way that keeps the whole flight consistent. Centralized authority + transformation.</p>
+      <p><strong>Trade-off:</strong> requires a server in the loop for every op (no peer-to-peer). Transform functions for each pair of op types are tricky to write correctly — Google has horror stories about subtle OT bugs taking years to surface.</p>
+      <p><strong>Used by:</strong> Google Docs, Etherpad, ShareJS.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">📐 Conflict-Free Replicated Data Types (CRDTs)</h3>
+      <p>Each op carries enough metadata (unique ID, vector clock, parent reference) that any two ops applied in any order produce the same result — they <em>commute</em> by mathematical construction. Examples: RGA (Replicated Growable Array), Yjs, Automerge. The server is just a relay; it doesn't need to transform anything.</p>
+      <p><strong>Analogy:</strong> CRDTs are like <em>tickets where each one is self-validating</em> — every ticket carries its own proof of where it sits in the overall order, so any kiosk in the system can scan them and end up with the same line. No coordinator needed.</p>
+      <p><strong>Trade-off:</strong> larger metadata per op (each character may carry a 16-byte ID). The doc grows over time even if you delete content, because tombstones must be retained for correctness. Better suited to peer-to-peer / offline-first apps.</p>
+      <p><strong>Used by:</strong> Figma multiplayer, Linear, modern collab toolkits (Yjs, Automerge).</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>Why Google chose OT in 2010 and stuck with it:</strong> at the time, CRDT metadata overhead made docs balloon in size, and Google already had strong server infrastructure for ordering. OT keeps the doc representation compact (just text + format runs, no per-character metadata) and pushes complexity into the transform logic on a single beefy server. The trade-off shows up in this design: every active doc is pinned to one Doc Session Server, which is a state-management story we'll dig into in §8.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart, and the production shape where every box justifies itself. Numbers from §3 drive every decision.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Sketch the simplest possible system: each client PUTs the entire document on every keystroke. The server stores the latest version. To open a doc, a client GETs it. To see other people's edits, a client polls every 500ms.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  S["Sarah"] -->|"PUT full doc on each keystroke"| APP["App Server"]
+  R["Raj"] -->|"PUT full doc on each keystroke"| APP
+  APP --> DB[("MySQL — single doc row")]
+  APP -->|"GET — poll every 500ms"| R
+  APP -->|"GET — poll every 500ms"| S
+    </div>
+  </div>
+
+  <p>Four concrete failures emerge the moment two users start typing:</p>
+  <div class="g2">
+    <div class="card">
+      <h3>💥 Bandwidth death</h3>
+      <p>The doc is 100KB. Sarah types one character. Her browser uploads 100KB to save it. At 5 keystrokes per second per user, every user burns 500 KB/s on a workload that should cost ~50 bytes/s. Multiply by 1M concurrent editors: <strong>500 GB/s of upload traffic</strong> for an op stream that's actually 50 MB/s of real information.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Last-write-wins loses edits</h3>
+      <p>Sarah PUTs version with her change at 14:02:06.001. Raj PUTs his version with a different change at 14:02:06.002. Raj's PUT overwrites Sarah's — her edit is gone. There's no "merge" because the server has no idea what changed; it only sees full snapshots.</p>
+    </div>
+    <div class="card">
+      <h3>💥 No presence, no cursors</h3>
+      <p>Polling for the doc gives you the text, but where is Raj's cursor? Where did he highlight? Polling for cursor positions on top of polling for content doubles the round-trips. Real-time collaboration needs both, in real-time, on different cadences.</p>
+    </div>
+    <div class="card">
+      <h3>💥 No offline support</h3>
+      <p>Sarah loses Wi-Fi for 2 minutes on a flight. She types a paragraph. When the connection comes back, her browser PUTs the whole doc — but Raj has been editing the same doc on the ground. Her PUT overwrites his work. There's no concept of "merge what I did with what they did" because there's no per-edit granularity.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: Operations not snapshots, with central ordering</h3>
+  <p>Four insights flip this design:</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">⚡ 1. Edits are operations, not snapshots</h3>
+      <p>Don't ship the 100KB doc — ship the 50-byte op: <code>{type:"insert", pos:42, text:"h"}</code>. That's a <strong>2000× bandwidth reduction</strong>. Apply the op locally and on every other client. The doc is reconstructed by applying the op stream from scratch, or from a snapshot + recent ops.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">🎯 2. One server orders all ops for a single doc</h3>
+      <p>Pick one machine to be the canonical authority for each doc. Every op goes through this <strong>Doc Session Server</strong>, which assigns it a global sequence number, transforms it against any concurrent ops, and broadcasts the final form to all subscribers. With one ordering authority per doc, everyone sees the same sequence — convergence is guaranteed.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🚀 3. Clients apply optimistically, reconcile on round-trip</h3>
+      <p>When Sarah types 'h', her browser shows it instantly (don't make her wait for a server round-trip — that would feel laggy). The op flies to the server, gets ordered and possibly transformed, then comes back. The client compares: if my local op was transformed, I rewrite local state to match the server's version. Local-first feel + global consistency.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">🗃️ 4. Persistence = log of ops + periodic snapshots</h3>
+      <p>The Doc Session Server is in-memory; if it dies, the in-flight state is gone. We persist every op to durable storage as it's accepted (Cassandra append). Every 1000 ops, we snapshot the full doc to S3. Doc load = latest snapshot + replay tail ops. Crash recovery = replay log to reconstruct the session state.</p>
+    </div>
+  </div>
+
+  <p>This four-way split lets us scale ops independently from cursor presence (separate Redis pub/sub), permissions (separate ACL service), and history (separate snapshot store). Each tier handles a workload it's tuned for.</p>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Twelve numbered components, organized into four planes: the <strong>Edit Plane</strong> handles ops (the hot path); the <strong>Persistence Plane</strong> makes edits durable and supports history; the <strong>Presence Plane</strong> carries cursors and online users; the <strong>Permission Plane</strong> answers "are you allowed to be here?"</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client — browser · mobile · OT engine"]
+
+  subgraph EDGE["Edge"]
+    LB["② Load Balancer — L4 · sticky to doc-server"]
+  end
+
+  subgraph EDIT["Edit Plane"]
+    DS["③ Doc Session Server — primary per active doc"]
+    OTE["⑫ OT Engine — transforms incoming ops"]
+    LOC["④ Session Locator — doc_id maps to server"]
+  end
+
+  subgraph PERSIST["Persistence Plane"]
+    OPL[("⑤ Op Log Storage — Cassandra append-only")]
+    SNAP[("⑥ Snapshot Store — S3 every 1000 ops")]
+    HIST["⑩ Revision History UI"]
+  end
+
+  subgraph PRESENCE["Presence Plane"]
+    PRES["⑧ Presence Service — Redis Pub Sub"]
+    NOTIF["⑪ Notification Service — email · in-app"]
+  end
+
+  subgraph PERM["Permission Plane"]
+    AUTH["⑦ Auth and Permissions — ACL store"]
+    CMT["⑨ Comments Service"]
+  end
+
+  CL <-->|"WebSocket"| LB
+  LB --> DS
+  DS --> OTE
+  DS --> LOC
+  DS --> OPL
+  DS --> SNAP
+  DS --> PRES
+  CL --> AUTH
+  CL --> CMT
+  CL --> HIST
+  HIST --> OPL
+  HIST --> SNAP
+  CMT --> NOTIF
+  AUTH --> NOTIF
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style DS fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style OTE fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style LOC fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style OPL fill:#171d27,stroke:#38b265,color:#d4dae5
+  style SNAP fill:#171d27,stroke:#38b265,color:#d4dae5
+  style HIST fill:#171d27,stroke:#38b265,color:#d4dae5
+  style PRES fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style NOTIF fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style AUTH fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style CMT fill:#171d27,stroke:#4a90d9,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client (browser / mobile)</h3>
+      <p>The browser tab or mobile app where Sarah, Raj, and the rest are typing. Inside it runs a small <strong>OT engine</strong> that tracks the local state, the last-acknowledged server op, and a queue of unacknowledged local ops. When Sarah types 'h', the engine applies it locally for instant feedback, sends it to the server with a <code>based_on_server_op</code> stamp, and waits for the transformed echo. When a remote op arrives, the engine transforms it against any unacknowledged local ops, applies the result, and renders.</p>
+      <p><strong>Solves:</strong> the latency problem. Without local optimistic application, every keystroke would need a 100ms round-trip before Sarah sees her own letter appear — typing would feel like a 1990s telnet session. Local-first echo with eventual reconciliation is what makes Google Docs feel snappy.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> Load Balancer (L4, sticky)</h3>
+      <p>The traffic cop, but with a twist: it's a Layer-4 (TCP-level) LB because WebSockets are long-lived TCP connections, not request/response HTTP. Critically, it must be <strong>sticky</strong> — once a client's WebSocket lands on a particular Doc Session Server, every subsequent message on that connection routes to the same server. We achieve this via consistent hashing on <code>doc_id</code>, so all editors of doc <code>abc123</code> hit the same backend.</p>
+      <p><strong>Solves:</strong> ensuring all editors of one doc converge on one ordering authority. Without doc-affinity, two clients editing the same doc could land on different servers, neither of which has full visibility into the other's ops — convergence breaks instantly.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">③</span> Doc Session Server (the heart)</h3>
+      <p>One <strong>primary server per active doc</strong>. It holds in-memory: the current document state, the last server op-id, the connected clients (their WebSockets), and a small ring buffer of recent ops for transform purposes. When an op arrives, it: (1) verifies the client's <code>based_on_server_op</code>; (2) calls the OT Engine to transform the op against any ops the client missed; (3) assigns the next server_op_id; (4) appends to the op log; (5) broadcasts the transformed op to every other connected client. This is the linearization point — one server, one global order per doc.</p>
+      <p><strong>Solves:</strong> the convergence guarantee. Every collaborator's view of the doc is "the result of applying the server's op stream in order". As long as one server is the authority, everyone agrees on the order, and everyone agrees on the final state.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">④</span> Session Locator (Redis / ZooKeeper)</h3>
+      <p>A small, fast lookup table: <code>doc_id → primary_session_server_address</code>. When a new client opens a doc, the LB or front-end service first asks the Session Locator "who's hosting <code>abc123</code> right now?" If nobody, it picks a server (consistent hashing on doc_id, with availability checks), records the assignment, and routes the client there. On Doc Session Server crash, the locator entry is invalidated and a new server takes over after replaying the op log.</p>
+      <p><strong>Solves:</strong> the "where do I send this op?" problem. Without the locator, two LB instances might pick different servers for the same doc, splitting brain. The locator is the single source of truth for doc-to-server mapping.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑤</span> Op Log Storage (Cassandra)</h3>
+      <p>An append-only log of every op ever applied, sharded by <code>doc_id</code>. Schema is essentially <code>(doc_id, server_op_id, op_blob, author, timestamp)</code> with the partition key on doc_id and clustering on server_op_id ascending. Cassandra is chosen because writes are pure appends (its happy path), partitioning is trivial, and replication across AZs is built-in. We write every op synchronously before broadcasting it — this is what makes "no edits lost" true even if the Doc Session Server crashes.</p>
+      <p><strong>Solves:</strong> durability and crash recovery. If the in-memory Doc Session Server dies, a replacement reads the op log from the last snapshot to head, rebuilds state, and reconnects clients. Without the log, every crash would lose every in-flight edit.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑥</span> Snapshot Store (S3 / GCS)</h3>
+      <p>Every 1000 ops (or every 5 minutes, whichever first), the Doc Session Server serializes the current document state and uploads it to object storage with a key like <code>docs/abc123/snap_1042.bin</code>. The op log is then trimmable up to that point for recovery purposes (we keep older ops elsewhere for revision history). When a new client opens the doc, the server fetches the latest snapshot and tail ops, ships both to the client, and the client reconstructs the live state in two steps.</p>
+      <p><strong>Solves:</strong> doc load time and recovery time. Without snapshots, opening a 6-month-old doc with 5M ops would mean replaying 5M ops on the client — minutes of wait. With snapshots, it's "fetch a 100KB blob + the last 50 ops" — sub-second load even on huge docs.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑦</span> Auth &amp; Permissions Service</h3>
+      <p>A separate service that owns the ACL (Access Control List) — the table that says who can view, comment, or edit each doc. Schema: <code>(doc_id, user_id, role)</code>. Called twice in the lifecycle: (1) at WebSocket-establish time, the server checks the user has at least viewer role before accepting the connection; (2) before every op write, the session server checks the user has editor role (cached for the session, invalidated on ACL change). When an owner revokes someone's access, this service emits an event that closes their WebSocket on the spot.</p>
+      <p><strong>Solves:</strong> security at the right layer. Permissions are a horizontal concern across docs/comments/sharing — keeping them in one place prevents the bug where someone loses edit access on a doc but their existing WebSocket keeps accepting their writes.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑧</span> Presence Service (Redis Pub/Sub)</h3>
+      <p>A separate channel for cursor positions and "who's here". Sarah's cursor blinks at position 42; her client publishes <code>{user_id, cursor_pos:42, color:#orange}</code> to the Redis channel <code>presence:abc123</code>. Every other connected client subscribes to that channel and renders the floating cursor with Sarah's name. This data is <em>not</em> persisted — if you reload, presence resets fresh from whoever's currently in the doc. Volume: dozens of cursor updates per second per editor, but tiny payloads.</p>
+      <p><strong>Solves:</strong> presence without polluting the op log. Cursor positions don't need to be ordered or transformed or persisted forever — they're transient state. Mixing them into the op stream would balloon the log with throwaway data and slow down the OT engine. Separating them onto a pub/sub fabric keeps the edit plane fast.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑨</span> Comments Service</h3>
+      <p>Comments are a parallel feature: threaded discussions anchored to specific text spans in the doc. Stored in their own table keyed by <code>(doc_id, comment_id)</code> with an <code>anchor_op_id</code> field that points at the op the comment refers to. When the anchored text moves (because of unrelated edits before it), the OT engine emits an "anchor adjusted" event so the comment service updates its position. Comments are loaded on demand when the user opens the side panel; they don't flow through the WebSocket op stream.</p>
+      <p><strong>Solves:</strong> separating discussion from content. Comments have a different lifecycle (resolved/unresolved, threaded replies, notification-worthy). Mixing them into the op log would make doc loading slower and complicate the OT logic.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑩</span> Revision History UI Service</h3>
+      <p>The "see all changes" tab. When Sarah clicks "Version history", this service queries the op log for ops between two timestamps, replays them on top of the snapshot from that period, and renders a side-by-side diff. To restore an old version: it generates a new op stream that reverses subsequent edits, applied through the normal Doc Session Server so other connected editors see the restoration in real-time as a sequence of operations.</p>
+      <p><strong>Solves:</strong> the "I deleted the wrong section" recovery story. Without revision history, an editor in a panic could erase three days of work. Because every op is immutable in the log, we can reconstruct any past state to the millisecond.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑪</span> Notification Service</h3>
+      <p>Sends emails and in-app notifications: "Sarah commented on your doc", "Raj shared a doc with you", "Priya replied to your comment". Listens to events from Comments Service and Auth Service via Kafka. Aggregates and de-dupes (you don't want 50 emails because Sarah typed for 50 minutes). Async — never on the critical path of an edit.</p>
+      <p><strong>Solves:</strong> getting people back into the doc after a collaborative event. Without it, a comment Tom leaves on Friday at 5pm waits silently in the doc until somebody happens to open it — the loop never closes.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">⑫</span> OT Engine (transformation logic)</h3>
+      <p>A library that lives inside the Doc Session Server (and inside every client too — the algorithm is symmetric). Implements the <strong>transform function</strong> for every pair of op types: insert/insert, insert/delete, delete/delete, format/format, etc. Given two concurrent ops <code>A</code> and <code>B</code> that were both based on the same parent state, it produces transformed versions <code>A'</code> and <code>B'</code> such that applying <code>A then B'</code> equals <code>B then A'</code> equals the same final state. This convergence property is the entire correctness contract of the system.</p>
+      <p><strong>Solves:</strong> the conflict-resolution problem in §5. Without transform, concurrent ops applied in different orders on different machines produce different final states — the doc forks. With transform, every ordering produces the same byte-for-byte result.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Sarah and Raj race the same sentence</h3>
+  <p>Two scenarios traced through the production architecture above:</p>
+
+  <div class="card" style="border-left:3px solid var(--orange)">
+    <h3>📝 Scenario A — Concurrent edits at the same position</h3>
+    <p>The doc is currently <code>"the cat sat"</code>, last server op-id 1042. Sarah is at position 4, Raj is at position 4. Both are about to insert.</p>
+    <ol style="padding-left:1.5rem;list-style:decimal;line-height:1.9">
+      <li><strong>Sarah types 'a'</strong> at 14:02:06.001. Her <strong>Client</strong> ① applies it locally → her screen now reads <code>"the acat sat"</code>. She sends <code>{op:insert, pos:4, text:'a', based_on:1042, client_op:17}</code> over the <strong>WebSocket</strong> to the <strong>Load Balancer</strong> ② → routes to <strong>Doc Session Server</strong> ③.</li>
+      <li><strong>Raj types 'b'</strong> at 14:02:06.002 (1ms later). His Client ① applies locally → his screen reads <code>"the bcat sat"</code>. He sends <code>{op:insert, pos:4, text:'b', based_on:1042, client_op:5}</code>.</li>
+      <li><strong>Server receives Sarah's op first.</strong> No transform needed (it's based on 1042, the current head). DS ③ assigns <code>server_op_id:1043</code>, appends to <strong>Op Log</strong> ⑤, broadcasts to Raj. Doc state is now <code>"the acat sat"</code>.</li>
+      <li><strong>Server receives Raj's op.</strong> It's also based on 1042, but the head is now 1043. DS ③ asks <strong>OT Engine</strong> ⑫ to transform Raj's op against op 1043 (Sarah's insert at pos 4). Result: Raj's op becomes <code>{insert, pos:5, text:'b'}</code> — shifted past Sarah's character. DS assigns <code>server_op_id:1044</code>, appends to log, broadcasts the <em>transformed</em> op to Sarah.</li>
+      <li><strong>Raj's client receives the echo</strong> of his own op (now transformed). His OT engine reconciles: it had locally applied <code>insert at 4</code>, but the server says <code>insert at 5</code>. It rewinds local state, replays Sarah's op at 4, then reapplies his op at 5. Final state on Raj's screen: <code>"the abcat sat"</code>.</li>
+      <li><strong>Sarah's client receives Raj's transformed op</strong> and applies <code>insert at 5</code>. Final state on Sarah's screen: <code>"the abcat sat"</code>.</li>
+      <li><strong>Both converged</strong> to the exact same string. Total elapsed: ~150ms. Neither edit was lost.</li>
+    </ol>
+  </div>
+
+  <div class="card" style="border-left:3px solid var(--blue)">
+    <h3>✈️ Scenario B — Sarah goes offline, types 100 chars, comes back</h3>
+    <ol style="padding-left:1.5rem;list-style:decimal;line-height:1.9">
+      <li>At 14:00, Sarah's Wi-Fi drops. The <strong>Client's</strong> ① WebSocket reconnect logic kicks in but fails. She keeps typing — her local OT engine queues 100 ops in a local IndexedDB-backed buffer. Her screen shows her edits in real time (local-first); she has no idea anything's wrong.</li>
+      <li>Meanwhile, Raj keeps editing on the ground. The <strong>Doc Session Server</strong> ③ has accepted 30 ops from him, advancing the head from 1042 to 1072. They're persisted to the <strong>Op Log</strong> ⑤.</li>
+      <li>14:08, Sarah's flight lands. WebSocket reconnects via <strong>Load Balancer</strong> ② → <strong>Session Locator</strong> ④ routes her back to the same Doc Session Server ③.</li>
+      <li>Reconnect handshake: Sarah's client says "my last seen server_op was 1042; I have 100 buffered ops based on that". Server fetches ops 1043–1072 from the op log and ships them to Sarah's client.</li>
+      <li>Sarah's client uses <strong>OT Engine</strong> ⑫ to transform her 100 buffered ops against Raj's 30. The result: 100 transformed ops that respect Raj's intervening changes.</li>
+      <li>Sarah's client streams the 100 transformed ops to the server in order. Server applies each, advancing head to 1172, broadcasting each to Raj as it goes. Raj sees Sarah's offline work flow in over a few seconds — animated, but consistent.</li>
+      <li><strong>Both converged</strong> to a doc with everyone's contributions. No work lost from either side.</li>
+    </ol>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around three insights — (1) <strong>edits are tiny ops, not whole-doc snapshots</strong>, so the network and storage costs are 1000× smaller than naive; (2) <strong>one server is the ordering authority per doc</strong>, which is where convergence comes from — but it's hidden behind a Session Locator and op-log replay so a crash means seconds of recovery, not lost work; (3) <strong>presence, comments, permissions, and history live on their own planes</strong>, each tuned for its own workload, so the hot edit path stays a single fast loop. Every box in the diagram earns its place by removing one of the failure modes from Pass 1.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: OT DEEP DIVE                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-yellow">Step 7</span>
+  <h2>Operational Transformation — Deep Dive</h2>
+  <p>OT's whole job is to take two ops that were both written against the same parent state and produce two transformed versions such that applying them in either order yields the same result. The proof is constructive: define a transform function for every pair of op types, and the algorithm just composes them.</p>
+
+  <h3 class="subh">The classic insert/insert collision</h3>
+  <p>Two clients both think the doc is <code>"the cat"</code>. Op_A is <code>insert(pos=4, text='x')</code>. Op_B is <code>insert(pos=4, text='y')</code>. They were sent concurrently — both based on the same parent. The server picks an order: A first, then B. After applying A, the doc is <code>"the xcat"</code>. Now we need to transform B so it inserts after A's character: <code>insert(pos=5, text='y')</code>. Applying that gives <code>"the xycat"</code>. Both clients converge.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant SA as Sarah Client
+  participant SV as Doc Session Server
+  participant RA as Raj Client
+
+  Note over SA,RA: Both clients see doc = "the cat" at server_op 1042
+  SA->>SV: insert pos=4 'x' based_on 1042
+  RA->>SV: insert pos=4 'y' based_on 1042
+  Note over SV: Server receives Sarah first
+  SV->>SV: Apply A as op 1043 — doc = "the xcat"
+  SV-->>RA: broadcast op 1043 insert pos=4 'x'
+  Note over SV: Now Raj's op arrives based_on 1042 — must transform against 1043
+  SV->>SV: Transform B against A — pos shifts 4 → 5
+  SV->>SV: Apply B' as op 1044 — doc = "the xycat"
+  SV-->>SA: broadcast op 1044 insert pos=5 'y'
+  Note over SA,RA: Both clients now show "the xycat"
+    </div>
+  </div>
+
+  <h3 class="subh">The transform table — every op-pair has a rule</h3>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  subgraph II["insert vs insert"]
+    II1["A inserts at pos_a — B inserts at pos_b"]
+    II2["if pos_b less than pos_a then B unchanged — if pos_b greater than pos_a then shift B by len_a — if equal then tiebreak by client_id"]
+    II1 --> II2
+  end
+  subgraph IDEL["insert vs delete"]
+    ID1["A inserts at pos_a len_a — B deletes pos_b len_b"]
+    ID2["A before B range then shift B pos right — A inside B range then split delete around insert — A after B then B unchanged"]
+    ID1 --> ID2
+  end
+  subgraph DD["delete vs delete"]
+    DD1["A deletes pos_a len_a — B deletes pos_b len_b"]
+    DD2["disjoint ranges then only shift positions — overlapping then subtract overlap from B — B fully inside A then B becomes no-op"]
+    DD1 --> DD2
+  end
+
+  style II fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style IDEL fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style DD fill:#171d27,stroke:#e05252,color:#d4dae5
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card">
+      <h3>insert vs insert</h3>
+      <p>If B inserts before A's position, B is unchanged. If B inserts at or after A, shift B's position right by A's length. Ties (same position) are broken by a deterministic client_id rule so all sites pick the same order.</p>
+    </div>
+    <div class="card">
+      <h3>insert vs delete</h3>
+      <p>If A's insert lands before B's delete range, shift B's position. If A lands inside B's delete range, split B into two deletes around the inserted text — neither side wanted to delete what wasn't there.</p>
+    </div>
+    <div class="card">
+      <h3>delete vs delete</h3>
+      <p>If ranges don't overlap, just adjust positions. If they overlap, subtract the overlap from B's length — A already deleted it. If B is fully inside A's range, B becomes a no-op. Critical: never double-delete.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>The interview move:</strong> walk through the insert/insert example with a concrete string. Then mention "and there are similar rules for the other 8 op-pair combinations in a basic OT system, plus another layer for rich-text formatting like bold/italic". Don't try to derive the full table on the whiteboard — interviewers want to see you understand the <em>structure</em>, not memorize the rules.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: DOC SESSION SERVER                  -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-orange">Step 8</span>
+  <h2>Doc Session Server — The Stateful Bottleneck</h2>
+  <p>The cleanest way to guarantee convergence is to have one machine be the global ordering authority for each doc. That's also the most uncomfortable architectural pattern for a distributed system — stateful, sticky, single-point-of-something. Let's look at what that machine holds and how we keep it from being a brittle single point of failure.</p>
+
+  <h3 class="subh">What lives in memory on a Doc Session Server</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>📦 Per-doc state</h3>
+      <ul>
+        <li><strong>Current document state</strong> — the live string + format runs, ~100KB per doc</li>
+        <li><strong>Last server op-id</strong> — monotonic counter, increments on every accepted op</li>
+        <li><strong>Recent ops ring buffer</strong> — last ~1000 ops, used for transforming late-arriving client ops</li>
+        <li><strong>Connected clients</strong> — list of WebSockets, each with the user_id and last_acked_op_id</li>
+        <li><strong>Pending broadcast queue</strong> — ops accepted but not yet flushed to all clients</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🔢 Sizing &amp; capacity</h3>
+      <p>One commodity server with 64 GB RAM can comfortably host <strong>~10,000 active docs</strong> at 100KB each + buffers + connection overhead. With 1M concurrent editors spread across docs (avg 3 editors/doc → ~330K active docs), we need <strong>~33 Doc Session Servers</strong>. With headroom for skew (one viral doc with 100 editors counts more), call it <strong>50 servers</strong>.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">The single-server bottleneck — and how we mitigate</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>⚠️ The trade-off</h3>
+      <p>Pinning each doc to one server gives us simple, correct OT. But it caps a single doc at one server's CPU. A pathological case — 500 people editing a viral document — could saturate one box. There's also a failover blast radius: if the server dies, every doc on it is offline until recovery.</p>
+    </div>
+    <div class="card">
+      <h3>✅ Mitigations</h3>
+      <ul>
+        <li><strong>Shard by doc_id</strong> via consistent hashing across the fleet, so popular docs are spread evenly</li>
+        <li><strong>Replicas</strong>: each doc has a hot standby that tails the op log; on primary crash, standby promotes in seconds</li>
+        <li><strong>Op-log replay</strong>: any healthy server can take over by reading the log from last snapshot</li>
+        <li><strong>Cap concurrent editors per doc</strong> at e.g. 100 active + unlimited viewers; viewers don't go through the OT loop</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="subh">Failover sequence</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant CL as Connected Clients
+  participant LB as Load Balancer
+  participant DS1 as Primary Server
+  participant DS2 as Standby Server
+  participant LOC as Session Locator
+  participant LOG as Op Log
+
+  Note over DS1: Crash at 14:02:30
+  CL->>LB: WebSocket frame
+  LB->>DS1: forward
+  Note over LB: TCP connection broken — LB notices in 5s health check
+  LB->>LOC: doc abc123 — who hosts now?
+  LOC->>LOC: invalidate DS1 entry
+  LOC->>DS2: promote you for abc123
+  DS2->>LOG: read snapshot + ops since
+  LOG-->>DS2: state rebuilt
+  LOC-->>LB: route abc123 to DS2 now
+  CL->>LB: client reconnects WebSocket
+  LB->>DS2: forward
+  DS2-->>CL: handshake — last server_op = 1072 — replay anything you have based on older
+  Note over CL,DS2: Editing resumes — total downtime ~10s
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: PERSISTENCE                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-green">Step 9</span>
+  <h2>Persistence Strategy — Op Log + Snapshots</h2>
+  <p>Two-layer persistence: every op is durably appended to Cassandra synchronously before broadcast (this is what backs the "no edits lost" promise). Periodically, the doc state is snapshotted to S3 so we can load fast and prune old ops.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📜 Op log — Cassandra append-only</h3>
+      <p>Every op the Doc Session Server accepts goes through <code>INSERT INTO ops (doc_id, server_op_id, op_blob, author, ts) VALUES (...)</code> with a partition key on <code>doc_id</code> and clustering on <code>server_op_id</code> ascending. Cassandra's LSM-tree storage makes this a pure-append workload — no random I/O, no read-modify-write. We use a quorum write (W=2 of 3 replicas) so no edit is acknowledged until two nodes have it on disk.</p>
+      <p><strong>Why Cassandra:</strong> append-only ops are its happy path; sharding by doc_id falls out of the partition model; multi-region replication is built-in for global doc availability.</p>
+    </div>
+    <div class="card">
+      <h3>📸 Snapshots — S3 / GCS every 1000 ops</h3>
+      <p>A background task on the Doc Session Server serializes the current state and uploads <code>docs/abc123/snap_1042.bin</code> to object storage. Cadence: every 1000 ops or 5 minutes, whichever first. After the snapshot is durable, ops up to that point can be archived from the hot Cassandra table to a cold tier.</p>
+      <p><strong>Why object storage:</strong> snapshots are large blobs (~100KB-10MB), cheap to store, and accessed only on doc-load. S3's 11-nines durability is exactly what we want for content that must outlive any one database.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Doc load flow — fast even on a 5-year-old document</h3>
+  <p>Sarah opens a doc that's been edited for 3 years. Naïvely, replaying 5 million ops on the client would take minutes. With snapshots:</p>
+
+  <ol style="padding-left:1.5rem;line-height:1.95;color:var(--text)">
+    <li>Server queries object store for the latest snapshot — <code>snap_4998000.bin</code> (~100KB blob).</li>
+    <li>Server queries Cassandra for ops with <code>server_op_id &gt; 4998000</code> — typically 50-1000 ops.</li>
+    <li>Ships snapshot + tail ops to the client over WebSocket.</li>
+    <li>Client reconstructs: deserialize snapshot, apply tail ops in order. Done in &lt;200ms.</li>
+  </ol>
+
+  <h3 class="subh">Revision history flow</h3>
+  <p>"Show me the doc as it was last Tuesday at 3pm" is a slightly different read pattern. Find the snapshot just before that timestamp, replay ops up to (but not past) the target timestamp. To restore that version: generate a fresh op stream that "diffs" from current state back to the target — apply through the normal Doc Session Server so other connected editors see the restoration as a series of natural ops, with normal undo/redo semantics.</p>
+
+  <div class="highlight hl-green"><strong>The durability contract:</strong> a user's edit is "saved" the moment Cassandra acknowledges the quorum write — before the broadcast to other clients. So if the server crashes between "acked to Sarah's client" and "broadcast to Raj", Sarah's edit is safe in the log; Raj just gets it a few seconds later when the standby takes over. The op log is the single source of truth for "what happened in this doc".</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: OFFLINE SUPPORT                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-blue">Step 10</span>
+  <h2>Offline Support</h2>
+  <p>Sarah on a transatlantic flight. No Wi-Fi for 8 hours. She opens her doc, edits for 90 minutes, makes 1500 changes. When she lands, she needs all her work to merge cleanly with whatever Raj has been doing on the ground. This is OT's strongest selling point — the same algorithm that handles 50ms latency handles 8-hour latency without changes.</p>
+
+  <h3 class="subh">Client-side mechanics</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>📱 What the client buffers</h3>
+      <ul>
+        <li>Ordered queue of unacked ops in IndexedDB (survives tab refresh)</li>
+        <li>Last-known-good snapshot from the start of the offline session</li>
+        <li>Last <code>server_op_id</code> seen before disconnect</li>
+        <li>Local doc state (rendered for instant editing while offline)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🔄 What happens on reconnect</h3>
+      <ol style="padding-left:1.2rem;line-height:1.9">
+        <li>WebSocket reconnects, handshake includes <code>last_seen:1042</code> + count of buffered ops</li>
+        <li>Server sends ops <code>1043..head</code> — the missed remote ops</li>
+        <li>Client transforms its 1500 buffered ops against the missed ops</li>
+        <li>Client streams transformed ops to server, in order</li>
+        <li>Server applies them, broadcasts each to other clients in real-time</li>
+      </ol>
+    </div>
+  </div>
+
+  <h3 class="subh">Edge cases &amp; limits</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>⚖️ Long offline = more conflicts</h3>
+      <p>The longer Sarah is gone, the more remote ops her local ops must transform against. In the worst case (8 hours offline, busy doc), the transform pass might be expensive — but it's still milliseconds per op, so even 10K transforms is &lt;1s of CPU.</p>
+    </div>
+    <div class="card">
+      <h3>⚠️ Snapshot drift</h3>
+      <p>If Sarah's offline long enough that the doc has been re-snapshotted, she may need to fetch a newer snapshot and rebase her ops on it. Server detects this from her stale <code>last_seen</code> and ships her the new snapshot first.</p>
+    </div>
+    <div class="card">
+      <h3>🛑 Hard conflicts (rare)</h3>
+      <p>If Raj deleted the section Sarah was editing, her edits are technically in a no-longer-existing region. OT handles this: her inserts become no-ops on a deleted range. UI surfaces a "your edits to deleted section" message with the recovered text.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: CURSOR PRESENCE                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-cyan">Step 11</span>
+  <h2>Cursor Presence — Lighter-Weight Channel</h2>
+  <p>Cursor positions and "who's online" data have a totally different shape from edit ops: <strong>frequent, ephemeral, never persisted, no transform needed</strong>. Forcing them through the OT pipeline would bloat the op log with throwaway data. We carry them on a separate Redis Pub/Sub channel.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📡 What flows through the presence channel</h3>
+      <ul>
+        <li><code>{user_id, cursor_pos, color}</code> — every time the cursor moves</li>
+        <li><code>{user_id, selection_start, selection_end}</code> — when text is highlighted</li>
+        <li><code>{user_id, joined}</code> / <code>{user_id, left}</code> — connection events</li>
+        <li><code>{user_id, typing:true/false}</code> — debounced "is typing now" indicator</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>📊 Volume &amp; sizing</h3>
+      <p>~10 cursor updates/sec per active editor at peak. With 1M concurrent editors that's 10M presence msgs/sec across the whole system — but each is &lt;100 bytes and Redis Pub/Sub fans it out via doc-specific channels (only same-doc collaborators see each other's presence). One doc with 5 collaborators = 50 msgs/sec on its channel — trivial.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">How positions stay accurate when text shifts</h3>
+  <p>Sarah's cursor is at position 156. Raj inserts 10 characters at position 50. Sarah's cursor should now be at position 166, not 156 (it's still on the same word). The Doc Session Server, after applying Raj's op, fires a presence event to shift every other user's cursor positions accordingly. Without this, cursors would drift to incorrect positions every time someone else edited.</p>
+
+  <div class="highlight hl-cyan"><strong>So what:</strong> separating presence from edits is the kind of decision that looks small in a diagram but saves the whole system. If cursor updates went through OT, an editor moving their cursor 10 times a second would burn 10 ops/sec of log writes — for data we throw away on disconnect. Pub/Sub on Redis is the right tool: ephemeral, fan-out, fast.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: COMMENTS                           -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-purple">Step 12</span>
+  <h2>Comments &amp; Suggestions</h2>
+  <p>Comments are a feature of the doc but a separate data model. Tom highlights a sentence and writes "needs more detail" — that comment must stick to the sentence even as Sarah keeps editing the surrounding paragraphs.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📌 Anchoring</h3>
+      <p>Each comment stores an <code>anchor_op_id</code> — the server_op_id of the op that produced the text it refers to. As subsequent ops shift the anchored text around, the OT engine emits anchor-adjustment events that the Comments Service consumes to update the position. If the anchored text is fully deleted, the comment becomes "orphaned" and shows in a side panel without an inline marker.</p>
+    </div>
+    <div class="card">
+      <h3>💬 Threaded replies</h3>
+      <p>Comments are a tree: root + replies. Stored as <code>(doc_id, comment_id, parent_id, author, body, ts, resolved)</code>. Loaded on demand when the side panel opens — not streamed through WebSocket like ops, because they're rare and bursty.</p>
+    </div>
+    <div class="card">
+      <h3>✅ Suggestions (track changes)</h3>
+      <p>A "suggestion" is an op that's marked <code>pending</code> instead of applied directly. Other editors see it as inline strikethrough/insertion-style markup. The author or an editor with permission accepts it (op promoted to applied) or rejects it (op discarded). The OT layer handles the math identically — the only difference is the rendering and the gating on accept.</p>
+    </div>
+    <div class="card">
+      <h3>🔔 Notifications</h3>
+      <p>Comment posted → emit event to Kafka → Notification Service ⑪ aggregates and sends email/in-app. We de-dupe so Tom doesn't get 50 emails for Sarah's 50-comment review session.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: PERMISSIONS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-blue">Step 13</span>
+  <h2>Sharing &amp; Permissions</h2>
+  <p>Every doc has an ACL — the table that says who can do what. Permission checks happen at two layers: the front door (WebSocket establish) and the inner kitchen (every write).</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🚪 WebSocket establish</h3>
+      <p>Before accepting a connection, the front-end checks that the user's session token + doc_id pair has at least viewer role in the ACL. No role → 403, connection refused. This is the cheap gate that keeps unauthorized users out entirely.</p>
+    </div>
+    <div class="card">
+      <h3>🍳 Per-op role check</h3>
+      <p>Inside the Doc Session Server, every op is checked against the user's role (cached from the open). Viewer trying to write → reject with error frame. The cache is invalidated when the Permissions Service emits a "role changed for this user" event.</p>
+    </div>
+    <div class="card">
+      <h3>🚫 Live revocation</h3>
+      <p>Owner removes Sarah's edit access while she's actively editing → Permissions Service emits an event to the Doc Session Server → server downgrades her role mid-session and starts rejecting her ops; or for "removed entirely", server closes her WebSocket. Within 1-2 seconds her tab shows "you no longer have access".</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Sharing flow</h3>
+  <p>Sarah clicks Share, enters Raj's email, picks "editor". Front-end POSTs to <code>/api/v1/docs/abc123/share</code> with body <code>{user_email, role}</code>. Permissions Service writes to the ACL table, then fires a notification event ("Sarah shared a doc with you"). Raj gets an email link; clicking it opens the doc with the editor role baked into his session.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: PARTITIONING                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-green">Step 14</span>
+  <h2>Data Partitioning</h2>
+  <p>18 PB of doc data and 25 TB/day of op logs do not fit on one box. We shard everywhere — but the sharding key is identical across services to keep things simple: <strong>partition by doc_id, hashed consistently</strong>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📚 Op log (Cassandra)</h3>
+      <p>Partition key on <code>doc_id</code>; clustering on <code>server_op_id</code>. All ops for one doc land on the same partition so they can be read in order with one query. Replication factor 3 across AZs.</p>
+    </div>
+    <div class="card">
+      <h3>📦 Snapshots (S3)</h3>
+      <p>Object key includes <code>doc_id</code> as a prefix; S3's internal partitioning handles the rest. Lifecycle rules move snapshots older than 90 days to Glacier for cold storage at 1/10 the cost.</p>
+    </div>
+    <div class="card">
+      <h3>🖥️ Doc Session Servers</h3>
+      <p>Same consistent-hash ring on <code>doc_id</code>, so the same doc always lands on the same server (until reshuffle). The Session Locator caches the ring; on server-add or server-remove, only ~1/N of docs migrate.</p>
+    </div>
+    <div class="card">
+      <h3>🔐 ACL store (Postgres or DynamoDB)</h3>
+      <p>Partition by <code>doc_id</code>. The hot read is "give me Sarah's role on doc abc123" — a point query, fast on either store. Permissions tables are tiny relative to op logs (one row per share, not per edit), so a single Postgres cluster shard could hold years of growth.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>Why doc_id everywhere:</strong> co-locating all of a doc's data on the same shard means the Doc Session Server, the op log query, the snapshot fetch, and the ACL check all hit the same physical region. No cross-shard joins, no fan-out reads on the hot path. The price: a viral 100-editor doc puts disproportionate load on its shard — solved by the per-server caps mentioned in §8.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 15: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s15">
+  <span class="sec-tag tag-blue">Step 15</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">OT vs CRDT — when do you pick each?</div>
+  <div class="ans"><strong>Pick OT when</strong> you control the server tier and want compact doc representation — Google Docs, Etherpad. The transform logic is hairy but the on-the-wire and at-rest size is just text + ops. <strong>Pick CRDT when</strong> you need peer-to-peer or offline-first with infrequent sync — Figma multiplayer, mobile-heavy collaborative apps. CRDT metadata bloats the doc but eliminates the central server. Modern toolkits (Yjs, Automerge) make CRDT integration easier than 5 years ago, so the gap is narrowing.</div>
+
+  <div class="iq">How does the server handle 100 concurrent editors on one doc?</div>
+  <div class="ans"><strong>Single server, single thread on the hot path</strong> — but OT is so cheap (transform is microseconds) that even 100 editors at 5 ops/sec each = 500 ops/sec on one core is fine. The bottleneck is op-log write throughput, which Cassandra handles at &gt;10K writes/sec per node. Above 100 editors, we'd cap further new joiners or move them to a "read-only with auto-refresh" mode — UX trick.</div>
+
+  <div class="iq">What if the Doc Session Server crashes mid-edit?</div>
+  <div class="ans"><strong>The op log is the source of truth.</strong> Every op was durably written to Cassandra before being broadcast. On crash, the Session Locator routes the doc to a standby server, which reads the latest snapshot + tail ops to reconstruct in-memory state in seconds. Connected clients reconnect via the LB, handshake with their last-seen op-id, and any ops they had pending are replayed (transformed against missed ops). Total user-visible downtime: 5-15 seconds.</div>
+
+  <div class="iq">How do you reconstruct yesterday's 3pm version of the doc?</div>
+  <div class="ans">Find the snapshot just before 3pm yesterday — say <code>snap_4982000.bin</code> from 2:55pm. Replay ops <code>4982001..N</code> from Cassandra, where N is the last op-id with a timestamp ≤ 3pm. Stop. The reconstructed state is exactly what users saw at 3pm. To restore that as the live version, generate a delta op stream that takes the current doc back to that state — and feed those ops through the normal Doc Session Server so other connected editors see the restoration as a sequence of natural ops with normal animation and undo support.</div>
+
+  <div class="iq">How do you handle a 1500-op offline edit on reconnect?</div>
+  <div class="ans"><strong>Stream them sequentially after transforming.</strong> Client buffers ops locally with their original parent op-id. On reconnect, server ships the missed remote ops; client transforms its 1500 buffered ops against them (a single batched transform pass, microseconds per op). Client then streams the transformed ops to the server in order, server applies and broadcasts each. Other editors see the offline batch flow in over a few seconds — visually animated, but correct.</div>
+
+  <div class="iq">How does cursor presence not flood the network?</div>
+  <div class="ans"><strong>Three tactics.</strong> (1) Separate Redis Pub/Sub channel — cursors don't go through the OT pipeline. (2) Client-side throttle — cursor updates batched at most every 50ms, so even rapid arrow-key spam emits 20 msgs/sec max per user. (3) Channel scope — only collaborators on the same doc subscribe, so a 100M-user system never has any single channel with more than ~100 subscribers.</div>
+
+  <div class="iq">What if two users delete the same character?</div>
+  <div class="ans"><strong>The transform handles it.</strong> Both ops are <code>delete(pos=42, len=1)</code>. Server applies the first, deleting the character; assigns op-id 1043, broadcasts. Server receives the second, calls transform: "this delete is fully inside an already-deleted range → becomes a no-op." Op is logged as a no-op for audit, broadcast as a no-op, both clients converge. The second user's intention (remove that character) is satisfied by the first user's action — nothing was lost, nothing was double-applied.</div>
+
+  <div class="iq">Why WebSocket and not gRPC streaming or HTTP/2 push?</div>
+  <div class="ans"><strong>Browser support and bidirectional simplicity.</strong> WebSocket has been universally supported in browsers since 2011 — no polyfills, no transport hacks. gRPC-web exists but is awkward for the symmetric bidirectional flow we need. HTTP/2 Server Push was deprecated in major browsers. WebSocket is just TCP with a framing protocol, which is exactly the abstraction we want for "long-lived bidirectional message stream". For our mobile native apps, we use the same WebSocket protocol over the OS's network APIs.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "Each doc has one Doc Session Server that orders every op via Operational Transformation, persists it to a Cassandra op log before broadcasting to all collaborators over sticky WebSockets, and snapshots to S3 every 1000 ops — with cursor presence on a separate Redis pub/sub channel and permissions checked both at WebSocket establish and per-op. The whole architecture is built around the asymmetry that edits are 100-byte ops, not 100-KB documents."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Twitter Search — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Twitter <span>Search</span></h1>
+  <p class="sub">Searching 730 billion tweets in under 200ms — the inverted index, the shard fan-out, and the architecture that makes a multi-petabyte index feel instant</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is Twitter Search?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">Storage</a></li>
+      <li><a href="#s6">High-Level Architecture</a></li>
+      <li><a href="#s7">The Inverted Index</a></li>
+      <li><a href="#s8">Fault Tolerance</a></li>
+      <li><a href="#s9">Cache</a></li>
+      <li><a href="#s10">Load Balancing</a></li>
+      <li><a href="#s11">Ranking</a></li>
+      <li><a href="#s12">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS TWITTER SEARCH?            -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is Twitter Search?</h2>
+  <p>Imagine Sarah, sitting on her couch during the World Cup final, types <code>"world cup final"</code> into the Twitter search bar. Within the next 200 milliseconds, Twitter must dig through <strong>730 billion tweets</strong> ever posted, find the few hundred thousand that mention all three of those words, rank them by how recent and how popular they are, and return the top 20 to her phone. The data being searched is multi-petabyte; the answer must feel instant. That's the system we're designing.</p>
+
+  <p>The naive approach — "scan every tweet looking for the words" — would take hours per query and saturate every database in the cluster. Twitter Search instead pre-builds a special data structure called an <strong>inverted index</strong> that maps every English word to the list of tweets that contain it. When Sarah searches, we don't search the tweets — we search the index. That single architectural choice is what makes the system possible.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How do we build and continuously update an index over 730 billion tweets without falling behind the firehose of new tweets? (2) How do we serve thousands of multi-word search queries per second over a 21TB index, with under-200ms latency, when each query may need to consult dozens of machines?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Before drawing a single box, pin down what the system must do. In an interview, asking these questions early shows you're not just reaching for a memorized solution.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li><strong>Full-text search</strong> over the entire history of tweets (730B and counting)</li>
+        <li><strong>Multi-word queries</strong> with implicit AND between terms (and explicit OR/NOT operators)</li>
+        <li>Sort results by <strong>recency</strong> or by <strong>relevance</strong> (default)</li>
+        <li>Pagination — return 20 results per page, allow loading more</li>
+        <li>Optional filters: language, time window, user, has-media</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Fast</strong> — under 200ms p99 end-to-end search latency</li>
+        <li><strong>Scalable</strong> — handle billions of tweets and grow at 400M new tweets/day</li>
+        <li><strong>Highly available</strong> — search is one of the top 3 features on Twitter; an outage is front-page news</li>
+        <li><strong>Eventually consistent</strong> — a tweet posted at 14:02 should be searchable by 14:02:30 (the index lag budget is single-digit seconds)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The hard part isn't search — it's the index.</strong> Building an inverted index over 21TB of words, keeping it up-to-date with 4,600 new tweets per second, sharding it across 150+ servers, and merging top-K results back at query time — that's the architecture. The actual search at query time is then "look up a word in a hash map, intersect a few lists, rank, return".</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers are not optional in HLD. They drive every architectural choice — sharding count, server RAM, fan-out width — so do them out loud, even if rough.</p>
+
+  <h3 class="subh">Traffic estimates</h3>
+  <p>Assume <strong>1.5 billion total users</strong>, of which <strong>800 million are daily active</strong>. Twitter sees <strong>400 million tweets per day</strong> (roughly the public-tweet rate at peak Twitter scale).</p>
+
+  <div class="g4">
+    <div class="card"><h3>Tweets / sec</h3><p><span class="metric">~4,600 / sec</span></p><p>400M / 86,400</p></div>
+    <div class="card"><h3>Searches / day</h3><p><span class="metric">500M / day</span></p><p>~625 per active user / month</p></div>
+    <div class="card"><h3>Searches / sec</h3><p><span class="metric">~5,800 QPS</span></p><p>500M / 86,400</p></div>
+    <div class="card"><h3>Tweet size</h3><p><span class="metric">300 bytes</span></p><p>text + metadata, no media</p></div>
+  </div>
+
+  <h3 class="subh">Storage estimate (5 years)</h3>
+  <p>400M tweets/day × 300 bytes = <span class="metric">120 GB/day</span> = <span class="metric">~1.4 MB/sec</span> of new tweet data. Over 5 years that's <strong>~200 TB</strong> of tweet text.</p>
+
+  <p>Apply an <strong>80% capacity model</strong> (always keep 20% headroom) plus <strong>2× replication</strong> for durability: <code>200 TB / 0.8 × 2 ≈</code> <span class="metric">500 TB total</span>. Spread across servers with 4TB SSDs each, we need <span class="metric">~125 storage servers</span>.</p>
+
+  <h3 class="subh">Index size estimate (the real workload)</h3>
+  <p>The index is separate from the raw tweets. Assume 500K commonly-used English words plus 200K proper nouns/entities — call it <strong>~700K total vocabulary</strong>. Each tweet contains roughly <strong>15 indexable words</strong> (after dropping stopwords like "the", "is", "of"). For 730B historical tweets, the inverted index is roughly:</p>
+
+  <p><code>700K words × ~5 bytes (word) + 730B tweets × 5 bytes (tweet_id) × 15 words/tweet ≈</code> <span class="metric">~21 TB index</span>.</p>
+
+  <p>To hold this in RAM (so query latency is microseconds, not milliseconds), at 144 GB RAM per server: <code>21 TB / 144 GB ≈</code> <span class="metric">~152 index servers</span>.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>New tweets / sec</td><td><code>4,600</code></td><td>Drives index-update throughput &amp; Kafka sizing</td></tr>
+        <tr><td>Search QPS</td><td><code>5,800</code></td><td>Drives aggregator + index-server fleet size</td></tr>
+        <tr><td>Storage growth</td><td><code>120 GB/day</code></td><td>Forces sharded primary store (Cassandra)</td></tr>
+        <tr><td>5-yr tweet storage</td><td><code>500 TB</code></td><td>Sized across ~125 servers</td></tr>
+        <tr><td>Inverted index size</td><td><code>~21 TB</code></td><td>Sized across ~152 RAM-resident index servers</td></tr>
+        <tr><td>Index lag SLO</td><td><code>&lt; 30 sec</code></td><td>Tweet→searchable latency budget</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>One endpoint carries 99% of the search traffic. Defining it early locks the contract before architecture.</p>
+
+  <span class="code-label cl-green">REST API surface</span>
+<pre><span class="cmt">// Search — read path, the only endpoint users hit directly</span>
+GET /api/v1/search
+{
+  "api_key":    "abc123...",        <span class="cmt">// rate-limit identity</span>
+  "query":      "world cup final",  <span class="cmt">// space-separated terms; AND by default</span>
+  "count":      20,                 <span class="cmt">// page size, max 100</span>
+  "sort":       "relevance",        <span class="cmt">// "relevance" | "recency"</span>
+  "page_token": "eyJzaGFyZCI6...",  <span class="cmt">// opaque cursor for pagination</span>
+  "filters": {
+    "lang":      "en",
+    "from_date": "2026-05-01",
+    "to_date":   "2026-05-07",
+    "user":      null,
+    "has_media": false
+  }
+}
+
+→ 200 OK
+{
+  "results": [
+    {
+      "tweet_id":     "1789234...",
+      "text":         "Argentina just won the World Cup final!!!",
+      "user":         { "id": 42, "handle": "@futbolfan" },
+      "created_at":   "2026-05-07T14:02:31Z",
+      "like_count":   12453,
+      "retweet_count": 4821,
+      "score":        0.94
+    },
+    ...
+  ],
+  "next_page_token": "eyJzaGFyZCI6...",
+  "took_ms":         142
+}</pre>
+
+  <div class="highlight hl-blue"><strong>Why an opaque <code>page_token</code> instead of an integer offset?</strong> An offset like <code>page=5</code> forces every shard to scan the first 100 results just to skip them — wasteful and slow. The token encodes "where each shard left off" — for example "shard-7 stopped at tweet_id 1789234, shard-12 at 1789201". On the next page, each shard resumes from its own cursor in O(log N) time. Same trick Google, Elasticsearch and DynamoDB all use.</div>
+
+  <div class="highlight hl-orange"><strong>Why rate-limit by <code>api_key</code>?</strong> A single hot query like <code>"the"</code> (millions of matches) is 1000× more expensive than <code>"giraffe poetry"</code> (a few hundred). Without rate limits, one bot could exhaust the cluster. We rate-limit by API key (e.g., 100 searches/min for free tier) and reject overly broad queries with a 400.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: STORAGE                             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>Storage — Tweets vs. Index</h2>
+  <p>The single most important storage insight: <strong>we have two completely different storage systems with completely different access patterns</strong>. Confusing them is the most common mistake.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">📦 Primary Tweet Store (Cassandra)</h3>
+      <p>The source of truth. Every tweet ever posted lives here, keyed by <code>tweet_id</code>. We embed the timestamp into the tweet_id so the IDs are <strong>roughly time-sortable</strong> (think: Snowflake-style 64-bit IDs where the upper bits are epoch milliseconds).</p>
+      <p><strong>Access pattern:</strong> "give me the full tweet object for tweet_id X" — pure key-value, no joins, no scans. Sharded by tweet_id range (or hash) across ~125 nodes.</p>
+      <p><strong>Why Cassandra:</strong> handles wide-column key-value at petabyte scale, multi-region replication out of the box, tunable consistency.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">🔍 Inverted Index (custom, in-memory)</h3>
+      <p>A precomputed map of <code>word → [tweet_id, tweet_id, ...]</code>. Built incrementally from the tweet firehose, held in RAM across ~152 servers, never queried for the actual tweet content.</p>
+      <p><strong>Access pattern:</strong> "give me tweet_ids that contain word X" — return a sorted list. Multi-word queries do set intersection across multiple lookups.</p>
+      <p><strong>Why a separate system:</strong> the index is queried 1000× more often than tweets are written, has very different memory/access characteristics, and updating it can be done asynchronously without blocking writes to the primary store.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>So what:</strong> a search query touches both — the index tells us <em>which</em> tweets matched (a list of IDs), then the primary store gives us the <em>content</em> of those tweets to return to Sarah. Two systems, two trips, two scaling stories.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: HIGH LEVEL — THE STAR              -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart, and the production shape where every box justifies itself. Numbers from §3 drive every decision.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>The simplest possible system: store every tweet in a SQL database. To search, run <code>SELECT * FROM tweets WHERE text LIKE '%world cup%'</code>. One server, one DB.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C["Sarah's App"] --> APP["App Server"]
+  APP --> SQL[("SQL Database — 730B tweets")]
+  SQL -->|"LIKE '%world cup%'"| APP
+  APP --> C
+    </div>
+  </div>
+
+  <p>Four concrete failures emerge the moment traffic shows up:</p>
+  <div class="g2">
+    <div class="card">
+      <h3>💥 Full-text scans take hours</h3>
+      <p><code>LIKE '%word%'</code> with leading wildcard cannot use any index — the database must read every row. Scanning 730 billion rows on commodity hardware takes <strong>several hours per query</strong>, while our SLO is 200 milliseconds. This isn't a tuning problem; it's an algorithmic one.</p>
+    </div>
+    <div class="card">
+      <h3>💥 LIKE has no language understanding</h3>
+      <p>SQL's <code>LIKE</code> is dumb string matching. It won't tokenize ("world-cup" vs "world cup"), won't stem ("running" vs "run"), won't drop stopwords, won't handle hashtags or mentions. A search for <code>"running shoes"</code> misses every tweet that says <code>"runners need new shoes"</code>.</p>
+    </div>
+    <div class="card">
+      <h3>💥 No relevance ranking</h3>
+      <p>SQL returns rows in whatever order the storage engine pleases. We need to rank by recency, popularity, and engagement — none of which a <code>LIKE</code> query can express. We'd have to fetch all matches and sort in app code, which compounds the scan problem.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Every search saturates the DB</h3>
+      <p>Even one search at a time would lock the database for hours. At our 5,800 QPS target, the queue would grow infinitely within seconds. Adding read replicas doesn't help — each replica has the same scan problem.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: the Inverted Index</h3>
+  <p>The single most important insight in this design: <strong>don't search the data — search a precomputed index of the data</strong>. This is the same trick used at the back of every textbook: the index lets you go from "I want to know about photosynthesis" straight to "page 247", without flipping through every page in the book.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">❌ The naive way (search the data)</h3>
+      <p>Read every tweet, ask "does it contain my word?", keep the matches. Cost: <strong>O(N)</strong> where N = 730 billion. Hopeless.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✅ The inverted-index way</h3>
+      <p>Precompute, for every word in the language, the list of tweet IDs that contain it. To search, look up the word and return its list. Cost: <strong>O(log V)</strong> where V = 700K vocabulary. Effectively constant time.</p>
+    </div>
+  </div>
+
+  <p>Here's what the index looks like, conceptually:</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  subgraph IDX["Inverted Index"]
+    direction TB
+    W1["world → [t101, t205, t309, t411, ... 300K IDs]"]
+    W2["cup → [t102, t205, t308, t411, ... 280K IDs]"]
+    W3["final → [t103, t205, t411, t512, ... 150K IDs]"]
+    W4["argentina → [t205, t411, ... 90K IDs]"]
+  end
+
+  Q["Query: 'world cup final'"] --> IDX
+  IDX -->|"intersect 3 lists"| R["Result: [t205, t411, ... ~50K IDs]"]
+    </div>
+  </div>
+
+  <p>For a multi-word query like <code>"world cup final"</code>, we look up each word's list and <strong>intersect</strong> them — only tweets that appear in all three lists match. Modern intersection algorithms on sorted ID lists are extremely fast (linear in the size of the smallest list, with skip pointers shrinking that further).</p>
+
+  <p>Two more pieces fall out of this insight:</p>
+  <ul style="list-style:none;padding-left:0;margin-bottom:1rem">
+    <li style="margin-bottom:.5rem">→ <strong>Index-build runs async from search.</strong> A separate pipeline consumes the tweet firehose, tokenizes each new tweet, and updates the index. Searches never block on writes; writes never block on searches.</li>
+    <li>→ <strong>The index is too big for one box (21 TB)</strong>, so we shard it across ~152 servers and let an aggregator fan-out queries.</li>
+  </ul>
+
+  <div class="highlight hl-green"><strong>So what:</strong> the inverted index turns "search 730 billion tweets" into "look up 3 words in a hash map, then intersect 3 sorted lists". That single data-structure change is what makes the system viable. Every box we add from here is in service of (a) building the index, (b) keeping it fresh, (c) sharding it, (d) ranking the matches.</div>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered — find its matching card below to see what it does and what would break without it. The architecture splits into three planes: the <strong>Query Plane</strong> (handles searches), the <strong>Index Plane</strong> (holds and updates the inverted index), and the <strong>Source Plane</strong> (stores the raw tweets and the helper data structures).</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client — App or Web"]
+
+  subgraph QPL["Query Plane"]
+    LB["② Load Balancer"]
+    API["③ Search API Server"]
+    AGG["④ Aggregator"]
+    CACHE["⑨ Cache — Redis"]
+    RANK["⑩ Ranking Service"]
+    SUG["⑪ Suggestion Service"]
+  end
+
+  subgraph IPL["Index Plane"]
+    IDX["⑤ Index Server Cluster"]
+    BUILD["⑥ Index Builder"]
+    KAFKA["Kafka — tweet firehose"]
+  end
+
+  subgraph SPL["Source Plane"]
+    TDB[("⑦ Tweet Source DB — Cassandra")]
+    REV[("⑧ Reverse Index — tweet→shard map")]
+  end
+
+  CL --> LB
+  LB --> API
+  API --> CACHE
+  CACHE -.miss.-> AGG
+  API --> SUG
+  AGG -->|"fan-out"| IDX
+  IDX -->|"top-K IDs"| AGG
+  AGG --> TDB
+  TDB --> AGG
+  AGG --> RANK
+  RANK --> API
+  API --> CL
+
+  TDB -.tweet stream.-> KAFKA
+  KAFKA --> BUILD
+  BUILD --> IDX
+  BUILD --> REV
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style API fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style AGG fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style IDX fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style BUILD fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style TDB fill:#171d27,stroke:#38b265,color:#d4dae5
+  style REV fill:#171d27,stroke:#38b265,color:#d4dae5
+  style CACHE fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style RANK fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style SUG fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style KAFKA fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client</h3>
+      <p>Sarah's mobile app, the desktop web client, or a third-party app calling our public API. The client sends a single <code>GET /api/v1/search</code> with the user's query and waits for a JSON list of ranked tweets. From the client's perspective, the entire 152-server index cluster is one URL.</p>
+      <p><strong>Solves:</strong> nothing on its own — but every design choice flows backward from "what does the client experience?" The 200ms latency budget, the page-token pagination, and the rich result objects all exist because of what the client needs.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> Load Balancer</h3>
+      <p>The traffic cop. Distributes incoming HTTPS across the Search API server pods, terminates TLS so backend pods don't pay the crypto cost, and yanks unhealthy pods out of rotation via 5-second health checks. Public-facing — typically AWS ALB or nginx behind a global anycast IP.</p>
+      <p><strong>Solves:</strong> single-server bottleneck and single-server failure. Without an LB, one app crash takes down search for everyone. With it, we lose 1/N of capacity for a few seconds until health checks fail the bad pod out.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">③</span> Search API Server</h3>
+      <p>Stateless service that handles the public <code>/search</code> endpoint. Per request it: parses the query, validates it, checks the cache, on cache miss delegates to the aggregator, calls the ranking service for final scoring, calls the suggestion service for "did you mean", and returns the assembled JSON. Easy to scale because it's stateless — add pods behind the LB.</p>
+      <p><strong>Solves:</strong> isolating user-facing concerns (auth, rate-limits, response shaping) from the heavy machinery of the aggregator and index cluster. Without this tier, every change to the JSON response shape would touch the aggregator — bad coupling.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">④</span> Aggregator</h3>
+      <p>The heart of the query plane. Takes a tokenized query (e.g. <code>["world", "cup", "final"]</code>) and fans it out to <strong>every</strong> index shard in parallel. Each shard returns its local top-K matching tweet_ids; the aggregator merges them, takes the global top-K, fetches the full tweet objects from the Tweet Source DB, and hands them to the ranking service. Think of it as the "scatter-gather" coordinator.</p>
+      <p><strong>Solves:</strong> the fundamental sharding problem. The index is too big for one server (21 TB), so it's split across 152 servers — but a query for "world" might match tweets that live on any of those servers. Without the aggregator, the client would have to query all 152 itself. The aggregator hides the sharding from the rest of the system.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑤</span> Index Server Cluster</h3>
+      <p>A fleet of ~152 servers, each holding a partition of the inverted index in RAM. Each server indexes only the tweets it owns (we shard the tweets, not the words — see §7) so it sees the full vocabulary but only its slice of tweets. On a query, each server returns the top-K matching tweet_ids it knows about, scored by a local relevance function. Stateless from the network's view but stateful in memory.</p>
+      <p><strong>Solves:</strong> turning a 21 TB index into something that fits in RAM and serves microsecond lookups. Without this cluster, every search would hit disk on a 21 TB SSD array — adding 50-100ms per shard, and the per-shard latency adds up across the fan-out.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑥</span> Index Builder</h3>
+      <p>The async pipeline that keeps the index fresh. It consumes the tweet firehose from Kafka (every new tweet shows up here within milliseconds of being posted), tokenizes the text (split on spaces, drop punctuation, lowercase), removes stopwords ("the", "and", "is"), applies stemming ("running" → "run"), and pushes the resulting <code>(word, tweet_id)</code> pairs to the appropriate index server. It also writes an entry to the <strong>Reverse Index</strong> so we can find the home shard of any tweet later.</p>
+      <p><strong>Solves:</strong> the index-freshness problem. We have 4,600 new tweets per second; the index must absorb them within seconds (our SLO) without blocking searches. Without the builder, the index would be a static snapshot — useless for "live" searches like World Cup commentary. The async pipeline lets us scale the builder fleet independently of the index-server fleet.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑦</span> Tweet Source DB (Cassandra)</h3>
+      <p>The source of truth — every tweet ever posted, keyed by tweet_id (with the timestamp embedded so IDs are roughly time-sortable). 500 TB across ~125 nodes, sharded by tweet_id range. The aggregator hits this only after intersection narrows the result set down to a few thousand candidates — never to scan, only to fetch the body for the top results.</p>
+      <p><strong>Solves:</strong> durable storage of the actual tweet content. The index returns IDs; we still need to show Sarah the tweet text, the author, the like count. Without the source DB, the index is a list of pointers to nowhere.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑧</span> Reverse Index (tweet → shard map)</h3>
+      <p>A simple HashMap: <code>tweet_id → which index shard owns this tweet's index entries</code>. Maintained by the Index Builder as a side-effect of indexing. Held in memory by a small replicated service, persisted to disk for restart safety.</p>
+      <p><strong>Solves:</strong> fault recovery — the unsung hero of this design. When an index shard dies and we want to rebuild it, we don't want to re-tokenize 730B tweets. With the reverse index, the recovering shard asks "which tweets did I own?" and pulls only those (a few billion) from Cassandra — cutting recovery from days to hours. Without it, a shard loss is a multi-day rebuild.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑨</span> Cache (Redis)</h3>
+      <p>An in-memory key-value store holding the final ranked result list for hot queries. Cache key = hash of the (query, sort, filters) tuple; value = the final JSON response with tweet IDs and scores. Eviction: LRU. Replicated for fault tolerance; sharded by query hash for capacity.</p>
+      <p><strong>Solves:</strong> the viral-query problem. When the World Cup final ends, "world cup final" gets queried 10,000 times per second for an hour. Without cache, every one of those queries fans out to all 152 index shards — wasted work since the answer is the same. With cache, only the first query does the work; the next 36 million served from RAM in microseconds.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑩</span> Ranking Service</h3>
+      <p>Scores the candidate tweets by a combination of: recency (newer = higher), popularity (likes + retweets), engagement (replies, click-through), term frequency (how many query words matched), and personalization (does the user follow the author?). Each index shard returns top-K by a fast local score; the ranking service does the final, more expensive ML-based re-ranking on the top few hundred candidates.</p>
+      <p><strong>Solves:</strong> the difference between "results that match" (easy) and "results Sarah actually wants to see" (hard). Without ranking, search would return matches in arbitrary order — and a search for "world cup" would surface a 10-year-old tweet ahead of the goal that just happened.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑪</span> Suggestion / Spell-correct Service</h3>
+      <p>Powers "did you mean" and the typeahead dropdown as Sarah types. Built from a separate prefix index (trie or finite-state transducer) plus a Levenshtein-distance spell-corrector trained on common search misspellings. Returns suggestions in under 30ms so the typeahead feels instant.</p>
+      <p><strong>Solves:</strong> the "user typed it wrong" problem. Without spell-correct, a search for "wrold cup" returns zero results and a confused user. With it, we silently suggest "world cup" and the search succeeds.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Sarah searches at 14:02</h3>
+  <p>Two real flows, mapped to the numbered components above:</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>🔎 Search flow — "world cup final" at 14:02:15</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah's app ① sends <code>GET /search?query=world+cup+final</code>. The <strong>Load Balancer</strong> ② routes it to a <strong>Search API Server</strong> ③.</li>
+        <li>API server checks <strong>Cache</strong> ⑨ — first time today, it's a miss.</li>
+        <li>API server tokenizes the query → <code>["world", "cup", "final"]</code>, sends it to the <strong>Aggregator</strong> ④.</li>
+        <li>Aggregator fans the query out to <strong>all 152 Index Servers</strong> ⑤ in parallel. Each server intersects its local lists for the three words and returns its top 100 matching tweet_ids with local relevance scores.</li>
+        <li>Aggregator receives 152 × 100 = 15,200 candidate IDs, merges them by score, takes the global top 200.</li>
+        <li>Aggregator fetches the full tweet objects for those 200 IDs from the <strong>Tweet Source DB</strong> ⑦ (parallel reads since IDs scatter across shards).</li>
+        <li>Tweets handed to the <strong>Ranking Service</strong> ⑩ which re-ranks using ML model (engagement, personalization, freshness). Top 20 returned.</li>
+        <li>API server populates Cache ⑨ with the result, returns JSON to Sarah's app. <em>Total elapsed: 142ms.</em></li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--purple)">
+      <h3>📝 Index-update flow — a new tweet posted at 14:02:30</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Raj posts <em>"What a final! Argentina deserved that World Cup."</em> via the tweet API. The tweet is saved to the <strong>Tweet Source DB</strong> ⑦ and assigned <code>tweet_id = 1789234</code>.</li>
+        <li>Cassandra emits a CDC event onto Kafka — the tweet firehose.</li>
+        <li>An <strong>Index Builder</strong> ⑥ worker consumes the event, tokenizes the text, drops stopwords, stems → <code>["final", "argentina", "deserved", "world", "cup"]</code>.</li>
+        <li>For each token, the builder calls the appropriate <strong>Index Server</strong> ⑤ (the one that owns tweet_id 1789234) and appends the ID to the word's list.</li>
+        <li>The builder writes <code>1789234 → shard-12</code> to the <strong>Reverse Index</strong> ⑧.</li>
+        <li><em>Elapsed: ~8 seconds from post to searchable.</em> By 14:02:38, Sarah's next search will see Raj's tweet.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around three insights — (1) <strong>don't search the data, search a precomputed index</strong>; (2) <strong>shard the index across many machines</strong> and use a fan-out aggregator to hide that from the client; (3) <strong>build the index asynchronously</strong> from the tweet firehose so writes and reads never block each other. Every box in the diagram earns its place by removing one of the failure modes from Pass 1.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: THE INVERTED INDEX                  -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-purple">Step 7</span>
+  <h2>Detailed Component Design — The Inverted Index</h2>
+  <p>The inverted index is the soul of this system. Let's open it up: how it's structured, how big it gets, and the two competing ways to shard it.</p>
+
+  <h3 class="subh">Structure</h3>
+  <p>At its simplest, the inverted index is a <code>HashMap&lt;String, List&lt;Long&gt;&gt;</code>: keys are vocabulary words, values are sorted lists of tweet IDs that contain that word. Think of the index at the back of a textbook — except instead of "page numbers", we store tweet IDs, and instead of one book, we're indexing 730 billion of them.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  subgraph CONCEPT["Conceptual Inverted Index"]
+    direction TB
+    K1["world"] --> V1["[t101, t205, t309, t411, t1789234, ...]"]
+    K2["cup"] --> V2["[t102, t205, t308, t411, t1789234, ...]"]
+    K3["final"] --> V3["[t103, t205, t411, t1789234, ...]"]
+    K4["argentina"] --> V4["[t205, t1789234, ...]"]
+  end
+    </div>
+  </div>
+
+  <p>Production indexes layer on more sophistication: each posting list also stores per-word frequencies (for TF-IDF scoring), positions (for phrase queries like <code>"world cup"</code> as opposed to "world" AND "cup"), and skip pointers (so intersection across two lists can leap forward in O(log N) instead of O(N)). Lucene/Elasticsearch is essentially a hardened, on-disk version of this same idea.</p>
+
+  <h3 class="subh">Memory math</h3>
+  <p>Let's verify our 21 TB number from §3:</p>
+  <ul style="list-style:none;padding-left:0;margin-bottom:1rem">
+    <li style="margin-bottom:.5rem">→ <strong>Vocabulary:</strong> ~700K unique words × 5 bytes = 3.5 MB. Negligible.</li>
+    <li style="margin-bottom:.5rem">→ <strong>Postings:</strong> 730B tweets × 15 indexable words/tweet × 5 bytes/tweet_id = <strong>54.75 TB</strong> raw. Compress sorted ID lists (delta encoding + variable-byte) by ~4× → <strong>~14 TB</strong>.</li>
+    <li>→ <strong>Per-posting metadata</strong> (frequency byte, optional positions): adds ~50% → <strong>~21 TB total</strong>.</li>
+  </ul>
+  <p>At 144 GB RAM per server (a beefy but standard box): <code>21 TB / 144 GB ≈</code> <span class="metric">152 servers</span>. Add 2× replication for fault tolerance → <span class="metric">~300 index servers in production</span>.</p>
+
+  <h3 class="subh">Two sharding strategies — pick one</h3>
+  <p>This is the most interesting trade-off in the design. We have to split 21 TB across 152 servers; the question is <em>how</em>.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">❌ (A) Shard by word</h3>
+      <p>Each server owns a slice of the vocabulary. "world" and everything starting with "wo-" lives on shard-7; "cup" lives on shard-3. To answer a query, the aggregator sends one word to each owner.</p>
+      <p><strong>Pros:</strong> a query for one word touches one server. Minimal network fan-out.</p>
+      <p><strong>Cons:</strong> hot words destroy the design. The shard owning "the" (still indexed for some queries) gets every query for English text. Trending words like "world cup" during a final concentrate all load on one server — that server melts while 151 others sit idle. Also, intersecting two words requires shipping one of the lists across the network — for "world" with 300K IDs that's a 1.5 MB transfer per query.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✅ (B) Shard by tweet_id <span style="font-size:.85rem;color:var(--green)">← winner</span></h3>
+      <p>Each server owns a slice of the tweet space (e.g., shard-12 owns tweet_ids 1789000000 – 1789999999). It indexes only its own tweets, so it sees the entire vocabulary but only ~5 billion tweets. Every shard has the word "world" — but each holds only its slice of "world"-containing tweets.</p>
+      <p><strong>Pros:</strong> load is uniformly distributed by construction (tweet IDs are roughly time-ordered and randomly hashed). No hot shards. Intersection happens locally on each shard with no network transfer of large lists. Adding a new shard just changes the hash range — no global rebalance.</p>
+      <p><strong>Cons:</strong> every query fans out to <em>every</em> shard (152-way fan-out). That sounds expensive but each shard does its work in parallel, so wall-clock latency is set by the slowest shard, not the sum.</p>
+    </div>
+  </div>
+
+  <p>The aggregator's job in strategy (B) is exactly what makes it work: it gathers the per-shard top-K, merges them into a global top-K. With 100 results per shard and 152 shards, the merge is over 15,200 IDs — trivial in milliseconds.</p>
+
+  <div class="highlight hl-purple"><strong>The "before and after" of the choice:</strong> with (A), a single trending word would push p99 to seconds. With (B), every query has the same shape — a 152-way parallel fan-out finishing in 50-80ms. Twitter, Elasticsearch, and Solr all use strategy (B) for exactly this reason.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: FAULT TOLERANCE                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-red">Step 8</span>
+  <h2>Fault Tolerance</h2>
+  <p>Index servers hold their state in RAM. RAM is volatile. Servers crash. So what happens when shard-12 dies at 14:02 with 5 billion tweets' worth of index in memory?</p>
+
+  <h3 class="subh">Active-standby replication</h3>
+  <p>Each shard is replicated to a standby server in a different rack. The Index Builder writes to both primary and standby on every update. If the primary fails, the standby takes over within seconds — a brief latency bump (the warm-but-cold standby's RAM caches need a minute to settle), no data loss.</p>
+
+  <p>But what if <em>both</em> die — say a power-rail failure takes down a whole rack? Now we have to rebuild the shard's index from scratch.</p>
+
+  <h3 class="subh">The naive recovery (don't do this)</h3>
+  <p>"Re-tokenize all 730 billion tweets and re-route each to its owning shard." This works, but takes <strong>days</strong>. During those days, queries that should have hit shard-12 return incomplete results — potentially missing huge swaths of recent content.</p>
+
+  <h3 class="subh">The fast recovery — using the Reverse Index ⑧</h3>
+  <p>Recall: the Reverse Index is a HashMap of <code>tweet_id → owning shard</code>, maintained by the Index Builder as a free side-effect. When shard-12 needs to recover:</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant S12 as Recovering Shard-12
+  participant REV as Reverse Index
+  participant TDB as Tweet Source DB
+  participant BUILD as Index Builder
+
+  S12->>REV: "Which tweets did I own?"
+  REV-->>S12: List of ~5 billion tweet_ids
+  S12->>TDB: Bulk-fetch those tweets
+  TDB-->>S12: Tweet bodies in batches
+  S12->>BUILD: "Re-index these for me"
+  BUILD->>S12: Stream tokenized postings
+  Note over S12: Index rebuilt in hours, not days
+    </div>
+  </div>
+
+  <p>Now we fetch only the 5 billion tweets that <em>actually belong on shard-12</em> instead of all 730 billion. Recovery drops from <strong>days to hours</strong>. The Reverse Index itself is small (~3.7 TB across the cluster, sharded by tweet_id) and easily replicated — we lose at most a small region of it on a single failure, recoverable from a daily snapshot.</p>
+
+  <div class="highlight hl-red"><strong>The lesson:</strong> fault recovery is not an afterthought — it's an explicit design decision. Adding the Reverse Index costs us 3.7 TB and a small writer-side bookkeeping cost; in exchange, an entire rack failure becomes a few-hour blip instead of a multi-day outage. The design earned its complexity.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: CACHE                               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-cyan">Step 9</span>
+  <h2>Cache</h2>
+  <p>The single biggest performance lever for hot queries. Without a cache, every search of <code>"world cup final"</code> during the actual final does the full 152-way fan-out — even though the answer is identical for every querier in any given second.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>📦 What we cache</h3>
+      <p>The <strong>final ranked result</strong> — the top-20 tweet IDs and their scores, keyed by <code>hash(query, sort, filters)</code>. Not the per-shard intermediate lists; those vary across shards and aren't independently reusable. The whole-result cache is a single Redis GET for any cache hit.</p>
+    </div>
+    <div class="card">
+      <h3>♻️ Eviction</h3>
+      <p><strong>LRU</strong> with a short TTL (e.g., 30 seconds). Hot queries stay hot; the TTL ensures the result reflects recent tweets — Sarah doesn't get a 5-minute-old top-20 during a fast-moving event. We can drop TTL to 5 seconds for extreme freshness on trending topics.</p>
+    </div>
+    <div class="card">
+      <h3>📐 Sizing</h3>
+      <p>~5,800 QPS, ~30s TTL → at most ~175K hot entries cached. Each entry is small (~1 KB of IDs + scores) → <strong>~175 MB total</strong>. Trivially fits on a single Redis instance, but we shard across 4-6 nodes for fault tolerance and to spread the QPS.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>Cache hit math:</strong> if even 30% of queries hit cache during a major event, we cut index-cluster work by 30% — saving 1700 QPS of 152-way fan-out per second. During a viral query like "world cup final" the hit rate can climb past 95%, effectively absorbing the spike before it reaches the index.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: LOAD BALANCING                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-purple">Step 10</span>
+  <h2>Load Balancing</h2>
+  <p>Load balancers sit at two layers in the search path, each playing a slightly different role.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>① Client → Search API</h3>
+      <p>Public-facing LB (AWS ALB / nginx). Distributes incoming HTTPS across the Search API pods. Health-checks every 5s, evicts unhealthy pods. Terminates TLS so backend pods don't pay the crypto cost. Round-robin works fine here — every request is roughly the same shape from the API's perspective.</p>
+    </div>
+    <div class="card">
+      <h3>② API → Aggregator</h3>
+      <p>Internal LB (envoy or a service-mesh sidecar). Routes API requests to aggregator pods. Switches to <strong>least-connections</strong> once the cluster is large enough that one slow aggregator (e.g., processing a viral query) shouldn't pile up new requests behind it.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Why no LB between aggregator and index servers?</h3>
+  <p>The aggregator <em>is</em> the load balancer for the index cluster — it deliberately sends the query to <strong>every shard</strong> (since we shard by tweet_id, every shard might have matches). There's nothing to "balance" in the traditional sense; it's a deterministic fan-out. Within a shard's replicas (primary + standby), the aggregator picks the healthiest one, that's it.</p>
+
+  <div class="highlight hl-purple"><strong>The LB is itself a single point of failure</strong> — solved with an active-passive pair using virtual IP failover, or natively in cloud LBs (ALB is multi-AZ by default).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: RANKING                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-yellow">Step 11</span>
+  <h2>Ranking</h2>
+  <p>"Find the matches" is the easy half of search. "Show Sarah the matches she wants to see" is the hard half. Without ranking, a search for "world cup" might surface a 10-year-old tweet ahead of the goal scored 2 minutes ago.</p>
+
+  <h3 class="subh">Two-stage ranking</h3>
+  <p>Production search engines almost universally use a two-stage approach for cost reasons:</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>Stage 1 — Per-shard fast scoring</h3>
+      <p>Each index server scores its local matches with a cheap formula: <code>score = recency_boost × tf_idf × log(1 + likes)</code>. Returns top-K (say, top 100) per shard. Fast, parallel, no cross-shard data needed.</p>
+    </div>
+    <div class="card">
+      <h3>Stage 2 — Global ML re-ranking</h3>
+      <p>The Ranking Service ⑩ takes the top ~200 candidates from across all shards and runs them through an ML model (gradient-boosted tree or small neural net) that scores on richer features: full engagement signals, the searcher's social graph (do they follow the author?), language quality, freshness, has-media boost. Returns the final top 20.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Ranking signals — what goes into the score</h3>
+  <ul style="list-style:none;padding-left:0">
+    <li style="margin-bottom:.4rem">→ <strong>Recency:</strong> exponential decay over hours. A tweet from 2 minutes ago beats one from 2 days ago.</li>
+    <li style="margin-bottom:.4rem">→ <strong>Popularity:</strong> log-scale of likes + retweets + replies.</li>
+    <li style="margin-bottom:.4rem">→ <strong>Term-match quality:</strong> how many of the query terms matched, did they appear close together, did they appear in a hashtag.</li>
+    <li style="margin-bottom:.4rem">→ <strong>Personalization:</strong> does Sarah follow the tweeter? Does she follow people who liked it?</li>
+    <li style="margin-bottom:.4rem">→ <strong>Account quality:</strong> verified, account age, spam-filter score.</li>
+    <li>→ <strong>Engagement prediction:</strong> ML model's estimate of "will Sarah click/like this?".</li>
+  </ul>
+
+  <div class="highlight hl-yellow"><strong>Why two stages?</strong> Running the full ML model on every candidate from every shard would mean scoring ~15,000 tweets per query. Cheap local scoring shrinks that to ~200 before the expensive model runs. Same final quality, 75× less compute.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-blue">Step 12</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">Inverted index vs SQL LIKE — why is the index so much faster?</div>
+  <div class="ans"><strong>The index trades preprocessing time for query time.</strong> SQL <code>LIKE '%word%'</code> with a leading wildcard does a full table scan — O(N) over 730B rows = hours. The inverted index pre-pays the cost of "for every word, what tweets contain it?" once, at index-build time. Then every query is a hash-map lookup → O(1) per word, plus a sorted-list intersection that's roughly O(min list size) with skip pointers. The win comes from doing the work once, in batch, instead of repeating it for every query.</div>
+
+  <div class="iq">Shard by word vs shard by tweet_id — pros and cons of each?</div>
+  <div class="ans"><strong>Shard by tweet_id wins for production.</strong> Shard-by-word looks attractive because a single-word query touches only one server, but it dies on hot words — every query for "the", "world", or whatever is trending all hits one server while the rest sit idle. It also forces large lists across the network for intersection. Shard-by-tweet_id distributes load uniformly (tweet IDs are random by construction), keeps intersection local on each shard, and pays only the cost of a 152-way parallel fan-out — which finishes in 50-80ms because each shard works in parallel. The aggregator's merge of 152 small top-K lists is trivial.</div>
+
+  <div class="iq">How do you keep the index up to date with 4,600 new tweets per second?</div>
+  <div class="ans"><strong>An async pipeline driven by Kafka.</strong> Every new tweet published to the Tweet Source DB emits a CDC event onto a Kafka topic — the "tweet firehose". A pool of Index Builder workers consumes the topic, tokenizes each tweet, and pushes <code>(word, tweet_id)</code> pairs to the appropriate Index Server. Because the pipeline is async, search reads never block on writes — and we can scale the builder fleet independently (more workers = faster catch-up after a backlog). End-to-end lag is typically under 10 seconds; our SLO is under 30 seconds. If a builder falls behind, Kafka buffers without dropping events.</div>
+
+  <div class="iq">How do you handle a viral query — say 10K/sec for "world cup final"?</div>
+  <div class="ans"><strong>The cache absorbs it almost entirely.</strong> Every viral query is by definition repeated — the same exact <code>(query, filters)</code> tuple over and over. With a 30-second cache TTL, only the first query in each TTL window does the 152-way fan-out; the next ~300,000 are served from Redis in microseconds. Hit rate during a viral spike commonly exceeds 95%. We can also pre-emptively warm the cache for known trending terms (the trending-topics service feeds the cache). For the small fraction that does miss, the index cluster has enough headroom to absorb 5-10× normal QPS without falling over.</div>
+
+  <div class="iq">How do you rank results?</div>
+  <div class="ans"><strong>Two-stage ranking.</strong> Stage 1: each index server scores its local matches with a cheap formula combining recency, popularity, and term-frequency, returns top 100. Stage 2: the Ranking Service takes ~200 candidates merged from all shards and runs them through an ML model that scores on richer signals — engagement prediction, the searcher's social graph, account quality, freshness boost. Returns the final top 20. Splitting the work this way runs the expensive model 75× less often without losing ranking quality.</div>
+
+  <div class="iq">What's the latency budget breakdown for 200ms p99?</div>
+  <div class="ans">
+    <strong>Roughly:</strong>
+    <ul style="margin-top:.4rem;padding-left:1.4rem">
+      <li>Network round-trip client → API: ~30 ms</li>
+      <li>Cache check (Redis GET): ~2 ms (hit returns here in &lt; 35 ms total)</li>
+      <li>Tokenize + send to aggregator: ~5 ms</li>
+      <li>Aggregator → 152-way parallel fan-out to index servers, slowest shard wins: ~40 ms</li>
+      <li>Aggregator merge top-K: ~5 ms</li>
+      <li>Fetch full tweet bodies from Cassandra (parallel): ~20 ms</li>
+      <li>Ranking ML model on top 200: ~30 ms</li>
+      <li>JSON serialization + return network hop: ~30 ms</li>
+    </ul>
+    <strong>Total: ~165 ms — leaving 35 ms of slack for the long-tail shards and GC pauses.</strong> The aggregator is the single biggest budget item, which is why we obsess over the slowest-shard tail in the index cluster.
+  </div>
+
+  <div class="iq">What if an entire index shard dies? How do you recover?</div>
+  <div class="ans"><strong>Two layers.</strong> First, every shard has an active-standby replica in a different rack — the standby takes over within seconds with no data loss. Second, if both die (e.g., rack-level failure), we use the Reverse Index ⑧ — a HashMap of <code>tweet_id → owning shard</code> maintained as a side-effect of every index update. The recovering shard asks the Reverse Index "which tweets did I own?", bulk-fetches only those from Cassandra (a few billion, not 730), and re-tokenizes them through the Index Builder. Cuts recovery from days down to hours. Without the Reverse Index, a shard loss is a multi-day outage.</div>
+
+  <div class="iq">Why store the index in RAM rather than on SSD?</div>
+  <div class="ans"><strong>Latency math.</strong> The fan-out aggregator's wall-clock latency is set by the slowest shard. Disk SSDs add 50-100 microseconds per random read; with multiple lookups per shard per query, that adds 5-10 ms per shard, and the long-tail shards push p99 well past our 200ms budget. RAM lookups are ~100 nanoseconds — three orders of magnitude faster. The cost is just RAM (152 servers × $5K of RAM each = ~$750K), trivial compared to the engineering cost of dealing with disk-induced latency variance.</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

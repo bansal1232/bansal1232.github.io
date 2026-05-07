@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ticketmaster / BookMyShow — Movie Ticket Booking HLD</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Ticketmaster / <span>BookMyShow</span></h1>
+  <p class="sub">From "50,000 fans clicking the same seat at 09:00:00.001" to a sharded, ACID-backed, fairness-queued booking system — the architecture that earns every box</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is Online Ticket Booking?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Design Considerations</a></li>
+      <li><a href="#s4">Capacity Estimation</a></li>
+      <li><a href="#s5">System APIs</a></li>
+      <li><a href="#s6">Database Schema</a></li>
+      <li><a href="#s7">High-Level Architecture</a></li>
+      <li><a href="#s8">Concurrency &amp; Isolation</a></li>
+      <li><a href="#s9">Reservation Lifecycle</a></li>
+      <li><a href="#s10">WaitingUsersService — Fairness</a></li>
+      <li><a href="#s11">Fault Tolerance</a></li>
+      <li><a href="#s12">Data Partitioning</a></li>
+      <li><a href="#s13">Cache &amp; Load Balancer</a></li>
+      <li><a href="#s14">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS IT?                         -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is Online Ticket Booking?</h2>
+  <p>It's 08:59 on a Friday morning. The new Marvel film opens at midnight. Sarah, sitting in Bangalore, has her finger hovering over the "buy" button on BookMyShow. So does Raj, two cubicles down. So do <strong>50,000 other fans</strong> across the country, all targeting the same theater — PVR Forum, Screen 1 — which has exactly <strong>200 seats</strong>. At 09:00:00 sharp the booking window opens. Within the next 0.4 seconds, every one of those 50,000 fans hits "select seat" — and many of them tap the <em>same</em> seat (the legendary J-12, dead center).</p>
+
+  <p>The system has to do four things, all at once, all correctly: <strong>browse</strong> (show movies, theaters, showtimes), <strong>select seats</strong> (let users pick from a live seat-map), <strong>pay</strong> (collect money via Stripe/Razorpay), and <strong>issue tickets</strong> (email a confirmation with a QR code). And it must do all of this with <strong>zero double-bookings</strong> — because if two people show up at PVR Forum holding tickets for J-12, the company gets sued and the brand dies. That's the system we're designing.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) When 50K users tap the same seat in the same millisecond, how do we pick exactly one winner without double-booking? (2) How do we keep that winner's seat "held" for 5 minutes while they enter their card details, but instantly free it if they walk away — and let waiting users grab it fairly?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Before drawing a single box, pin down what the system must do. In an interview, asking these questions out loud signals you're building from first principles, not pattern-matching a memorized solution.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>List <strong>cities</strong> where the service operates</li>
+        <li>List <strong>movies</strong> currently running in a given city</li>
+        <li>List <strong>cinemas</strong> showing a given movie in that city</li>
+        <li>List <strong>shows</strong> (date + time + screen) for a chosen cinema</li>
+        <li>Render the <strong>seat-map</strong> of a chosen show with live availability</li>
+        <li>Let users <strong>select and hold</strong> seats for 5 minutes while paying</li>
+        <li><strong>Atomic multi-seat</strong> orders — all seats book together or none do</li>
+        <li><strong>Fair waiting queue</strong> when seats are sold out and may free up</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Highly concurrent</strong> — many users bidding for the same seat</li>
+        <li><strong>ACID-compliant</strong> — no double-bookings, no lost payments, no partially-paid orders</li>
+        <li><strong>Highly available</strong> — release-day traffic spikes are 100× normal</li>
+        <li><strong>Low latency</strong> on browse — the seat-map should render in under 200ms</li>
+      </ul>
+      <h3 style="margin-top:1rem">🚫 Out of Scope</h3>
+      <ul>
+        <li>User authentication &amp; identity (assume an existing auth service)</li>
+        <li>Cinema/theater management portals</li>
+        <li>Recommendations &amp; personalization</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The non-functional requirements are the harder ones.</strong> Listing movies is a database query. Letting 50K users contend for one seat without double-booking — and doing it fairly — is the part that actually requires architecture.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: DESIGN CONSIDERATIONS                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-purple">Step 3</span>
+  <h2>Design Considerations</h2>
+  <p>Four hard constraints shape this whole system. Skip any one of them and the design falls apart in production.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🧩 Atomic multi-seat orders</h3>
+      <p>If Sarah wants 4 seats together for her family, the system must book <strong>all 4 or none</strong>. Booking 3 of 4 and then failing on the fourth leaves her with three useless tickets and a missing family member. This is a textbook ACID transaction — the kind a relational DB does effortlessly and a NoSQL store fights you on.</p>
+    </div>
+    <div class="card">
+      <h3>⚖️ Fairness during sellouts</h3>
+      <p>When the show is full and someone abandons their hold, the freed seat shouldn't go to whoever happens to refresh first — it should go to whoever has been waiting longest. Without explicit fairness, the experience devolves into a refresh-button arms race that rewards bots and punishes patient users.</p>
+    </div>
+    <div class="card">
+      <h3>🚫 Limit seats per booking</h3>
+      <p>Cap orders at <strong>10 seats</strong>. Higher caps invite scalpers who buy 200 seats and resell them at 5× face value. The cap, combined with rate-limiting by user/payment-card, makes large-scale scalping operationally painful.</p>
+    </div>
+    <div class="card">
+      <h3>📈 Surge during popular releases</h3>
+      <p>Average traffic might be 1K req/s; release-day traffic for a Marvel/Avengers premiere can be <strong>50K req/s</strong> for the first 60 seconds. The system must scale horizontally on demand, and the booking path must not melt under burst load.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-blue">Step 4</span>
+  <h2>Capacity Estimation</h2>
+  <p>Numbers drive every architectural choice. Out loud, even if rough. The system is read-heavy on browse (millions of people checking showtimes) but write-coordinated on book (a smaller number of high-stakes transactions).</p>
+
+  <h3 class="subh">Traffic estimates</h3>
+  <p>Assume <strong>3 billion page views per month</strong> across browse paths (city → movie → cinema → show → seat-map). Of those, roughly <strong>10 million tickets sold per month</strong> — about a 300:1 browse-to-book ratio.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Browse</h3><p><span class="metric">~1.2K req/s avg</span></p><p>3B / (30 × 86400)</p></div>
+    <div class="card"><h3>Bookings</h3><p><span class="metric">~4 req/s avg</span></p><p>10M / (30 × 86400)</p></div>
+    <div class="card"><h3>Peak browse</h3><p><span class="metric">~50K req/s</span></p><p>40× spike on release</p></div>
+    <div class="card"><h3>Peak bookings</h3><p><span class="metric">~200 req/s</span></p><p>seat-contention burst</p></div>
+  </div>
+
+  <h3 class="subh">Storage estimate</h3>
+  <p>Per day across the catalog: <strong>500 cities × 10 cinemas/city × 2,000 seats/cinema × 2 shows/day × 100 bytes/seat-row ≈ 2 GB/day</strong>. Over 5 years, including bookings, payments, and audit trails: <span class="metric">~3.6 TB total</span>. With 70% headroom: <span class="metric">~5 TB provisioned</span>.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Browse req/s (peak)</td><td><code>50K/s</code></td><td>Drives cache size and read-replica fan-out</td></tr>
+        <tr><td>Booking req/s (peak)</td><td><code>200/s</code></td><td>Drives DB write tier and isolation strategy</td></tr>
+        <tr><td>5-yr storage</td><td><code>3.6 TB</code></td><td>Fits a single MySQL cluster with read replicas</td></tr>
+        <tr><td>Tickets sold / month</td><td><code>10M</code></td><td>Drives notification, payment, audit volume</td></tr>
+        <tr><td>Seats per booking</td><td><code>≤ 10</code></td><td>Anti-scalping cap; cap shapes lock granularity</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-purple">Step 5</span>
+  <h2>System APIs</h2>
+  <p>Two endpoints carry the interesting load: <strong>search</strong> (find what you want to watch) and <strong>reserve</strong> (claim seats while paying). A third endpoint completes the booking after payment success. Defining the contract early locks down the architecture before the first box is drawn.</p>
+
+  <span class="code-label cl-green">REST API surface</span>
+<pre><span class="cmt">// Search — read path, high QPS</span>
+GET /api/v1/search
+{
+  "api_key":     "abc123...",
+  "keyword":     "Marvel",          <span class="cmt">// optional movie name fragment</span>
+  "city":        "Bangalore",       <span class="cmt">// filter by city</span>
+  "lat_long":    "12.97,77.59",     <span class="cmt">// optional, for nearby cinemas</span>
+  "radius_km":   10,                <span class="cmt">// search radius from lat_long</span>
+  "datetime":    "2026-05-08T18:00",
+  "postal_code": "560001",          <span class="cmt">// alternative to lat_long</span>
+  "sort":        "showtime"         <span class="cmt">// showtime | rating | distance</span>
+}
+→ 200 OK  { "results": [{ movie, cinema, show_id, showtime, available_seats }, ...] }
+
+<span class="cmt">// Reserve — write path, the contention hot spot</span>
+POST /api/v1/reserve
+{
+  "api_key":    "abc123...",
+  "session_id": "sess-9d4f...",     <span class="cmt">// sticky session for checkout</span>
+  "movie_id":   "mov-1234",
+  "show_id":    "show-7891",
+  "seats":      ["J-12", "J-13"]    <span class="cmt">// 1..10 seats</span>
+}
+→ 200 OK   { "reservation_id": "res-...", "expires_at": "...+5min", "amount": 480 }
+→ 409 Conflict  { "error": "seats_taken", "alternatives": ["J-14","J-15"] }
+→ 429 Queued    { "error": "show_full", "queue_position": 47, "etr_seconds": 180 }
+
+<span class="cmt">// Confirm — called after payment succeeds</span>
+POST /api/v1/confirm
+{ "reservation_id": "res-...", "payment_token": "tok_..." }
+→ 201 Created  { "booking_id": "bk-...", "tickets": [{seat, qr_code}, ...] }</pre>
+
+  <div class="highlight hl-blue"><strong>Why three calls instead of one big "buy"?</strong> Because <em>reserving</em> a seat (claiming it for 5 minutes) is a fundamentally different operation from <em>paying</em> for it (charging a card). Reserving is fast, frequent, and reversible. Paying is slow (Stripe takes 2-3 seconds), unreliable (cards decline, networks drop), and irreversible. Splitting them lets the contended write — the seat lock — finish in milliseconds while the slow payment runs separately, with the lock auto-expiring if payment fails.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: DATABASE                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-cyan">Step 6</span>
+  <h2>Database Schema</h2>
+  <p>The data model is wide — about 10 entities — but every interesting interaction touches the same handful: <code>Show</code>, <code>Show_Seat</code>, <code>Booking</code>, <code>Payment</code>. Three observations: (1) we have <strong>strong relational ties</strong> (a Show belongs to a Cinema_Hall, a Show_Seat belongs to a Show and a Cinema_Seat), (2) we need <strong>multi-row atomic transactions</strong> for multi-seat orders, and (3) the <strong>UNIQUE constraint on a Show_Seat row is what physically prevents double-booking</strong>. All three points push us toward a relational store like MySQL/PostgreSQL.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  CITY {
+    string city_id PK
+    string name
+    string state
+    string zipcode
+  }
+  CINEMA {
+    string cinema_id PK
+    string name
+    int total_halls
+    string city_id FK
+  }
+  CINEMA_HALL {
+    string hall_id PK
+    string name
+    int total_seats
+    string cinema_id FK
+  }
+  CINEMA_SEAT {
+    string seat_id PK
+    int seat_number
+    string seat_type
+    string hall_id FK
+  }
+  MOVIE {
+    string movie_id PK
+    string title
+    string language
+    string genre
+    int duration_minutes
+  }
+  SHOW {
+    string show_id PK
+    timestamp start_time
+    string movie_id FK
+    string hall_id FK
+  }
+  SHOW_SEAT {
+    string show_seat_id PK
+    string show_id FK
+    string cinema_seat_id FK
+    string status
+    decimal price
+    string booking_id FK
+  }
+  BOOKING {
+    string booking_id PK
+    string user_id FK
+    string show_id FK
+    int num_seats
+    string status
+    timestamp created_at
+    timestamp expires_at
+  }
+  PAYMENT {
+    string payment_id PK
+    string booking_id FK
+    decimal amount
+    string status
+    string provider_ref
+  }
+  USER {
+    string user_id PK
+    string name
+    string email
+  }
+  CITY ||--o{ CINEMA : "has"
+  CINEMA ||--o{ CINEMA_HALL : "contains"
+  CINEMA_HALL ||--o{ CINEMA_SEAT : "has"
+  CINEMA_HALL ||--o{ SHOW : "hosts"
+  MOVIE ||--o{ SHOW : "scheduled as"
+  SHOW ||--o{ SHOW_SEAT : "has"
+  CINEMA_SEAT ||--o{ SHOW_SEAT : "instantiated as"
+  USER ||--o{ BOOKING : "places"
+  SHOW ||--o{ BOOKING : "for"
+  BOOKING ||--o| PAYMENT : "settled by"
+  BOOKING ||--o{ SHOW_SEAT : "claims"
+    </div>
+  </div>
+
+  <p>The <code>SHOW_SEAT</code> row is the heart of the system. Its <code>status</code> column is a small state machine — <code>FREE</code>, <code>HELD</code>, or <code>BOOKED</code> — and a <strong>UNIQUE constraint on (show_id, cinema_seat_id)</strong> means the database itself rejects any attempt to create two rows for the same seat in the same show. Combined with row-level locking, this is what physically prevents double-booking even under massive contention.</p>
+
+  <div class="highlight hl-cyan"><strong>Why relational beats NoSQL here:</strong> our most important operation is "atomically claim 4 specific rows in <code>show_seat</code> or fail" — that's a textbook multi-row transaction with strong isolation. NoSQL stores either give you per-row atomicity (not enough) or eventual consistency (catastrophic for ticket booking). MySQL or Postgres with <code>SERIALIZABLE</code> isolation handles this in 5-line SQL. Our 3.6TB also fits comfortably in a sharded MySQL cluster, so we're not paying for NoSQL's horizontal-scale superpower.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-orange">Step 7 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart at scale, and the production shape where every box justifies itself.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Sketch the simplest possible system: a few stateless app servers behind a load balancer talking to one MySQL. To book a seat, the app does <code>INSERT INTO booking ...</code>. Done.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C["Client"] --> LB["Load Balancer"]
+  LB --> APP["App Server"]
+  APP --> DB[("MySQL")]
+    </div>
+  </div>
+
+  <p>Three failures emerge the moment a real movie release hits this design:</p>
+  <div class="g3">
+    <div class="card">
+      <h3>💥 Two clicks, same seat — both succeed</h3>
+      <p>Sarah and Raj both tap seat J-12 at 09:00:00.001. App server A handles Sarah, app server B handles Raj. Both run <code>INSERT INTO booking</code> at the same instant. Without row-level locking and a UNIQUE constraint, both inserts succeed — and now <strong>two physical humans hold a ticket for the same chair</strong>. The brand is dead.</p>
+    </div>
+    <div class="card">
+      <h3>💥 30-minute holds block everyone</h3>
+      <p>A user clicks "select seats" then walks away to make tea. If the seat sits in <code>HELD</code> state for 30 minutes with no automatic expiry, that's 30 minutes of every other fan seeing it as taken. With 200 seats and 50K interested fans, the show looks "sold out" within seconds even though most "holds" never become bookings.</p>
+    </div>
+    <div class="card">
+      <h3>💥 50K req/s on release morning melts MySQL</h3>
+      <p>A single MySQL handles ~5K simple writes/sec. A flash-sale spike of 50K req/s on the booking path pegs the DB CPU at 100%, p99 latency goes from 5ms to 5 seconds, and connection pools start dropping requests. The whole site stops responding — not just the popular movie.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: a reservation is an in-memory, time-bounded promise</h3>
+  <p>Here's the central insight that reshapes the whole design: <strong>a seat reservation is two things at once</strong> — (a) a <em>persistent claim</em> in the database (so we never double-book and so it survives a crash), and (b) a <em>5-minute timer</em> living in memory (so we know when to expire it and let someone else have a turn). One alone isn't enough.</p>
+
+  <p>Think of it like a restaurant that takes a name on the waitlist <strong>and</strong> sets a 30-minute timer on the host stand. The name on paper is durability — even if the host gets fired, the next host can pick up. The timer is liveness — without it, no-shows squat on tables forever. Booking systems need both. So we split the work across two cooperating services:</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">📖 Browse Plane</h3>
+      <p><strong>~50K req/s peak.</strong> Read-only fan-out — list cities, movies, cinemas, shows, seat-maps. Tolerates stale data (a 2-second-old seat-map is fine). Cacheable to the moon. No locks, no transactions.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">💳 Booking Plane</h3>
+      <p><strong>~200 req/s peak.</strong> The contended write path. Transactional, ACID, row-locked. Must be fast (sub-100ms) to absorb burst contention. Holds the 5-minute timers for in-progress reservations.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">⚖️ Async Plane</h3>
+      <p><strong>Background.</strong> The fairness queue, expiry timers, payment callbacks, notifications. Wakes the longest-waiting user when a seat frees up. Decoupled so a stuck SMS provider can't slow checkout.</p>
+    </div>
+  </div>
+
+  <p>That three-plane split lets us scale browse on cheap stateless replicas, keep the booking path narrow and ACID-strict, and bury the messy "who gets the freed seat?" question inside an <strong>ActiveReservationsService</strong> (timers) and a <strong>WaitingUsersService</strong> (the deli-counter ticket queue) running in the async plane.</p>
+
+  <div class="highlight hl-purple"><strong>The deli-counter analogy:</strong> at the ActiveReservationsService, every held seat has a 5-minute kitchen timer ticking down. At the WaitingUsersService, every fan who showed up after the show went "full" has a numbered ticket in their hand. When a kitchen timer rings, we expire that hold and shout the next ticket number — first ticket pulled, first seat offered. That's how you do fairness when 100 fans want the same 10 seats.</div>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered — find its matching card below to see what it does and crucially what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client — Web · Mobile App"]
+
+  subgraph EDGE["Edge Tier"]
+    LB["② Load Balancer — sticky sessions"]
+  end
+
+  subgraph BROWSE["Browse Plane"]
+    SS["③ Search Service"]
+    CDB[("④ Show Catalog DB — Cassandra")]
+    CACHE["⑪ Cache — Redis"]
+  end
+
+  subgraph BOOK["Booking Plane"]
+    BS["⑤ Booking Service"]
+    BDB[("⑥ Bookings DB — MySQL ACID")]
+    AR["⑦ ActiveReservationsService"]
+  end
+
+  subgraph ASYNC["Async Plane"]
+    WU["⑧ WaitingUsersService"]
+    PS["⑨ Payment Service"]
+    NS["⑩ Notification Service"]
+  end
+
+  CL --> LB
+  LB -->|"GET browse"| SS
+  LB -->|"POST reserve / confirm"| BS
+
+  SS --> CACHE
+  CACHE -.miss.-> CDB
+
+  BS --> BDB
+  BS --> AR
+  BS --> PS
+  AR -.expiry.-> WU
+  WU -.notify next.-> NS
+  PS -.success.-> BS
+  BS -.confirm.-> NS
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style SS fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style CDB fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style CACHE fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style BS fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style BDB fill:#171d27,stroke:#38b265,color:#d4dae5
+  style AR fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style WU fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style PS fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style NS fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client (Web / Mobile)</h3>
+      <p>The browser tab or mobile app a user is staring at. It walks the user through the funnel: pick a city, pick a movie, pick a showtime, watch the seat-map render, tap seats, hit "pay", enter card details, see the QR code. From the client's view the entire system is one HTTPS endpoint — but every interesting concern (latency, fairness, idempotency) is shaped by what the client does next.</p>
+      <p><strong>Solves:</strong> nothing on its own — but every architectural decision flows backward from "what does the user see and how does it feel?" Sticky sessions, idempotency keys, and reservation timers are all about not breaking the client's mental model of "I clicked a seat, it's mine."</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> Load Balancer</h3>
+      <p>The front door. Sits in front of all stateless services, distributes incoming HTTPS, terminates TLS, and yanks unhealthy backends out via 5-second health checks. Crucially we use <strong>sticky sessions during checkout</strong> — once a user has a reservation in flight, the LB pins them to the same Booking Service node so the in-memory session state (selected seats, payment intent) doesn't have to be re-fetched on every click.</p>
+      <p><strong>Solves:</strong> single-point-of-failure on app servers, plus the "lost cart" problem if requests bounce between nodes mid-checkout. Without the LB, a single pod crash takes down the site. Without sticky sessions, a user who refreshes mid-checkout might land on a fresh node that has no idea they're holding 4 seats.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">③</span> Search Service</h3>
+      <p>Stateless service that answers all the browse queries: "what cities?", "what's playing in Bangalore tonight?", "what are the showtimes for Marvel at PVR Forum?". It hits the cache first, falls through to the catalog DB on miss. Read-only, so it scales horizontally — add pods until the LB stops complaining.</p>
+      <p><strong>Solves:</strong> isolating the read-heavy browse workload from the contended booking path. Without a dedicated search service, the same pods serving 50K browse req/s would also be running ACID seat-locks, and the locks would starve under read pressure.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">④</span> Show Catalog DB (Cassandra)</h3>
+      <p>The denormalized read-store for the browse plane. Holds movies, cinemas, halls, showtimes, and a <em>snapshot</em> of seat-availability counts per show (not the live row-level state). Cassandra is right here because the data is read-heavy, eventually-consistent, and replicates naturally across regions — a fan in Mumbai shouldn't pay a 200ms round-trip to a primary in Delhi just to see what's playing tonight.</p>
+      <p><strong>Solves:</strong> the 50K-req/s browse spike. Without a denormalized read store, every "list movies in city" would join across <code>movie</code>, <code>show</code>, <code>cinema</code>, <code>cinema_hall</code> on the booking DB — exactly the joins the booking DB is too busy doing transactions to serve.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">⑤</span> Booking Service</h3>
+      <p>Stateless service that handles <code>POST /reserve</code> and <code>POST /confirm</code>. The reserve flow per request: validate input → start a SQL <code>SERIALIZABLE</code> transaction → <code>SELECT ... FOR UPDATE</code> on the requested <code>show_seat</code> rows → if all are <code>FREE</code>, mark them <code>HELD</code> with a 5-minute expiry, register the timer with <strong>ActiveReservationsService</strong>, COMMIT → return reservation ID. Total budget: under 100ms.</p>
+      <p><strong>Solves:</strong> the contended write path. Without a dedicated booking service, locking semantics would be sprinkled across whatever node happens to handle the request, and you'd never get the discipline needed to prevent double-bookings under 50K req/s.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑥</span> Bookings DB (MySQL)</h3>
+      <p>The source of truth for everything that costs money — bookings, payments, the <code>show_seat</code> rows whose status is <code>HELD</code> or <code>BOOKED</code>. MySQL with InnoDB row-locks and <code>SERIALIZABLE</code> isolation. The UNIQUE constraint on <code>(show_id, cinema_seat_id)</code> in the <code>show_seat</code> table is what physically guarantees no double-booking — even if every other line of code had a bug, the DB would refuse the second insert.</p>
+      <p><strong>Solves:</strong> correctness under contention. Without a relational ACID store, you'd be re-implementing SERIALIZABLE in application code on top of an eventually-consistent NoSQL — a battle no team has ever won at this scale.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑦</span> ActiveReservationsService</h3>
+      <p>An in-memory map of <code>{show_id → list of (reservation_id, expires_at)}</code> for every reservation that's currently <code>HELD</code> but not yet paid. When a reservation is created, the booking service registers its 5-minute timer here. When the timer rings, this service atomically transitions the seat back to <code>FREE</code> in MySQL <em>and</em> notifies <strong>WaitingUsersService</strong> "a seat just opened on show X". Backed by the DB — on crash, recover by reading all <code>HELD</code> rows.</p>
+      <p><strong>Solves:</strong> liveness. Without a dedicated timer service, expiring abandoned reservations means polling the DB for "rows where expires_at &lt; now" — a giant scan that gets slower as the table grows. The in-memory timer wheel is O(1) per expiry.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑧</span> WaitingUsersService</h3>
+      <p>Per-show FIFO queue of users waiting for seats to free up after a sellout. When the show is full and a fan tries to reserve, they're appended to the queue with a notification handle. When <strong>ActiveReservationsService</strong> announces "seat freed on show X", this service pops the head of the queue, sends them a "your seats are available — complete checkout in 5 min" push, and starts another 5-minute timer. If they don't claim, they expire out and we try the next person. This is the deli-counter analogy made literal.</p>
+      <p><strong>Solves:</strong> fairness during sellouts. Without an explicit queue, freed seats go to whoever happens to refresh their browser at the right millisecond — which favors bots and frustrated power-refreshers, not the patient fan who's been waiting 20 minutes.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑨</span> Payment Service</h3>
+      <p>Wraps Stripe / Razorpay / native UPI integrations. Booking Service calls it with the reservation ID, the amount, and a payment token from the client. Returns success/failure asynchronously via webhook. Holds an idempotency key so retries don't double-charge a card. On success it calls back into Booking Service to flip the reservation from <code>HELD</code> to <code>BOOKED</code>.</p>
+      <p><strong>Solves:</strong> isolating the slow, flaky external dependency from the fast in-process reservation logic. Without a separate service, Stripe's 3-second p99 latency would balloon every reservation request to 3 seconds — and Stripe's occasional outages would directly take down booking.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑩</span> Notification Service</h3>
+      <p>Async fan-out to email, SMS, and push. Sends the "you reserved 4 seats — pay in the next 5 minutes" warning, the "your seats are available" wake-up to waiting users, and the final "here's your QR code" confirmation. Subscribes to events from Booking Service via Kafka — never inline on the request path, so a flaky SMS provider can't slow checkout.</p>
+      <p><strong>Solves:</strong> communication without coupling. Without an async notification service, every booking would block on "send SMS" — and SMS gateways have multi-second tail latencies.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑪</span> Cache (Redis)</h3>
+      <p>An in-memory key-value store holding (a) show metadata that almost never changes (movie title, cinema name, showtime), and (b) seat-map snapshots — a compact bitmap per show showing which seats are FREE/HELD/BOOKED, refreshed every 1-2 seconds. Read flow: search service hits Redis first, falls through to Cassandra on miss.</p>
+      <p><strong>Solves:</strong> the 50K browse req/s spike. Without a cache, the seat-map render alone (every fan opens 5 seat-maps before settling on one) would push the catalog DB past its read ceiling. With it, 95%+ of seat-map renders never reach the DB.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Sarah and Raj race for J-12</h3>
+  <p>Two real flows, mapped to the numbered components above. The first shows concurrency resolution; the second shows expiration and fairness.</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>⚔️ Concurrent click — Sarah vs. Raj at 09:00:00.001</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Both <strong>Clients</strong> ① POST <code>/reserve</code> with seat J-12. Both hit the <strong>Load Balancer</strong> ②, which pins each user to a <strong>Booking Service</strong> ⑤ pod (sticky session).</li>
+        <li>Both pods open a transaction on <strong>Bookings DB</strong> ⑥ at <code>SERIALIZABLE</code> isolation: <code>BEGIN; SELECT * FROM show_seat WHERE show_id=X AND seat='J-12' FOR UPDATE;</code></li>
+        <li>InnoDB grants the row lock to whichever transaction <em>physically</em> arrived first — say Sarah's, by 0.3ms. Raj's transaction now blocks waiting for the lock.</li>
+        <li>Sarah's pod sees status=<code>FREE</code>, updates to <code>HELD</code>, registers the 5-minute timer with <strong>ActiveReservationsService</strong> ⑦, and COMMITs. Lock released.</li>
+        <li>Raj's pod re-reads the row, sees status=<code>HELD</code>, ROLLBACKs and returns <code>409 Conflict — alternatives: J-11, J-13, J-14</code>.</li>
+        <li>Sarah's UI shows "5:00 to complete payment". Raj's UI shows "J-12 just got taken — try one of these".</li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--purple)">
+      <h3>⏰ Sarah doesn't pay — fairness kicks in at 09:05:01</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah got distracted. Her 5-minute timer in <strong>ActiveReservationsService</strong> ⑦ rings.</li>
+        <li>The service runs a single transaction: <code>UPDATE show_seat SET status='FREE', booking_id=NULL WHERE reservation_id=...</code> — atomic transition back to <code>FREE</code>.</li>
+        <li>It publishes "seat freed: show X, seat J-12" to <strong>WaitingUsersService</strong> ⑧.</li>
+        <li>WaitingUsersService pops the head of the per-show queue — that's Priya, who's been waiting since 09:01:30.</li>
+        <li>It calls <strong>Notification Service</strong> ⑩ to push Priya: "your seat is available — complete checkout in 5 min", with a deep link.</li>
+        <li>Priya taps the link, lands on a fresh reservation flow with J-12 pre-held in her name. The 5-minute timer restarts.</li>
+        <li>If Priya also abandons, the cycle repeats with the next queued fan. <em>First-come-first-served, enforced.</em></li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around three insights — (1) <strong>browse and book are different shapes</strong> so they get different planes (read replicas vs. ACID master); (2) <strong>a reservation is both a DB row and an in-memory timer</strong>, requiring two cooperating services; (3) <strong>fairness during sellouts is a queue problem</strong>, not a refresh-button race. Every box in the diagram earns its place by killing a specific failure mode from Pass 1.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: CONCURRENCY                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-yellow">Step 8</span>
+  <h2>Concurrency &amp; Isolation</h2>
+  <p>This is the section interviewers probe hardest. Get the isolation level wrong and you ship double-bookings; get it too strict and the site goes unresponsive on release morning. The right answer for ticket booking is <strong>SERIALIZABLE isolation with row-level <code>SELECT ... FOR UPDATE</code></strong> — and the trade-offs need to be on the tip of your tongue.</p>
+
+  <h3 class="subh">The four SQL isolation levels — quickly</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Level</th><th>Dirty read</th><th>Non-repeatable read</th><th>Phantom read</th><th>Throughput</th></tr></thead>
+      <tbody>
+        <tr><td>READ UNCOMMITTED</td><td>❌ allowed</td><td>❌ allowed</td><td>❌ allowed</td><td>highest</td></tr>
+        <tr><td>READ COMMITTED</td><td>✅ blocked</td><td>❌ allowed</td><td>❌ allowed</td><td>high</td></tr>
+        <tr><td>REPEATABLE READ</td><td>✅ blocked</td><td>✅ blocked</td><td>❌ allowed</td><td>medium</td></tr>
+        <tr><td><strong>SERIALIZABLE</strong></td><td>✅ blocked</td><td>✅ blocked</td><td>✅ blocked</td><td><strong>lowest</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>For booking, we need all three anomalies blocked. A "phantom read" — the seat appears <code>FREE</code> in our SELECT but a concurrent transaction inserted a competing booking before our INSERT lands — is the literal definition of a double-booking. So we go to the top: <strong>SERIALIZABLE</strong>.</p>
+
+  <h3 class="subh">The reservation transaction in 6 lines of SQL</h3>
+<pre><span class="kw">SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;</span>
+<span class="kw">BEGIN;</span>
+  <span class="kw">SELECT</span> seat_id, status <span class="kw">FROM</span> show_seat
+   <span class="kw">WHERE</span> show_id = 'show-7891' <span class="kw">AND</span> seat <span class="kw">IN</span> ('J-12','J-13')
+   <span class="kw">FOR UPDATE</span>;                  <span class="cmt">-- row-level X-lock</span>
+
+  <span class="cmt">-- guard: bail if any seat is not FREE</span>
+  <span class="kw">UPDATE</span> show_seat <span class="kw">SET</span> status='HELD', booking_id='res-...', expires_at=<span class="kw">NOW</span>()+<span class="num">300</span>
+   <span class="kw">WHERE</span> show_id = 'show-7891' <span class="kw">AND</span> seat <span class="kw">IN</span> ('J-12','J-13')
+     <span class="kw">AND</span> status = 'FREE';
+<span class="kw">COMMIT;</span></pre>
+
+  <p>Three things make this watertight: (a) <code>SERIALIZABLE</code> blocks phantom inserts on the same seat-row, (b) <code>FOR UPDATE</code> takes an exclusive row-lock so the second transaction physically waits, and (c) the <code>AND status = 'FREE'</code> guard in the UPDATE means even if you got the order wrong, the UPDATE updates 0 rows and we know to bail.</p>
+
+  <div class="highlight hl-yellow"><strong>The trade-off you must say out loud:</strong> SERIALIZABLE drops MySQL throughput maybe 2-3× compared to READ COMMITTED. We accept this because (1) booking req/s peaks at ~200 — far below MySQL's 5K/s ceiling even at SERIALIZABLE, (2) ticket booking is intrinsically about preventing collisions, not maximizing throughput, and (3) the alternative — a double-booking — is a brand-ending PR disaster. Throughput is recoverable; trust isn't.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: RESERVATION LIFECYCLE                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-blue">Step 9</span>
+  <h2>The Reservation Lifecycle</h2>
+  <p>A single seat moves through a small, strict state machine. Every transition is owned by exactly one component, and every transition is atomic in the DB.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+stateDiagram-v2
+  [*] --> AVAILABLE : show created
+  AVAILABLE --> HELD : reserve · 5-min timer starts
+  HELD --> BOOKED : payment success
+  HELD --> AVAILABLE : timer expires or user cancels
+  BOOKED --> [*] : show ends · archived
+  AVAILABLE --> [*] : show ends · archived
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>AVAILABLE → HELD</h3>
+      <p>Owned by <strong>Booking Service</strong>. Triggered by <code>POST /reserve</code>. Must be an atomic <code>SELECT ... FOR UPDATE</code> + <code>UPDATE</code> at SERIALIZABLE isolation. On success, also registers a 5-minute timer in <strong>ActiveReservationsService</strong>.</p>
+    </div>
+    <div class="card">
+      <h3>HELD → BOOKED</h3>
+      <p>Owned by <strong>Booking Service</strong>, triggered by a payment-success webhook from <strong>Payment Service</strong>. Single SQL UPDATE flipping status and clearing <code>expires_at</code>. The reservation timer in ActiveReservationsService is cancelled.</p>
+    </div>
+    <div class="card">
+      <h3>HELD → AVAILABLE (expiry)</h3>
+      <p>Owned by <strong>ActiveReservationsService</strong>. Triggered by the in-memory 5-minute timer firing. The service runs <code>UPDATE show_seat SET status='AVAILABLE', booking_id=NULL WHERE reservation_id=...</code>, then publishes "seat freed" to <strong>WaitingUsersService</strong>.</p>
+    </div>
+    <div class="card">
+      <h3>HELD → AVAILABLE (cancel)</h3>
+      <p>User clicks "give up these seats" before the timer fires. Same UPDATE as the expiry path, just triggered by a user action. The timer is cancelled in ActiveReservationsService to prevent a duplicate UPDATE.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>Why the state machine matters:</strong> with five states and four transitions, every code path that touches a seat row goes through exactly one of these arrows — making bugs (and audits) tractable. The most subtle bug is the <em>race between expiry and cancel</em>: both paths could try to UPDATE the same row from HELD → AVAILABLE. We solve it with idempotency: both UPDATEs include <code>WHERE status='HELD'</code>, so the second one updates 0 rows and silently succeeds.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: WAITING USERS                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-purple">Step 10</span>
+  <h2>WaitingUsersService — The Fairness Queue</h2>
+  <p>When a show goes "full", the next 100 fans who try to reserve don't see "sorry, sold out" — they see "you're number 47 in the queue, estimated wait 3 minutes". The queue exists because, on average, <strong>5-10% of HELD reservations expire without payment</strong> — meaning even sold-out shows have a steady drip of seats coming back, and someone has to be next in line.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant U as User
+  participant BS as Booking Service
+  participant AR as ActiveReservations
+  participant WU as WaitingUsers
+  participant NS as Notification
+
+  Note over U,WU: Show is sold out — all 200 seats HELD or BOOKED
+  U->>BS: POST /reserve · 2 seats
+  BS->>BS: SELECT FOR UPDATE — all FREE? no
+  BS->>WU: enqueue user · show_id · 2 seats
+  WU-->>BS: queue_position=47
+  BS-->>U: 429 Queued · ETR 3min
+
+  Note over AR: Sarah's HELD timer fires
+  AR->>AR: UPDATE show_seat — HELD → AVAILABLE
+  AR->>WU: seat freed · show_id
+
+  WU->>WU: pop head of show queue
+  WU->>NS: notify user47 · 5-min window opens
+  NS->>U: push: your seats are available!
+  U->>BS: POST /reserve · clicks deep link
+  BS-->>U: 200 OK · reservation_id
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>Per-show in-memory FIFO</h3>
+      <p>One queue per show, keyed by <code>show_id</code>. Each entry: <code>{user_id, seats_wanted, enqueued_at, notification_handle}</code>. Stored in memory only — losing the queue on a crash is acceptable because waiters re-poll the seat-map and re-queue if needed.</p>
+    </div>
+    <div class="card">
+      <h3>The 5-minute claim window</h3>
+      <p>When a waiter is woken, they get a 5-minute window to actually click "reserve". If they don't, they expire out (e.g., they fell asleep) and we wake the next in queue. This prevents the queue from stalling on no-shows.</p>
+    </div>
+    <div class="card">
+      <h3>Same-show sharding</h3>
+      <p>The queue lives on the <strong>same node</strong> as that show's <strong>ActiveReservationsService</strong> shard. Both are sharded by <code>show_id</code> so all events for one show — expiries, dequeues, notifications — happen on one machine. No cross-node coordination, no race conditions.</p>
+    </div>
+    <div class="card">
+      <h3>Multi-seat priority</h3>
+      <p>If a queued user wants 4 seats but only 2 freed up, we don't dequeue them — we keep them in queue and wake the next user wanting 2 or fewer. Optional: a separate "split" queue for users who'd accept fewer seats, but this is a UX choice with trade-offs.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: FAULT TOLERANCE                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-red">Step 11</span>
+  <h2>Fault Tolerance</h2>
+  <p>Two stateful services run in memory — ActiveReservationsService and WaitingUsersService. What happens when one of those nodes crashes mid-show?</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔁 ActiveReservationsService — recover from DB</h3>
+      <p>The in-memory timers are <em>derived state</em> — the source of truth lives in the <code>show_seat</code> table as rows where <code>status='HELD' AND expires_at IS NOT NULL</code>. On startup, the service reads all such rows and rebuilds the timer wheel. Held reservations whose timers fired during the crash are immediately expired on recovery.</p>
+      <p><strong>Failure mode:</strong> a 30-second crash means held reservations expire 30 seconds late — annoying for waiters but never wrong. No double-bookings, no lost money.</p>
+    </div>
+    <div class="card">
+      <h3>🌬️ WaitingUsersService — accept loss</h3>
+      <p>The waiting queue is in-memory only with <em>no</em> DB backing. A crash loses every waiter's queue position. We accept this because (a) the cost of persisting every queue mutation is high, (b) the consequence is "fans see a 'queue position lost, please re-queue' banner", and (c) it's reasonable to ask a fan who's been waiting 10 minutes to refresh.</p>
+      <p><strong>Mitigation:</strong> run a primary/standby pair with hot-failover, so an actual crash is rare. Even if the standby's queue is empty, the failover takes seconds and re-queueing is fast.</p>
+    </div>
+    <div class="card">
+      <h3>💾 MySQL — synchronous replicas + automated failover</h3>
+      <p>The Bookings DB is a primary with two synchronous replicas in different availability zones. Writes commit only after at least one replica acknowledges. Automated failover (e.g., via Orchestrator or Aurora's built-in failover) promotes a replica in 10-30 seconds on primary failure.</p>
+      <p><strong>RPO=0, RTO≈30s</strong> — no data loss, brief unavailability.</p>
+    </div>
+    <div class="card">
+      <h3>📥 Payment idempotency</h3>
+      <p>Every <code>/confirm</code> call carries an idempotency key. If the network drops mid-call and the client retries, the Payment Service recognizes the same key and returns the already-charged response — never double-charging the card. The Booking Service does the same when receiving the webhook callback.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: PARTITIONING                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-green">Step 12</span>
+  <h2>Data Partitioning</h2>
+  <p>3.6TB fits on one big MySQL box, but a single box can't survive its own failure and can't absorb a release-day spike on its own. We <strong>shard</strong> the Bookings DB. Choosing the shard key is the most consequential decision in this section.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>❌ Shard by <code>movie_id</code></h3>
+      <p>Tempting because a query like "show me all bookings for Marvel" stays on one shard. <strong>But:</strong> when Avengers releases, every booking in the country flows to one shard. That shard's CPU pegs at 100% while the others sit at 5%. Hot-shard hell.</p>
+    </div>
+    <div class="card">
+      <h3>✅ Shard by <code>show_id</code> (with consistent hashing)</h3>
+      <p>A specific show is "Avengers · 21:00 · PVR Forum". There are millions of shows across the catalog and any given show has at most ~500 seats — bounded write volume. Hashing <code>show_id</code> distributes load uniformly even on release day.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Why <code>show_id</code> is the right key — three reinforcing reasons</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>🌡️ Bounded heat</h3>
+      <p>The hottest possible thing is a single sold-out show — say 500 seats × 50 attempts/seat = 25K writes total. That's ~5 minutes of work for a single shard at 200 req/s. Nothing melts.</p>
+    </div>
+    <div class="card">
+      <h3>🎯 Co-located fairness</h3>
+      <p>ActiveReservationsService and WaitingUsersService are also sharded by <code>show_id</code> — same key, same node. All operations for one show land on one server set, so timer expiry and queue dequeue happen without cross-node coordination.</p>
+    </div>
+    <div class="card">
+      <h3>📈 Cheap rebalancing</h3>
+      <p>Use <strong>consistent hashing</strong> not <code>hash % N</code>. Adding a shard relocates only 1/N of shows instead of all of them — a few hours of rebalance instead of a multi-day migration with the cluster degraded throughout.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>Replication on top of partitioning:</strong> each shard is replicated 3× across availability zones with synchronous replication on the primary write. Reads from the booking DB (rare — most reads go through the catalog DB) can hit replicas. The browse plane's Cassandra catalog already handles its own multi-region replication.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: CACHE & LB                          -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-cyan">Step 13</span>
+  <h2>Cache &amp; Load Balancer</h2>
+  <p>Two infrastructure pieces with disproportionate impact on whether release day feels fast or feels broken.</p>
+
+  <h3 class="subh">Cache — what to put in Redis, what to leave out</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>✅ Cache: show metadata</h3>
+      <p>Movie title, cinema name, hall name, showtime, total seats, base price. Effectively immutable for the life of the show. TTL: hours. Hit rate: 99%+. Lives in Redis as JSON blobs keyed by <code>show:&lt;id&gt;</code>.</p>
+    </div>
+    <div class="card">
+      <h3>✅ Cache: seat-map snapshots</h3>
+      <p>A compact bitmap per show showing FREE/HELD/BOOKED for each seat. Refreshed every 1-2 seconds from the bookings DB. Slightly stale is fine — when a fan clicks a stale-FREE seat, the SERIALIZABLE transaction catches the conflict and returns 409. The cache absorbs 50K req/s of seat-map renders.</p>
+    </div>
+    <div class="card">
+      <h3>❌ Don't cache: the reservation itself</h3>
+      <p>The active state of a seat (am I currently HELD by Sarah?) lives only in the bookings DB and ActiveReservationsService. Caching it would invite stale-read double-bookings — not worth it.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Load Balancer — sticky sessions during checkout</h3>
+  <p>The LB does normal round-robin for browse traffic. But the moment a user starts <code>/reserve</code>, we set a sticky cookie pinning that user to the same Booking Service pod for the rest of their checkout (up to 5 minutes). This isn't strictly required for correctness — the DB is the source of truth — but it lets the Booking Service keep small in-memory state (selected seats, payment intent, idempotency key) instead of refetching on every click.</p>
+
+  <div class="highlight hl-cyan"><strong>Algorithm choice:</strong> start with round robin, upgrade to least-connections once one pod's CPU consistently runs hotter than others. Health checks every 5 seconds; evict unhealthy pods within 15 seconds. The LB itself is an active-active pair behind a single virtual IP — single LB failure is invisible to clients.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: INTERVIEW Q&A                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-blue">Step 14</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">How do you prevent two users from booking the same seat?</div>
+  <div class="ans"><strong>Three layers of defense, all in one transaction.</strong> (1) <code>SERIALIZABLE</code> isolation level — blocks dirty, non-repeatable, and phantom reads. (2) <code>SELECT ... FOR UPDATE</code> on the seat row — exclusive row lock, the second transaction physically waits. (3) UNIQUE constraint on <code>(show_id, cinema_seat_id)</code> in <code>show_seat</code> — even if every other safeguard had a bug, the DB would refuse the second insert. With all three, the second user gets a clean 409 Conflict and is offered alternative seats.</div>
+
+  <div class="iq">Why SERIALIZABLE isolation level — isn't that slow?</div>
+  <div class="ans"><strong>Yes, ~2-3× slower than READ COMMITTED — and we accept it.</strong> Booking peak is ~200 req/s, well below MySQL's ~1K/s ceiling even at SERIALIZABLE. Lower isolation levels permit phantom reads ("seat is FREE in our SELECT but a concurrent INSERT made it BOOKED before our INSERT lands") — the literal definition of a double-booking. Throughput is recoverable; trust in the brand isn't. Pay the 2-3× tax, sleep at night.</div>
+
+  <div class="iq">How do you handle a flash sale at 50K req/s?</div>
+  <div class="ans"><strong>Three pressure-relief mechanisms.</strong> (1) <strong>Browse plane absorbs most of it</strong> — 95%+ of those 50K are GETs on seat-maps, served by Redis at memory speed. (2) <strong>Booking plane is sharded by show_id</strong> with consistent hashing — one hot show pegs one shard at ~200 req/s, not the whole cluster. (3) <strong>WaitingUsersService throttles writes</strong> — once a show is full, new reservers go straight into a queue (no DB write, no lock contention). The bookings DB only sees the ~200 req/s of "actually trying to claim a free seat" requests, never the 50K of "browsing to see if a seat freed up".</div>
+
+  <div class="iq">What if a user clicks reserve but their network drops before payment?</div>
+  <div class="ans"><strong>The 5-minute timer in ActiveReservationsService takes care of it.</strong> The seat is HELD with <code>expires_at = NOW() + 300s</code>. After 5 minutes with no <code>/confirm</code>, the timer fires, the seat atomically transitions HELD → AVAILABLE, and WaitingUsersService dequeues the next waiter. The user who lost their network sees an "expired" message on their next page-load. No double-charge (payment was never started), no stuck seat.</div>
+
+  <div class="iq">Why split ActiveReservations and WaitingUsers into separate services?</div>
+  <div class="ans"><strong>They have different lifetimes and different failure modes.</strong> ActiveReservations is the timer keeper — it must be DB-backed so a crash doesn't extend a HELD seat indefinitely (correctness concern). WaitingUsers is the fairness queue — losing it on crash just means waiters re-queue (UX concern, not correctness). Smashing them together would force the simpler queue to inherit the heavier persistence requirements, doubling the DB write rate for no benefit. Separation also lets them scale and fail independently.</div>
+
+  <div class="iq">How is fairness enforced when 100 users want the same 10 seats?</div>
+  <div class="ans"><strong>Per-show FIFO queue in WaitingUsersService.</strong> The first 10 users to click "reserve" get HELD seats. Users 11-100 are appended to the per-show queue with their <code>enqueued_at</code> timestamp. When any of the 10 HELD reservations expires, ActiveReservationsService notifies WaitingUsers, which pops the head of the queue (the longest-waiting user) and gives them a 5-minute window to claim. If they don't, we wake the next in line. First-come-first-served, enforced by a queue, not by who happens to refresh fastest.</div>
+
+  <div class="iq">Why MySQL for bookings instead of Cassandra or DynamoDB?</div>
+  <div class="ans"><strong>Multi-row ACID transactions.</strong> A 4-seat order needs to atomically claim 4 specific rows or fail entirely — partial booking is unacceptable. MySQL InnoDB does this in 5 lines of SQL with row-level locks. Cassandra's lightweight transactions are per-partition only and 10× slower. DynamoDB's transaction API caps at 25 items but is comparatively expensive and adds latency. At 3.6TB total and 200 booking-writes/sec peak, MySQL's vertical-scale ceiling isn't the problem; correctness is, and MySQL nails correctness.</div>
+
+  <div class="iq">How would you scale this for global launch (multi-region)?</div>
+  <div class="ans"><strong>Browse plane goes global, booking plane stays regional.</strong> The Cassandra catalog DB replicates to all regions — a fan in Mumbai gets seat-maps from a Mumbai replica with ~10ms latency. The bookings MySQL stays single-region per market (e.g., one cluster for India, one for US) because cross-region SERIALIZABLE transactions would have intolerable latency (100ms+ round trips). Each market's shows live in that market's DB; users only book in their region. For genuine global shows (none in cinema, but consider concert tours), shard by show_id and pin each show to the region with the most local demand.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "It's a sharded MySQL cluster running SERIALIZABLE transactions for atomic multi-seat orders, with a Redis-cached browse plane for 50K req/s read traffic and two cooperating services — ActiveReservations for 5-minute timers and WaitingUsers for fairness queues — that turn a 'whoever refreshes first wins' free-for-all into a deli-counter ticket system."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LeetCode / Online Judge — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<link rel="stylesheet" href="../../css/likes.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script src="../../js/likes.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --pink:#ec5d8a;--pink-d:rgba(236,93,138,.12);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--blue);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--blue);color:#7eb1e3}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--heading)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:760px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.92rem;margin-bottom:1.5rem;max-width:740px}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.3rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.87rem;color:var(--text);line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+.card code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.05rem .35rem;border-radius:3px}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── Numbered component badge (matches diagram numbering ①②③…) ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.85rem}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--cyan)}
+.highlight strong{font-weight:700}
+.highlight code{font-family:'JetBrains Mono',monospace;font-size:.78rem;background:rgba(0,0,0,.25);padding:.05rem .35rem;border-radius:3px;color:inherit}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.85rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.85rem;color:var(--text);border:1px solid var(--border)}
+.ans strong{color:var(--heading)}
+.ans code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.05rem .35rem;border-radius:3px}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.82rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.6rem .85rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── CHECK LIST ── */
+.checklist{list-style:none;padding:0;margin:0}
+.checklist li{padding:.55rem 0 .55rem 1.8rem;position:relative;font-size:.88rem;color:var(--text);border-bottom:1px dashed var(--border)}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{content:'✓';position:absolute;left:.2rem;top:.55rem;color:var(--green);font-weight:800;font-size:.95rem}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>LeetCode / Online <span>Judge</span></h1>
+  <p class="sub">A coding platform that runs untrusted code from millions of strangers — sandboxed runners, an async submission queue, contest leaderboards in real time, and the data-plane / control-plane split that keeps it all from setting itself on fire.</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Clarify Requirements</a></li>
+      <li><a href="#s2">Capacity &amp; Scale</a></li>
+      <li><a href="#s3">Actors &amp; Use Cases</a></li>
+      <li><a href="#s4">High-Level Architecture</a></li>
+      <li><a href="#s5">The Sandbox Problem</a></li>
+      <li><a href="#s6">Submission Flow</a></li>
+      <li><a href="#s7">Verdict State Machine</a></li>
+      <li><a href="#s8">Data Model</a></li>
+      <li><a href="#s9">Contests &amp; Leaderboard</a></li>
+      <li><a href="#s10">Anti-Abuse &amp; Fairness</a></li>
+      <li><a href="#s11">Trade-offs</a></li>
+      <li><a href="#s12">Walkthrough — Priya</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: CLARIFY REQUIREMENTS               -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>Clarify Requirements</h2>
+  <p>Before any boxes-and-arrows, we pin down what this thing must do and — just as importantly — what it must <em>not</em> do. The interesting half of LeetCode is not the problem list; it's the willingness to run code submitted by people we have never met.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional</h3>
+      <ul>
+        <li>Browse a catalog of problems with statement, examples, constraints</li>
+        <li>Submit code in 10–15 languages (Python, C++, Java, Go, JS, …)</li>
+        <li>Get a verdict: <code>AC</code>, <code>WA</code>, <code>TLE</code>, <code>MLE</code>, <code>RE</code>, <code>CE</code></li>
+        <li>"Run" mode — execute code on a custom test input (debug)</li>
+        <li>Submission history per user, per problem</li>
+        <li>Contests with a real-time leaderboard</li>
+        <li>Discussions, editorials, hints</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional</h3>
+      <ul>
+        <li>Verdict latency: p99 under ~5 seconds for normal submissions</li>
+        <li>Sandboxed execution — one bad submission cannot touch the host</li>
+        <li>Fairness — contest traffic must not be starved by practice traffic</li>
+        <li>Availability — 99.9% (contest start = hard deadline, not "soon")</li>
+        <li>Scale — 100K concurrent during a weekly contest</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🚫 Out of Scope (today)</h3>
+      <ul>
+        <li>IDE features (intellisense, refactor) — use the browser editor</li>
+        <li>Pair programming / mock interviews</li>
+        <li>Payments, billing, subscription tiers</li>
+        <li>Mobile native apps — responsive web only</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🎯 The one thing that matters</h3>
+      <p>We are building a service that <strong>runs strangers' code on our infrastructure</strong>. Every other component — problem DB, leaderboard, discussions — is a normal CRUD app. The sandbox is where the architecture lives or dies.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: CAPACITY & SCALE                   -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-blue">Step 2</span>
+  <h2>Capacity &amp; Scale Estimation</h2>
+  <p>Numbers tell you which boxes need to be plural. Without numbers, you end up over-engineering the easy parts and under-engineering the hard ones.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>Dimension</th><th>Number</th><th>Why it matters</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Total users</td><td>~10M</td><td>Catalog reads — cacheable, easy</td></tr>
+        <tr><td>Daily active users</td><td>~1M</td><td>Steady-state load on API + judge</td></tr>
+        <tr><td>Submissions / day</td><td>~5M (avg)</td><td>~60 / sec average</td></tr>
+        <tr><td>Submissions / sec (peak — weekly contest)</td><td>~1,000–5,000</td><td>The number that sizes the runner pool</td></tr>
+        <tr><td>Avg test cases per problem</td><td>~30–100</td><td>Each "submission" = many runner executions</td></tr>
+        <tr><td>Avg CPU per submission</td><td>1–3 seconds</td><td>Determines runner throughput per node</td></tr>
+        <tr><td>Concurrent contest users (global round)</td><td>~100K</td><td>Huge spike, narrow window</td></tr>
+        <tr><td>Storage — submissions</td><td>~1KB × 5M/day = 5GB/day</td><td>Append-only, cheap to keep forever</td></tr>
+        <tr><td>Storage — test cases</td><td>~3K problems × ~5MB = ~15GB</td><td>Static, S3-friendly, CDN-cacheable</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>The one bottleneck:</strong> at peak, we need ~5,000 submissions/sec × 2s CPU each = <strong>10,000 CPU-seconds per second</strong>. That's 10,000 always-on cores — or, more realistically, an autoscaling pool that doubles when a contest starts and shrinks when it ends. This single number sizes 80% of the infrastructure cost.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: ACTORS & USE CASES                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-green">Step 3</span>
+  <h2>Actors &amp; Use Cases</h2>
+  <p>Three kinds of people touch this system, and they want very different things from it. Naming them up front prevents the design from drifting toward "average user" — there is no average.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  P([Practitioner])
+  C([Contestant])
+  A([Admin / Setter])
+
+  P --> BR[Browse Problems]
+  P --> RU[Run Code on Custom Input]
+  P --> SU[Submit Solution]
+  P --> HI[View Submission History]
+  P --> DI[Read Discussions]
+
+  C --> JC[Join Contest]
+  C --> CS[Submit During Contest]
+  C --> LB[View Live Leaderboard]
+
+  A --> AP[Add / Edit Problem]
+  A --> AT[Upload Test Cases]
+  A --> AC[Configure Contest]
+
+  style P fill:#e8743b,stroke:#e8743b,color:#fff
+  style C fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style A fill:#9b72cf,stroke:#9b72cf,color:#fff
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🟠 Practitioner</h3>
+      <p>The 95% case — Priya, a backend engineer prepping for interviews after dinner. She wants the catalog snappy, the editor responsive, and her verdict back before she gets bored. She is patient enough to wait 5 seconds, but not 30.</p>
+    </div>
+    <div class="card">
+      <h3>🔵 Contestant</h3>
+      <p>Same person, different mode. Once a week she joins a 90-minute timed contest with 100,000 strangers. Now <em>fairness</em> matters: her verdict can't be slower than someone else's just because the queue picked theirs first. Leaderboard rank must update in seconds, not minutes.</p>
+    </div>
+    <div class="card">
+      <h3>🟣 Admin / Setter</h3>
+      <p>The problem author. Rarely on the platform, but when they're there they upload massive test files (a 50MB stress test is normal) and need a private "validation run" to make sure their solution actually passes their own tests.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: HIGH-LEVEL ARCHITECTURE             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>High-Level Architecture</h2>
+  <p>We'll build this in three passes. First the naive design (and the four ways it falls over), then the central mental model, then the production shape with every component justified by something the previous design got wrong.</p>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:1.4rem 0 .5rem">Pass 1 — The naive design (one server, one process)</h3>
+  <p style="color:var(--text);font-size:.9rem;margin-bottom:.85rem">Imagine you're building a hackathon prototype. The whole thing is one Flask app on one EC2 box. When Priya hits "Submit", the API handler shells out:</p>
+
+<pre><span class="cmt"># naive_judge.py — DON'T do this in production</span>
+<span class="kw">def</span> <span class="fn">judge</span>(submission):
+    <span class="kw">with</span> <span class="fn">open</span>(<span class="str">"/tmp/sol.py"</span>, <span class="str">"w"</span>) <span class="kw">as</span> f:
+        f.write(submission.code)
+    <span class="kw">for</span> tc <span class="kw">in</span> testcases:
+        out = subprocess.<span class="fn">check_output</span>(
+            [<span class="str">"python"</span>, <span class="str">"/tmp/sol.py"</span>],
+            input=tc.input,
+            timeout=<span class="num">2</span>
+        )
+        <span class="kw">if</span> out != tc.expected: <span class="kw">return</span> <span class="str">"WA"</span>
+    <span class="kw">return</span> <span class="str">"AC"</span></pre>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  CL([Client])
+  WS[Single Web Server<br/>+ Python subprocess]
+  DB[(SQLite)]
+
+  CL -- POST /submit --> WS
+  WS -- shell out --> WS
+  WS --> DB
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style WS fill:#e05252,stroke:#e05252,color:#fff
+  style DB fill:#9b72cf,stroke:#9b72cf,color:#fff
+    </div>
+  </div>
+
+  <p style="color:var(--text);font-size:.9rem;margin-bottom:.85rem"><strong>Why this fails — four concrete deaths:</strong></p>
+  <div class="g2">
+    <div class="card" style="border-color:var(--red-d)">
+      <h3 style="color:var(--red)">💀 Security</h3>
+      <p>A malicious submission is just <code>os.system("rm -rf /")</code>. It runs as the same user as your API, on the same disk as your problems database. One <code>curl</code> and your business is gone.</p>
+    </div>
+    <div class="card" style="border-color:var(--red-d)">
+      <h3 style="color:var(--red)">💀 Isolation</h3>
+      <p>An infinite loop or a fork-bomb pegs the only CPU. Now <em>every other user's</em> page load times out — including the homepage. One person broke the entire site.</p>
+    </div>
+    <div class="card" style="border-color:var(--red-d)">
+      <h3 style="color:var(--red)">💀 Throughput</h3>
+      <p>2-second runs × 1 process = 0.5 submissions/sec. At a contest peak we need 5,000/sec. We are off by 10,000×.</p>
+    </div>
+    <div class="card" style="border-color:var(--red-d)">
+      <h3 style="color:var(--red)">💀 Latency coupling</h3>
+      <p>The API request blocks for 5–30 seconds while testcases run. Half of those connections will time out at the load balancer before the verdict ever comes back. Users hit "submit" twice. Now you have duplicates.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>So what?</strong> Each death names a component we'll need: <em>sandbox</em> (security + isolation), <em>worker pool</em> (throughput), <em>async queue + push channel</em> (latency coupling). The architecture is being written for us by the failures.</div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:2rem 0 .5rem">Pass 2 — The mental model: Web tier vs. Judge tier</h3>
+  <p style="color:var(--text);font-size:.9rem;margin-bottom:.85rem">The single biggest idea in this design is that the system has <strong>two completely different jobs</strong>, and they should run on completely different machines. Mixing them is the original sin of Pass 1.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:var(--blue)">
+      <h3 style="color:var(--blue)">🌐 Web Tier — trusted, fast, stateless</h3>
+      <p>Standard web app stuff. Read problems, write submissions, list users, render pages. <strong>Predictable</strong>: every request is short, well-typed, and runs code <em>we wrote</em>. Scales horizontally with no surprises. CPU per request is tiny (microseconds).</p>
+      <p style="margin-top:.5rem"><strong>Lives behind:</strong> a load balancer + autoscaler tuned for HTTP latency.</p>
+    </div>
+    <div class="card" style="border-color:var(--red)">
+      <h3 style="color:var(--red)">⚙️ Judge Tier — untrusted, slow, dangerous</h3>
+      <p>Runs <em>somebody else's code</em> against test data. <strong>Unpredictable</strong>: 1ms or 30s, peaceful or hostile, leaks memory or fork-bombs. CPU per request is huge (seconds). Each runner is a disposable container that gets nuked after one submission.</p>
+      <p style="margin-top:.5rem"><strong>Lives behind:</strong> a queue, never reachable directly from the internet.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>The contract between them is a single message on a queue.</strong> Web → "judge this submission, here's the ID". Judge → "submission X got verdict Y". They never share a process, never share a disk, never share an OS user. That single boundary is what makes the whole design safe to operate.</div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:2rem 0 .5rem">Pass 3 — The production shape</h3>
+  <p style="color:var(--text);font-size:.9rem;margin-bottom:.85rem">Now the full picture. Every box below is here because Pass 1 broke without it. Numbers ①–⑫ on the diagram match the explanation grid below.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  CL([① Client App<br/>browser editor])
+  CDN[② CDN<br/>statements · static assets]
+  GW[③ API Gateway<br/>auth · rate limit]
+  API[④ API Service<br/>problems · users · submissions]
+  Q[/⑤ Submission Queue<br/>Kafka/]
+  DISP[⑥ Judge Dispatcher<br/>routes by language]
+  POOL[⑦ Runner Sandbox Pool<br/>Firecracker/gVisor microVMs]
+  TC[(⑧ Test Case Store<br/>S3)]
+  RS[/⑨ Result Stream<br/>Kafka topic/]
+  WS[⑩ WebSocket Push<br/>verdict fan-out]
+  LB[⑪ Leaderboard Service<br/>Redis ZSET]
+  DS[(⑫ Postgres + Redis<br/>data + cache)]
+
+  CL --> CDN
+  CL --> GW
+  GW --> API
+  API --> DS
+  API --> Q
+  Q --> DISP
+  DISP --> POOL
+  POOL --> TC
+  POOL --> RS
+  RS --> API
+  RS --> LB
+  RS --> WS
+  WS --> CL
+  LB --> DS
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style CDN fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style GW fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style API fill:#38b265,stroke:#38b265,color:#fff
+  style Q fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style DISP fill:#e05252,stroke:#e05252,color:#fff
+  style POOL fill:#e05252,stroke:#e05252,color:#fff
+  style TC fill:#d4a838,stroke:#d4a838,color:#000
+  style RS fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style WS fill:#3cbfbf,stroke:#3cbfbf,color:#000
+  style LB fill:#38b265,stroke:#38b265,color:#fff
+  style DS fill:#d4a838,stroke:#d4a838,color:#000
+    </div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:1.6rem 0 .35rem">Component-by-component — what each numbered box does</h3>
+  <p style="color:var(--text);font-size:.9rem;margin-bottom:1rem">Use the numbers in the diagram above to find the matching card below. Each one answers: what is it, why is it here, and what would break if we ripped it out tomorrow.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client App</h3>
+      <p>The browser-side editor (Monaco), the problem renderer, the verdict UI. It's responsible for one tricky thing besides drawing: <strong>holding open a WebSocket</strong> after submit so it can paint the verdict the moment ⑩ sends it. Without that socket, the user would have to poll, and we'd burn 100K poll requests per minute during contests for no reason.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> the "did my submission finish yet?" question, with zero polling.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">②</span> CDN</h3>
+      <p>Problem statements, examples, editorials, syntax-highlight CSS — all immutable for hours at a time. The CDN (CloudFront / Fastly) is just a bunch of edge servers that cache these and serve them from the city closest to Priya. A user in Bangalore opens "Two Sum" and the bytes come from a Mumbai POP, not from us-east-1.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> 90% of read traffic never reaches our origin. One spike-protection layer for free.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">③</span> API Gateway</h3>
+      <p>The first thing every <em>dynamic</em> request hits. Terminates TLS, checks the auth cookie/JWT, applies per-user rate limits (e.g. 10 submits/min), and routes to the right backend service. It's the bouncer at the door — by the time a request reaches ④, it's already been authenticated and rate-checked.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> if removed, every backend service would have to re-implement auth and rate limiting. Plus, no protection against a casual scraper hammering /submit 10K times/sec.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">④</span> API Service</h3>
+      <p>The "boring" part of the platform — Spring Boot or FastAPI, doesn't matter. Owns the CRUD endpoints: list problems, fetch a problem, post a submission, fetch submission history. When it accepts a submission, it does <em>not</em> run the code — it writes a row in Postgres marked <code>PENDING</code> and drops a message on ⑤.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> decouples "I received your code" (fast, ~10ms) from "I have a verdict" (slow, ~5s). The HTTP request returns the moment the row is written.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑤</span> Submission Queue</h3>
+      <p>A Kafka topic (or SQS queue). Every submission gets one message. Why a queue and not a direct call? Three reasons: <strong>buffering</strong> (a contest dumps 5K submissions in one second; the queue absorbs the spike while runners catch up), <strong>fairness</strong> (FIFO inside a partition prevents one heavy submission from blocking the next), and <strong>retries</strong> (if a runner crashes, the message is redelivered, no data lost).</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> the "contest start = traffic 100×" problem becomes a "queue depth grows for 90s and drains" problem — manageable instead of catastrophic.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑥</span> Judge Dispatcher</h3>
+      <p>A small service (or a Kubernetes operator) that consumes ⑤ and decides which runner pool to send each message to. Python submissions go to the Python runner pool, C++ to the C++ pool, etc. It's also where contest submissions get bumped to a high-priority partition so they jump the queue past practice traffic.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> one-language-per-runner means each runner image is small and starts in &lt;100ms. Without dispatch, every runner would need every compiler — 5GB+ images and slow cold starts.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑦</span> Runner Sandbox Pool</h3>
+      <p>The dangerous part — the only place untrusted code actually executes. Each runner is a <strong>disposable microVM</strong> (Firecracker) or <strong>gVisor-wrapped container</strong>: 256MB RAM cap, 2s CPU cap, no network, read-only filesystem, separate kernel namespace. One submission = one runner = one execution = nuked. We never reuse a sandbox between users.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> a malicious <code>fork()</code> bomb only kills its own VM. The host, the database, every other submission — untouched. Without this, the entire platform is one <code>os.system</code> away from being deleted.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑧</span> Test Case Store</h3>
+      <p>S3 (or any object store). Holds the actual <code>input.txt</code> / <code>expected.txt</code> files for every problem. Test cases can be huge (50MB stress tests are normal). Storing them in Postgres would bloat rows; embedding them in the runner image would make images gigantic. S3 is the right place: cheap, immutable, signed-URL access from the runner.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> separating big binary blobs from relational data — the textbook reason object stores exist.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑨</span> Result Stream</h3>
+      <p>A second Kafka topic, this one carrying verdicts <em>out</em> of the judge tier. Multiple consumers care about each verdict: ④ updates the submissions row, ⑪ updates the leaderboard, ⑩ pushes to the user's browser. Putting this on a stream instead of point-to-point calls means we can <strong>add new consumers without changing the runner</strong> — analytics, fraud detection, achievement badges, all just subscribe.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> fan-out without coupling. The runner doesn't know who cares about its result; it just publishes.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑩</span> WebSocket Push</h3>
+      <p>A long-lived connection service. When Priya opens a problem, her browser opens a socket here keyed on her user ID. When ⑨ emits her verdict, this service finds the socket and pushes the message in milliseconds. No polling, no "refresh to see verdict".</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> the latency-perception problem. The actual judge takes ~5s, but the user sees the verdict <em>the instant</em> it's ready, not 30s later when polling next fires.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑪</span> Leaderboard Service</h3>
+      <p>A small service whose entire life is consuming ⑨ and updating a Redis sorted set per contest: <code>ZADD contest:1234 &lt;score&gt; user_id</code>. The leaderboard page asks Redis for the top 100 with <code>ZREVRANGE</code> — single-digit milliseconds, no Postgres scan. During a contest, every contestant's browser long-polls or sockets this view and sees rank changes within a second of any verdict landing.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> "show me the live top 100 of 100K" as a sub-millisecond Redis op instead of a 30-second SQL aggregate.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑫</span> Postgres + Redis</h3>
+      <p>Postgres is the source of truth — users, problems, submissions, contests. Redis is the hot cache (problem statement HTML, "have I solved this" lookups, leaderboards, rate-limit counters). Anything Redis loses can be rebuilt from Postgres; nothing in Postgres is rebuildable. That asymmetry is the whole reason we keep both.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> Postgres = durability, Redis = speed. Picking one would mean either slow reads or losing submission history on a node failure.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>So what — in one line:</strong> the API tier moves <em>messages</em>, the judge tier moves <em>code</em>, and they only ever speak through queues. That single split is what makes 5,000 hostile submissions per second a routine Sunday afternoon instead of a Sev-1.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: THE SANDBOX PROBLEM                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-red">Step 5</span>
+  <h2>The Sandbox — Docker vs. gVisor vs. Firecracker</h2>
+  <p>If you remember one thing from this page, make it this section. The choice of <em>how</em> to isolate untrusted code is the single biggest cost-vs-security trade-off in the whole design.</p>
+
+  <p style="color:var(--text);font-size:.92rem;margin-bottom:1rem">Imagine you're a casino dealer. Every player is potentially a card counter, a thief, or just careless. You can't ban them — they're your business. So you give each one their own table, their own deck, their own chips, and you nuke the table after one hand. That's a sandbox. The question is: how heavy is the table?</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:var(--yellow)">
+      <h3 style="color:var(--yellow)">🐳 Plain Docker</h3>
+      <p><strong>What:</strong> a container with seccomp + cgroups. Shares the host kernel.</p>
+      <p style="margin-top:.4rem"><strong>Pros:</strong> fast (50ms cold start), cheap, ubiquitous tooling.</p>
+      <p style="margin-top:.4rem"><strong>Cons:</strong> a kernel exploit (CVE-2022-0185 style) breaks out to the host. <em>Not</em> sufficient on its own for hostile multi-tenant code.</p>
+      <p style="margin-top:.4rem"><strong>When it's enough:</strong> internal tools, trusted CI runners, single-tenant.</p>
+    </div>
+    <div class="card" style="border-color:var(--blue)">
+      <h3 style="color:var(--blue)">🛡️ gVisor</h3>
+      <p><strong>What:</strong> Google's user-space kernel. Intercepts every syscall in a Go process before the real kernel sees it.</p>
+      <p style="margin-top:.4rem"><strong>Pros:</strong> dramatically smaller kernel attack surface than Docker, cold start ~100ms, fits the container ecosystem.</p>
+      <p style="margin-top:.4rem"><strong>Cons:</strong> 5–30% perf overhead (every syscall is intercepted), some syscalls unimplemented (rare languages may misbehave).</p>
+      <p style="margin-top:.4rem"><strong>When it fits:</strong> the LeetCode sweet spot. Strong isolation, container-grade ergonomics.</p>
+    </div>
+    <div class="card" style="border-color:var(--green)">
+      <h3 style="color:var(--green)">🔥 Firecracker microVM</h3>
+      <p><strong>What:</strong> AWS's KVM-based microVM. Each "container" is actually a tiny real Linux VM — own kernel, own memory, own everything.</p>
+      <p style="margin-top:.4rem"><strong>Pros:</strong> hardware-level isolation. Even a kernel zero-day stays inside the VM. ~125ms cold start, ~5MB overhead per VM.</p>
+      <p style="margin-top:.4rem"><strong>Cons:</strong> heavier than gVisor on dense hosts; tooling is less mature.</p>
+      <p style="margin-top:.4rem"><strong>When it fits:</strong> FaaS (this is what AWS Lambda runs on), or any platform where you'd lose the company if the host got rooted.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>What we'd actually pick:</strong> gVisor for the default runner, Firecracker for "heavy" or contest submissions where the extra isolation is worth the extra start-up time. Plain Docker is <em>never</em> the answer for hostile code, even if 80% of online judges historically used it (and most of those got pwned at some point).</div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--heading);margin:1.5rem 0 .5rem">Inside one runner — the hard limits</h3>
+  <p style="color:var(--text);font-size:.9rem;margin-bottom:.85rem">Sandbox is necessary but not sufficient. Inside the sandbox we still need limits or a clever submission can DoS its own VM and starve the queue. Every runner enforces:</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Limit</th><th>Mechanism</th><th>What it prevents</th></tr></thead>
+      <tbody>
+        <tr><td>CPU time</td><td><code>setrlimit(RLIMIT_CPU)</code> + wallclock timer</td><td>Infinite loops</td></tr>
+        <tr><td>Memory</td><td>cgroup memory limit (256MB)</td><td>Memory bombs</td></tr>
+        <tr><td>File descriptors</td><td><code>RLIMIT_NOFILE</code> = 64</td><td>fd exhaustion</td></tr>
+        <tr><td>Process count</td><td><code>RLIMIT_NPROC</code> = 32</td><td>Fork bombs</td></tr>
+        <tr><td>Network</td><td>Network namespace, no interfaces</td><td>Exfiltration, scanning</td></tr>
+        <tr><td>Filesystem</td><td>Read-only root, tiny tmpfs at <code>/tmp</code></td><td>Disk fills, persistence</td></tr>
+        <tr><td>Output size</td><td>Bytes written capped at 64KB</td><td>Log floods</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: SUBMISSION FLOW                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-cyan">Step 6</span>
+  <h2>Submission Flow — Sequence</h2>
+  <p>The happy path, end to end. Note where the request returns (fast), where the verdict actually lands (slow), and how the user finds out (push).</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor U as Priya
+  participant GW as API Gateway
+  participant API as API Service
+  participant DB as Postgres
+  participant Q as Submit Queue
+  participant D as Dispatcher
+  participant R as Runner
+  participant TC as S3 Testcases
+  participant RS as Result Stream
+  participant WS as WS Push
+  participant LB as Leaderboard
+
+  U->>GW: POST /submit code + problem_id
+  GW->>GW: auth and rate limit
+  GW->>API: forward
+  API->>DB: INSERT submission status=PENDING
+  API->>Q: publish submission_id
+  API-->>U: 202 Accepted
+  Note over U,WS: Browser keeps WS open and waits for push
+
+  Q->>D: consume
+  D->>R: dispatch to Python pool
+  R->>TC: GET testcases via signed URL
+  R->>R: compile and run testcases
+  R->>RS: publish verdict + runtime
+
+  RS->>API: consume
+  API->>DB: UPDATE status=AC runtime=47ms
+  RS->>LB: consume
+  LB->>LB: ZADD contest score user_id
+  RS->>WS: consume
+  WS->>U: push verdict AC runtime 47ms
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>Read this twice:</strong> the HTTP request returns (<code>202 Accepted</code>) <em>before</em> any code is run. From the API's perspective, "submit" is just "write a row + drop a message". The actual heavy lifting happens asynchronously, and the user finds out via push. This is the single most important shape difference from the naive design.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: VERDICT STATE MACHINE              -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-yellow">Step 7</span>
+  <h2>Verdict State Machine</h2>
+  <p>Every submission moves through a small, well-defined set of states. Drawing it explicitly catches edge cases — like "what happens if the runner crashes mid-execution?" — that are easy to miss in prose.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+stateDiagram-v2
+  [*] --> PENDING: user hits submit
+  PENDING --> COMPILING: runner picks up
+  COMPILING --> RUNNING: compile ok
+  COMPILING --> CE: compile error
+  RUNNING --> AC: all testcases pass
+  RUNNING --> WA: any output mismatch
+  RUNNING --> TLE: CPU limit hit
+  RUNNING --> MLE: memory limit hit
+  RUNNING --> RE: non-zero exit / signal
+  RUNNING --> SE: runner crash / OOM host
+  SE --> PENDING: auto-retry (max 2)
+  SE --> SYSTEM_FAIL: retries exhausted
+  AC --> [*]
+  WA --> [*]
+  TLE --> [*]
+  MLE --> [*]
+  RE --> [*]
+  CE --> [*]
+  SYSTEM_FAIL --> [*]
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🟢 Terminal "user error" states</h3>
+      <p><code>AC</code> Accepted, <code>WA</code> Wrong Answer, <code>TLE</code> Time Limit Exceeded, <code>MLE</code> Memory Limit Exceeded, <code>RE</code> Runtime Error, <code>CE</code> Compile Error. These are <strong>deterministic</strong> — re-running the same code on the same input gives the same answer. Show them once and move on.</p>
+    </div>
+    <div class="card">
+      <h3>🔴 The tricky one — <code>SE</code> System Error</h3>
+      <p>The runner itself crashed (OOM-killed by the host, container died, network blip to S3). This is <strong>not</strong> the user's fault and we must not penalize them. The dispatcher auto-retries up to 2 times before bubbling up <code>SYSTEM_FAIL</code> and pinging on-call.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: DATA MODEL                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-purple">Step 8</span>
+  <h2>Data Model</h2>
+  <p>The relational core. Test cases live in S3 (referenced by URL), source code lives in object storage too once it's old (recent submissions stay in Postgres for fast history reads).</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  USER ||--o{ SUBMISSION : submits
+  PROBLEM ||--o{ SUBMISSION : "has many"
+  PROBLEM ||--o{ TESTCASE : owns
+  CONTEST ||--o{ CONTEST_PROBLEM : includes
+  PROBLEM ||--o{ CONTEST_PROBLEM : appears_in
+  USER ||--o{ CONTEST_REGISTRATION : joins
+  CONTEST ||--o{ CONTEST_REGISTRATION : has
+
+  USER {
+    uuid user_id PK
+    string handle
+    string email
+    int rating
+    timestamp created_at
+  }
+  PROBLEM {
+    uuid problem_id PK
+    string slug
+    string title
+    text statement_md
+    string difficulty
+    int time_limit_ms
+    int memory_limit_mb
+  }
+  TESTCASE {
+    uuid testcase_id PK
+    uuid problem_id FK
+    string s3_input_url
+    string s3_expected_url
+    bool is_sample
+    int weight
+  }
+  SUBMISSION {
+    uuid submission_id PK
+    uuid user_id FK
+    uuid problem_id FK
+    uuid contest_id "nullable FK"
+    string language
+    string s3_code_url
+    string status "PENDING|AC|WA|TLE|MLE|RE|CE|SE"
+    int runtime_ms
+    int memory_kb
+    timestamp submitted_at
+  }
+  CONTEST {
+    uuid contest_id PK
+    string title
+    timestamp start_at
+    timestamp end_at
+    string scoring "ICPC|IOI"
+  }
+  CONTEST_PROBLEM {
+    uuid contest_id FK
+    uuid problem_id FK
+    int points
+  }
+  CONTEST_REGISTRATION {
+    uuid contest_id FK
+    uuid user_id FK
+    int rank
+    int score
+  }
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>Two intentional choices:</strong> (1) Source code is stored in S3, not in the <code>SUBMISSION</code> row — a row is ~200 bytes, code blobs would bloat the table 100×. (2) <code>contest_id</code> on submission is nullable — practice and contest submissions share the same table, so submission history is trivial to query.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: CONTESTS & LEADERBOARD             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-green">Step 9</span>
+  <h2>Contests &amp; the Real-Time Leaderboard</h2>
+  <p>The contest is the demo case. Everything that's lukewarm during normal traffic is on fire here: 100K people start at the same second, every submission must rank against all the others, and the leaderboard updates a board everyone is staring at.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🚦 Priority lane in the queue</h3>
+      <p>Kafka topics are partitioned, and the dispatcher reads contest-tagged messages from a <strong>separate high-priority partition</strong>. Practice submissions can sit in queue for 30 seconds during a peak — contest submissions can't sit for more than 1 second. Different SLOs, different lanes.</p>
+    </div>
+    <div class="card">
+      <h3>⚡ Why Redis ZSET wins for ranking</h3>
+      <p>A leaderboard is "give me the top 100 sorted by score". In Postgres that's a full-table sort every time the page renders — 100K rows, milliseconds. In Redis: <code>ZADD</code> is O(log N), <code>ZREVRANGE 0 99</code> is O(log N + 100). At our scale that's microseconds, and it scales to millions of contestants without blinking.</p>
+    </div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.4rem 0 .4rem">Scoring quirks the design must support</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>🏁 ICPC scoring</h3>
+      <p>1 point per accepted problem, plus a "time penalty" (minutes since contest start) per accepted problem and 20 minutes per wrong attempt. The leaderboard service computes this on each verdict; the ZSET score is encoded as <code>(problems_solved * 10^9) - total_penalty</code>.</p>
+    </div>
+    <div class="card">
+      <h3>🎯 IOI scoring</h3>
+      <p>Each problem awards partial credit per testcase. The leaderboard takes the <em>max</em> score the user has ever achieved on each problem, summed. Updates only when a new submission scores higher than the previous best.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: ANTI-ABUSE & FAIRNESS             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-red">Step 10</span>
+  <h2>Anti-Abuse &amp; Fairness</h2>
+  <p>Once the design works, the next problem is people gaming it. Some are malicious (try to break out of the sandbox, scrape problem statements). Some are just lazy (submit-paste, throwaway accounts). The platform has to push back on both.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🛑 Sandbox break-out attempts</h3>
+      <p>Telemetry from each runner reports unusual syscall patterns (e.g. attempts to <code>ptrace</code>, raw socket creation, repeated mmap of large pages). Pattern hits → submission flagged, account silently shadow-banned from contests pending review. The user keeps practicing; the leaderboard never sees them.</p>
+    </div>
+    <div class="card">
+      <h3>📋 Plagiarism detection</h3>
+      <p>For every accepted contest submission, run a structural similarity hash (token-stream MinHash) and compare against other submissions on the same problem. Pairs above a threshold are flagged for human review. This runs <em>off the hot path</em>, downstream of ⑨, so the verdict isn't delayed.</p>
+    </div>
+    <div class="card">
+      <h3>⏱️ Rate limiting</h3>
+      <p>API gateway enforces 10 submits/min/user, 1000/min/IP. Redis sliding-window counters back this. During contests the per-user limit is <em>tighter</em> (2/min) to discourage brute-force "submit and see if it passes".</p>
+    </div>
+    <div class="card">
+      <h3>🎭 Account-creation friction</h3>
+      <p>Email verification + reCAPTCHA on signup. Contest registration requires an account that's at least 24 hours old. Cheap throwaways become expensive throwaways.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: TRADE-OFFS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-blue">Step 11</span>
+  <h2>Trade-offs &amp; Interview Talking Points</h2>
+  <p>The decisions that aren't obvious — and the ones an interviewer will probe.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Decision</th><th>Alternative</th><th>Why this choice</th></tr></thead>
+      <tbody>
+        <tr><td>Async verdict via WebSocket</td><td>Sync HTTP "wait for verdict"</td><td>Sync ties up an LB connection for 5–30s. At 5K rps that's instant connection-pool exhaustion. Async + push scales linearly.</td></tr>
+        <tr><td>gVisor / Firecracker for runners</td><td>Plain Docker</td><td>Plain Docker shares the host kernel — one CVE breaks the box. Strong isolation is non-negotiable for hostile multi-tenant code.</td></tr>
+        <tr><td>S3 for test cases &amp; source code</td><td>Postgres BLOBs</td><td>Big binary blobs in a relational row bloat the table, kill cache hit rates, and break replication. Object stores exist for exactly this.</td></tr>
+        <tr><td>Separate contest queue partition</td><td>One queue, FIFO</td><td>FIFO means a 30-second practice submission can delay a contest submission. Different SLOs need different lanes.</td></tr>
+        <tr><td>Redis ZSET for leaderboard</td><td>Postgres <code>ORDER BY score</code></td><td>Postgres top-100 over 100K rows is a sort every refresh. ZSET makes it a constant-time op. The data is rebuildable if Redis dies.</td></tr>
+        <tr><td>Kafka result topic with multiple consumers</td><td>API service calls leaderboard + WS directly</td><td>Tight coupling. New consumers (analytics, fraud) shouldn't require redeploying the runner. Streams give us fan-out for free.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.4rem 0 .4rem">Common interviewer follow-ups</h3>
+
+  <div class="iq">What if the WebSocket service is down when the verdict lands?</div>
+  <div class="ans"><strong>The verdict is in Postgres regardless.</strong> The WebSocket is a convenience for "live" updates. On reconnect, the client fetches its recent submissions via HTTP and reconciles. The push channel is best-effort; the durable record is the database row.</div>
+
+  <div class="iq">A submission against 100 testcases — do we run them sequentially or in parallel?</div>
+  <div class="ans">Sequentially within one runner, but with <strong>early termination on first failure</strong>: if testcase 7 fails, we don't run 8–100. This both saves compute (50%+ on average for failing submissions) and feels faster to the user. We could parallelize across runners, but the fan-out + result-merge complexity isn't worth it for typical 100-testcase problems.</div>
+
+  <div class="iq">How do you handle a malicious submission that tries to mine crypto for 2 seconds?</div>
+  <div class="ans">It mines crypto for 2 seconds. Then the cgroup CPU limit kills it, the runner reports <code>TLE</code>, the sandbox is destroyed. Total damage: 2 seconds of one core on one VM. We sized the runner pool to absorb this — it's not a special case, it's the default behavior.</div>
+
+  <div class="iq">What about non-deterministic problems (random output, timing-based)?</div>
+  <div class="ans">We expose a <strong>special judge</strong> ("checker") feature — instead of byte-comparing output, we run an admin-supplied checker binary that takes (input, user_output) and returns AC/WA. The checker itself runs in the same sandbox class, just with a different executable. This handles "any valid permutation" or floating-point tolerance problems.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: WALKTHROUGH                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-orange">Step 12</span>
+  <h2>Walkthrough — Priya solves Two Sum</h2>
+  <p>One concrete request through every numbered component. If the design is right, this story should feel inevitable.</p>
+
+  <ol style="list-style:none;padding:0;counter-reset:w">
+    <li style="counter-increment:w;padding:.85rem 0;border-bottom:1px dashed var(--border);font-size:.9rem"><strong style="color:var(--orange)">1.</strong> Priya opens <code>leetcode.com/problems/two-sum</code>. The HTML and the problem statement come from the <strong>CDN ②</strong>. Latency: ~50ms from her ISP. Our origin sees <em>nothing</em>.</li>
+
+    <li style="counter-increment:w;padding:.85rem 0;border-bottom:1px dashed var(--border);font-size:.9rem"><strong style="color:var(--orange)">2.</strong> Her browser opens a WebSocket to <strong>WS Push ⑩</strong> as soon as the page loads. The socket sits idle, keyed on her user ID, ready for any verdict the backend wants to deliver.</li>
+
+    <li style="counter-increment:w;padding:.85rem 0;border-bottom:1px dashed var(--border);font-size:.9rem"><strong style="color:var(--orange)">3.</strong> She types her Python solution in the Monaco editor (<strong>Client ①</strong>) and clicks Submit. The browser POSTs to <code>/v1/submit</code>.</li>
+
+    <li style="counter-increment:w;padding:.85rem 0;border-bottom:1px dashed var(--border);font-size:.9rem"><strong style="color:var(--orange)">4.</strong> <strong>API Gateway ③</strong> validates her JWT, checks her per-user rate limit in Redis (<code>INCR submits:priya</code>), passes the request to <strong>API Service ④</strong>.</li>
+
+    <li style="counter-increment:w;padding:.85rem 0;border-bottom:1px dashed var(--border);font-size:.9rem"><strong style="color:var(--orange)">5.</strong> API Service writes a <code>SUBMISSION</code> row to <strong>Postgres ⑫</strong> with status <code>PENDING</code>, uploads the source to S3 (linked by <code>s3_code_url</code>), publishes <code>{ submission_id, lang: "python", problem_id }</code> to the <strong>Submission Queue ⑤</strong>, returns <code>202 { submission_id }</code> to Priya. Total time: ~30ms.</li>
+
+    <li style="counter-increment:w;padding:.85rem 0;border-bottom:1px dashed var(--border);font-size:.9rem"><strong style="color:var(--orange)">6.</strong> The <strong>Judge Dispatcher ⑥</strong> consumes the message, sees <code>lang=python</code>, routes it to the Python runner pool. Since this is a practice submission (no <code>contest_id</code>), it goes on the standard-priority partition.</li>
+
+    <li style="counter-increment:w;padding:.85rem 0;border-bottom:1px dashed var(--border);font-size:.9rem"><strong style="color:var(--orange)">7.</strong> A free <strong>Runner Sandbox ⑦</strong> (gVisor) picks up the job. It downloads the test cases for problem <code>two-sum</code> from <strong>S3 ⑧</strong> via signed URL, downloads Priya's source, compiles (Python: nothing to do), and runs it against testcases. Each testcase is one fresh subprocess inside the sandbox with seccomp + cgroup limits. Total CPU spent: 47ms across 30 testcases.</li>
+
+    <li style="counter-increment:w;padding:.85rem 0;border-bottom:1px dashed var(--border);font-size:.9rem"><strong style="color:var(--orange)">8.</strong> All 30 testcases pass. The runner publishes <code>{ submission_id, verdict: "AC", runtime_ms: 47, memory_kb: 14336 }</code> to the <strong>Result Stream ⑨</strong>. The sandbox VM is destroyed.</li>
+
+    <li style="counter-increment:w;padding:.85rem 0;border-bottom:1px dashed var(--border);font-size:.9rem"><strong style="color:var(--orange)">9.</strong> Three consumers process the message in parallel:
+      <ul style="margin-top:.4rem;padding-left:1.2rem;list-style:none">
+        <li style="padding:.15rem 0">→ <strong>API Service ④</strong> updates the submission row in Postgres: <code>status=AC, runtime=47ms</code>.</li>
+        <li style="padding:.15rem 0">→ <strong>Leaderboard Service ⑪</strong> sees this isn't a contest submission, ignores.</li>
+        <li style="padding:.15rem 0">→ <strong>WS Push ⑩</strong> finds Priya's open socket and pushes <code>{ verdict: "AC", runtime: "47ms" }</code> to her browser.</li>
+      </ul>
+    </li>
+
+    <li style="counter-increment:w;padding:.85rem 0;font-size:.9rem"><strong style="color:var(--orange)">10.</strong> Priya's browser flashes the green "Accepted" banner. Total wall-clock from clicking Submit to seeing AC: ~1.5 seconds. She didn't poll once. The HTTP request that started this returned at step 5; everything that followed happened on the back of one Kafka message.</li>
+  </ol>
+
+  <div class="highlight hl-cyan"><strong>Trace what just happened:</strong> steps 1–5 are the <em>web tier</em> (trusted, fast, predictable). Steps 6–8 are the <em>judge tier</em> (untrusted, slow, dangerous). Step 9 is the <em>fan-out</em>. The two tiers never share an OS user, never share a kernel, and never speak except through ⑤ and ⑨. That single discipline is what makes Priya's quiet Sunday solve and a hostile fork-bomb live in the same system without one ever noticing the other.</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+<div class="likes-row">
+  <p class="like-prompt">
+    <strong>Did this rewire how you think about online judges?</strong>
+    If it clicked, tap the ❤️ — <em>that's how I know it hit.</em>
+  </p>
+  <div id="likes"></div>
+</div>
+
+</body>
+</html>

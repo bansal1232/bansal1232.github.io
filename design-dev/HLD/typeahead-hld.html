@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Typeahead Suggestion / Search Autocomplete — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* HERO */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* LAYOUT */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* SIDEBAR */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* SECTION */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* CODE */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* DIAGRAM */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* HIGHLIGHT */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* INTERVIEW Q */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* COMPONENT NUMBER BADGE */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* METRIC PILL */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Typeahead <span>Suggestion</span></h1>
+  <p class="sub">From "as you type, the right words appear" to a sharded in-memory trie that answers 60K queries/sec under 100ms — the architecture, the data structure, and the offline pipeline that keeps it fresh</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is Typeahead?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">Database / Data Structure</a></li>
+      <li><a href="#s6">High-Level Architecture</a></li>
+      <li><a href="#s7">The Trie Data Structure</a></li>
+      <li><a href="#s8">Permanent Storage</a></li>
+      <li><a href="#s9">Updating the Trie</a></li>
+      <li><a href="#s10">Data Partitioning</a></li>
+      <li><a href="#s11">Cache</a></li>
+      <li><a href="#s12">Replication &amp; Load Balancing</a></li>
+      <li><a href="#s13">Fault Tolerance</a></li>
+      <li><a href="#s14">Client Optimizations</a></li>
+      <li><a href="#s15">Personalization</a></li>
+      <li><a href="#s16">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS TYPEAHEAD?                  -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is Typeahead?</h2>
+  <p>Sarah opens Google. She taps the "s" key. By the time her finger lifts, the search box already shows ten suggestions — "spotify", "starbucks near me", "stock market". She types "y", then "s", then "t" — each keypress refreshes the list in under 100 milliseconds. By the third character ("sys"), the suggestion she actually wanted ("system design interview") appears at the top. She taps it. The whole interaction took 1.2 seconds and she never finished typing. That tiny dropdown is what we're designing — and at Google scale, it serves 60,000 partial queries every second from a knowledge of a billion past searches.</p>
+
+  <p>Typeahead (also called search autocomplete or incremental search) is a deceptively simple feature: <strong>given a prefix the user has typed, return the top-K most relevant complete queries that start with that prefix</strong>. The simplicity is on the user's side — the system has to do it across a billion possible terms, ranked by popularity, in less time than the gap between two of Sarah's keypresses.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) What data structure can return the top-K terms matching a prefix in microseconds, across 100M+ unique terms? (2) How do we update that data structure as billions of new searches happen daily, without ever taking the suggestion service offline?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Pin down the contract before drawing any boxes. Typeahead's user-facing behavior is simple, but the latency budget is brutal — anything slower than a keypress feels broken.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>As the user types a prefix, return the <strong>top 10 terms</strong> that start with that prefix</li>
+        <li>Suggestions ranked by <strong>frequency</strong> (how often that exact term has been searched)</li>
+        <li>Optional ranking signals — recency, user location, personalization</li>
+        <li>System learns continuously — newly-popular queries (a viral news event) should appear in suggestions within a reasonable window (an hour or so)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Real-time</strong> — suggestions must arrive in under <strong>200ms</strong> end-to-end (UI feels alive only under ~100ms server-side budget)</li>
+        <li><strong>Highly available</strong> — typeahead going down doesn't stop search, but a noticeably broken UX is shipped to a billion users</li>
+        <li><strong>Continuously fresh</strong> — search trends change daily; the index must reflect new popularity within hours</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>Out of scope:</strong> spell correction ("teh" → "the"), fuzzy matching, query rewriting. These are entire systems on their own; typeahead is just prefix matching against a known vocabulary.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers drive every architectural choice — sharding, in-memory storage, cache sizing. Do them out loud, even rough. Assume Google-scale traffic.</p>
+
+  <h3 class="subh">Traffic estimates</h3>
+  <p>Google sees roughly <strong>5 billion searches per day</strong>. That averages to <strong>~60,000 queries per second</strong>. But typeahead is hit on every <em>keystroke</em>, not every search — if the average user types 6 characters before tapping a suggestion, that's potentially 6× the QPS. With client-side debouncing (we discuss in §14), assume one suggestion request per 2-3 effective keypresses, so plan for <strong>~200K typeahead requests/sec</strong> at peak.</p>
+
+  <h3 class="subh">Index size</h3>
+  <p>Of those 5B daily queries, about 20% are unique — that's <strong>1B unique queries/day</strong>. We don't index every one of them; the long tail is endless and most of it is junk. Index roughly the top 50% by frequency over a rolling window — call it <strong>~100M unique terms</strong> worth indexing. Average query length is around 15 characters; at 2 bytes per character (covering Unicode) that's <strong>30 bytes per term</strong>.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Searches/day</h3><p><span class="metric">~5 billion</span></p><p>Google-scale baseline</p></div>
+    <div class="card"><h3>Typeahead QPS</h3><p><span class="metric">~200K req/sec</span></p><p>Per-keystroke after debouncing</p></div>
+    <div class="card"><h3>Unique terms</h3><p><span class="metric">~100M</span></p><p>Top 50% worth indexing</p></div>
+    <div class="card"><h3>Bytes/term</h3><p><span class="metric">~30 B</span></p><p>15 chars × 2 bytes</p></div>
+  </div>
+
+  <h3 class="subh">Total index size</h3>
+  <p>Base index: <code>100M × 30 bytes = 3 GB</code>. With overhead for the trie structure (parent/child pointers, top-K cache per node, frequency counters), realistic factor is roughly 5-10×, so <strong>~25 GB total</strong>. Adjust for 2% growth/year and a few years of headroom — call it <strong>~50 GB.</strong> <em>That fits comfortably in a single server's RAM.</em></p>
+
+  <div class="highlight hl-blue"><strong>The "so what" of these numbers:</strong> the entire index fits in memory on one box. That single fact unlocks the architecture — we never have to touch disk on the request path, latency budget is microseconds for the lookup itself. The rest of the design (sharding, replication) is purely about throughput and fault tolerance, not about storage.</div>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Typeahead QPS</td><td><code>200K/s</code></td><td>Drives shard count + replica count</td></tr>
+        <tr><td>Index in RAM</td><td><code>~25-50 GB</code></td><td>Fits on one server — disk never touched on read</td></tr>
+        <tr><td>Latency budget</td><td><code>&lt;100 ms</code></td><td>Per keypress; UI feels broken above this</td></tr>
+        <tr><td>Top-K returned</td><td><code>10</code></td><td>Bounded — keeps payload tiny</td></tr>
+        <tr><td>Index freshness</td><td><code>~hourly</code></td><td>Acceptable — search trends move slowly relative to keystrokes</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>One endpoint does 99% of the work. Define it now so the architecture knows its contract.</p>
+
+  <span class="code-label cl-green">REST API surface</span>
+<pre><span class="cmt">// The only hot endpoint — fired on every (debounced) keystroke</span>
+GET /api/v1/suggestions?prefix=syst&amp;num=10
+
+Headers:
+  X-API-Dev-Key:  abc123...
+  X-User-Id:      sarah_42        <span class="cmt">// optional — enables personalization</span>
+  X-Geo:          IN-DL           <span class="cmt">// optional — enables regional ranking</span>
+
+→ 200 OK
+{
+  "prefix": "syst",
+  "suggestions": [
+    "system design interview",
+    "system design primer",
+    "system of a down",
+    "system32 folder",
+    "systemctl restart",
+    ...
+  ]
+}
+
+<span class="cmt">// Ingestion (internal) — search clicks/completions feed back</span>
+POST /api/v1/log
+{
+  "query":   "system design interview",
+  "user_id": "sarah_42",
+  "ts":      1730884320,
+  "geo":     "IN-DL"
+}
+→ 202 Accepted</pre>
+
+  <div class="highlight hl-purple"><strong>API design notes.</strong> The response is a flat array of strings — no metadata per suggestion in the hot path, because every byte costs latency at this volume. We do <em>not</em> stream suggestions; the browser fires a fresh request per debounced keystroke and replaces the dropdown wholesale. Keep <code>num</code> bounded (max 10-20) so payload stays under a single TCP packet (~1500 bytes).</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: DATABASE / DATA STRUCTURE           -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>Database / Data Structure — Why a Trie</h2>
+  <p>The data-structure choice is the single most important decision in this entire design. Get this right and the rest falls out naturally; get it wrong and no amount of clever caching will save the latency budget.</p>
+
+  <p>Our access pattern is exactly: <em>"given a prefix string, find all stored strings that start with that prefix, ranked by frequency, return top K"</em>. Three observations:</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>📐 Prefix-shaped queries</h3>
+      <p>Every lookup is a prefix, never a full string. Hash maps are useless — they need exact keys. Sorted lists with binary search work but each lookup is O(log N × prefix_length) and you need a separate sort by frequency.</p>
+    </div>
+    <div class="card">
+      <h3>🔁 Massive prefix overlap</h3>
+      <p>"system", "system design", "system design interview" share the prefix "system". A naive list-of-strings store the "system" prefix three times. A tree that <em>shares prefixes</em> stores it once.</p>
+    </div>
+    <div class="card">
+      <h3>⚡ Top-K must be precomputable</h3>
+      <p>Walking every term under a prefix to sort by frequency on each request is too slow. The data structure needs to <em>cache top-K at every node</em>, so a query is one walk to the prefix node + read its top-K array.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Enter the trie (prefix tree)</h3>
+  <p>A trie is a tree where <strong>each node represents a single character</strong>, the path from root to any node spells out a prefix, and a flag on the node marks "this prefix is a complete searchable term". Picture a phonebook where you've labeled every shelf with a starting letter, every sub-shelf with the second letter, and so on — to find names starting with "Bro" you walk three shelves deep, then read everything below.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  R(("root"))
+  S(("s"))
+  Y(("y"))
+  ST(("t"))
+  STSUF(["[term: 'syst' freq=120]"])
+  E(("e"))
+  EM(("m"))
+  EMTERM(["[term: 'system' freq=8400]"])
+  SP((" "))
+  D(("d"))
+  DE(("e"))
+  DES(("s"))
+  DESI(("i"))
+  DESIG(("g"))
+  DESIGN(["[term: 'system design' freq=2200]"])
+
+  R --> S --> Y --> ST
+  ST --> STSUF
+  ST --> E --> EM --> EMTERM
+  EM --> SP --> D --> DE --> DES --> DESI --> DESIG --> DESIGN
+
+  style R fill:#171d27,stroke:#7b8599,color:#d4dae5
+  style EMTERM fill:#171d27,stroke:#38b265,color:#38b265
+  style STSUF fill:#171d27,stroke:#38b265,color:#38b265
+  style DESIGN fill:#171d27,stroke:#38b265,color:#38b265
+    </div>
+  </div>
+
+  <p>To answer "give me top 10 terms starting with <code>syst</code>": walk root → s → y → s → t (4 character-hops), then read this node's precomputed top-K array. Total cost: <strong>4 pointer dereferences plus one array read</strong>. That's microseconds, not milliseconds — easily fitting our 100ms budget with room to spare for network and serialization.</p>
+
+  <div class="highlight hl-cyan"><strong>Why the index lives in memory and not in a database:</strong> the entire trie is ~25-50 GB. A request crosses dozens of nodes per lookup. If those nodes lived on disk (or in Postgres rows), each hop would be a disk seek — 10ms × 4 hops = blown latency budget on the first character. RAM walks at nanosecond speed; we keep the live trie in memory and persist snapshots to object storage only for crash recovery.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: HIGH LEVEL DESIGN                   -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>Build the architecture in three passes: simplest plausible thing, why it breaks, and the production shape where every box justifies itself with a failure it removes. This is the section that wins or loses the interview.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Sketch the simplest possible system. One app server, one SQL database with a <code>searches(term, freq)</code> table. To answer "suggestions for prefix syst", run a SQL <code>LIKE</code> query.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C["Client"] --> APP["App Server"]
+  APP --> DB[("MySQL — searches table")]
+    </div>
+  </div>
+
+  <span class="code-label cl-red">The naive query</span>
+<pre><span class="kw">SELECT</span> term <span class="kw">FROM</span> searches
+<span class="kw">WHERE</span> term <span class="kw">LIKE</span> <span class="str">'syst%'</span>
+<span class="kw">ORDER BY</span> freq <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">10</span>;</pre>
+
+  <p>Three concrete failures emerge the moment Sarah and her billion friends start typing:</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>💥 LIKE 'prefix%' is slow at scale</h3>
+      <p>Even with a B-tree index, a prefix-LIKE on a billion-row table reads thousands of matching rows just to sort them by frequency and pick 10. At 100M unique terms with hot prefixes like "th" or "how", a single query touches millions of rows. P99 latency: <strong>500ms+</strong> — five times our entire budget.</p>
+    </div>
+    <div class="card">
+      <h3>💥 200K QPS kills one DB</h3>
+      <p>A single MySQL instance handles 5K-10K simple selects/sec. We need 200,000 — twenty times that ceiling. Replicas help, but every replica still pays the LIKE-scan cost per query. Throwing money at vertical scale tops out around 50K QPS for this access pattern.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Updating frequencies is a write storm</h3>
+      <p>Every search increments a row's frequency. At 60K searches/sec, that's 60K UPDATE statements/sec, all hot rows (popular queries get hammered). Lock contention pegs the DB at 100% CPU on locks alone — meanwhile reads slow to a crawl.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: in-memory trie + offline updates</h3>
+  <p>Two insights flip the design. Once you see them, the production architecture practically draws itself.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">💡 Insight 1 — The index is small enough to fit in RAM</h3>
+      <p>From §3, the entire trie is around 25-50 GB. A single modern server has 256 GB RAM. That means the read path <em>never touches disk</em> — every prefix lookup is a handful of pointer dereferences and an array copy. Latency drops from "hundreds of milliseconds" to "tens of microseconds" before even leaving the box.</p>
+      <p><strong>Consequence:</strong> we don't need a database on the read path. The trie itself, sitting in process memory, IS the database.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">💡 Insight 2 — Frequencies change slowly</h3>
+      <p>Sarah typing "system design" right now does not need to influence the suggestions she sees on her next keystroke. Search popularity changes over hours and days, not seconds. We can collect every search into a log, run a batch job once an hour to compute fresh frequencies, and rebuild (or incrementally update) the trie offline.</p>
+      <p><strong>Consequence:</strong> the read path and write path are completely decoupled. Reads serve from an immutable in-memory snapshot; writes append to a log and feed a background pipeline. No locks, no contention.</p>
+    </div>
+  </div>
+
+  <p>This split — fast read path on an in-memory trie, slow update path through an offline batch pipeline — is the central architectural idea. Everything else is plumbing to make it scale and survive failures.</p>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered; find its matching card below to see what it does and what would break without it. Two clearly-separated planes: the <strong>Read Plane</strong> (request path) and the <strong>Update Plane</strong> (offline pipeline).</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client — debounced typing"]
+
+  subgraph EDGE["Edge"]
+    CDN["CDN"]
+    LB["② Load Balancer"]
+  end
+
+  subgraph READ["Read Plane — request path"]
+    API["③ Suggestion API Server"]
+    CACHE["⑩ Cache — Redis"]
+    TRIE1["④ Trie Server — shard A"]
+    TRIE2["④ Trie Server — shard B"]
+    TRIE3["④ Trie Server — shard C"]
+    AGG["⑤ Aggregator"]
+  end
+
+  subgraph WRITE["Update Plane — offline pipeline"]
+    LOG["⑥ Search Logger — Kafka"]
+    PIPE["⑦ Frequency Aggregation — Spark"]
+    BUILD["⑧ Trie Builder"]
+    SNAP[("⑨ Trie Snapshot Storage — S3")]
+  end
+
+  CL --> CDN --> LB --> API
+  API --> CACHE
+  CACHE -.miss.-> AGG
+  AGG --> TRIE1
+  AGG --> TRIE2
+  AGG --> TRIE3
+  API -.search clicks.-> LOG
+
+  LOG --> PIPE --> BUILD
+  BUILD --> SNAP
+  SNAP -.periodic reload.-> TRIE1
+  SNAP -.periodic reload.-> TRIE2
+  SNAP -.periodic reload.-> TRIE3
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style CDN fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style API fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style CACHE fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style TRIE1 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style TRIE2 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style TRIE3 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style AGG fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style LOG fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style PIPE fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style BUILD fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style SNAP fill:#171d27,stroke:#e05252,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram to find the matching card below. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client — Browser / App</h3>
+      <p>Sarah's browser, mobile app, or search bar widget. As she types, the client fires HTTP GET requests to <code>/api/v1/suggestions?prefix=...</code>. Critically, the client is <em>not naive</em> — it debounces keystrokes (waits ~50ms after the last keypress before firing), cancels in-flight requests when a new keypress lands, and pre-establishes the TCP/TLS connection on app open so the first request doesn't pay handshake latency.</p>
+      <p><strong>Solves:</strong> reducing wasted backend traffic by ~70%. Without debouncing, typing "system design" would fire 13 separate suggestion requests; with it, maybe 3-5. The savings cascade — fewer requests means smaller fleets, smaller bills, and lower tail latency for everyone.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> Load Balancer</h3>
+      <p>The traffic cop in front of the API server fleet. Distributes 200K req/sec across hundreds of stateless suggestion API pods, evicts unhealthy ones via 5-second health checks, terminates TLS so backends don't pay the crypto cost. Round-robin works fine because the API tier is stateless.</p>
+      <p><strong>Solves:</strong> no single API server can handle the QPS or survive a deploy/crash. Without an LB, scaling would mean DNS round-robin (slow to react to failures) or putting one giant box in the path (single point of failure). LB gives both horizontal scaling and self-healing.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">③</span> Suggestion API Server</h3>
+      <p>Stateless service that receives the user's prefix request and orchestrates the answer. The flow per request: parse prefix → check the cache for that exact prefix → on miss, ask the aggregator to query the right trie shards → return JSON. Also fires off an async event to the search logger when the user actually clicks a suggestion (that completion is the signal we care about).</p>
+      <p><strong>Solves:</strong> isolating client-facing concerns (TLS, JSON, auth, rate limiting, request validation) from the actual lookup. Without this layer, every trie server would have to speak HTTP and handle malformed requests — coupling that hurts both. The API tier is also where personalization and geo-ranking get layered on top of the global trie result.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">④</span> Trie Server Cluster</h3>
+      <p>The heart of the system. Each trie server holds <em>one shard</em> of the trie in memory and answers prefix queries for that shard. Stateless from the client's perspective but stateful internally — the trie itself lives in process RAM, loaded from a snapshot at startup. A query is two steps: walk the trie to the prefix node (one pointer dereference per character), copy the node's pre-cached top-K array, return it. End-to-end on the trie server: under <strong>1ms p99</strong>.</p>
+      <p><strong>Solves:</strong> the latency budget. By holding the index in RAM and pre-caching top-K at every node, we replace "scan a billion rows and sort" with "follow 4 pointers and copy 10 strings". This is the architectural choice that makes the entire system possible.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑤</span> Aggregator</h3>
+      <p>When the trie is sharded by hash (say 8 shards), a prefix like "sy" might exist on multiple shards because different terms starting with "sy" live in different shards. The aggregator fans the prefix query out to all relevant trie shards in parallel, collects each shard's top-K, merges them by frequency, and returns the global top-K to the API server. With 8 shards × 10 results = 80 candidates merged into 10 — a tiny in-memory sort.</p>
+      <p><strong>Solves:</strong> the cross-shard merge problem. Without an aggregator, the API server would either need to know the sharding scheme (tight coupling) or each trie shard would only see its slice of the data (incorrect results, missing popular terms from other shards). The aggregator hides sharding from upstream and guarantees a globally-correct top-K.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑥</span> Search Logger — Kafka</h3>
+      <p>Every completed search (user typed a prefix and clicked a suggestion or pressed Enter) is logged to a Kafka topic as a structured event: <code>{query, user_id, ts, geo}</code>. Kafka is the buffer — it absorbs the firehose of 60K events/sec with bounded memory, persists them durably for days, and lets downstream consumers read at their own pace. The API server's call to Kafka is fire-and-forget — a 1ms async append, never blocking the user response.</p>
+      <p><strong>Solves:</strong> decoupling the request path from the update path. Without a durable log, frequency updates would have to be applied synchronously, killing read latency and risking lost updates if the writer falls behind. Kafka lets us treat the firehose like water in a pipe — consumers downstream can be slow without backing up the source.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑦</span> Frequency Aggregation Pipeline — Spark</h3>
+      <p>A batch job (Spark, MapReduce, Flink — pick your pipeline framework) runs every hour over the last hour of Kafka logs. It groups events by query string, counts occurrences, and emits a stream of <code>(query, new_freq)</code> records. To weight recent searches more heavily than ancient ones, frequencies are blended via an <strong>Exponential Moving Average</strong>: <code>new_freq = α × this_hour + (1-α) × old_freq</code> with α around 0.1.</p>
+      <p><strong>Solves:</strong> turning a firehose of raw events into a small set of frequency updates. Without this aggregation, the trie builder would have to process 60K events/sec individually — overwhelming. With it, the builder gets a handful of millions of updates per hour, easily applied in a few minutes.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑧</span> Trie Builder</h3>
+      <p>Takes the new frequency updates from the pipeline and applies them to a working copy of the trie. Two strategies (covered in §9): rebuild from scratch each hour (simple, slow), or incremental update (apply deltas to an existing trie, fast but trickier on top-K cache invalidation). After the update, the builder re-computes the top-K cache at every affected node — walking up from each changed leaf to the root, propagating the new frequency.</p>
+      <p><strong>Solves:</strong> producing a fresh, queryable trie without ever locking the live trie. The builder writes to a brand-new snapshot, hands it off via S3, and trie servers atomically swap to the new copy. Old snapshot stays in memory until the swap completes — zero downtime.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑨</span> Trie Snapshot Storage — S3</h3>
+      <p>Object storage holding serialized trie snapshots. Each snapshot is a compact binary representation (DFS-encoded with character + child count + recursive children — see §8) that a trie server can load directly into memory. New snapshots are versioned: <code>trie/2026-05-07T14:00.bin</code>. Trie servers poll for new versions; on finding one, they load it in the background, build the in-memory structure, then atomically swap pointers from old trie to new. Old snapshot purged after a few hours.</p>
+      <p><strong>Solves:</strong> two things at once — <em>distributing</em> a fresh index to every trie server in the fleet, and <em>recovering</em> after a server crash (a restarted trie server pulls the latest snapshot and is back online in minutes). Without S3 in the middle, we'd need a bespoke push system or have every trie server rebuild its slice from raw logs after a crash — slow and complex.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑩</span> Cache — Redis</h3>
+      <p>An in-memory key-value cache holding <code>prefix → top-K JSON</code> for the hottest prefixes. Hits skip the trie entirely. The cache is sized small (a few hundred MB) because the long tail of unique prefixes is enormous — but a small set of head prefixes ("how to", "what is", "weather") accounts for a huge fraction of all queries. ML models can predict which prefixes will be hot (trending news, time-of-day patterns) and pre-warm the cache.</p>
+      <p><strong>Solves:</strong> CPU on trie servers and tail latency. A cache hit is sub-millisecond Redis lookup; a trie miss is the full traversal + aggregator merge (still under 50ms but 50× more expensive). At 80% hit rate on hot prefixes we shed a huge fraction of trie traffic without growing the trie fleet.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Sarah types, system updates</h3>
+  <p>Two real flows mapped to the numbered components above:</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h3>📖 Read flow — Sarah types "syst" at 14:02:06</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah taps "s". The <strong>client</strong> ① starts a 50ms debounce timer.</li>
+        <li>Before 50ms passes, she taps "y". Timer resets.</li>
+        <li>"s" again, then "t". After 50ms with no new keystroke, the client fires <code>GET /api/v1/suggestions?prefix=syst</code>.</li>
+        <li>The <strong>load balancer</strong> ② routes to a healthy <strong>API server</strong> ③.</li>
+        <li>API server checks the <strong>cache</strong> ⑩ for "syst". <em>Hit?</em> Yes — "syst" is hot today. Return cached top-K in 8ms total.</li>
+        <li><em>Cache miss path:</em> API server asks the <strong>aggregator</strong> ⑤ → fans out to all 8 <strong>trie servers</strong> ④ in parallel → each walks its in-memory trie (4 pointer hops to the "syst" node), copies its top-10 array → aggregator merges 80 candidates → returns global top-10. Total: ~25ms.</li>
+        <li>API server returns JSON. The dropdown updates in Sarah's browser.</li>
+        <li>If Sarah clicks "system design interview", the API server fires off a click event to the <strong>search logger</strong> ⑥ async.</li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--yellow)">
+      <h3>🔄 Update flow — system rebuild at 03:00 UTC</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Cron triggers the <strong>frequency aggregation pipeline</strong> ⑦. Spark reads the last hour of <strong>Kafka</strong> ⑥ logs (~6 GB of click events).</li>
+        <li>Spark groups by <code>query</code>, counts occurrences, blends with the previous hour's EMA frequencies. Outputs ~2M (query, freq) pairs.</li>
+        <li>The <strong>trie builder</strong> ⑧ takes these updates and applies them to a working copy of the trie. For each updated term, it walks up to the root re-computing top-K caches at every ancestor node touched.</li>
+        <li>Builder serializes the new trie via DFS into a binary file, uploads to <strong>S3</strong> ⑨ as <code>trie/2026-05-07T03:00.bin</code>.</li>
+        <li>Each <strong>trie server</strong> ④ polls S3, sees the new version, downloads it (network: ~10 seconds for 50GB on a 10Gbps link), parses it into a new in-memory trie (~30 seconds), then atomically swaps the pointer from old trie to new. Old trie GC'd.</li>
+        <li>From the next request onward, that trie server serves from the freshest data. Sarah gets up-to-date suggestions on her next search session.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built on three insights — (1) <strong>the index fits in RAM</strong> so reads never touch disk, (2) <strong>writes go to a log and update the trie offline</strong> so reads and writes never contend, (3) <strong>top-K is precomputed at every trie node</strong> so a query is a walk plus an array copy. Every component in the diagram exists to make one of those three things scale, stay fresh, or survive a failure.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: THE TRIE                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-green">Step 7</span>
+  <h2>The Trie Data Structure — A Closer Look</h2>
+  <p>Already introduced in §5; now we go inside. The crucial production trick is <strong>pre-storing top-K at every node</strong> — without it, the trie alone is not fast enough.</p>
+
+  <h3 class="subh">Node structure</h3>
+  <p>Each trie node holds:</p>
+
+  <span class="code-label cl-green">TrieNode pseudocode</span>
+<pre><span class="kw">class</span> <span class="ty">TrieNode</span> {
+  <span class="ty">char</span> ch;
+  <span class="ty">Map</span>&lt;<span class="ty">Character</span>, <span class="ty">TrieNode</span>&gt; children;  <span class="cmt">// up to 26-64 entries</span>
+  <span class="ty">boolean</span> isCompleteTerm;
+  <span class="ty">int</span> frequency;                          <span class="cmt">// only meaningful if isCompleteTerm</span>
+  <span class="ty">List</span>&lt;<span class="ty">String</span>&gt; topK;                       <span class="cmt">// the 10 most popular terms</span>
+                                            <span class="cmt">// in the subtree rooted here</span>
+}</pre>
+
+  <p>The <code>topK</code> list at each node is the magic. Without it, a query like "give me top 10 for prefix 'a'" would have to walk the entire subtree under 'a' (potentially millions of terms), find frequencies, partial-sort them, return 10. <em>Way too slow.</em> With it, the same query is one pointer walk to the 'a' node and a constant-time read of its 10-element array.</p>
+
+  <h3 class="subh">Memory vs. speed trade-off</h3>
+  <p>Pre-storing 10 strings per node multiplies memory roughly 10×. With 100M unique terms and an average term length of 15 chars, the naive trie was a few GB; the top-K-cached trie is ~25-50 GB. <strong>Worth it</strong> — RAM is cheap, latency is not. Modern servers ship with 256 GB+; one box can hold the whole index.</p>
+
+  <h3 class="subh">Building / updating the top-K cache</h3>
+  <p>When a term's frequency changes, you walk from its leaf node up to the root. At each ancestor, you re-compute that node's top-K from its children's top-K arrays — a merge of (children_count × 10) candidates → keep top 10. That's a tiny amortized cost per update, and crucially it's done <strong>offline in the trie builder</strong>, never on the request path.</p>
+
+  <div class="highlight hl-green"><strong>The analogy:</strong> a trie with top-K caches is like a phonebook where every page header lists the most-called-from-that-section names. To find "top callers starting with Br" you flip to the Br page and read the header — you don't scan the whole section.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: PERMANENT STORAGE                   -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-cyan">Step 8</span>
+  <h2>Permanent Storage of the Trie</h2>
+  <p>The live trie lives in RAM. When a trie server crashes (or starts up fresh), how does it get its data back? Persisting <em>snapshots</em> to disk and pulling the latest snapshot from object storage on boot.</p>
+
+  <h3 class="subh">Serialization format</h3>
+  <p>Walk the trie depth-first. For each node, write: <code>(character, num_children, [recursive serialization of each child])</code>. The complete-term flag and frequency get inlined into the same record. This produces a compact binary stream where deserializing is a single forward pass — no random access needed.</p>
+
+  <span class="code-label cl-cyan">DFS serialization (pseudocode)</span>
+<pre><span class="kw">void</span> <span class="fn">serialize</span>(<span class="ty">TrieNode</span> node, <span class="ty">OutputStream</span> out) {
+  out.writeChar(node.ch);
+  out.writeBoolean(node.isCompleteTerm);
+  <span class="kw">if</span> (node.isCompleteTerm) out.writeInt(node.frequency);
+  out.writeByte(node.children.size());
+  <span class="kw">for</span> (<span class="ty">TrieNode</span> child : node.children.values()) {
+    <span class="fn">serialize</span>(child, out);
+  }
+}</pre>
+
+  <h3 class="subh">Snapshot lifecycle</h3>
+  <ul style="margin:.5rem 0 1rem 1.5rem">
+    <li><strong>Trie builder</strong> writes <code>trie/2026-05-07T03:00.bin</code> to S3 after each rebuild.</li>
+    <li><strong>Trie servers</strong> poll S3 every minute for new versions. On finding one, they download in background, parse, and atomically swap.</li>
+    <li><strong>On crash recovery,</strong> a restarted trie server pulls the latest snapshot from S3 and is serving traffic in minutes — no need to replay logs from the beginning of time.</li>
+    <li><strong>Old snapshots</strong> are retained for 24-48 hours then garbage-collected, so we can roll back to the previous version if a bad rebuild ships.</li>
+  </ul>
+
+  <div class="highlight hl-cyan"><strong>Key property:</strong> the snapshot is the source of truth for "what trie should the fleet currently serve". The live in-memory trie is a fast cache of that snapshot. This separation means losing a trie server is a non-event — replacement comes online from the same snapshot in minutes.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: UPDATING THE TRIE                   -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-yellow">Step 9</span>
+  <h2>Updating the Trie</h2>
+  <p>Search trends move every hour. How do we get new frequencies into the live trie without ever taking the system down?</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔄 Strategy A — Master-slave swap</h3>
+      <p>Keep two copies of the trie: a <strong>live</strong> copy serving traffic and a <strong>shadow</strong> copy being updated by the builder. When the shadow copy is fresh, atomically swap pointers — the next request hits the new trie, the old one is GC'd. Zero downtime, zero locks. Cost: 2× memory during the swap window.</p>
+      <p><strong>When to use:</strong> when updates are batched (every hour). Simplest correct solution.</p>
+    </div>
+    <div class="card">
+      <h3>⚡ Strategy B — Incremental delta apply</h3>
+      <p>Maintain a delta queue of frequency updates. During quiet windows, take a brief read-write lock on the live trie, apply the deltas in batches (each batch is a few thousand updates), release. Top-K caches at affected ancestors get updated in place.</p>
+      <p><strong>When to use:</strong> when freshness matters more than simplicity (sub-hour updates) and you can tolerate occasional latency blips during apply windows.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Frequency weighting — why Exponential Moving Average</h3>
+  <p>If you simply added each hour's count to the all-time count, frequencies would never reflect that "deflation" stopped trending and "ChatGPT" took over. Use an EMA so newer searches weigh more heavily:</p>
+
+  <span class="code-label cl-yellow">EMA blend</span>
+<pre>new_freq = α × this_hour_count + (<span class="num">1</span> - α) × old_freq
+
+<span class="cmt">// α = 0.1 means: this hour weighs 10%, the past weighs 90%
+// with α = 0.1 a query's frequency halves over ~7 hours of zero searches
+// — fast enough to track trends, slow enough to ignore noise</span></pre>
+
+  <div class="highlight hl-yellow"><strong>The interview move:</strong> mention EMA explicitly. It shows you've thought about freshness vs. stability — a flat counter would be polluted forever by a single viral spike, but EMA naturally fades old signals.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: PARTITIONING                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-purple">Step 10</span>
+  <h2>Data Partitioning</h2>
+  <p>Today the index fits on one box. But running the entire 200K QPS load on one box (no matter how big) is a single point of failure and a CPU bottleneck — we shard for throughput and fault tolerance, not just for storage.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>❌ Range-based by first letter</h3>
+      <p>"All terms starting with a-c go to shard 1, d-f to shard 2…" Easy to implement, but distribution is grossly uneven — "s" alone is dramatically more popular than "x" or "z" combined. The "s" shard melts while the "x-z" shard sits idle.</p>
+    </div>
+    <div class="card">
+      <h3>❌ Max-capacity-based</h3>
+      <p>"Fill shard 1 until it's full, then start shard 2…" In practice, the early shards hold the most-popular terms (added first), so traffic pile-up on shard 1 is inevitable. Hot-shard problem doesn't go away.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✅ Hash-based on full term</h3>
+      <p>Compute <code>shard = consistent_hash(term) % N</code>. Terms are uniformly distributed across N shards — no hotspot by design. Cost: a prefix query like "sy" must fan out to <em>all</em> shards (because terms starting with "sy" live wherever the hash sends them), then the aggregator merges results.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">The aggregator's role under hash sharding</h3>
+  <p>This is exactly why component ⑤ (aggregator) exists. The cost of fan-out is low because (a) shards run the query in parallel, so total latency = single-shard latency + aggregator merge cost (~5ms), and (b) each shard returns at most K results (10), so the aggregator's input is N × K (e.g., 80) candidates merged into K — trivial.</p>
+
+  <div class="highlight hl-purple"><strong>Why hash-on-term beats every alternative:</strong> it gives uniform load distribution and uniform shard size by construction. The fan-out cost is fully recouped by the parallelism. Real production systems (Google, Bing) all hash-shard their typeahead indexes for exactly this reason.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: CACHE                              -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-cyan">Step 11</span>
+  <h2>Cache</h2>
+  <p>The trie is already fast (under 1ms per query inside a server), but a Redis cache in front of the trie shaves another 10× off latency on hot prefixes <em>and</em> sheds CPU off the trie fleet.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>📦 What to cache</h3>
+      <p>Per-prefix top-K: <code>"how to" → ["how to tie a tie", "how to screenshot", ...]</code>. The hot head of the prefix distribution dwarfs the long tail — caching the top 10K prefixes captures most queries with very little memory.</p>
+    </div>
+    <div class="card">
+      <h3>♻️ Eviction</h3>
+      <p>LRU. Trending prefixes naturally heat up and stay; yesterday's news cools and rolls out. Optionally use TTL too (60-120s) so cached top-K doesn't lag the trie's hourly refresh by more than a minute.</p>
+    </div>
+    <div class="card">
+      <h3>🔮 Pre-warming with ML</h3>
+      <p>Use a model to predict which prefixes will be hot in the next hour — based on news trends, time-of-day patterns, recent rising queries. Pre-populate the cache before traffic arrives. Catches cold-start spikes (a breaking news story) that otherwise pummel the trie.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">CDN at the edge</h3>
+  <p>For ultra-popular prefixes ("how", "what", "the") the response is identical for every user (modulo personalization). A CDN at the edge can cache these short-prefix responses with a 30-second TTL. A user in Tokyo gets the dropdown from a Tokyo edge node in 15ms instead of a 200ms round-trip to the US data center.</p>
+
+  <div class="highlight hl-cyan"><strong>Caching nuance:</strong> personalization breaks shareable caching. We cache only the <em>global</em> top-K per prefix and apply personalization (re-rank or inject user history) at the API server layer ③ <em>after</em> the cache hit. That way 95% of users see the cached answer and the personalization step costs ~1ms on top.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: REPLICATION & LB                   -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-blue">Step 12</span>
+  <h2>Replication &amp; Load Balancing</h2>
+  <p>Each trie shard is replicated multiple ways for both load and fault tolerance.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📋 Replication of trie shards</h3>
+      <p>Each shard runs on <strong>3+ replicas</strong> across availability zones. Reads are load-balanced across replicas (any replica can answer any query for its shard — they all have identical in-memory copies). Writes (snapshot loads) happen independently on each replica from the same S3 snapshot, so replicas converge naturally without a primary.</p>
+    </div>
+    <div class="card">
+      <h3>🚦 Load balancing strategy</h3>
+      <p>The aggregator routes each shard query via consistent hashing — same term always goes to the same primary replica first, falling back to secondaries if the primary is unhealthy. Consistent hashing also helps cache locality on the trie server side (if you add a per-replica memoization layer).</p>
+    </div>
+  </div>
+
+  <h3 class="subh">LB at every tier</h3>
+  <p>Three load-balancing layers: <strong>(1) Public LB</strong> from clients to API servers (round-robin, least-conn). <strong>(2) Internal LB</strong> from API servers to aggregator/cache (any healthy node). <strong>(3) Sharded LB</strong> from aggregator to trie servers (consistent hash on term + shard). Each layer uses health checks to evict unhealthy nodes within seconds.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: FAULT TOLERANCE                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-red">Step 13</span>
+  <h2>Fault Tolerance</h2>
+  <p>What happens when each component dies?</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>💥 Trie server crash</h3>
+      <p>One replica out of 3+ for that shard goes down. LB evicts it within 5 seconds via health checks. Remaining replicas absorb its share of traffic — a 33% bump on each, easily within capacity headroom. Replacement pod boots, pulls latest snapshot from S3, registers with LB. Total time-to-recover: a few minutes; user-visible impact: zero.</p>
+    </div>
+    <div class="card">
+      <h3>💥 All replicas of a shard die</h3>
+      <p>Rare (cross-AZ failure), but: aggregator detects the shard is unreachable, returns a <em>partial</em> top-K from the surviving shards. Quality degrades for prefixes that span the dead shard, but the system stays up. Recovery: spin up new replicas, snapshot loads in minutes.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Search logger / Kafka cluster down</h3>
+      <p>Kafka is highly replicated and rarely fully fails. If it does: the API server's "log this click" call fails async — we lose some events. Acceptable: missing an hour of click events means the next trie rebuild is slightly stale, not broken. EMA smoothing means even a multi-hour outage barely moves frequencies.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Trie builder fails</h3>
+      <p>No new snapshot gets produced this hour. Trie servers continue serving the previous snapshot — slightly stale, but fully functional. Operator gets paged, fixes the build job, next hour's run catches up. Critical insight: the read path doesn't depend on the update path being healthy <em>right now</em>.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: CLIENT OPTIMIZATIONS               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-purple">Step 14</span>
+  <h2>Typeahead Client Optimizations</h2>
+  <p>Easy to forget that the most impactful latency fixes happen on the client. The server can be perfect and a naive client still feels broken.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>⏱️ Debouncing</h3>
+      <p>Wait 50ms after the last keypress before firing the suggestion request. If a new keypress lands within 50ms, reset the timer. Result: typing "system" at normal speed fires 1-2 requests, not 6. Backend traffic drops 70%; user-perceived latency is unchanged.</p>
+    </div>
+    <div class="card">
+      <h3>🚫 Cancel in-flight requests</h3>
+      <p>When a new keypress fires a new request, cancel the previous one. Avoids the case where a slow request for "sy" returns <em>after</em> the user has typed "system" — showing stale suggestions. Use <code>AbortController</code> in the browser.</p>
+    </div>
+    <div class="card">
+      <h3>🌡️ Pre-warm popular completions</h3>
+      <p>On app open / page load, pre-fetch the top 100 most-popular short prefixes (a few KB total). The first keystroke shows suggestions instantly from local storage — zero network round-trip for the most common case.</p>
+    </div>
+    <div class="card">
+      <h3>🔌 Establish TCP/TLS early</h3>
+      <p>The first request to a new server pays a TCP 3-way handshake + TLS handshake (~100ms RTT × 3-4 = 300-400ms cold). Open a connection on app boot (an unused HTTP/2 stream) so the first keystroke uses a warm connection. With HTTP/3 / QUIC, this is even better — 0-RTT for resumed sessions.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The numbers matter:</strong> a 50ms debounce + warm connection + cancel-in-flight reduces effective per-keystroke latency from "300ms cold + 50ms wasted requests" to "60ms steady-state". The user feels instant; the server fleet shrinks; cloud bills drop. Same backend, dramatically better UX.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 15: PERSONALIZATION                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s15">
+  <span class="sec-tag tag-yellow">Step 15</span>
+  <h2>Personalization</h2>
+  <p>The global trie tells us "syst" → ["system design interview", "system32 folder", ...]. But Sarah is a software engineer who searched "system design interview" 12 times last month. She should see her past searches first.</p>
+
+  <h3 class="subh">Per-user history</h3>
+  <p>Each user has a <strong>personal frequency map</strong> of their past queries — stored compactly in a user-profile cache (Redis hash, key by user_id). When the API server returns suggestions, it does a final re-rank step:</p>
+  <ul style="margin:.5rem 0 1rem 1.5rem">
+    <li>Take the global top-K from the trie.</li>
+    <li>Look up the user's personal frequency map for matches against the prefix.</li>
+    <li>Blend personal scores with global scores (e.g., <code>score = 0.7 × global + 0.3 × personal</code>).</li>
+    <li>Re-sort and return.</li>
+  </ul>
+
+  <p>Personal data is added to the user profile asynchronously after each completed search. Storage is tiny (a few KB per active user) and the lookup is a single Redis call.</p>
+
+  <div class="highlight hl-yellow"><strong>Caching implication:</strong> personalized responses can't be cached at the CDN. We cache the <em>global</em> top-K (sharable across all users), and apply personalization at the API server <em>after</em> the cache hit. Best of both worlds: most of the work is shared, the user-specific bit is ~1ms on top.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 16: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s16">
+  <span class="sec-tag tag-blue">Step 16</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">Why a trie over a SQL LIKE 'prefix%' query?</div>
+  <div class="ans"><strong>Latency, throughput, and the shape of the query.</strong> A SQL LIKE on a billion-row table reads thousands of matching rows just to sort by frequency — 500ms+ at scale. A trie answers the same query in microseconds: walk the prefix path (one pointer per character), read the precomputed top-K array. The trie also <em>shares</em> common prefixes structurally, so 100M unique terms compress to ~25 GB instead of multiple times that. SQL is a swiss-army knife optimized for joins and ad-hoc filters; this is a single hyper-specific query that wants a hyper-specific structure.</div>
+
+  <div class="iq">How does the system update without downtime?</div>
+  <div class="ans"><strong>Master-slave swap.</strong> The trie builder writes a brand-new snapshot to S3. Each trie server downloads the new snapshot in background, builds the new in-memory trie alongside the live one, then atomically swaps a pointer from old to new. Old trie is GC'd after the swap. From the client's perspective, one request hits the old trie and the next hits the new — zero downtime, zero locks. Cost: 2× memory during the swap window, easily affordable.</div>
+
+  <div class="iq">How do you handle a hot prefix like "how to"?</div>
+  <div class="ans"><strong>Three layers absorb the spike before it reaches the trie.</strong> (1) <strong>CDN</strong> caches the response at edge POPs with 30-second TTL — Tokyo users hit Tokyo edges, never the origin. (2) <strong>Redis cache</strong> at the API tier holds top-K for hot prefixes — a hit is sub-ms with no trie touch. (3) <strong>Replication</strong> of trie shards (3+ replicas each) means even a cache miss spreads load across replicas. End result: the hottest prefix on the internet costs us almost nothing on the trie servers.</div>
+
+  <div class="iq">What if the trie doesn't fit in memory anymore?</div>
+  <div class="ans"><strong>Shard further and possibly tier the trie.</strong> First lever: increase shard count — instead of 8 shards each holding ~5GB, go to 32 shards each holding ~1.5GB. Each shard fits trivially. Second lever: tiered trie — keep the hot subtree (popular prefixes, short prefixes) fully in RAM, push the cold long tail (rare 6+ char prefixes) to a fast SSD-backed key-value store. Reads from cold tier are slower (~5ms vs <1ms) but trigger only on rare prefixes where the user is already typing slowly. Production systems rarely need this — sharding alone scales for years.</div>
+
+  <div class="iq">How would you add personalization?</div>
+  <div class="ans"><strong>Re-rank globally-cached results with per-user data.</strong> Store each user's past-query frequency map in Redis (keyed by user_id). On each suggestion request, fetch the global top-K from the trie/cache, then fetch the user's personal frequencies for the prefix, blend the two scores (e.g., 70% global + 30% personal), and re-sort. The personalization step adds ~1ms per request, doesn't affect the trie or cache (which stay shareable across users), and gives a noticeably better UX.</div>
+
+  <div class="iq">Push vs. pull for trie updates — which and why?</div>
+  <div class="ans"><strong>Pull, via S3 snapshots.</strong> Push (broadcasting deltas to every trie server) sounds faster but creates coupling and back-pressure problems — slow servers slow the whole pipeline, schema mismatches break clusters silently, scaling out the trie fleet means provisioning more push fan-out. Pull from S3 is dead simple: each trie server polls for the latest version, downloads, swaps. Adding a new trie server requires zero pipeline changes — it just starts polling. The only cost is a 1-2 minute latency between snapshot publish and fleet refresh, which is well within our hourly freshness budget.</div>
+
+  <div class="iq">Why fan out a query to all shards instead of routing it to one?</div>
+  <div class="ans"><strong>Because we hash-shard by full term, not by prefix.</strong> Hash-on-term gives uniform shard load — no hotspots — but means terms starting with "sy" can live on any shard. So a prefix query must ask every shard "what's your top-K for sy?" and the aggregator merges. The fan-out cost is paid once in parallel (~5ms aggregator merge on top of single-shard latency), and the alternative (prefix-based sharding) creates catastrophic hot-shard problems where all "s" traffic crushes one box.</div>
+
+  <div class="iq">How do you bootstrap suggestions for a brand-new search engine with no history?</div>
+  <div class="ans"><strong>Seed with curated content + Wikipedia titles + a query log from a related corpus.</strong> Day 1: load Wikipedia article titles, common nouns from a dictionary, popular product names — gives a baseline trie of millions of terms. Day 2 onward: real user queries flow through the logger and frequencies start adjusting via EMA. Within a week the curated seed has been overwritten by actual usage patterns. The architecture doesn't change; only the initial trie content does.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "It's a hash-sharded in-memory trie with top-K cached at every node, fronted by a Redis cache and CDN, fed by an hourly offline pipeline that aggregates a Kafka log of search clicks via EMA into a fresh snapshot in S3 — read path and update path fully decoupled so reads stay sub-100ms while updates roll out without downtime."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

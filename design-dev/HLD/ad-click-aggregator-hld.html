@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ad Click Aggregator — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Ad Click <span>Aggregator</span></h1>
+  <p class="sub">Counting every ad click exactly once at 1M/sec — the streaming pipeline, idempotency keys, and exactly-once aggregation that turn billions of clicks into trustworthy billing dollars</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is an Ad Click Aggregator?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">High-Level Architecture</a></li>
+      <li><a href="#s6">Idempotency — The Core Decision</a></li>
+      <li><a href="#s7">Exactly-Once with Flink</a></li>
+      <li><a href="#s8">Sliding Windows &amp; Granularity</a></li>
+      <li><a href="#s9">The Hot Ad Problem</a></li>
+      <li><a href="#s10">Billing Reconciliation</a></li>
+      <li><a href="#s11">Fraud Detection</a></li>
+      <li><a href="#s12">Data Partitioning</a></li>
+      <li><a href="#s13">Fault Tolerance</a></li>
+      <li><a href="#s14">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS AN AD CLICK AGGREGATOR?     -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is an Ad Click Aggregator?</h2>
+  <p>It is 9:14 AM on a Monday. Sarah is a marketing manager running a $10,000/day Google-style campaign for a sneaker launch. She has the dashboard open in one tab and her CFO on Slack in another. Every minute she refreshes — clicks tick up from 12,402 to 12,418 to 12,447 — and the spend column rises with them. At $0.30 per click, every single click matters: count one too many and the advertiser is overcharged; count one too few and the publisher is underpaid; count the same click twice and lawyers get involved. This is the system that has to count those clicks. It must count every real click, exactly once, even when networks drop packets and servers crash, and it must surface those counts to Sarah's dashboard within seconds.</p>
+
+  <p>An <strong>Ad Click Aggregator</strong> is the analytics backbone of every ad network — Google Ads, Meta Ads, TikTok Ads, Criteo. It does two things: <strong>(1)</strong> ingest a firehose of click events from billions of users and ad placements, and <strong>(2)</strong> produce trustworthy aggregate counts (per ad, per minute / hour / day / lifetime) that drive both real-time dashboards and end-of-day invoicing. The "exactly once" requirement makes this radically different from, say, a counting like-button — here, mistakes are billed in dollars.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How do we guarantee a click is counted exactly once, even when the ingest network retries, app servers crash mid-write, and Kafka rewinds during recovery? (2) How do we keep dashboard latency under one minute while ingesting 1,000,000 clicks per second at peak?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Money is on the line, so we lock down expectations before drawing any boxes. The functional list is short — counts, queries, idempotency. The non-functional list is the harder one — exactness, throughput, durability, freshness.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Ingest click events: <code>(ad_id, user_id, timestamp, idempotency_key)</code></li>
+        <li>Query click count and spend per ad over time windows — <strong>1m, 1h, 1d, all-time</strong></li>
+        <li>Support multiple granularities at the same time (per-minute counters, rolled up to hour and day)</li>
+        <li>Idempotent ingest — same <code>idempotency_key</code> arriving twice is counted once</li>
+        <li>Surface flagged-as-fraud clicks separately so they don't pollute billing numbers</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Exact counts</strong> — billing depends on it. Approximate is unacceptable</li>
+        <li><strong>High throughput</strong> — 1M clicks/sec at peak, growing 30%/year</li>
+        <li><strong>Real-time aggregation</strong> — under 1 minute lag from click to dashboard</li>
+        <li><strong>Durable</strong> — no click ever lost, even during a regional outage</li>
+        <li><strong>Click endpoint p99 under 50ms</strong> — the user is waiting for a redirect to the landing page</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The non-functional requirements are the entire design.</strong> Counting clicks is trivial — <code>counter++</code> in any language. Counting them <em>exactly</em> while the world is on fire — networks drop, retries fire, replicas lag, fraudsters spam — is what forces every architectural choice we are about to make.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers drive sizing of every tier — Kafka partitions, Flink parallelism, Redis cluster, S3 buckets. Run them out loud, even if rough.</p>
+
+  <h3 class="subh">Traffic estimates</h3>
+  <p>Assume <strong>10 million active ads</strong> on the platform. At peak hour we see <strong>1,000,000 clicks/sec</strong> (think Black Friday, World Cup final). Average sustained load is closer to 200K/sec. Each click event is roughly 100 bytes on the wire (ad_id, user_id, timestamp, idempotency_key, IP, user_agent stub).</p>
+
+  <div class="g4">
+    <div class="card"><h3>Peak ingest</h3><p><span class="metric">1,000,000 clicks/sec</span></p><p>Black Friday spike</p></div>
+    <div class="card"><h3>Sustained</h3><p><span class="metric">~200,000 clicks/sec</span></p><p>Daily average</p></div>
+    <div class="card"><h3>Peak bandwidth</h3><p><span class="metric">~100 MB/sec</span></p><p>1M × 100 bytes</p></div>
+    <div class="card"><h3>Daily volume</h3><p><span class="metric">~8.6 TB/day</span></p><p>200K × 86,400 × 100 bytes (avg)</p></div>
+  </div>
+
+  <h3 class="subh">Storage estimate</h3>
+  <p>Raw events are kept <strong>30 days</strong> for billing reconciliation and audits, then aged out to cheaper cold storage or deleted. Aggregates (per-minute, per-hour, per-day counters) are kept <strong>forever</strong> — they are tiny.</p>
+
+  <div class="g3">
+    <div class="card"><h3>Raw events (30d)</h3><p><span class="metric">~250 TB</span></p><p>8.6 TB × 30 days, stored as Parquet on S3 with snappy compression — actually closer to 80 TB compressed</p></div>
+    <div class="card"><h3>Aggregates</h3><p><span class="metric">~60 GB/year</span></p><p>10M ads × ~1440 minutes/day × 365 days × 12 bytes/counter — tiny next to raw events</p></div>
+    <div class="card"><h3>Hot cache</h3><p><span class="metric">~20 GB</span></p><p>Top 1% of ads × recent windows in Redis ZSETs for sub-second dashboard reads</p></div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Peak ingest</td><td><code>1M clicks/sec</code></td><td>Drives Kafka partition count and Flink parallelism</td></tr>
+        <tr><td>Daily volume</td><td><code>~8.6 TB/day</code></td><td>Sizes the S3 cold tier and reconciliation Spark cluster</td></tr>
+        <tr><td>30-day raw retention</td><td><code>~80 TB compressed</code></td><td>Cost driver — Parquet + snappy keeps it manageable</td></tr>
+        <tr><td>Click endpoint p99</td><td><code>&lt;50ms</code></td><td>Forces async ingest — Kafka publish, no DB write inline</td></tr>
+        <tr><td>Dashboard freshness</td><td><code>&lt;1 min</code></td><td>Forces stream processing, not batch ETL</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>Two endpoints carry the load: a write endpoint that records each click (called millions of times per second) and a read endpoint that powers Sarah's dashboard (called when she refreshes).</p>
+
+  <span class="code-label cl-green">REST API surface</span>
+<pre><span class="cmt">// Write — 1M req/sec at peak, must respond &lt;50ms with 302 redirect</span>
+GET /click?ad_id=A123&amp;user=u9&amp;ts=1714742400&amp;k=550e8400-e29b-41d4-a716-446655440000
+<span class="cmt">// k = idempotency_key, generated client-side as a UUID v4</span>
+→ 302 Found  Location: https://advertiser.com/landing-page
+
+<span class="cmt">// Read — low QPS, served from Redis aggregate store</span>
+GET /api/v1/metrics?ad_id=A123&amp;window=1h&amp;granularity=1m
+→ 200 OK
+{
+  "ad_id":   "A123",
+  "window":  "1h",
+  "series":  [
+    { "t": "2026-05-07T14:00:00Z", "clicks": 1240, "spend_usd": 372.00 },
+    { "t": "2026-05-07T14:01:00Z", "clicks": 1318, "spend_usd": 395.40 },
+    ...
+  ],
+  "as_of":   "2026-05-07T15:00:42Z",
+  "label":   "estimated"   <span class="cmt">// real-time path; canonical billing comes from S3 reconciliation</span>
+}
+
+<span class="cmt">// Internal — billing reconciliation produces canonical numbers</span>
+GET /api/v1/billing?ad_id=A123&amp;day=2026-05-07
+→ 200 OK  { "clicks": 28412, "spend_usd": 8523.60, "label": "canonical" }</pre>
+
+  <div class="highlight hl-blue"><strong>Why a GET, not a POST, on the click endpoint?</strong> The click is a browser following an &lt;a href&gt; link — the browser fires a GET, then a 302 redirects it to the landing page. We never hold a JSON body or wait for a response — the user is mid-click and any latency feels like the ad is broken. The endpoint must be the lightest thing in the system: validate, publish to Kafka, return 302. No DB touched.</div>
+
+  <div class="highlight hl-orange"><strong>The <code>idempotency_key</code> is the most important parameter on the page.</strong> The browser generates a UUID v4 the moment the click happens (or the ad SDK does). If the network drops the request and the browser retries, the second request carries the <em>same</em> key. Downstream — both at the API server and inside Flink — we see the duplicate and drop it. Without this, retries silently double-charge advertisers. With it, we are safe.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-orange">Step 5 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart under real money, and the production shape where every box justifies itself with a concrete failure it prevents.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>The simplest design any junior engineer would draw: the click endpoint takes the request, opens a Postgres transaction, runs <code>UPDATE clicks SET count = count + 1 WHERE ad_id = ?</code>, commits, returns the 302. One server, one database, one row per ad.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C["Browser"] --> APP["App Server"]
+  APP --> DB[("Postgres — counters table")]
+  DASH["Dashboard"] --> DB
+
+  style C fill:#e8743b,stroke:#e8743b,color:#fff
+  style APP fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style DB fill:#171d27,stroke:#38b265,color:#d4dae5
+  style DASH fill:#171d27,stroke:#9b72cf,color:#d4dae5
+    </div>
+  </div>
+
+  <p>Three concrete failures emerge the moment real traffic shows up — and each one maps directly to a component we will introduce in Pass 3:</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>💥 Lock storm on hot rows</h3>
+      <p>1M clicks/sec means 1M <code>UPDATE</code>s/sec. If 10K of those hit the same viral ad's row, Postgres serializes them via row locks — throughput on that row collapses to a few thousand per second. The dashboard query is also blocked behind the write queue. Within a minute, the entire pipeline is melted.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Retries cause double-counting</h3>
+      <p>A flaky cellular network retries the click request. The first one succeeded but the response was lost. The second one increments the counter <em>again</em>. The advertiser is overcharged $0.30 per duplicate, multiplied by millions of clicks, multiplied by every ad in the system. Auditors find the discrepancy at month-end. Lawsuit.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Dashboard reads collide with writes</h3>
+      <p>Sarah refreshes her dashboard. Postgres scans the counters table while millions of writes are in flight. Either reads block writes (latency spike, click endpoint times out) or writes block reads (her dashboard hangs). Either way, the experience is broken when it matters most — during a campaign launch.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: stream-based exactly-once aggregation with idempotency keys</h3>
+  <p>Three insights, drilled in until they are obvious. They form the spine of the entire production design.</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">🎟️ Idempotency keys</h3>
+      <p>Every click event carries a UUID generated at the source — the browser or the ad SDK. Think of it as a <strong>receipt number</strong>: the same physical purchase, even if the receipt is photocopied a hundred times, is still one purchase. Anywhere downstream, if we see the same key twice, we drop the duplicate. This is what makes "at-least-once delivery" (which is all the network can guarantee) safe to use.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">🚦 Decouple write path from aggregation</h3>
+      <p>The click endpoint must be fast and durable — but it does <em>not</em> need to be aggregated yet. We use <strong>Kafka</strong> as a durable buffer between ingest and aggregation. The endpoint publishes to Kafka and returns; a separate stream processor consumes Kafka at its own pace and computes counters. If aggregation lags by 30 seconds during a spike, no clicks are lost — they pile up in Kafka until the consumer catches up.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">🏦 Two output paths — fast vs canonical</h3>
+      <p>Real-time aggregates flow from Flink to Redis for dashboards (estimated, sub-second freshness). Raw events flow from Kafka to S3 in Parquet, where a daily Spark job re-aggregates and produces the <strong>canonical billing number</strong> (the one the advertiser is invoiced from). Real-time is "what's happening right now". Canonical is "what we charge you". Like a credit card pending charge versus the posted transaction.</p>
+    </div>
+  </div>
+
+  <p>This three-way split lets the click endpoint stay sub-50ms, the dashboard stay sub-minute fresh, and the billing system stay forensically auditable — without any one component compromising for the others.</p>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every box is numbered ①–⑫ — find its matching card below to see what it does, why it earned its place, and what would break if we removed it tomorrow.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  AD["① Ad Render — browser JS / mobile SDK"]
+
+  subgraph INGEST["Ingest Plane"]
+    CE["② Click Endpoint — 302 redirect"]
+    LB["③ Load Balancer — L7"]
+    API["④ Click Ingestion API"]
+    IDC["⑦ Idempotency Cache — Redis SETNX"]
+  end
+
+  subgraph STREAM["Stream Plane"]
+    KAF[("⑤ Kafka — topic clicks, 10K partitions by ad_id")]
+    FL["⑥ Flink — exactly-once aggregator"]
+    FRAUD["⑪ Fraud Detection — separate Flink job"]
+  end
+
+  subgraph STORAGE["Storage Plane"]
+    AGG[("⑧ Aggregate Store — Redis ZSET / DynamoDB")]
+    S3[("⑨ Cold Storage — S3 Parquet, 30d raw")]
+    DASH["⑩ Dashboard API"]
+  end
+
+  subgraph BILL["Billing Plane"]
+    SPARK["⑫ Billing Reconciliation — daily Spark job"]
+  end
+
+  AD -->|"GET /click + idempotency_key"| CE
+  CE --> LB
+  LB --> API
+  API -->|"SETNX dedup"| IDC
+  API -->|"publish"| KAF
+  KAF --> FL
+  KAF --> FRAUD
+  KAF -->|"sink"| S3
+  FL -->|"checkpointed counters"| AGG
+  AGG --> DASH
+  S3 --> SPARK
+  FRAUD -.flagged keys.-> SPARK
+
+  style AD fill:#e8743b,stroke:#e8743b,color:#fff
+  style CE fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style API fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style IDC fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style KAF fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style FL fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style FRAUD fill:#171d27,stroke:#e05252,color:#d4dae5
+  style AGG fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style S3 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style DASH fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style SPARK fill:#171d27,stroke:#38b265,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Ad Render — Browser / Mobile SDK</h3>
+      <p>The thing that actually shows the ad and detects the click. On the web, it is a snippet of JavaScript that wraps the &lt;a&gt; tag; on mobile, it is the publisher's SDK (Google AdMob, Facebook Audience Network style). The moment the user taps, this layer mints a fresh <strong>UUID v4 idempotency_key</strong>, builds the click URL, and sends the browser to it.</p>
+      <p><strong>Solves:</strong> the source-of-truth for "this is one click". Without a client-generated idempotency key, the server has no way to distinguish "the user clicked twice in frustration" from "the network retried the same click twice" — the first must count as two, the second as one. Only the client knows.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">②</span> Click Endpoint</h3>
+      <p>A tiny stateless HTTP service whose only purpose is to be fast. Per request: parse query params, return a 302 redirect to the landing page, and asynchronously hand the click to the ingestion API. Latency budget: under 50ms p99, including TLS termination. Built in Go or Rust, deployed in dozens of regions.</p>
+      <p><strong>Solves:</strong> the user-perceived latency problem. The user is mid-click and the browser is waiting for our redirect. If we did anything heavy here (DB write, RPC, fraud scoring), they would experience the ad as broken. Splitting this from the ingestion API lets the redirect path stay laser-focused.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">③</span> Load Balancer (L7)</h3>
+      <p>Public-facing application load balancer (AWS ALB, GCP Cloud Load Balancer, or nginx). Distributes click traffic across the click endpoints and ingestion API pods. Terminates TLS, runs health checks every 5s, evicts unhealthy pods automatically.</p>
+      <p><strong>Solves:</strong> single-point-of-failure on the ingest tier. Without an LB, one app crash takes down a slice of the world's ad clicks. With it, traffic shifts in seconds and we lose 1/N of capacity rather than 100%.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">④</span> Click Ingestion API</h3>
+      <p>Stateless service downstream of the click endpoint. Per request: validate the click (does <code>ad_id</code> exist? is the request well-formed?), enrich it (look up campaign metadata, attach server timestamp, derive country from IP), check the <strong>Idempotency Cache</strong> ⑦ to drop in-flight retries, then publish the event to <strong>Kafka</strong> ⑤. Returns to the click endpoint as soon as the publish is acknowledged — Kafka durability is what makes the click "saved".</p>
+      <p><strong>Solves:</strong> isolating heavy validation and enrichment from the latency-critical 302 path. The redirect goes back to the user immediately; ingestion happens on a parallel goroutine. Without this split, every click would carry the full validation cost in user-visible latency.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑤</span> Kafka — topic <code>clicks</code></h3>
+      <p>The durable buffer at the heart of the system. The <code>clicks</code> topic is partitioned by <code>ad_id</code> into <strong>~10,000 partitions</strong>, replicated 3x across availability zones. At 1M clicks/sec across 10K partitions that's 100 events per partition per second — each broker comfortably handles it. Retention is 7 days (long enough to replay a Flink restart from any reasonable failure).</p>
+      <p><strong>Solves:</strong> three things at once. <strong>(1) Durability</strong> — once Kafka acks the publish, the click is safe even if every downstream consumer dies. <strong>(2) Decoupling</strong> — Flink can lag during a spike and Kafka holds the backlog without dropping events. <strong>(3) Replay</strong> — exactly-once semantics rely on being able to rewind to a known offset, which only a log-structured store like Kafka cleanly supports. Without Kafka, we would need to reinvent all three of these in custom code, badly.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑥</span> Stream Processor — Apache Flink</h3>
+      <p>The brain of the aggregator. Flink consumes Kafka with <strong>exactly-once</strong> semantics (transactional consumer + checkpointing every 10 seconds), maintains per-ad counters in <strong>RocksDB-backed state</strong>, and emits aggregated rows to the Aggregate Store ⑧. It dedupes on <code>idempotency_key</code> within a sliding window, runs tumbling windows for 1m / 1h / 1d granularities in parallel, and rewinds gracefully on a task-manager failure.</p>
+      <p><strong>Solves:</strong> the exactly-once-aggregation problem. A naive consumer might count an event twice if it crashes between updating the counter and committing the Kafka offset. Flink's transactional consumer atomically commits both the offset and the state change — guaranteeing that on recovery, every input event has been counted exactly once. Without Flink (or a Spark Structured Streaming equivalent), we would either lose clicks on crashes or double-count them on retries.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑦</span> Idempotency Cache (Redis)</h3>
+      <p>A Redis cluster running <code>SETNX idempotency_key 1 EX 300</code> on every incoming click. If the SETNX returns 0 (key already exists), the click is a duplicate and the API drops it before publishing to Kafka. 5-minute TTL is enough to catch any plausible retry storm without holding state forever.</p>
+      <p><strong>Solves:</strong> dropping in-flight retries early. Flink also dedupes downstream — but the further upstream we catch a duplicate, the cheaper it is. A retry caught at the API costs one Redis lookup; a retry that reaches Flink costs Kafka bandwidth, broker storage, and consumer CPU. Without this cache, the system still produces correct counts, but Kafka throughput would carry 5–10% noise that Flink has to filter.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑧</span> Aggregate Store (Redis ZSET / DynamoDB)</h3>
+      <p>The serving layer for dashboards. Per-ad, per-window counters keyed by <code>(ad_id, granularity, time_bucket)</code>. Flink writes here every checkpoint; the dashboard reads from here. Redis sorted sets are great for "give me the last 60 minutes of ad A123" range queries; DynamoDB is the alternative when we need infinite retention and don't mind millisecond reads.</p>
+      <p><strong>Solves:</strong> sub-second dashboard reads. If the dashboard queried Flink state directly, it would compete with the streaming pipeline for resources. Materializing aggregates into a dedicated read store gives Sarah's dashboard sub-100ms responses without putting any pressure on the streaming hot path.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑨</span> Cold Storage (S3 Parquet)</h3>
+      <p>Every raw click event flows from Kafka to S3 via a Kafka Connect sink, written as <strong>Parquet files partitioned by <code>date=YYYY-MM-DD/hour=HH/</code></strong>. With snappy compression, our 8.6 TB/day of raw events shrinks to roughly 2–3 TB/day on disk. 30-day retention before transition to Glacier for compliance archiving.</p>
+      <p><strong>Solves:</strong> two things. <strong>(1)</strong> The canonical record-of-truth for billing — Spark reads these files end-of-day to produce the invoiced number. <strong>(2)</strong> Auditability — when an advertiser disputes a charge, we can point to the exact raw event and the timestamp it landed in our system. Without S3, the only history of a click would be a number in Redis, which is no defense in court.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑩</span> Dashboard API</h3>
+      <p>The HTTP service that powers Sarah's UI. Reads from the Aggregate Store ⑧, formats the response, slaps an <code>"as_of"</code> timestamp and an <code>"estimated"</code> label on it. Range queries like "last 24 hours of ad A123" become a <code>ZRANGEBYSCORE</code> in Redis — sub-50ms.</p>
+      <p><strong>Solves:</strong> giving the UI a stable contract. The aggregate store schema may evolve (new windows added, storage swapped from Redis to DynamoDB), but the dashboard API surface stays the same. Without this layer, every UI rev would have to know the internal state-store details.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑪</span> Fraud Detection — separate Flink job</h3>
+      <p>A second Flink job consuming the same Kafka topic. It does not aggregate counts — it watches for suspicious patterns: same IP firing 1,000 clicks in 10 seconds, same user_id clicking the same ad 50 times an hour, click timestamps that are too perfectly spaced (bot signature). Flagged <code>idempotency_key</code>s are written to a "fraud" topic which the billing job ⑫ subtracts at reconciliation time.</p>
+      <p><strong>Solves:</strong> protecting advertisers from being billed for fraudulent traffic without slowing the main aggregation path. Running fraud detection inline with counting would make the dashboard wait on rule evaluation; running it as a side-branch from Kafka means the main path stays fast and fraud is corrected in the canonical billing number.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑫</span> Billing Reconciliation — daily Spark job</h3>
+      <p>A nightly Spark job that reads the day's raw events from S3, joins against the fraud-flagged keys from ⑪, dedupes on <code>idempotency_key</code>, and produces the canonical per-ad clicks-and-spend number. This is the file that drives the invoice. Slow but exact — runs overnight on a transient cluster, takes 2 hours.</p>
+      <p><strong>Solves:</strong> the exactness contract. Real-time aggregates can drift slightly (Flink restarts, Redis evictions, late-arriving events). Spark over the immutable S3 record produces a number that is guaranteed reproducible — run it twice and you get the same answer to the cent. This is the only number an auditor will trust. Without it, "exact billing" is a hope, not a proof.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Sarah clicks an ad at 14:02:06</h3>
+  <p>Two real flows, mapped to the numbered components above. Watch how the same click flows down two paths in parallel — the fast path to dashboards, and the durable path to canonical billing.</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>⚡ Real-time path — Sarah's click reaches her own dashboard in 8 seconds</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah taps the sneaker ad on her phone at 14:02:06. The <strong>Ad SDK</strong> ① mints UUID <code>550e8400-...</code>, builds the click URL.</li>
+        <li>Browser GETs the <strong>Click Endpoint</strong> ② via <strong>Load Balancer</strong> ③. Endpoint returns 302 to the sneaker landing page within 22ms — Sarah is already loading the product page.</li>
+        <li>In parallel, the <strong>Click Ingestion API</strong> ④ validates, runs <code>SETNX</code> on the <strong>Idempotency Cache</strong> ⑦ (returns 1, first time), publishes the event to <strong>Kafka</strong> ⑤ partition <code>ad_id=A123</code>. Acked in 4ms.</li>
+        <li><strong>Flink</strong> ⑥ consumes the event ~3s later, dedupes again on the key (still first time), increments the per-minute counter for ad A123 in its RocksDB state, and on the next 10s checkpoint flushes the updated counter to the <strong>Aggregate Store</strong> ⑧.</li>
+        <li>Sarah refreshes her dashboard at 14:02:14. The <strong>Dashboard API</strong> ⑩ reads the latest counter from Redis. The "14:02" bar in her chart now shows 12,448 clicks — one of which is hers. <em>Total elapsed: 8 seconds.</em></li>
+        <li>Same event also lands in <strong>S3</strong> ⑨ via Kafka Connect, batched into the 14:00–14:59 Parquet file.</li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--green)">
+      <h3>🏦 Billing path — the same click is invoiced at 23:00</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>At 23:00 the daily <strong>Spark job</strong> ⑫ spins up a transient EMR cluster and reads <code>s3://clicks/date=2026-05-07/</code> — every Parquet file from the day, ~80 GB compressed.</li>
+        <li>Spark groups by <code>(ad_id, idempotency_key)</code> first to dedupe, then groups by <code>ad_id</code> to count.</li>
+        <li>It joins against the <strong>Fraud topic</strong> ⑪ to subtract any keys flagged during the day. Sarah's click is real, so it survives.</li>
+        <li>Output: a canonical row <code>(ad_id=A123, day=2026-05-07, clicks=28412, spend_usd=8523.60)</code> written to a billing table. This is the number on the advertiser's invoice.</li>
+        <li>If the dashboard's real-time number for the day was 28,415, the 3-click discrepancy is logged. Below 0.1% drift is normal (late-arriving events, fraud subtractions). Above 1% triggers a paging alert.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the system is built around three insights — (1) <strong>idempotency keys</strong> turn unreliable retries into safe at-least-once delivery; (2) <strong>Kafka + Flink</strong> turn at-least-once into exactly-once aggregation; (3) <strong>two output paths</strong> (Redis for fast, S3+Spark for canonical) let dashboards be quick <em>and</em> billing be exact, without compromising either. Every box in the diagram exists to remove one of the failure modes from Pass 1.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: IDEMPOTENCY                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6</span>
+  <h2>Idempotency — The Core Design Decision</h2>
+  <p>Of every choice in this design, the idempotency key is the one that makes everything else possible. It is also the choice that junior designs miss most often. Here is why it matters and exactly how it flows through the system.</p>
+
+  <p>The fundamental problem: networks are unreliable. The browser sends the click; the server receives it; the response is dropped on the way back. The browser, having no way to know whether the request succeeded, retries. Now the server has received the same click twice. Without an idempotency key, every retry doubles the count. With one, the second arrival is recognized and dropped.</p>
+
+  <h3 class="subh">The dedup chain — same key, four checkpoints</h3>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor U as User Click
+  participant SDK as Ad SDK / Browser
+  participant API as Click Ingestion API
+  participant RC as Redis SETNX
+  participant K as Kafka
+  participant F as Flink
+
+  U->>SDK: tap
+  SDK->>SDK: mint UUID v4 = "550e..."
+  SDK->>API: GET /click?k=550e...
+  API->>RC: SETNX 550e... 1 EX 300
+  RC-->>API: 1 (first time)
+  API->>K: produce {ad, key=550e...}
+  K-->>API: ack
+  API-->>SDK: 302 redirect
+
+  Note over SDK,API: Network drops response · browser retries
+  SDK->>API: GET /click?k=550e... (retry)
+  API->>RC: SETNX 550e... 1 EX 300
+  RC-->>API: 0 (already exists)
+  API-->>SDK: 302 redirect (no Kafka publish)
+
+  K->>F: consume event 550e...
+  F->>F: dedup key in window state
+  F->>F: increment ad counter
+    </div>
+  </div>
+
+  <p>The key is checked at <strong>four checkpoints</strong>, each with a different role:</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🎟️ Checkpoint 1 — Client mints the key</h3>
+      <p>The instant the user taps, the SDK generates a UUID v4. Same physical tap, same key, no matter how many times the request is retried. This is what makes "the same click" a well-defined concept across the network.</p>
+    </div>
+    <div class="card">
+      <h3>🚪 Checkpoint 2 — API hits Redis SETNX</h3>
+      <p>Redis returns 1 on first arrival (we proceed) or 0 on duplicate (we silently drop). 5-minute TTL covers any plausible retry window. Catches 99% of duplicates before they cost any downstream resources.</p>
+    </div>
+    <div class="card">
+      <h3>📜 Checkpoint 3 — Flink dedups in window state</h3>
+      <p>Even if a duplicate slips past Redis (cache eviction, late retry past TTL), Flink keeps a per-window <code>Set&lt;idempotency_key&gt;</code> in RocksDB state and skips counting any key it has seen before. This is the true guarantee — Redis is just a fast pre-filter.</p>
+    </div>
+    <div class="card">
+      <h3>🏦 Checkpoint 4 — Spark dedups at billing</h3>
+      <p>The nightly Spark job groups raw events by <code>idempotency_key</code> before counting. This is the final, canonical dedup — even if Flink double-counted by some bug, the billing number is still correct because Spark sees the truth in S3.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The interview move:</strong> when asked "how do you handle a flaky network where requests retry?" — answer "client-side idempotency keys, deduped at four layers". Then walk through the four layers. This shows you understand <em>defense in depth</em> rather than relying on any single component being perfect.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: EXACTLY-ONCE WITH FLINK             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-blue">Step 7</span>
+  <h2>Exactly-Once with Flink</h2>
+  <p>"Exactly-once" is one of the most over-promised phrases in distributed systems. What Flink + Kafka actually give you is <strong>exactly-once effect on aggregated state</strong> — meaning, no matter how many times an input event flows through the pipeline due to retries or crashes, its contribution to the output counter is recorded once. Here is how.</p>
+
+  <h3 class="subh">The three pieces that compose exactly-once</h3>
+
+  <div class="g3">
+    <div class="card">
+      <h3>1️⃣ Transactional Kafka consumer</h3>
+      <p>Flink consumes Kafka inside a transaction. The Kafka offset commit and the state update are part of the same atomic operation — either both happen or neither does.</p>
+    </div>
+    <div class="card">
+      <h3>2️⃣ Periodic checkpoints</h3>
+      <p>Every 10 seconds, Flink snapshots its state (the per-ad counters, the seen-idempotency-key set) plus the corresponding Kafka offsets to durable storage (S3 or HDFS).</p>
+    </div>
+    <div class="card">
+      <h3>3️⃣ Replay-from-checkpoint on failure</h3>
+      <p>If a Flink task crashes, the job restarts, loads the latest checkpoint, and resumes consuming Kafka from the saved offset. Any events between the crash and the last checkpoint are re-read and re-counted, but because the state was rolled back too, no double-counting occurs.</p>
+    </div>
+  </div>
+
+  <p>The mental model: <strong>exactly-once is a bank deposit</strong>. The teller stamps the deposit slip and updates the ledger in one atomic step. If they faint mid-deposit, you can replay the transaction safely — the slip and the ledger are either both updated or both not. Flink's checkpoint is the stamp; Kafka's offset is the slip; RocksDB state is the ledger.</p>
+
+  <div class="highlight hl-blue"><strong>Why not Spark Structured Streaming?</strong> Spark also offers exactly-once, but its mini-batch model has higher minimum latency (30s+ end-to-end vs Flink's sub-second). For a billing system where dashboards need under-1-minute lag, Flink's true streaming wins. For pure batch reconciliation (the nightly job), Spark wins on cost and ecosystem maturity.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: WINDOWS & GRANULARITY               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-purple">Step 8</span>
+  <h2>Sliding Windows &amp; Granularity</h2>
+  <p>The dashboard needs counts for multiple time windows simultaneously — "last minute", "last hour", "today", "all-time". Two strategies, with different cost and freshness profiles.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🪟 Strategy A — Multiple parallel tumbling windows in Flink</h3>
+      <p>Flink runs several tumbling windows in parallel — 1m, 1h, 1d. Each window emits a counter row to the Aggregate Store when it closes. Pros: the dashboard reads pre-aggregated rows directly, sub-millisecond latency. Cons: 3× the state size and 3× the write volume to the aggregate store.</p>
+    </div>
+    <div class="card">
+      <h3>📊 Strategy B — Per-minute counters, roll up at query time</h3>
+      <p>Flink only emits per-minute counters. The dashboard API computes "last hour" by summing the last 60 minute-buckets, "today" by summing 1440. Pros: 1/3 the state, simpler windowing. Cons: every dashboard read does a fan-out sum — fine in Redis (60 ZSCOREs are sub-ms), problematic at higher granularity.</p>
+    </div>
+  </div>
+
+  <p><strong>The production choice is hybrid:</strong> Flink emits per-minute and per-day counters; the dashboard rolls up per-hour from per-minute (60 cells) and "all-time" from per-day. Per-minute is what dashboards refresh against; per-day is what survives forever for historical reporting. Per-hour is just a sum over 60 cells — cheap.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: HOT AD PROBLEM                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-red">Step 9</span>
+  <h2>The Hot Ad Problem</h2>
+  <p>Picture a Super Bowl ad that gets <strong>100,000 clicks per second</strong> for 60 seconds. Our Kafka topic is partitioned by <code>ad_id</code>, so all 100K clicks land on the <em>same</em> partition. One Flink task handles that partition. That single task is now doing 100x its share of work, while the other 9,999 partitions are nearly idle.</p>
+
+  <p>This is the classic <strong>hot key</strong> problem in stream processing. Two solutions, both used in production at different scales.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🧂 Solution A — Salting (key sub-sharding)</h3>
+      <p>Instead of partitioning by <code>ad_id</code>, partition by <code>(ad_id, random_salt 0-99)</code>. Now a single ad's clicks fan out across 100 partitions. Flink aggregates per (ad, salt) in parallel, then a second step merges the 100 sub-counts into the final per-ad counter. Pros: scales linearly. Cons: requires a two-stage pipeline (sub-aggregate, then re-aggregate).</p>
+    </div>
+    <div class="card">
+      <h3>🌳 Solution B — Hierarchical aggregation</h3>
+      <p>Local pre-aggregation at the ingestion API layer — buffer clicks for 1 second, send <code>{ad_id, count: N}</code> instead of N individual events. Reduces Kafka volume 100x for hot ads at the cost of 1s extra dashboard lag. Effectively the same idea as a database write-back cache.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>Detect-and-react:</strong> in the steady state, plain <code>ad_id</code> partitioning is fine. Auto-scale by monitoring per-partition lag — when one partition's lag exceeds a threshold, dynamically rekey it with salt. Most days, no salting is needed; on Super Bowl day, the system shifts gear automatically.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: BILLING RECONCILIATION             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-green">Step 10</span>
+  <h2>Billing Reconciliation</h2>
+  <p>Why have <em>two</em> aggregation paths? Because the real-time dashboard and the invoice serve different masters.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>⚡ Real-time aggregates — for humans, labeled "estimated"</h3>
+      <p>Dashboards refresh every minute. Drift of ±0.1% is fine — Sarah is monitoring trend, not balancing books. We trade exactness for freshness. Counts are eventually correct as Flink catches up.</p>
+    </div>
+    <div class="card">
+      <h3>🏦 Canonical billing — for invoices, exact to the cent</h3>
+      <p>Daily Spark job over immutable S3 events. Reproducible — run it again next year and you get the same number. This is what the advertiser is charged. Slow (2 hours) but provably exact.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Drift monitoring</h3>
+  <p>At end of day, compare the real-time number against the canonical number per ad. Acceptable drift is &lt;0.5%. If drift exceeds 1%, page on-call — something in the streaming pipeline is misbehaving (Flink restart that lost late events, Redis eviction during a memory pressure spike, etc.). The drift dashboard is itself a critical piece of operational tooling.</p>
+
+  <div class="highlight hl-green"><strong>Transparency in the UI:</strong> every dashboard number carries an <code>"as_of"</code> timestamp and an <code>"estimated"</code> label. Yesterday's row, after the nightly reconciliation, flips its label to <code>"final"</code>. Advertisers have learned to trust the contrast — "today's number is approximate, yesterday's is invoice-grade".</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: FRAUD DETECTION                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-yellow">Step 11</span>
+  <h2>Fraud Detection</h2>
+  <p>Click fraud is real and expensive. Bot farms, click rings, competitors burning a rival's daily budget — every ad network deals with it. Our fraud detection runs as a <strong>side-branch off Kafka</strong>, not inline with counting, so the main pipeline stays fast and the fraud rules can be updated without redeploying the aggregator.</p>
+
+  <h3 class="subh">Signals the Flink fraud job watches for</h3>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🌐 IP velocity</h3>
+      <p>Same IP fires more than N clicks per minute across any ads. Threshold tuned by ASN — a corporate NAT looks different from a residential ISP.</p>
+    </div>
+    <div class="card">
+      <h3>👤 User-ad repetition</h3>
+      <p>Same <code>user_id</code> clicks the same <code>ad_id</code> more than N times per hour. A real user clicks an ad once or twice; a bot clicks it 200 times.</p>
+    </div>
+    <div class="card">
+      <h3>⏱️ Timestamp regularity</h3>
+      <p>Click timestamps too perfectly spaced (every 4.2 seconds, ±0.1s). Real human clicks are jittery; bots are not.</p>
+    </div>
+    <div class="card">
+      <h3>🤖 User-agent patterns</h3>
+      <p>Headless browsers, outdated mobile UAs, missing referrer headers. Each is weak alone; correlated across an IP they're a strong signal.</p>
+    </div>
+    <div class="card">
+      <h3>🌍 Geo-IP mismatch</h3>
+      <p>Click claims to be from a US user but IP is a known data-center range in Eastern Europe. Auto-flag for review.</p>
+    </div>
+    <div class="card">
+      <h3>🎯 Conversion rate cliff</h3>
+      <p>A campaign suddenly gets 10x more clicks than baseline but zero conversions. Either incredibly bad ad copy or a click-fraud attack. Alert the campaign owner.</p>
+    </div>
+  </div>
+
+  <p>Flagged <code>idempotency_key</code>s are written to a <code>fraud</code> Kafka topic. The billing reconciliation job ⑫ reads this topic and subtracts flagged clicks from the canonical invoice. Real-time dashboards can also surface a "suspected fraud" overlay so Sarah sees gross vs net counts.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: PARTITIONING                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-cyan">Step 12</span>
+  <h2>Data Partitioning</h2>
+  <p>Each storage layer has its own partitioning scheme — chosen to match the access pattern of that layer, not the layer above or below.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Layer</th><th>Partition key</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Kafka <code>clicks</code> topic</td><td><code>ad_id</code></td><td>All clicks for one ad land on one Flink task — trivial in-task aggregation. Hot ads handled via salting (§9).</td></tr>
+        <tr><td>Flink state</td><td><code>(ad_id, window_start)</code></td><td>Counters are partitioned the same way Kafka is, so Flink's keyed state lines up with input partitions — no shuffle.</td></tr>
+        <tr><td>Aggregate Store (Redis)</td><td><code>ad_id</code> (consistent hash)</td><td>Dashboard reads a single ad's series — that ad's data lives on one Redis shard. ZRANGE is local.</td></tr>
+        <tr><td>S3 Parquet</td><td><code>date=YYYY-MM-DD/hour=HH/</code></td><td>Spark scans a day or hour at a time — date-prefix partitioning lets it skip everything else (partition pruning).</td></tr>
+        <tr><td>Idempotency Cache</td><td><code>idempotency_key</code> hash</td><td>Even spread across Redis cluster nodes; SETNX is single-node, no cross-shard transactions needed.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>The recurring theme:</strong> partition by the field you query by. Kafka and Flink partition by ad_id because aggregation is per-ad. S3 partitions by date because reconciliation is per-day. Redis partitions by ad_id again because dashboards are per-ad. Mixing schemes (e.g., Kafka by ad_id but S3 also by ad_id) would be a disaster — Spark would fan out across millions of tiny files.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: FAULT TOLERANCE                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-red">Step 13</span>
+  <h2>Fault Tolerance</h2>
+  <p>What survives what kind of failure? Walk through the failure scenarios that matter.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>💥 An app server crashes mid-request</h3>
+      <p>Browser sees a connection reset, retries with the same idempotency key. Redis SETNX on the second arrival returns 0, the click is dropped (correctly — it was already published before the crash). If the crash happened <em>before</em> Kafka publish, the key was never set in Redis either, so the retry succeeds normally.</p>
+    </div>
+    <div class="card">
+      <h3>💥 A Kafka broker dies</h3>
+      <p>3-replica replication: each partition has a leader and 2 followers across AZs. On leader loss, a follower is elected leader within seconds. In-flight produces retry against the new leader. Acked writes are durable because <code>acks=all</code> requires majority replication before ack.</p>
+    </div>
+    <div class="card">
+      <h3>💥 A Flink task manager crashes</h3>
+      <p>Job manager detects the lost heartbeat, restarts the task on another node, restores state from the latest checkpoint, resumes Kafka consumption from the saved offset. 10s checkpoint interval means at most 10s of replay. State and offset roll back together — no double-counting.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Redis aggregate store loses a node</h3>
+      <p>Redis Cluster with replicas — failover in seconds. If the replica was lagging, the dashboard briefly shows slightly stale numbers; the next Flink checkpoint catches it up. The canonical billing number, sourced from S3, is unaffected.</p>
+    </div>
+    <div class="card">
+      <h3>💥 An entire region goes dark</h3>
+      <p>Active-passive multi-region. Click endpoints in other regions stay up; Kafka MirrorMaker replicates the topic cross-region. The passive region's Flink job is hot-warm — promoted to active within minutes. Dashboard sees a brief gap; billing reconciliation backfills from the replicated S3.</p>
+    </div>
+    <div class="card">
+      <h3>💥 S3 has a glitch (rare but real)</h3>
+      <p>Kafka holds 7 days of retention. If S3 sink falls behind, it catches up when S3 recovers — no data lost. Billing is delayed by hours, not lost. We'd page on-call but the system self-heals.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The pattern:</strong> every layer has at least one redundancy mechanism, and the layers compose. A click that has been Kafka-acked is durable to Flink crashes. A click in S3 is durable to Kafka outages. A canonical billing number from Spark is durable to Redis bugs. The only thing that can lose a click is a failure before Kafka acks — that window is single-digit milliseconds and is mitigated by client-side retries.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-blue">Step 14</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">How do you guarantee exactly-once when the network can drop messages?</div>
+  <div class="ans"><strong>Idempotency keys plus exactly-once stream processing.</strong> Client mints a UUID per physical click; server dedupes via Redis SETNX (catches 99% of duplicates cheaply); Flink dedupes again in window state (the actual guarantee); Spark dedupes a third time at billing reconciliation (the canonical answer). At-least-once delivery on the network combined with deduplication at every layer becomes effectively exactly-once at the output. No single component is trusted — defense in depth.</div>
+
+  <div class="iq">What's the trade-off between approximate and exact aggregation?</div>
+  <div class="ans"><strong>We do both, on purpose.</strong> Real-time aggregates are approximate (eventually consistent, ±0.1% drift) so dashboards can be sub-minute fresh — Sarah needs to know "is the campaign trending up?" not "exactly how much do I owe by 14:02:06". Canonical billing is exact (Spark over immutable S3) but takes hours — that's fine because invoices are sent monthly, not by the second. Mixing the two paths gives us speed where speed matters and exactness where money matters.</div>
+
+  <div class="iq">How do you handle a hot ad with 100K clicks/sec on one Kafka partition?</div>
+  <div class="ans"><strong>Salt the partition key.</strong> Switch from <code>ad_id</code> to <code>(ad_id, salt 0–99)</code> for that hot ad — the clicks now fan across 100 partitions instead of one. A second Flink stage merges the 100 sub-counters into the final per-ad number. Auto-detect via per-partition lag monitoring: when a partition's lag exceeds a threshold, dynamically rekey. In steady state no salting is needed; on Super Bowl day the system reshapes itself.</div>
+
+  <div class="iq">Why Flink and not Spark Structured Streaming?</div>
+  <div class="ans"><strong>Latency.</strong> Flink is a true streaming engine — events flow record-by-record with sub-second end-to-end latency. Spark Structured Streaming is mini-batch — minimum latency around 30 seconds. For a dashboard that must refresh in under a minute, Flink wins. Spark still wins for the nightly batch billing reconciliation — that's a different workload (large scan of immutable files) where Flink is unnecessarily complex.</div>
+
+  <div class="iq">How do you bill the advertiser fairly when network failures cause retries?</div>
+  <div class="ans"><strong>The idempotency key is the contract.</strong> One physical click → one UUID → one billable event, no matter how many retries reach our servers. We bill from the canonical Spark output, which dedupes on idempotency_key as its first step. If a retry reached us 50 times, the advertiser is billed once. If somehow none of the 50 reached us, the click was never recorded — but that requires every retry to fail, which is vanishingly rare with a sub-second retry window.</div>
+
+  <div class="iq">What if the click happens but Kafka is briefly down?</div>
+  <div class="ans"><strong>The click endpoint buffers locally.</strong> If the Kafka publish fails after retries, the API server writes the event to a local disk-backed dead-letter queue (think: append-only log on the pod's local SSD). A background drainer flushes the DLQ to Kafka the moment it recovers. The user still got their 302 redirect within 50ms — they never know there was a hiccup. Alternative: write to S3 directly as a fallback, then Spark picks it up at reconciliation. Either way, the click is not lost.</div>
+
+  <div class="iq">How would you add A/B test analytics on top of this?</div>
+  <div class="ans"><strong>Add a <code>variant_id</code> column to the click event</strong> and partition Flink's aggregation by <code>(ad_id, variant_id)</code> instead of just <code>ad_id</code>. Now every counter is per-variant. The dashboard shows side-by-side conversion rates. For statistical significance, the same Flink job emits per-variant impression counts and the dashboard runs a chi-square test client-side. The reconciliation job also splits by variant, so canonical billing reflects which variant earned the spend. Zero new infrastructure — just a wider key.</div>
+
+  <div class="iq">What's the storage cost story for 30 days of raw events?</div>
+  <div class="ans">8.6 TB/day uncompressed × 30 days = 258 TB. With Parquet + snappy on S3, that compresses to roughly 80 TB. At S3 Standard pricing (~$23/TB/month), that's ~$1,840/month — utterly trivial next to the revenue an ad network generates. After 30 days we transition to Glacier Deep Archive (~$1/TB/month) for compliance retention, dropping the marginal cost by 95%. The cost story is dominated not by storage but by Kafka and Flink compute.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "Client-minted idempotency keys plus Kafka-buffered exactly-once Flink aggregation, with two output paths — Redis for sub-minute dashboards (estimated) and Spark over S3 for canonical billing (exact). Three checkpoints of dedup and a side-branch fraud job make every billed click defensible to a court."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HLD Interview Framework — A 4-Step Delivery Playbook</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* HERO */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* LAYOUT */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* SIDEBAR */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* SECTION */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* CODE */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* DIAGRAM */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* HIGHLIGHT */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* INTERVIEW Q */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* COMPONENT NUMBER */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* METRIC PILL */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+
+/* SCRIPT TIMELINE */
+.script-line{display:grid;grid-template-columns:80px 1fr;gap:1rem;padding:.85rem 1rem;border-left:2px solid var(--border);margin-bottom:.4rem;background:var(--surface);border-radius:0 var(--r) var(--r) 0}
+.script-line .stime{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);font-weight:700}
+.script-line .scontent{font-size:.9rem;color:var(--text);line-height:1.75}
+.script-line.s-blue{border-left-color:var(--blue)}.script-line.s-blue .stime{color:var(--blue)}
+.script-line.s-green{border-left-color:var(--green)}.script-line.s-green .stime{color:var(--green)}
+.script-line.s-purple{border-left-color:var(--purple)}.script-line.s-purple .stime{color:var(--purple)}
+.script-line.s-yellow{border-left-color:var(--yellow)}.script-line.s-yellow .stime{color:var(--yellow)}
+.script-line.s-cyan{border-left-color:var(--cyan)}.script-line.s-cyan .stime{color:var(--cyan)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">HLD Interview Methodology</div>
+  <h1>The HLD Interview <span>Framework</span></h1>
+  <p class="sub">A 45-minute timeboxed playbook for attacking any system design question — from "design Twitter" to "design Bitly" — without panicking, wandering, or over-engineering.</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Why a Framework?</a></li>
+      <li><a href="#s2">The Four Evaluation Pillars</a></li>
+      <li><a href="#s3">The 4-Step Framework</a></li>
+      <li><a href="#s4">Step 1 — Requirements</a></li>
+      <li><a href="#s5">Step 2 — Core Entities</a></li>
+      <li><a href="#s6">Step 3 — API Design</a></li>
+      <li><a href="#s7">Step 4 — High-Level Design</a></li>
+      <li><a href="#s8">Step 5 — Deep Dives</a></li>
+      <li><a href="#s9">Common Mistakes</a></li>
+      <li><a href="#s10">Specifying Implementations</a></li>
+      <li><a href="#s11">Walkthrough — Bitly</a></li>
+      <li><a href="#s12">Mapping Site HLDs</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ────────────────────────────────────────────── -->
+<!-- SECTION 1: WHY A FRAMEWORK                     -->
+<!-- ────────────────────────────────────────────── -->
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 0</span>
+  <h2>Why You Need a Framework</h2>
+  <p>Picture this. Sarah sits down for her L5 system design interview. The interviewer takes a sip of coffee and says, "Design Twitter." Sarah nods, opens the whiteboard tool, draws a box labeled "Web Server", then a box labeled "Database", connects them with a line — and freezes. Twenty minutes later she has eight disconnected boxes, no requirements, no API, no numbers, and the interviewer is asking, "So… what about the feed?" Sarah panics, mumbles "Redis", and the loop is over before she's said anything substantive.</p>
+
+  <p>The problem isn't that Sarah doesn't know the components. She knows what Redis does, she knows what Kafka does, she's read about consistent hashing twice. The problem is she has <strong>no playbook for the 45 minutes</strong> — no order in which to think, no checklist for what must be on the board before time runs out. HLD interviews aren't a memory test; they're a <strong>structured-thinking test</strong>, and structure is what a framework gives you.</p>
+
+  <div class="highlight hl-orange"><strong>The framework is a recipe, not a cage.</strong> A recipe tells you: chop the onions first, then the garlic, then deglaze with wine. You don't have to make the same dish every time, but the order matters — if you add the onions after the wine, you get a soggy mess. The HLD framework works the same way: requirements before APIs, APIs before architecture, architecture before deep dives. Skip a step and the rest collapses.</div>
+
+  <p>This page lays out the playbook used by senior engineers at FAANG, distilled from the methodology hellointerview.com teaches, and shows you how to apply it minute-by-minute. By the end you should be able to walk into any HLD loop, hear the prompt, and know <em>exactly what you're going to say in the next 45 minutes</em>.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ────────────────────────────────────────────── -->
+<!-- SECTION 2: EVALUATION PILLARS                  -->
+<!-- ────────────────────────────────────────────── -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-blue">Scoring Rubric</span>
+  <h2>The Four Evaluation Pillars — What Interviewers Score</h2>
+  <p>Before learning how to deliver, understand what's actually being measured. Interviewers at most senior engineering ladders are scoring four dimensions on every HLD loop. Knowing them lets you spend your minutes on what matters.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">① Problem Navigation</h3>
+      <p>Can you take an ambiguous prompt — "design Twitter" — and break it into a prioritized set of concrete problems? Do you know which 3 features are the spine of the system and which 50 are noise? This is where you earn points for asking <em>"who's the user, what's the top action, what scale are we at?"</em> instead of jumping straight to boxes.</p>
+      <p><strong>What it looks like in practice:</strong> the candidate restates the problem in their own words, lists 5 candidate features, and explicitly says "for this interview I'll focus on these 3 — does that match what you want to see?"</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">② Solution Design</h3>
+      <p>Can you map core distributed-systems concepts (sharding, caching, replication, queues) onto the <em>specific</em> components your system needs? "We use Kafka because we have asynchronous fan-out from one writer to many consumers" is solution design. "We use Kafka because Kafka is good" is not.</p>
+      <p><strong>What it looks like:</strong> every box on the diagram is justified by a requirement from Step 1. The candidate can answer "what would break without this?" for every component.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">③ Technical Excellence</h3>
+      <p>Do you know the <em>current</em> tooling and patterns? "I'd use a sharded Postgres with logical replication" is current. "I'd use Hadoop MapReduce for the feed" was current in 2010 — today it signals you haven't kept up. Specifically: knowing when DynamoDB beats Cassandra, when Kafka beats Kinesis, when CRDTs beat last-writer-wins, when gRPC beats REST.</p>
+      <p><strong>What it looks like:</strong> the candidate names specific products, specific data structures inside those products, and explains the trade-off versus the obvious alternative.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">④ Communication</h3>
+      <p>Can you explain your reasoning out loud, respond to interviewer pushback without getting defensive, and revise the design when challenged with a new constraint? The interviewer is also scoring "would I want to be on a design review with this person?"</p>
+      <p><strong>What it looks like:</strong> the candidate narrates as they draw, pauses to ask "is this the depth you want, or should I move on?", and when the interviewer says "what about hot keys?" they incorporate the concern instead of defending the original design.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>The pillar weighting is roughly 25/35/15/25.</strong> Solution Design is the heaviest because it's the hardest to fake, but Communication is the silent killer — most candidates lose loops not because their design was wrong but because the interviewer couldn't follow their reasoning. The framework that follows is engineered to make all four pillars visible at once.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ────────────────────────────────────────────── -->
+<!-- SECTION 3: 4-STEP OVERVIEW                     -->
+<!-- ────────────────────────────────────────────── -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-purple">The Playbook</span>
+  <h2>The 4-Step Framework — A 45-Minute Timeline</h2>
+  <p>Here's the entire playbook on one page. Five distinct phases, ordered by what a senior engineer would actually do at a real design review. Each phase has a hard timebox — the goal is not to finish early but to <strong>spend exactly the right amount of time on each step so you reach Deep Dives with the interviewer still engaged</strong>.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+gantt
+  title HLD Interview — 45 to 60 Minute Timeline
+  dateFormat X
+  axisFormat %s
+
+  section Setup
+  Step 1 — Requirements              :crit, s1, 0, 5m
+  Step 2 — Core Entities             :s2, after s1, 2m
+  Step 3 — API Design                :s3, after s2, 5m
+
+  section Architecture
+  Step 4 — High-Level Design         :crit, s4, after s3, 13m
+
+  section Depth
+  Step 5 — Deep Dives                :crit, s5, after s4, 15m
+
+  section Buffer
+  Q and A and Wrap-up                :s6, after s5, 5m
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card" style="border-left:3px solid var(--orange)"><h3>Step 1 · ~5 min</h3><p><strong>Requirements.</strong> Functional + Non-functional. Top 3 features only. Quantify NFRs.</p></div>
+    <div class="card" style="border-left:3px solid var(--green)"><h3>Step 2 · ~2 min</h3><p><strong>Core Entities.</strong> Bulleted list of data nouns. User, Tweet, Follow. Fast.</p></div>
+    <div class="card" style="border-left:3px solid var(--blue)"><h3>Step 3 · ~5 min</h3><p><strong>API Surface.</strong> 3-5 endpoints. REST defaults. Auth-derived user_id.</p></div>
+    <div class="card" style="border-left:3px solid var(--purple)"><h3>Step 4 · ~13 min</h3><p><strong>High-Level Design.</strong> Walk one API at a time. Add components as needed. Build sequentially.</p></div>
+    <div class="card" style="border-left:3px solid var(--yellow)"><h3>Step 5 · ~15 min</h3><p><strong>Deep Dives.</strong> Address NFRs and bottlenecks. Hot keys, sharding, caching, queues. Let the interviewer probe.</p></div>
+    <div class="card" style="border-left:3px solid var(--cyan)"><h3>Buffer · ~5 min</h3><p><strong>Q&amp;A.</strong> Interviewer's choice. Reverse questions. Recap.</p></div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The framework as a jazz solo.</strong> Steps 1-3 are the chord changes — they're fixed, you play them the same way every time. Step 4 is the head melody — recognizable from the requirements but with room for taste. Step 5 is the improvisation — it changes every interview based on what the interviewer probes, but it's only good if the chords underneath are solid. Skip the chord changes and you're just noodling.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ────────────────────────────────────────────── -->
+<!-- SECTION 4: STEP 1 - REQUIREMENTS               -->
+<!-- ────────────────────────────────────────────── -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-orange">Step 1 · 5 min</span>
+  <h2>Step 1 — Requirements</h2>
+  <p>The single most undervalued step. Candidates who skip it end up designing a system the interviewer didn't ask for, and the interviewer's gentle "interesting, but what about X?" lands like a wrecking ball 25 minutes in. Five minutes spent here saves twenty minutes later.</p>
+
+  <h3 class="subh">Functional requirements — "Users should be able to..."</h3>
+  <p>List the top 3 user-facing capabilities. Resist the urge to brainstorm a list of 20. The interviewer doesn't have time to design 20 features in 45 minutes — they want to see depth on the few that matter. Phrase each as a user action, not a system capability.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✅ Good — Twitter top 3</h3>
+      <ul>
+        <li>Users should be able to <strong>post a tweet</strong> with text and optional media</li>
+        <li>Users should be able to <strong>follow</strong> other users</li>
+        <li>Users should be able to <strong>view a feed</strong> of tweets from people they follow, ordered chronologically</li>
+      </ul>
+      <p style="margin-top:.6rem"><em>Three actions, each one drives a clear architectural slice. Post → write path. Follow → graph storage. Feed → fan-out problem.</em></p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">❌ Bad — kitchen sink</h3>
+      <ul>
+        <li>Post tweets, retweet, quote-tweet, reply, like, bookmark</li>
+        <li>Follow users, unfollow, mute, block, report</li>
+        <li>View home feed, mentions, DMs, lists, trends, search</li>
+        <li>Notifications, analytics, ads, verified badges, polls...</li>
+      </ul>
+      <p style="margin-top:.6rem"><em>You'll spend 30 minutes just listing endpoints and have no time left for architecture. The interviewer will start cutting features by force.</em></p>
+    </div>
+  </div>
+
+  <h3 class="subh">Non-functional requirements — "The system should be..."</h3>
+  <p>NFRs are where most candidates fumble. The temptation is to list adjectives — "scalable, available, performant" — none of which mean anything specific. The fix: <strong>quantify everything</strong>, and tie each to a CAP-style trade-off.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✅ Good NFRs</h3>
+      <ul>
+        <li><strong>Latency:</strong> feed loads under 500ms p99</li>
+        <li><strong>Availability:</strong> 99.99% on read path (53 min downtime/year). Reads can go stale but cannot fail.</li>
+        <li><strong>Scale:</strong> 200M DAU, 100M tweets/day, 100:1 read:write</li>
+        <li><strong>Durability:</strong> zero tweet loss after a 200 OK is returned</li>
+        <li><strong>Consistency:</strong> eventual on the feed (a 30s delay between post and follower visibility is acceptable)</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">❌ Bad NFRs</h3>
+      <ul>
+        <li>"Highly available" — what's the SLO? Can it ever go down for maintenance?</li>
+        <li>"Fast" — fast for whom? p50 or p99? Page load or API call?</li>
+        <li>"Scalable" — to what? 10K users or 10B users?</li>
+        <li>"Secure" — secure against what threat model?</li>
+        <li>"Reliable" — same as available? Or about durability?</li>
+      </ul>
+    </div>
+  </div>
+
+  <p>The standard NFR checklist to walk through out loud: <span class="metric">CAP</span> <span class="metric">Latency</span> <span class="metric">Throughput</span> <span class="metric">Availability</span> <span class="metric">Durability</span> <span class="metric">Consistency</span> <span class="metric">Security</span> <span class="metric">Compliance</span> <span class="metric">Cost</span>. You don't need all of them on every system, but mentioning each shows you've considered it.</p>
+
+  <h3 class="subh">Capacity estimation — only if it changes the design</h3>
+  <p>Back-of-envelope math is a tool, not a checkbox. Do it <strong>only when the number influences an architectural choice</strong>: does the data fit on one box, or do we need sharding? Is QPS within one DB's limits, or do we need read replicas + cache? Is bandwidth at CDN-scale, or can a single LB handle it?</p>
+
+  <div class="highlight hl-orange"><strong>A useful rule:</strong> if you can't immediately follow the math with "…therefore we need X", skip it. <em>"500M URLs / month at 500 bytes each = 250GB/month → 15TB over 5 years → must shard"</em> is great. <em>"500M URLs / month at 500 bytes each = 250GB/month, anyway moving on"</em> is wasted air.</p></div>
+
+  <h3 class="subh">Anti-patterns to avoid in Step 1</h3>
+  <div class="g3">
+    <div class="card"><h3>🚫 Listing 15 features</h3><p>Forces the interviewer to cut for you. Pick the 3 hardest and hardest-coupled. The interviewer can always ask for more.</p></div>
+    <div class="card"><h3>🚫 Skipping NFRs</h3><p>Without quantified NFRs you can't justify <em>any</em> architecture choice — every "we need a cache" answer is hand-waved.</p></div>
+    <div class="card"><h3>🚫 Math for math's sake</h3><p>Estimating bytes when you're not going to use the number. Burns 3 minutes that could've gone to deep dives.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ────────────────────────────────────────────── -->
+<!-- SECTION 5: STEP 2 - CORE ENTITIES              -->
+<!-- ────────────────────────────────────────────── -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-green">Step 2 · 2 min</span>
+  <h2>Step 2 — Core Entities</h2>
+  <p>The shortest step in the framework, and the easiest to get right. List the data nouns the system manipulates. That's it. No fields yet, no relationships, no schema — just names. This step exists to <strong>establish vocabulary</strong> with the interviewer so when you say "Tweet" later, you both mean the same thing.</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">Twitter</h3>
+      <ul>
+        <li><strong>User</strong></li>
+        <li><strong>Tweet</strong></li>
+        <li><strong>Follow</strong> (relationship)</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">Bitly</h3>
+      <ul>
+        <li><strong>User</strong></li>
+        <li><strong>ShortLink</strong></li>
+        <li><strong>ClickEvent</strong></li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">Uber</h3>
+      <ul>
+        <li><strong>Rider</strong></li>
+        <li><strong>Driver</strong></li>
+        <li><strong>Ride</strong></li>
+        <li><strong>LocationUpdate</strong></li>
+      </ul>
+    </div>
+  </div>
+
+  <p style="margin-top:1rem">Why bother? Three reasons:</p>
+
+  <div class="g3">
+    <div class="card"><h3>🎯 Anchors for later</h3><p>When you draw the database in Step 4, you'll point at "the Tweet table" — the interviewer already knows what that means.</p></div>
+    <div class="card"><h3>📐 Forces data model</h3><p>If you can't list the entities, you don't understand the problem. Two minutes here exposes confusion early.</p></div>
+    <div class="card"><h3>⚡ Disambiguates terms</h3><p>"Post" might mean a tweet, a blog post, or an HTTP verb. Naming the entity locks in the meaning.</p></div>
+  </div>
+
+  <div class="highlight hl-green"><strong>Don't over-engineer.</strong> No fields, no PKs, no FKs in this step — those come in Step 4 when you actually need them. Two minutes, three to five entities, move on. If you're spending 5 minutes here, you're hiding from the harder steps.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ────────────────────────────────────────────── -->
+<!-- SECTION 6: STEP 3 - API DESIGN                 -->
+<!-- ────────────────────────────────────────────── -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-blue">Step 3 · 5 min</span>
+  <h2>Step 3 — API / System Interface</h2>
+  <p>Now you commit to the contract between the client and your system. APIs make the system concrete in a way that abstract architecture diagrams never can — they force you to answer "who calls what, with what payload, and what comes back?" Every box you draw in Step 4 will be in service of one of these endpoints.</p>
+
+  <h3 class="subh">REST is the default — but use the right verb</h3>
+  <p>Unless the system is real-time streaming (live location, chat, video), default to REST. Plural resources, standard HTTP verbs, JSON payloads. Three to five endpoints — one per top functional requirement plus a couple of supporting reads.</p>
+
+  <span class="code-label cl-blue">Twitter — top 3 endpoints driving top 3 functional requirements</span>
+<pre><span class="cmt">// Post a tweet — write path</span>
+POST /v1/tweets
+Headers: { Authorization: "Bearer &lt;jwt&gt;" }
+Body:    { "text": "hello world", "media_ids": ["m_42"] }
+→ 201 { "tweet_id": "t_8910", "created_at": "2026-05-07T14:02:06Z" }
+
+<span class="cmt">// Follow another user</span>
+POST /v1/follows
+Headers: { Authorization: "Bearer &lt;jwt&gt;" }
+Body:    { "followee_id": "u_777" }
+→ 204 No Content
+
+<span class="cmt">// Get the home feed — read path, the heavy lift</span>
+GET /v1/feed?cursor=&lt;opaque&gt;&amp;limit=20
+Headers: { Authorization: "Bearer &lt;jwt&gt;" }
+→ 200 {
+    "tweets":      [ { "tweet_id": "t_…", "author": "…", "text": "…", "created_at": "…" }, … ],
+    "next_cursor": "&lt;opaque&gt;"
+  }</pre>
+
+  <h3 class="subh">The single most important rule — never trust the client for identity</h3>
+  <div class="highlight hl-red"><strong>The user_id MUST come from the auth token, never from the request body.</strong> A candidate who writes <code>POST /v1/tweets { "user_id": "u_42", "text": "..." }</code> just designed a vulnerability where Mallory can post tweets as Sarah. The user_id is implicit — derived server-side from the JWT/session — and it's worth saying this out loud as you write the endpoints. Interviewers love this catch.</div>
+
+  <h3 class="subh">When to swap REST for something else</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>🌊 Streaming → WebSocket / SSE</h3>
+      <p>Live chat, live location (Uber), real-time notifications. Polling at 1Hz on REST would crush the server.</p>
+    </div>
+    <div class="card">
+      <h3>📦 High-throughput → gRPC</h3>
+      <p>Internal service-to-service calls where the JSON overhead and HTTP/1.1 RTT matter. Less common for the public API surface.</p>
+    </div>
+    <div class="card">
+      <h3>🔄 Async work → message queue</h3>
+      <p>Not really an "API" — but worth saying "the email-send is dropped on a Kafka topic, not exposed as an endpoint."</p>
+    </div>
+  </div>
+
+  <h3 class="subh">For data-flow systems — sketch the flow, not the API</h3>
+  <p>If you're designing an analytics pipeline, search indexer, or event-stream processor, the "API" is really a data flow. Draw producer → topic → consumer instead of REST endpoints. Same effect: locks down the contract.</p>
+
+  <div class="highlight hl-blue"><strong>Anti-pattern:</strong> writing 20 endpoints that cover every CRUD operation on every entity. Stick to the 3-5 that drive your functional requirements. If the interviewer wants pagination details on <code>GET /users/:id/followers</code>, they'll ask — don't volunteer until they do.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ────────────────────────────────────────────── -->
+<!-- SECTION 7: STEP 4 - HIGH LEVEL DESIGN          -->
+<!-- ────────────────────────────────────────────── -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-purple">Step 4 · 13 min</span>
+  <h2>Step 4 — High-Level Design</h2>
+  <p>This is the visible centerpiece of the interview — the diagram the interviewer will photograph at the end. But the diagram itself isn't the deliverable: the <strong>narration as you build it</strong> is. Done well, this section walks through one API endpoint at a time, adding only the components that endpoint needs, until every box on the board has earned its place.</p>
+
+  <h3 class="subh">The strategy — build incrementally, one API at a time</h3>
+  <p>Don't pull a full distributed-systems architecture from memory and start drawing it. The interviewer can't follow your reasoning if you skip the building-up. Instead, take API #1 (the highest-volume or most-defining one), draw the simplest possible system that satisfies it, then move to API #2 and add only what's missing.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  subgraph P1["Pass 1 — POST /tweets only"]
+    C1["Client"] --> A1["App Server"] --> D1[("Tweets DB")]
+  end
+
+  subgraph P2["Pass 2 — adds GET /feed"]
+    C2["Client"] --> A2["App Server"]
+    A2 --> D2[("Tweets DB")]
+    A2 --> F2[("Follows DB")]
+  end
+
+  subgraph P3["Pass 3 — adds caching and fan-out"]
+    C3["Client"] --> LB3["LB"]
+    LB3 --> A3["App Server"]
+    A3 --> CACHE3["Feed Cache — Redis"]
+    A3 --> D3[("Tweets DB")]
+    A3 --> F3[("Follows DB")]
+    A3 -.async.-> FAN3["Fan-out Worker"]
+    FAN3 --> CACHE3
+  end
+
+  style C1 fill:#e8743b,stroke:#e8743b,color:#fff
+  style C2 fill:#e8743b,stroke:#e8743b,color:#fff
+  style C3 fill:#e8743b,stroke:#e8743b,color:#fff
+  style CACHE3 fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style FAN3 fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <p>Notice how Pass 1 is almost embarrassingly simple — and that's the point. The interviewer sees you starting with the smallest thing that could possibly work, then layering complexity only where a specific requirement demands it. By Pass 3 you've explained <em>why</em> the cache exists ("feed reads dominate at 100:1") and <em>why</em> the fan-out worker exists ("we precompute feeds so reads don't pay the join cost").</p>
+
+  <h3 class="subh">Document state changes explicitly</h3>
+  <p>When data flows through your system, say what gets written where. <em>"On POST /tweets, we (1) insert into the Tweets table, (2) emit a tweet_created event to Kafka, (3) the fan-out worker picks it up and pushes the tweet_id into each follower's feed cache."</em> That sentence is worth ten boxes — it shows the interviewer you understand the runtime, not just the static topology.</p>
+
+  <h3 class="subh">Schema fields — only when relevant</h3>
+  <p>You don't need to enumerate every column in every table. Mention fields when they drive a design choice: <em>"the Tweet table is keyed by tweet_id and indexed on (user_id, created_at) so we can efficiently fetch a user's recent tweets"</em>. The fact that there's a <code>language</code> column doesn't help the interviewer — skip it.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✅ Good HLD narration</h3>
+      <p><em>"For POST /tweets, the request hits the load balancer, gets routed to a stateless write app server, which inserts into the Tweets DB sharded by user_id. Then it emits a fan-out event to Kafka so feeds get rebuilt async — that way the user gets their 201 in under 100ms even if their follower list is 10M people."</em></p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">❌ Bad HLD narration</h3>
+      <p><em>"OK so we have a load balancer, and behind that we have app servers, and the app servers talk to a database, and we'll need a cache, and there's also a queue, and a search service over here, and..."</em> [draws 12 disconnected boxes with no explanation of why each exists]</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The mantra:</strong> "Build the simplest design that meets functional requirements, then layer complexity to meet non-functional requirements." Functional first — does it work for one user? Then non-functional — does it work for a million users? Mixing them is how candidates end up with Cassandra in Pass 1 of a system that doesn't even need persistence yet.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ────────────────────────────────────────────── -->
+<!-- SECTION 8: STEP 5 - DEEP DIVES                 -->
+<!-- ────────────────────────────────────────────── -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-yellow">Step 5 · 15 min</span>
+  <h2>Step 5 — Deep Dives</h2>
+  <p>This is where senior candidates separate from mid-level candidates. By minute 25 you have a working high-level design — congratulations, that's the table-stakes deliverable. The remaining 15 minutes are about <strong>iterating the design to satisfy the non-functional requirements</strong>: latency, scale, fault tolerance, hot keys, edge cases. The interviewer is also probing for the depth of your knowledge — they have specific things they want to test, so leave room for them to drive.</p>
+
+  <h3 class="subh">The mindset shift — bottlenecks, not features</h3>
+  <p>In Step 4 you added components to support new endpoints. In Step 5 you add components (or modify existing ones) to fix <em>weaknesses in the existing design</em>. Walk through your NFRs from Step 1 and ask: "does the current design hit this? if not, what's the bottleneck?"</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔥 Bottleneck-style deep dives</h3>
+      <ul>
+        <li><strong>DB write hot spot</strong> → shard differently, or batch writes</li>
+        <li><strong>DB read hot spot</strong> → add cache, read replicas</li>
+        <li><strong>Single-region latency</strong> → multi-region replicas, CDN</li>
+        <li><strong>Synchronous slow path</strong> → push to a queue, return early</li>
+        <li><strong>Cache cold-start</strong> → warm-up scripts, dual-tier cache</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚡ Edge-case-style deep dives</h3>
+      <ul>
+        <li><strong>Twitter:</strong> celebrity user with 100M followers — fan-out at write-time would write 100M times per tweet</li>
+        <li><strong>Uber:</strong> SXSW geographic hot spot — geo-shard rebalances</li>
+        <li><strong>URL shortener:</strong> viral link → CDN absorbs the spike</li>
+        <li><strong>Chat:</strong> phone-loses-signal → message ordering &amp; replay</li>
+        <li><strong>Payments:</strong> double-submit on flaky network → idempotency keys</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="subh">Twitter celebrity problem — a worked example</h3>
+  <p>The candidate has just drawn a fan-out-on-write architecture: when Sarah tweets, the worker pushes her tweet into all 200 of her followers' feeds. Then the interviewer asks: <em>"What happens when Taylor Swift tweets?"</em></p>
+
+  <div class="highlight hl-yellow"><strong>Bad answer:</strong> "Uh, we'd just fan out to all her followers."<br><strong>Good answer:</strong> "Pure fan-out-on-write breaks for celebrity users — Taylor has 95M followers, so one tweet would be 95M writes. Two fixes: (1) <strong>hybrid model</strong> — for users with &lt;100K followers we fan out on write; for users above that threshold we fan out on <em>read</em> (the reader's feed-build query unions the precomputed feed with on-the-fly fetches from the celebrity's tweet timeline). (2) <strong>fan-out budget</strong> — the worker still does write fan-out for active followers, and lazy fan-out for the long-tail inactive followers, so dormant accounts don't bloat the celeb's write cost."</div>
+
+  <h3 class="subh">Crucial — leave room for the interviewer to drive</h3>
+  <p>The interviewer has a list of probes they want to test on every candidate. Maybe it's "ask about hot keys", "ask about consistency in the cache", "ask about how the schema handles deletions". If you spend 15 minutes monologuing your way through three deep dives <em>they didn't pick</em>, you fail their unstated checklist. The move: <strong>do one deep dive of your own choosing, then explicitly hand the steering wheel</strong>: "I could go deeper on the cache, or talk about partitioning, or address how we handle deletes — what's most useful?"</p>
+
+  <div class="highlight hl-yellow"><strong>So what:</strong> Deep dives are a dialogue, not a lecture. Pick one to demonstrate breadth, hand the wheel to the interviewer, and follow their probes. The candidate who treats Step 5 as "I'll keep monologuing until time runs out" loses to the one who treats it as "now we co-design the hard parts."</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ────────────────────────────────────────────── -->
+<!-- SECTION 9: COMMON MISTAKES                     -->
+<!-- ────────────────────────────────────────────── -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-red">Anti-patterns</span>
+  <h2>Common Mistakes — The Red Flags Interviewers Watch For</h2>
+  <p>Every interviewer has a mental list of behaviors that signal "this candidate isn't ready." None of them are about technical knowledge — they're all process and communication failures. Avoiding them is half the loop.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 Diving to architecture before requirements</h3>
+      <p>Candidate hears "design Twitter", immediately draws Web Server → DB → Cache. The interviewer hasn't even said what the user can do yet. Without requirements, every architectural choice is an assumption — and you'll be defending phantom decisions for the rest of the loop.</p>
+      <p><strong>Fix:</strong> first words out of your mouth are "let me make sure I understand the problem — what are the top user actions you'd like me to focus on?"</p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 Vague NFRs — "highly available, scalable, fast"</h3>
+      <p>These are adjectives, not requirements. They don't constrain any decision because every system can claim them. The interviewer can't push back ("how scalable?") and so can't grade your reasoning.</p>
+      <p><strong>Fix:</strong> attach a number or a CAP-side to each. <em>"Available — 99.99% on reads, 99.9% on writes. Reads can serve stale data, writes must be durable."</em></p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 Generic tech choices — "we'll use Redis"</h3>
+      <p>Redis what? A string? A hash? A sorted set? With what eviction policy? Sharded how? "Use Redis" is a meaningless phrase — it's like saying "we'll use a computer." Every storage choice has a data structure and an access pattern; name them.</p>
+      <p><strong>Fix:</strong> <em>"Cache the feed in Redis as a sorted set keyed by user_id, score = tweet timestamp, capped at 800 entries per user, evicted via LRU at the cache-node level."</em></p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 False SQL vs NoSQL choice</h3>
+      <p>"NoSQL because it scales" is a 2014 answer that interviewers now actively flag. Modern Postgres scales to terabytes; modern DynamoDB has transactions. The choice depends on access pattern (key-value vs relational queries), consistency needs, and operational maturity — not on a one-line slogan.</p>
+      <p><strong>Fix:</strong> <em>"Key-value access pattern at billion-row scale with no joins → DynamoDB. If we needed multi-row transactions and complex reporting, I'd revisit Postgres."</em></p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 Boxes that don't earn their place</h3>
+      <p>Candidate draws Kafka because "you always need a queue." But there's no async work in the design — every endpoint is request/response. The Kafka box now needs explanation, takes board space, and signals you cargo-cult components without justifying them.</p>
+      <p><strong>Fix:</strong> for every box, be ready to answer "what would break without this?" If the answer is "nothing", erase it.</p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🚨 Talking over the interviewer's probes</h3>
+      <p>Interviewer says "what about hot keys?" and the candidate, mid-monologue, says "yeah, I'll get to that, but first let me explain the cache topology…" — and then never gets to it. Probes are gifts. They tell you exactly what the interviewer wants to hear.</p>
+      <p><strong>Fix:</strong> when probed, stop, address the probe directly, then return to your thread. <em>"Good question — let me handle hot keys now and come back to the topology."</em></p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ────────────────────────────────────────────── -->
+<!-- SECTION 10: SPECIFICITY                        -->
+<!-- ────────────────────────────────────────────── -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-cyan">The Senior Tell</span>
+  <h2>Specifying Implementations — The Single Biggest Tell</h2>
+  <p>Of all the things that separate a junior-leveled answer from a senior-leveled one, the single biggest is <strong>specificity</strong>. Junior candidates name a tool; senior candidates name the tool, the data structure inside it, the access pattern, the partitioning, the failure mode, and the fallback. Same five words, ten times the signal.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🟥 "I'll cache popular tweets"</h3>
+      <p>This is a wish, not a design. Where? In what data structure? Keyed by what? Evicted how? Sharded across how many nodes? Read-through or write-through?</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🟩 The senior version</h3>
+      <p>"I'll store <code>tweet_id → Tweet</code> as a Redis HASH on a 12-node cluster sharded by <code>tweet_id</code> via consistent hashing. 256GB per node, LRU eviction, replicated 2× for fault tolerance. Read-through from the app layer with a 60-second negative cache for missing keys to avoid stampede on deleted tweets."</p>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🟥 "Use a queue for async work"</h3>
+      <p>Which queue? What's the throughput? What partitioning gives you ordering guarantees? What happens when a consumer crashes mid-message?</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🟩 The senior version</h3>
+      <p>"Kafka topic <code>notifications.email</code>, 32 partitions keyed by <code>user_id</code> so per-user notifications stay ordered. 3-replica fault tolerance with min.insync.replicas=2 for durability. 7-day retention so we can replay if a downstream consumer regresses. Consumer group with at-least-once semantics; the email-sender is idempotent on <code>(user_id, notification_id)</code>."</p>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🟥 "Shard the database"</h3>
+      <p>By what key? Range or hash? How many shards? What happens when you add a shard? Cross-shard queries?</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🟩 The senior version</h3>
+      <p>"Shard the Tweets table by <code>user_id</code> using consistent hashing on a 16-virtual-node ring across 8 physical shards, replicated 3× across AZs. <code>user_id</code> as the shard key co-locates all of one user's tweets, which makes the timeline-by-user query a single-shard read. Cross-shard 'global timeline' queries scatter-gather, which is acceptable because the home feed isn't built that way — it's precomputed from the fan-out path."</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>The pattern in one sentence:</strong> for every component you name, also name (1) the specific product, (2) the data structure or schema choice inside it, (3) the partitioning / sharding strategy, (4) the replication and fault model, and (5) what the system does when this component degrades. That's the senior signal — and it costs maybe 15 extra seconds per component.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ────────────────────────────────────────────── -->
+<!-- SECTION 11: WALKTHROUGH BITLY                  -->
+<!-- ────────────────────────────────────────────── -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-orange">Worked Example</span>
+  <h2>The Walkthrough Script — Designing Bitly in 45 Minutes</h2>
+  <p>Below is a minute-by-minute script of an idealized candidate applying the framework to "Design Bitly." Read it as the tempo and tone you should aim for — concise, structured, narrating the framework out loud as you go.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor C as Candidate
+  actor I as Interviewer
+
+  Note over C,I: Minute 0 — Prompt
+  I->>C: Design Bitly.
+
+  Note over C,I: Minutes 0 to 5 — Step 1 Requirements
+  C->>I: Top 3 features  shorten, redirect, custom alias?
+  I-->>C: Yes. Skip analytics for now.
+  C->>I: NFRs  20K reads per sec, p99 under 100ms, 5 yr storage, never lose a mapping
+  I-->>C: Sounds good.
+
+  Note over C,I: Minutes 5 to 7 — Step 2 Entities
+  C->>I: Three entities  ShortLink, User, ClickEvent. ClickEvent dropped per your call.
+
+  Note over C,I: Minutes 7 to 12 — Step 3 APIs
+  C->>I: POST /v1/urls  body has long_url and optional alias. GET /:hash returns 302.
+  I-->>C: Why 302 not 301?
+  C->>I: Caches at the browser. 301 kills click counts.
+
+  Note over C,I: Minutes 12 to 25 — Step 4 HLD
+  C->>I: Pass 1  one app, one DB. Breaks at 20K reads per sec and 15TB storage.
+  C->>I: Pass 2  split read path from write path, add KGS for collision-free keys.
+  C->>I: Pass 3  add Memcached for hot 20 percent, CDN for global edge, Cassandra sharded by hash.
+
+  Note over C,I: Minutes 25 to 40 — Step 5 Deep Dives
+  I->>C: What if a link goes viral with 100K reads per sec?
+  C->>I: CDN absorbs at edge. Origin sees cache hit. Telemetry async via Kafka.
+  I->>C: How do you generate keys without collisions?
+  C->>I: KGS pre-generates 6-char base64 into an unused pool, atomic POP per write.
+  I->>C: What if KGS dies?
+  C->>I: Active-standby pair plus 100-key local cache per write app  survives a 30s outage.
+
+  Note over C,I: Minutes 40 to 45 — Wrap
+  I->>C: Any questions for me?
+  C->>I: How does this compare to your real Bitly architecture?
+    </div>
+  </div>
+
+  <h3 class="subh">The same script, with timing annotations</h3>
+
+  <div class="script-line s-blue">
+    <div class="stime">00:00</div>
+    <div class="scontent"><strong>Interviewer:</strong> "Design Bitly."</div>
+  </div>
+  <div class="script-line">
+    <div class="stime">00:30</div>
+    <div class="scontent"><strong>Candidate:</strong> "Got it. Before I draw anything, let me pin down requirements. The top 3 functional features I'd focus on: (1) given a long URL, generate a short one; (2) when someone hits the short URL, redirect them; (3) optional custom alias. Sound right?"</div>
+  </div>
+  <div class="script-line s-blue">
+    <div class="stime">01:00</div>
+    <div class="scontent"><strong>Interviewer:</strong> "Yes. Don't worry about analytics."</div>
+  </div>
+  <div class="script-line">
+    <div class="stime">01:15</div>
+    <div class="scontent"><strong>Candidate:</strong> "Non-functional: read-heavy at roughly 100:1, target 20K reads/sec, p99 under 100ms. Durability is critical — once we issue a short link we cannot lose the mapping. Available 99.99% on the read path; brief degradation on writes is OK. Storage 5-year horizon."</div>
+  </div>
+  <div class="script-line s-green">
+    <div class="stime">05:00</div>
+    <div class="scontent"><strong>Candidate (Step 2):</strong> "Three core entities: ShortLink (hash, long_url, expires_at), User, ClickEvent. We're skipping ClickEvent since you said no analytics."</div>
+  </div>
+  <div class="script-line s-blue">
+    <div class="stime">07:00</div>
+    <div class="scontent"><strong>Candidate (Step 3):</strong> "API surface — <code>POST /v1/urls</code> with the long URL in the body, returns the short URL. <code>GET /:hash</code> returns a 302 redirect. user_id derived from auth token, never from the body."</div>
+  </div>
+  <div class="script-line s-blue">
+    <div class="stime">09:00</div>
+    <div class="scontent"><strong>Interviewer:</strong> "Why 302 not 301?"</div>
+  </div>
+  <div class="script-line">
+    <div class="stime">09:15</div>
+    <div class="scontent"><strong>Candidate:</strong> "301 lets the browser cache the redirect target permanently — every later click skips our server. 302 forces re-asks. We pay ~10ms per click for accurate metrics. Bitly does this."</div>
+  </div>
+  <div class="script-line s-purple">
+    <div class="stime">12:00</div>
+    <div class="scontent"><strong>Candidate (Step 4 — Pass 1):</strong> [draws Client → App → MySQL] "Simplest thing — one app server, one DB. Three failures: hash collisions cost retries, 20K reads/sec crushes one MySQL, and 15TB doesn't fit on one box."</div>
+  </div>
+  <div class="script-line s-purple">
+    <div class="stime">16:00</div>
+    <div class="scontent"><strong>Candidate (Step 4 — Pass 2):</strong> "Split write path from read path — write traffic is 200 req/sec, read is 20K. Different scaling shapes. Add a Key Generation Service that pre-generates unique 6-char base64 keys into an 'unused' pool, so write-time has zero collision retries."</div>
+  </div>
+  <div class="script-line s-purple">
+    <div class="stime">21:00</div>
+    <div class="scontent"><strong>Candidate (Step 4 — Pass 3):</strong> "Production shape — Client → CDN → LB → split into Write App or Read App. Read App has Memcached in front for the hot 20% (~170GB). URL DB is Cassandra sharded by hash via consistent hashing, 3× replicated across AZs."</div>
+  </div>
+  <div class="script-line s-yellow">
+    <div class="stime">25:00</div>
+    <div class="scontent"><strong>Candidate (Step 5):</strong> "I have a few directions for deep dive — I could go into the KGS internals, the cache replication, or the multi-region story. What's most interesting?"</div>
+  </div>
+  <div class="script-line s-blue">
+    <div class="stime">25:30</div>
+    <div class="scontent"><strong>Interviewer:</strong> "What if a link goes viral and gets 100K reads/sec?"</div>
+  </div>
+  <div class="script-line s-yellow">
+    <div class="stime">25:45</div>
+    <div class="scontent"><strong>Candidate:</strong> "Viral = hot. The CDN at the edge absorbs nearly all of it; the origin sees one cache hit per cache TTL per edge node. If the link bypasses CDN — say it's freshly created — Memcached covers it. The DB shard for that hash never sees it. The only choke is CDN egress bandwidth, which is what CDNs are designed for. Telemetry is async via Kafka so the click counter doesn't melt."</div>
+  </div>
+  <div class="script-line s-blue">
+    <div class="stime">29:00</div>
+    <div class="scontent"><strong>Interviewer:</strong> "What if KGS dies?"</div>
+  </div>
+  <div class="script-line s-yellow">
+    <div class="stime">29:15</div>
+    <div class="scontent"><strong>Candidate:</strong> "Three layers. Active-standby KGS pair fails over in seconds. Each write app caches ~100 keys locally — survives 30s of total outage. Last-resort fallback is inline hashing with collision-retry — slower but doesn't drop writes."</div>
+  </div>
+  <div class="script-line s-cyan">
+    <div class="stime">40:00</div>
+    <div class="scontent"><strong>Candidate (Wrap):</strong> "If we had more time I'd cover global multi-region replication, abuse-prevention rate limiting, and the URL-deletion lifecycle. Want me to dive into any of those?"</div>
+  </div>
+  <div class="script-line s-blue">
+    <div class="stime">42:00</div>
+    <div class="scontent"><strong>Interviewer:</strong> "Great — any questions for me?"</div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>What this script demonstrates:</strong> the candidate spent exactly 5 min on requirements, 2 min on entities, 5 min on APIs, 13 min on architecture, and 15 min on deep dives — and never went off-script when the interviewer probed. Notice especially the move at minute 25: instead of monologuing, the candidate offered three deep-dive options and let the interviewer steer. That's the senior signal.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ────────────────────────────────────────────── -->
+<!-- SECTION 12: MAPPING SITE HLDS                  -->
+<!-- ────────────────────────────────────────────── -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-green">Reference Map</span>
+  <h2>Mapping This Site's HLDs to the Framework</h2>
+  <p>Use this table as a study guide. Each existing HLD page on this site emphasizes different framework steps and showcases different patterns. When you're practicing, pick a page based on what step you want to drill.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>HLD Page</th>
+          <th>Framework Step Emphasized</th>
+          <th>Patterns Showcased</th>
+          <th>Best For Practicing</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><a href="url-shortener-hld.html" style="color:var(--orange)">URL Shortener</a></td>
+          <td>Step 4 (HLD) + Step 5 (KGS deep dive)</td>
+          <td>Cache 80/20, KGS pre-generation, consistent hashing, CDN edge cache</td>
+          <td>Read-heavy systems &amp; key-generation problems</td>
+        </tr>
+        <tr>
+          <td><a href="dropbox/dropbox-hld.html" style="color:var(--orange)">Dropbox</a></td>
+          <td>Step 4 (control vs data plane split)</td>
+          <td>Block-level dedup, metadata vs content split, sync protocol</td>
+          <td>Storage systems &amp; the "two-plane" mental model</td>
+        </tr>
+        <tr>
+          <td><a href="distributed-uuid-generation-hld.html" style="color:var(--orange)">Distributed UUID</a></td>
+          <td>Step 4 + Step 5 (collision deep dive)</td>
+          <td>Snowflake IDs, time-bit packing, clock skew handling</td>
+          <td>ID generation &amp; coordination-free design</td>
+        </tr>
+        <tr>
+          <td><a href="leetcode-hld.html" style="color:var(--orange)">LeetCode</a></td>
+          <td>Step 4 (sandbox isolation) + Step 5 (queueing)</td>
+          <td>Container sandboxing, judge queue, real-time results via WebSocket</td>
+          <td>Compute-heavy systems &amp; isolation patterns</td>
+        </tr>
+        <tr>
+          <td><a href="../Tech/median-of-billions.html" style="color:var(--orange)">Median of Billions</a></td>
+          <td>Step 1 (problem decomposition)</td>
+          <td>Approximate algorithms, t-digest, sketch data structures</td>
+          <td>Algorithm-flavored HLDs &amp; capacity reasoning</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="subh">Recommended drill order</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>Week 1 — Foundations</h3>
+      <p>Read the URL Shortener HLD end-to-end. Then close it and re-derive the architecture from just the requirements. Time yourself — aim for 45 minutes.</p>
+    </div>
+    <div class="card">
+      <h3>Week 2 — Patterns</h3>
+      <p>Drill Dropbox (control/data plane split) and Distributed UUID (coordination-free design). Both teach mental models that transfer across many systems.</p>
+    </div>
+    <div class="card">
+      <h3>Week 3 — Edge cases</h3>
+      <p>LeetCode and Median of Billions force you outside the standard CRUD pattern. Use them to practice Step 5 — handling unusual workloads under realistic constraints.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>The meta-lesson:</strong> every HLD on this site was structured using the same 4-step framework you just learned. When you read them, watch for the framework underneath — Requirements first, then Entities, then APIs, then HLD, then Deep Dives. Once you see the skeleton, you can apply it to any system the interviewer throws at you.</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

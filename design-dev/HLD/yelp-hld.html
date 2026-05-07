@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Yelp / Nearby Friends — Proximity Search HLD</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Yelp / Nearby <span>Places Search</span></h1>
+  <p class="sub">From a naive SQL bounding-box query to a sharded, in-memory QuadTree fleet — how to find the 50 best ramen spots within 1 mile of you in 100ms across 500M places worldwide</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is Yelp?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">Database Schema</a></li>
+      <li><a href="#s5">System APIs</a></li>
+      <li><a href="#s6">High-Level Architecture</a></li>
+      <li><a href="#s7">The QuadTree</a></li>
+      <li><a href="#s8">Insertion &amp; Updates</a></li>
+      <li><a href="#s9">Data Partitioning</a></li>
+      <li><a href="#s10">Replication &amp; Fault Tolerance</a></li>
+      <li><a href="#s11">Cache</a></li>
+      <li><a href="#s12">Load Balancing</a></li>
+      <li><a href="#s13">Ranking</a></li>
+      <li><a href="#s14">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS YELP?                       -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is Yelp?</h2>
+  <p>It's 14:02 on a Saturday. Sarah just landed at SFO, took the BART to Union Square, and her stomach is growling. She pulls out her phone, opens Yelp, types "ramen", and within 100 milliseconds her screen fills with 50 highly-rated restaurants — sorted by distance, all within walking range, complete with star ratings, photos, and review snippets. Behind that one tap is a system that just searched through <strong>500 million places worldwide</strong> and returned the right 50 — fast enough that Sarah didn't even notice the wait. That's the system we're designing.</p>
+
+  <p>Yelp (and apps like Foursquare, Google Maps "Nearby", or Uber Eats restaurant discovery) lets users <strong>add places</strong> (a new bakery opens — someone registers it), <strong>discover nearby places</strong> via search (the central read workload), and <strong>read &amp; write reviews</strong> with ratings, photos, and text. The hard part isn't storing places — a database can do that. The hard part is the <em>geo lookup</em>: given a latitude and longitude and a radius, find every place inside that circle, ranked by relevance, in under 100ms, while 100,000 other Sarahs around the world are doing the same thing simultaneously.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How do we index 500 million places by geographic location so a "nearby" query is fast? (2) How do we serve 100,000 search queries per second when most search results are bespoke to the user's exact GPS coordinates and can't be cached the way a viral tweet can?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Before drawing a single box, pin down exactly what the system must do. In an interview, asking these questions shows you're not just regurgitating a memorized solution.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Users can <strong>add, update, or delete</strong> a place (name, location, category, description)</li>
+        <li>Given a <strong>(latitude, longitude, radius)</strong>, return all places within that circle</li>
+        <li>Users can <strong>read and write reviews</strong> with star rating, photos, and text</li>
+        <li>Filter results by <strong>category</strong> (ramen, bars, gyms) and sort by rating, distance, or popularity</li>
+        <li>Pagination — Sarah might want to see results 21–40 if the first 20 don't appeal</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Real-time search</strong> — under 100ms p99 latency for the proximity query</li>
+        <li><strong>Heavy read load</strong> — reads dominate writes by orders of magnitude</li>
+        <li><strong>Highly available</strong> — Yelp going dark on a Saturday night is a brand event</li>
+        <li><strong>Scalable</strong> — 20% growth in places per year, more in dense cities</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>Reads dominate writes by 4–5 orders of magnitude.</strong> A new place opens once and gets searched-for millions of times. This single fact drives the entire design: we will spend almost zero engineering on the write path and obsessively optimize the read path with in-memory indexes, fan-out parallelism, and aggressive caching.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers are not optional in HLD — they drive every architectural choice. We'll size the index, the cache, and the shard count based on these.</p>
+
+  <h3 class="subh">Traffic estimates</h3>
+  <p>Assume <strong>500 million places</strong> globally (restaurants + bars + shops + gyms + theaters + ...) with <strong>20% growth/year</strong>. Assume <strong>100,000 search QPS</strong> at peak — a busy Saturday evening across all time zones combined. Reviews are written at maybe 1,000 QPS — a rounding error compared to searches.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Places</h3><p><span class="metric">500M total</span></p><p>Growing 20%/year</p></div>
+    <div class="card"><h3>Search QPS</h3><p><span class="metric">100K/sec peak</span></p><p>Read-heavy by far</p></div>
+    <div class="card"><h3>Write QPS</h3><p><span class="metric">~1K/sec</span></p><p>New places + reviews</p></div>
+    <div class="card"><h3>Latency p99</h3><p><span class="metric">under 100ms</span></p><p>Real-time UX</p></div>
+  </div>
+
+  <h3 class="subh">Per-place storage</h3>
+  <p>Each Place row holds: <code>id (8B)</code>, <code>name (256B)</code>, <code>latitude (8B)</code>, <code>longitude (8B)</code>, <code>description (512B)</code>, <code>category (1B)</code>. Total: roughly <span class="metric">~793 bytes per place</span>.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Total places</td><td><code>500M</code></td><td>Drives index size and shard count</td></tr>
+        <tr><td>Place storage</td><td><code>~400 GB</code></td><td>500M × 793B; fits across modest fleet</td></tr>
+        <tr><td>Index size (lat+long+id)</td><td><code>~12 GB</code></td><td>500M × ~24B per leaf entry — fits in RAM!</td></tr>
+        <tr><td>Search QPS</td><td><code>100K/s</code></td><td>Forces sharding + fan-out + cache</td></tr>
+        <tr><td>Reviews/photos</td><td><code>multi-TB</code></td><td>Stored separately from place index</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-blue"><strong>The crucial number:</strong> the geo-index alone is roughly <strong>12 GB</strong> — a number small enough to fit in the RAM of a single server. That's not a coincidence. The whole point of building a custom in-memory spatial index (instead of bolting B-trees onto MySQL) is that we want every search to be answered without ever touching a spinning disk. 12 GB tells us the dream is achievable; we just need the right index.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: DATABASE SCHEMA                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-cyan">Step 4</span>
+  <h2>Database Schema</h2>
+  <p>Three tables carry the entire data model. We deliberately split <strong>Place</strong> (small, hot, indexed by location) from <strong>Review</strong> and <strong>Photo</strong> (large, cold-ish, indexed by place_id) so the geo-index stays tiny and fast.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  PLACE {
+    string id PK
+    string name
+    double latitude
+    double longitude
+    string description
+    string category
+  }
+  REVIEW {
+    string id PK
+    string place_id FK
+    string user_id FK
+    string text
+    int rating
+    timestamp created_at
+  }
+  PHOTO {
+    string id PK
+    string review_id FK
+    string place_id FK
+    string photo_path
+  }
+  USER {
+    string id PK
+    string name
+    string email
+    timestamp joined_at
+  }
+  PLACE ||--o{ REVIEW : "has"
+  PLACE ||--o{ PHOTO  : "has"
+  USER  ||--o{ REVIEW : "writes"
+  REVIEW ||--o{ PHOTO : "contains"
+    </div>
+  </div>
+
+  <p>Why split Review and Photo from Place? Because Place gets indexed by a custom in-memory geo structure (the QuadTree we'll build in §6), and we don't want every byte of review text bloating that index. A place with 10,000 reviews still occupies a single tiny entry in the geo-index — its reviews and photos live in separate tables that we only read <em>after</em> the user picks a place.</p>
+
+  <div class="highlight hl-cyan"><strong>Why NoSQL / wide-column for the storage tier:</strong> Place is queried by <code>id</code> in the millions of times per second after a geo-lookup hands us a list of place IDs. That's a pure key-value access pattern — Cassandra or DynamoDB shine here. Reviews are similarly accessed by <code>place_id</code>. There are no joins, no transactions; everything is a denormalized lookup.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: SYSTEM APIs                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-purple">Step 5</span>
+  <h2>System APIs</h2>
+  <p>One endpoint dominates: <code>search</code>. A few smaller endpoints for adding places and writing reviews. Defining the API contract early locks down what the architecture has to deliver.</p>
+
+  <span class="code-label cl-green">REST API surface</span>
+<pre><span class="cmt">// The big one — the heart of Yelp</span>
+GET /api/v1/search
+  ?api_key=...
+  &amp;search_terms=ramen           <span class="cmt">// optional text filter</span>
+  &amp;user_location=37.7879,-122.4075
+  &amp;radius_filter=1600           <span class="cmt">// meters (1 mile)</span>
+  &amp;max_results=20
+  &amp;category_filter=restaurant
+  &amp;sort=rating                  <span class="cmt">// rating | distance | popularity</span>
+  &amp;page_token=eyJv...           <span class="cmt">// cursor for pagination</span>
+
+→ 200 OK
+{
+  "results": [
+    { "id": "p_8a3e", "name": "Ippudo Ramen",
+      "lat": 37.7882, "lng": -122.4068,
+      "distance_m": 47, "rating": 4.6, "review_count": 2104,
+      "thumbnail": "..." },
+    ...
+  ],
+  "next_page_token": "eyJv..."
+}
+
+<span class="cmt">// Add / update / delete a place — write path</span>
+POST   /api/v1/places         { name, lat, lng, category, description }
+PUT    /api/v1/places/:id     { ...partial updates... }
+DELETE /api/v1/places/:id
+
+<span class="cmt">// Reviews</span>
+POST /api/v1/places/:place_id/reviews   { rating, text, photos[] }</pre>
+
+  <div class="highlight hl-purple"><strong>The shape of <code>search</code> matters:</strong> the user's lat/lng is passed in (the device's GPS), not derived from IP. This is what makes geo-search work — the system knows exactly where Sarah is and can build a tight bounding query. The <code>radius_filter</code> defaults to 1 mile / 1600m for "Nearby Friends"-style queries; users can widen it.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart, and the production shape where every box justifies itself. The key insight everything turns on is <strong>spatial indexing — partitioning the world geographically instead of treating latitude and longitude as two unrelated columns</strong>.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Sketch the simplest system: one MySQL database, one <code>Place</code> table with two indexes — one on <code>latitude</code>, one on <code>longitude</code>. To find places near Sarah, run a bounding-box query: <code>SELECT * FROM places WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?</code>.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C["Client"] --> APP["App Server"]
+  APP --> DB[("MySQL — Places — lat idx + lng idx")]
+    </div>
+  </div>
+
+  <p>It looks innocent. It is not. Three concrete failures emerge the moment traffic shows up:</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>💥 Two indexes, no good answer</h3>
+      <p>The query optimizer has to pick: use the lat index, or the lng index, or intersect both. The lat-index alone returns every place at Sarah's latitude — that's a horizontal stripe across the entire planet, millions of rows. Same for the lng-index. Even intersecting two giant result sets is slow — the DB ends up scanning huge intermediate sets to find the few hundred that actually match both filters.</p>
+    </div>
+    <div class="card">
+      <h3>💥 500M rows × 100K QPS = molten disk</h3>
+      <p>Even if the query were perfect, a single MySQL box answering 100,000 spatial queries per second across 500M rows simply won't fit on one disk's IOPS budget. Cache misses turn into random disk seeks — 5ms each, 100K/sec means 500K disk seeks per second, which no spinning drive (and few SSDs) can sustain. The DB CPU pegs at 100% and p99 latency balloons into seconds.</p>
+    </div>
+    <div class="card">
+      <h3>💥 A bounding box is a square, not a circle</h3>
+      <p>The query <code>BETWEEN lat1 AND lat2</code> selects a rectangle. Sarah asked for "1 mile radius" — that's a circle. The corners of the bounding rectangle contain places that are <em>further than 1 mile</em> from Sarah. We'd need a second filtering pass with the haversine formula. It's correct, but slow, and it shows the model is wrong: lat+lng are not independent, they describe a single 2D location.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: partition the world, not the columns</h3>
+  <p>The single most important insight in this design is to <strong>stop treating latitude and longitude as two independent columns</strong> and start treating them as a single 2D space — and then <strong>partition that space into tiles</strong>. A search becomes "which tile is Sarah in? give me the places in that tile and its neighbors." Two evolutions of this idea, in order of sophistication:</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">📐 Approach A — Fixed grid</h3>
+      <p>Divide the planet into a fixed N×N grid of equal-size cells. Each place is filed into the one cell that contains its (lat, lng). To search, find Sarah's cell and look at its places.</p>
+      <p><strong>Why it fails:</strong> places are <em>extremely</em> non-uniform. Manhattan has thousands of restaurants per square kilometer; the Sahara has zero per million square kilometers. Fixed-size cells either drown in places where it's dense, or are mostly empty where it's not. We need cells that <em>adapt</em> to density.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🌳 Approach B — Dynamic grid (QuadTree) ✓</h3>
+      <p>Start with one cell covering the world. When a cell exceeds a threshold (say, 500 places), split it into 4 equal sub-cells (NW, NE, SW, SE). Recursively. A leaf cell with fewer than 500 places stays as-is.</p>
+      <p><strong>Why it wins:</strong> every leaf has roughly the same number of places — Manhattan ends up with thousands of tiny leaves, the Sahara with one giant leaf. Search is fast everywhere because the work-per-leaf is bounded. It's a recursive map-zoom, materialized as a tree.</p>
+    </div>
+  </div>
+
+  <p>Think of a QuadTree as a recursive map zoom: when you zoom out you see one giant tile (one node); when you zoom into Manhattan, that tile splits into 4, and each of those splits into 4 again, until each tile is small enough to read at a glance. The deeper the zoom, the more places you cram per tile. The QuadTree codifies that intuition into a data structure we can query in O(log N) time.</p>
+
+  <div class="highlight hl-green"><strong>Before vs. after:</strong> with the naive lat/lng query, finding 50 places near Sarah scans a horizontal stripe of the planet — millions of rows, multiple disk seeks, hundreds of milliseconds. With a QuadTree, finding the same 50 places is "walk the tree to her leaf (10–15 hops in memory), read at most 500 places from that leaf, optionally peek at neighbors" — total work bounded at roughly 2,000 in-memory comparisons, under 5ms.</div>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. The QuadTree alone is the index — but we also need an API tier, a fan-out aggregator (because we'll shard the QuadTree across many servers), the source-of-truth Place DB, a cache, a review/photo service, and a ranking service. Every node is numbered — find its matching card below to see what it does and what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client — Mobile / Web"]
+
+  subgraph EDGE["Edge Tier"]
+    LB["② Load Balancer"]
+    API["③ Search API Server"]
+  end
+
+  subgraph SEARCH["Search Plane"]
+    AGG["④ Aggregator"]
+    QT1["⑤a QuadTree Shard 1"]
+    QT2["⑤b QuadTree Shard 2"]
+    QT3["⑤c QuadTree Shard 3"]
+  end
+
+  subgraph INDEX["Index Plane"]
+    QIDX["⑦ QuadTree Index Server"]
+    CACHE["⑧ Cache — Memcached"]
+    RANK["⑩ Ranking Service"]
+  end
+
+  subgraph SOURCE["Source Plane"]
+    PDB[("⑥ Place DB — Cassandra")]
+    RPS["⑨ Review / Photo Service"]
+    RPB[("Photo Blob Store")]
+  end
+
+  CL --> LB
+  LB --> API
+  API --> AGG
+  AGG --> QT1
+  AGG --> QT2
+  AGG --> QT3
+  AGG --> CACHE
+  AGG --> RANK
+  QT1 -.rebuild from.- PDB
+  QT2 -.rebuild from.- PDB
+  QT3 -.rebuild from.- PDB
+  QIDX -.tracks placeId to shardId.- QT1
+  QIDX -.tracks placeId to shardId.- QT2
+  QIDX -.tracks placeId to shardId.- QT3
+  API --> RPS
+  RPS --> RPB
+  RPS --> PDB
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style API fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style AGG fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style QT1 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style QT2 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style QT3 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style PDB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style QIDX fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style CACHE fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style RPS fill:#171d27,stroke:#e05252,color:#d4dae5
+  style RPB fill:#171d27,stroke:#e05252,color:#d4dae5
+  style RANK fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client — Mobile / Web</h3>
+      <p>Sarah's iPhone, the Yelp web app, an embedded "places near me" widget. The client knows the user's GPS coordinates (from the OS) and packages them into a <code>GET /api/v1/search</code> request. From the client's view, the entire system is one URL — it sends location + filters and expects a ranked list of nearby places back in 100ms.</p>
+      <p><strong>Solves:</strong> nothing on its own — but every design choice flows backward from "what does the client experience?" Latency, the JSON shape, and the radius semantics are all client-facing concerns.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> Load Balancer</h3>
+      <p>The traffic cop. Sits in front of the Search API tier, distributes incoming HTTPS, and yanks unhealthy backends out of rotation via health checks. Round-robin is fine to start; switch to least-connections once you have enough nodes that load skew matters. Terminates TLS so backend pods don't pay the crypto cost.</p>
+      <p><strong>Solves:</strong> single-server bottleneck and single-server failure. Without an LB, one API crash takes down the whole service. With it, we lose 1/N of capacity for a few seconds until health checks fail the bad node out.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">③</span> Search API Server</h3>
+      <p>Stateless service that owns the public <code>/api/v1/search</code> contract. It validates the user's input (lat/lng look real, radius is bounded, api_key is valid), hands the structured query down to the Aggregator, and shapes the response back into the JSON the client expects. Scales horizontally — just add more pods behind the LB.</p>
+      <p><strong>Solves:</strong> a clean public-facing surface that's decoupled from how the index is laid out internally. We could swap the QuadTree for Geohash tomorrow and the API contract wouldn't change.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">④</span> Aggregator</h3>
+      <p>The brain of the read path. Given a (lat, lng, radius), it figures out <em>which</em> QuadTree shards could possibly contain matching places (because the QuadTree is sharded across many servers), <strong>fans out</strong> the query to those shards in parallel, collects each shard's top-K candidates, and merges them into a single ranked list. Think of it as the host at a buffet — it doesn't cook anything, it just runs to every station, grabs a plate, and presents the combined tray.</p>
+      <p><strong>Solves:</strong> the fan-out problem. The QuadTree is too big to live on one server — it's sharded by place_id across, say, 30 shards. A geo-query may touch 1, 2, or N of them depending on how the search circle straddles shard boundaries. Without an aggregator, the Search API would have to know the shard topology and run the fan-out itself — bloating its responsibility and making sharding changes painful.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑤</span> QuadTree Server cluster</h3>
+      <p>The actual spatial index. Each server holds a <em>partition</em> of the global QuadTree fully in RAM — every leaf node, every internal node, every place_id stored under each leaf. Replies to a query like "give me the top-K places within this bounding box that match these filters" with an in-memory tree walk that takes single-digit milliseconds. Replicated 2× per shard for fault tolerance.</p>
+      <p><strong>Solves:</strong> the actual geo-search problem. This is where Pass 2's mental model becomes code. Without it, every search would fall back to a SQL bounding-box scan over 500M rows — back to Pass 1's 100ms-becomes-1000ms disaster. The QuadTree's recursive subdivision is what makes "find 50 places near here" cost 5ms instead of 500ms.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑥</span> Place DB (Cassandra)</h3>
+      <p>The source of truth — a partitioned, replicated NoSQL key-value store holding all 500M place records (id, name, lat, lng, description, category). Sharded by <code>place_id</code> via consistent hashing, replicated 3× across availability zones. Critically, the QuadTree shards <em>do not own</em> the place data; they own only an index pointing at place_ids. If a QuadTree server crashes, we rebuild it from the Place DB.</p>
+      <p><strong>Solves:</strong> durable, scalable, query-by-id storage. Cassandra spreads 400 GB of place data across dozens of nodes and handles failures automatically. The QuadTree gets to be a fast in-memory index without also being a database.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑦</span> QuadTree Index Server</h3>
+      <p>A small lookup service that maintains the reverse mapping <code>placeId → quadtreeShardId</code>. When a QuadTree server dies and we need to rebuild it from the Place DB, we don't want to re-shuffle every one of 500M places asking "do you belong here?" — instead we ask the index server "give me every placeId whose home shard was 7" and stream just those rows from Place DB.</p>
+      <p><strong>Solves:</strong> fast crash recovery. Without it, rebuilding one failed QuadTree shard would require scanning the entire 500M-row Place DB to find which 16M places belong to it. With it, recovery is a targeted reload of just those 16M rows — minutes, not hours.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑧</span> Cache (Memcached)</h3>
+      <p>Two layers of caching. (a) <strong>Hot place objects</strong> — when a search returns 20 place_ids, we need to look up the full place object for each. The hottest few million places (popular tourist spots, viral restaurants) live in Memcached, so most lookups never hit Place DB. (b) <strong>Hot search results</strong> — common queries like "ramen + downtown San Francisco" repeat thousands of times per minute; we cache the top-20 results for the canonical version of these queries, keyed by (city, category, radius_bucket).</p>
+      <p><strong>Solves:</strong> read amplification. Each search returns ~20 place_ids, so 100K searches/sec means 2M place lookups/sec — that would melt Cassandra. Memcached absorbs 95%+ of those lookups, leaving Cassandra sized for the cold tail.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑨</span> Review / Photo Service + Storage</h3>
+      <p>A separate microservice owning reviews and user-uploaded photos, with photos stored in a blob store (S3) and review text in its own table keyed by <code>place_id</code>. Critically, this is on the <em>detail-page</em> path, not the search path — when Sarah opens Yelp she only sees thumbnails (one cached photo URL per place). Only when she taps a specific place does the client fetch full reviews and photos.</p>
+      <p><strong>Solves:</strong> keeping the search path light. If we co-located review text and photo blobs with the place index, every search response would balloon to megabytes. Splitting them lets the search response stay tiny (a few KB for 20 places) and lets photo storage scale on its own clock — multi-TB without blowing up our hot index.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑩</span> Ranking Service</h3>
+      <p>Once the QuadTree shards return a set of candidate place_ids, those candidates need to be <em>ranked</em>. Score = f(rating, distance, popularity, personalization, sponsored boost). The Ranking Service computes a score per candidate and returns the top-K. Each shard pre-ranks its own candidates and returns its local top-K (say, 100); the Aggregator then merges those K-per-shard into a final top-20.</p>
+      <p><strong>Solves:</strong> turning "places that are nearby" into "places Sarah probably wants". Two restaurants 100m from Sarah, one with 4.8 stars and 5,000 reviews, one with 3.1 stars and 12 reviews — proximity alone would tie them. Ranking surfaces the right one first. Personalization (Sarah is vegetarian; she rates highly-vegan places higher) goes here too.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Sarah at Union Square, 14:02, looking for ramen within 1 mile</h3>
+  <p>Sarah's exact GPS is <code>(37.7879, -122.4075)</code>. She wants 20 ramen spots within 1600m, sorted by rating. Trace it through the numbered components:</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>📖 Read flow — search request</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah's <strong>Client</strong> ① fires <code>GET /api/v1/search?lat=37.7879&amp;lng=-122.4075&amp;radius=1600&amp;category=ramen&amp;sort=rating</code>.</li>
+        <li><strong>Load Balancer</strong> ② routes to a <strong>Search API</strong> ③ pod.</li>
+        <li>API pod hands the structured query to the <strong>Aggregator</strong> ④.</li>
+        <li>Aggregator first checks the <strong>Cache</strong> ⑧ for a canonical version of the query — say <code>{ramen, San_Francisco_grid_cell, 1mi_bucket}</code>. Cache hit on a hot query → return result, done in 15ms. We'll assume miss for the rest.</li>
+        <li>Aggregator computes the bounding box around Sarah and figures out which <strong>QuadTree shards</strong> ⑤ could possibly contain the answer. Sarah's box overlaps shards 7 and 12 (her circle straddles a shard boundary).</li>
+        <li>Aggregator fans out the query in parallel to shards 7 and 12.</li>
+        <li>Each shard walks its in-memory QuadTree to find the leaf cell containing Sarah's location, plus neighboring cells the radius spills into. It filters by category=ramen, scores each candidate via local <strong>Ranking</strong> ⑩, returns top-100.</li>
+        <li>Aggregator merges the two top-100 lists, applies global ranking, takes top-20 place_ids.</li>
+        <li>For each of those 20 place_ids, Aggregator fetches the full Place object — first from <strong>Cache</strong> ⑧, falling back to <strong>Place DB</strong> ⑥ on miss.</li>
+        <li>Search API ③ shapes the response (name, lat, lng, distance_m, rating, thumbnail) and returns it to Sarah's phone. <em>Total elapsed: ~80ms.</em></li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--green)">
+      <h3>✍️ Write flow — Sarah taps "Ippudo Ramen", reads reviews, leaves her own</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah taps a result. Client ① fires <code>GET /api/v1/places/p_8a3e/reviews</code>.</li>
+        <li>API ③ routes to <strong>Review/Photo Service</strong> ⑨, which fetches reviews keyed by place_id from its own table and photo URLs from the blob store. Returns top-20 reviews + photo thumbnails.</li>
+        <li>Sarah eats, then writes a 5-star review. Client POSTs <code>/api/v1/places/p_8a3e/reviews</code>.</li>
+        <li>Review/Photo Service writes the review row keyed by place_id, uploads the attached photos to blob storage, returns 201.</li>
+        <li><strong>Note:</strong> the QuadTree is <em>not</em> touched on this path. Reviews don't change a place's location; the geo-index is unaffected. Only the Ranking Service may async-update the place's avg-rating denormalized field.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around three insights — (1) <strong>treat space as 2D, not as two 1D columns</strong>, which gives us the QuadTree; (2) <strong>shard the QuadTree across many in-memory servers</strong>, which means a fan-out aggregator earns its keep; and (3) <strong>split the hot path (geo-search → place_id) from the cold path (place details, reviews, photos)</strong>, so the search response stays tiny and fast even as place metadata grows multi-TB. Every box in the diagram exists to remove one of Pass 1's failure modes.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: THE QUADTREE                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-green">Step 7 · DEEP DIVE</span>
+  <h2>The QuadTree — Inside the Index</h2>
+  <p>The QuadTree is the heart of this system. Time to crack it open and understand exactly how a tree of geographic rectangles becomes a sub-millisecond proximity index.</p>
+
+  <h3 class="subh">Anatomy</h3>
+  <p>Every node in a QuadTree represents a rectangular region of the planet. The <strong>root</strong> represents the entire world. Each <strong>internal node</strong> has up to 4 children — its rectangle split into Northwest, Northeast, Southwest, Southeast quadrants. A <strong>leaf node</strong> holds an actual list of place_ids (and their lat/lng/category for fast filtering) — but only up to a threshold. We pick <strong>500 places per leaf</strong> as the sweet spot: small enough to scan in microseconds, large enough that the tree doesn't get pathologically deep.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  ROOT["🌍 Root — World — split"]
+  ROOT --> NW1["NW — N. America — split"]
+  ROOT --> NE1["NE — Europe — leaf — 412 places"]
+  ROOT --> SW1["SW — S. America — leaf — 287 places"]
+  ROOT --> SE1["SE — Asia — split"]
+
+  NW1 --> NW2["NW — Canada — leaf — 198 places"]
+  NW1 --> NE2["NE — US East — split"]
+  NW1 --> SW2["SW — US West — split"]
+  NW1 --> SE2["SE — Mexico — leaf — 332 places"]
+
+  NE2 --> NYC["NYC — leaf — 487 places — at threshold"]
+  NE2 --> BOS["Boston — leaf — 156 places"]
+  NE2 --> ATL["Atlanta — leaf — 201 places"]
+  NE2 --> MIA["Miami — leaf — 189 places"]
+
+  SW2 --> SF["SF — leaf — 498 places"]
+  SW2 --> LA["LA — leaf — 463 places"]
+  SW2 --> SEA["Seattle — leaf — 234 places"]
+  SW2 --> LV["Las Vegas — leaf — 156 places"]
+
+  style ROOT fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style NYC fill:#e8743b,stroke:#e8743b,color:#fff
+  style SF fill:#e8743b,stroke:#e8743b,color:#fff
+  style LA fill:#e8743b,stroke:#e8743b,color:#fff
+    </div>
+  </div>
+
+  <h3 class="subh">Search algorithm</h3>
+  <p>Given Sarah's (lat, lng) and radius, find the nearby places:</p>
+
+<pre><span class="kw">function</span> <span class="fn">searchNearby</span>(node, lat, lng, radius, results):
+  <span class="kw">if</span> node.rectangle <span class="kw">does not intersect</span> circle(lat, lng, radius):
+    <span class="kw">return</span>                          <span class="cmt">// prune entire subtree</span>
+
+  <span class="kw">if</span> node.<span class="fn">isLeaf</span>():
+    <span class="kw">for</span> place <span class="kw">in</span> node.places:        <span class="cmt">// at most 500</span>
+      <span class="kw">if</span> distance(place, lat, lng) &lt;= radius:
+        results.<span class="fn">add</span>(place)
+    <span class="kw">return</span>
+
+  <span class="kw">for</span> child <span class="kw">in</span> node.children:        <span class="cmt">// up to 4 quadrants</span>
+    <span class="fn">searchNearby</span>(child, lat, lng, radius, results)</pre>
+
+  <p>The magic is the <strong>prune step</strong>. If a node's rectangle doesn't even touch Sarah's search circle, we skip the entire subtree — possibly millions of places eliminated in one pointer-comparison. This is why the QuadTree gives us O(log N) instead of O(N).</p>
+
+  <h3 class="subh">The doubly-linked leaf list — fast neighbor traversal</h3>
+  <p>One subtle but important optimization: every leaf node maintains pointers to its <strong>geographically adjacent leaves</strong> (a doubly-linked list across the leaves). When Sarah's 1-mile radius spills out of her current leaf into a neighbor, we don't have to walk back up to the root and down again — we just follow the leaf pointer sideways. This turns "walk neighbors" from O(log N) per neighbor into O(1).</p>
+
+  <div class="highlight hl-green"><strong>Memory math:</strong> 500M places ÷ 500 per leaf = <strong>1M leaves</strong>. Each leaf entry stores <code>(place_id 8B, lat 8B, lng 8B)</code> = 24B; 500M × 24B ≈ <span class="metric">12 GB of leaf data</span>. Internal nodes with 4 child pointers each are negligible (~10 MB). <strong>Total ~12 GB</strong> — fits in the RAM of one fat server, but we'll partition for fault tolerance and to spread the 100K QPS load.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: INSERTION & UPDATES                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-purple">Step 8</span>
+  <h2>Insertion &amp; Updates</h2>
+  <p>A new bakery opens in San Francisco. How does it enter the QuadTree?</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>➕ Insert</h3>
+      <p>Walk the QuadTree from the root: at each internal node, pick the child quadrant whose rectangle contains the new place's (lat, lng). Continue until you hit a leaf. Append the place to that leaf's list. <strong>If the leaf now exceeds 500 places, split it</strong>: create 4 new sub-quadrants, redistribute the 501 places among them by location, and turn the former leaf into an internal node pointing at the 4 new leaves.</p>
+      <p>The insert is O(log N) — at most 15 hops down a tree of ~1M leaves.</p>
+    </div>
+    <div class="card">
+      <h3>✏️ Update / Delete</h3>
+      <p>Updating a place's <em>name</em> or <em>category</em> is just a Place DB write — the QuadTree doesn't care. Updating a place's <em>location</em> (rare) means: remove from old leaf, walk down again, insert into new leaf. Deleting is: remove from leaf; if the leaf falls under some lower threshold (say, 100 places) and its 3 sibling leaves are also sparse, merge them back into a single leaf to keep the tree balanced.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>Yelp places vs. Uber drivers — the contrast.</strong> A Yelp place's location changes <em>almost never</em> — a restaurant doesn't move. So inserts dominate updates, and the QuadTree can be built once and barely touched. Compare to Uber, where a driver's location changes <em>every 3 seconds</em> — that workload would shred a QuadTree (every position update is an insert + delete + possible split + possible merge). Uber's design uses a different structure (typically a Hilbert-curve or geohash-keyed K/V store with TTL'd entries) for exactly this reason. Worth raising in interviews: <em>"this design assumes places are static; if locations updated every few seconds, I'd switch to a geohash-keyed store with eventual consistency."</em></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: PARTITIONING                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-yellow">Step 9</span>
+  <h2>Data Partitioning</h2>
+  <p>The QuadTree is ~12 GB and must serve 100K QPS — both numbers fit on one fat server, but we'd have no fault tolerance and no headroom for growth. We must <strong>shard</strong>. Two natural choices:</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>❌ Shard A — Region-based</h3>
+      <p>"Shard 1 owns North America, shard 2 owns Europe, shard 3 owns Asia..." Intuitively appealing — a search in San Francisco only ever hits the North America shard.</p>
+      <p><strong>Why it fails:</strong> the <strong>hot region problem</strong>. Manhattan has more places (and more searches) than the entire state of Wyoming. The Manhattan shard melts under load while the Wyoming shard sits idle. Adding more shards to North America just relocates the problem — geography is fundamentally non-uniform.</p>
+    </div>
+    <div class="card">
+      <h3>✅ Shard B — Hash-based on place_id</h3>
+      <p>Compute <code>shard = consistent_hash(place_id) % N</code>. Distribution is uniform by construction. Each shard has its own QuadTree containing roughly 1/N of all places — globally distributed, not regionally clustered.</p>
+      <p><strong>Trade-off:</strong> a search at Sarah's location must <strong>fan out to all shards</strong> in parallel, because the places near her are spread uniformly across every shard. The aggregator (④) merges results. This is the cost of uniformity, and it's why the aggregator exists.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Each shard is a full QuadTree</h3>
+  <p>Critical detail: each shard owns its own complete QuadTree covering the entire planet — but populated with only its 1/N slice of places. Shard 7's QuadTree has the same root-to-leaf structure as shard 12's, just with different place_ids in the leaves. A geo-search hits all N shards in parallel, each returns its local top-K candidates, the aggregator picks the global top-K from the N×K candidate pool.</p>
+
+  <div class="highlight hl-yellow"><strong>Why fan-out is OK here:</strong> 100ms latency budget, 30 shards, parallel fan-out — each shard answers in 5ms in parallel, the aggregator's wall-clock cost is max(5ms) + merge ≈ 10ms. Network round-trips inside a data center are sub-millisecond. The fan-out tax is real but small, and it buys us uniform shard load — which is the much bigger win.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: REPLICATION                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-red">Step 10</span>
+  <h2>Replication &amp; Fault Tolerance</h2>
+  <p>QuadTrees live in RAM. RAM is volatile. A QuadTree server crash means we just lost an in-memory index — we need to recover it fast.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔁 Replication — 2× per shard</h3>
+      <p>Every QuadTree shard runs on at least 2 servers (a primary and a hot replica). They both serve reads — doubling per-shard read capacity. Both are kept in sync by listening to the same Place DB change stream (Cassandra CDC, or a Kafka topic of place mutations). When a place is added/updated/deleted, both replicas of the responsible shard apply the change.</p>
+      <p>If the primary dies, the replica takes over. Latency blip of a few seconds for failover, no data loss because the index is rebuildable from Place DB.</p>
+    </div>
+    <div class="card">
+      <h3>🛠️ Recovery — rebuild from Place DB</h3>
+      <p>A full failure of all replicas of a shard means we need to rebuild that shard from scratch. <strong>This is where the QuadTree Index Server</strong> ⑦ <strong>earns its keep.</strong> Instead of asking Place DB "show me every one of 500M places, let me check if it belongs to shard 7" (a full table scan), we ask the index server "give me every placeId whose home shard is 7" — it returns the ~16M relevant IDs, we stream just those rows from Place DB, walk the QuadTree insert algorithm 16M times, and the shard is back online in minutes, not hours.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The fault-tolerance trick:</strong> the QuadTree is treated as <em>derived state</em>, not source-of-truth. Place DB is the truth; QuadTrees are caches/indexes built from it. This means a QuadTree server can crash without consequence beyond a brief latency bump — we never have to fight to "save" its memory.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: CACHE                              -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-cyan">Step 11</span>
+  <h2>Cache</h2>
+  <p>Caching in Yelp comes in two flavors, both important.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔥 Hot place objects</h3>
+      <p>The QuadTree returns 20 place_ids; the API needs the full place objects (name, description, photo URL, current avg rating). Looking up 20 objects per search × 100K searches/sec = 2M lookups/sec on Place DB — too much. Memcached caches the hot ~5 million place objects (think: every popular tourist destination in every major city) with LRU eviction. ~95%+ hit rate; Place DB sees only the cold tail.</p>
+    </div>
+    <div class="card">
+      <h3>🔁 Hot search results</h3>
+      <p>Many searches are repetitive: "ramen + downtown SF + 1 mile" runs thousands of times per minute from different users at roughly the same location. We bucket the user's location into a coarse grid cell (e.g., 200m squares) and cache <code>(grid_cell, category, radius_bucket) → top-20 place_ids</code> for 60 seconds. A massive amount of read traffic short-circuits before ever touching the QuadTree fleet.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>Why we can cache search results at all:</strong> places change rarely. A new bakery opening up doesn't invalidate "best ramen near Union Square" — the ramen places are still there. So a 60-second TTL is harmless; the worst that happens is a brand-new restaurant takes a minute to show up in cached queries.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: LOAD BALANCING                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-purple">Step 12</span>
+  <h2>Load Balancing</h2>
+  <p>Two LB layers in this system, each playing a different role.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>① Client → Search API</h3>
+      <p>Public-facing LB (AWS ALB / nginx). Distributes incoming HTTPS across Search API pods. Health-checks every 5 seconds, terminates TLS, evicts unhealthy pods. <strong>Round-robin</strong> works fine because every API pod is stateless and identical.</p>
+    </div>
+    <div class="card">
+      <h3>② Aggregator → QuadTree Shards</h3>
+      <p>Internal fan-out LB. Per-shard, the aggregator must pick one of the 2+ replicas to query. <strong>Round-robin</strong> at first; <strong>load-aware</strong> (least connections, or per-replica latency tracking) once you see one replica running consistently hotter than its peer due to noisy-neighbor effects on its host.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The LB is itself a single point of failure</strong> — solved with an active-passive pair using virtual IP failover, or natively in cloud LBs (ALB is multi-AZ by default).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: RANKING                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-yellow">Step 13</span>
+  <h2>Ranking</h2>
+  <p>The QuadTree finds <em>nearby</em> places. Ranking decides <em>which</em> nearby places to show first. A good ranking turns "we found 200 ramen places in your radius" into "here are the 20 you should actually look at".</p>
+
+  <h3 class="subh">Score function</h3>
+  <p>A simple linear blend works surprisingly well as a baseline:</p>
+
+<pre>score(place, user) =
+    w1 * normalized_rating       <span class="cmt">// 4.6 stars → 0.92</span>
+  + w2 * proximity_score          <span class="cmt">// inverse distance, capped</span>
+  + w3 * popularity               <span class="cmt">// log(review_count)</span>
+  + w4 * personalization          <span class="cmt">// user's preferences, history</span>
+  + w5 * sponsored_boost          <span class="cmt">// paid placement, capped</span></pre>
+
+  <p>Each weight w<sub>i</sub> is tuned via offline A/B and online experiments. Rating + popularity dominate the head of the distribution; personalization decides ties at the head and pushes specific places up the long tail.</p>
+
+  <h3 class="subh">Where ranking runs — local then global</h3>
+  <p>Each <strong>QuadTree shard pre-ranks</strong> its candidates locally — say 100 candidates → top-100 by local score → returned to Aggregator. The <strong>Aggregator does final ranking</strong> across the N×100 candidates from N shards, picks the global top-20. This two-stage approach keeps shard-to-aggregator network traffic small (we send 100 ranked candidates per shard, not 10,000 unranked ones) without sacrificing global ranking quality.</p>
+
+  <div class="highlight hl-yellow"><strong>Why pre-rank at the shard:</strong> bandwidth and latency. If each of 30 shards returned every candidate (could be thousands), the Aggregator would receive megabytes per query and spend most of its 100ms budget just reading the wire. Local pre-ranking trims each shard's contribution to a small constant.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-blue">Step 14</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">Why a QuadTree over a fixed grid?</div>
+  <div class="ans"><strong>Density adaptation.</strong> Places are wildly non-uniform — Manhattan has more restaurants per square kilometer than the Sahara has in a million. A fixed grid either drowns its dense cells (a Manhattan cell with 100,000 places defeats the index) or wastes space in its sparse ones. QuadTree adapts: dense areas split many times into tiny cells, sparse areas stay as single big cells. Every leaf has roughly the same count (~500), so query work is bounded everywhere.</div>
+
+  <div class="iq">Why a QuadTree over Geohash?</div>
+  <div class="ans"><strong>Both are valid; QuadTree is conceptually cleaner for this workload, geohash is operationally simpler.</strong> Geohash encodes (lat, lng) into a sortable string and lets you do prefix queries on a regular B-tree — no custom data structure required. It's easier to operate (just a column in your existing DB) but harder to make density-adaptive (variable-precision geohashing helps but is fiddly). QuadTree is custom code but gives you natural density-adaptation and explicit neighbor pointers. In an interview, mention both — picking QuadTree shows you understand the density problem, picking geohash shows you value operational simplicity. Either earns the point.</div>
+
+  <div class="iq">What if a leaf has 100K places — say, all the restaurants in NYC's 10 square blocks?</div>
+  <div class="ans"><strong>The threshold-based split solves this — but the question is whether 500 is the right threshold.</strong> With a 500-cap, a 100K-place region splits 8+ levels deep — totally fine; the tree just gets locally deeper. The actual operational concern is when a leaf <em>is</em> at 500 and 50 places get inserted in a microsecond (a new restaurant chain opens 50 locations at once) — that's a thundering-herd split. Mitigations: (a) over-provision the threshold to 1000 with a soft-cap at 500 to absorb bursts, (b) make splits async and serve queries from the unsplit leaf during the split, (c) shard the QuadTree across more boxes to reduce per-shard write rate.</div>
+
+  <div class="iq">How would the design change for Uber drivers, whose locations update every 3 seconds?</div>
+  <div class="ans"><strong>Drop the QuadTree, switch to geohash-keyed K/V with TTL.</strong> The QuadTree assumes near-static positions — every position update would trigger a delete + insert + possible leaf split + possible rebalance. With 1M drivers updating every 3s = 333K updates/sec, the tree would spend more time rebalancing than answering queries. Uber's actual design (per their engineering blog) uses geohash-prefix-keyed Redis structures: each driver's location is a Redis key like <code>geohash_prefix → set-of-driver-ids</code>, with TTL so stale locations auto-expire. Lookups become "fetch the driver-id sets for my geohash + neighbors". Loses density-adaptation but gains write-friendliness — exactly the right trade for that workload.</div>
+
+  <div class="iq">Shard by geographic region vs. shard by place_id — pros/cons?</div>
+  <div class="ans"><strong>Place_id wins on uniformity, region wins on locality.</strong> Region: search hits one shard (fast), but Manhattan shard melts (hot key). Place_id: search fans out to all N shards in parallel (small fan-out tax, ~5ms), but every shard has uniform load (no hot keys, no melting). At 100K QPS the hot-shard problem is the killer — even with the most aggressive sub-sharding of Manhattan, certain neighborhoods will always be over-represented. Hashing by place_id sidesteps the entire class of hot-region failure modes; the fan-out tax is small in a single data center. <em>"In production I'd shard by place_id; if I were running on a network so slow that fan-out cost more than 20ms, I'd reconsider — but inside a modern DC, fan-out is essentially free."</em></div>
+
+  <div class="iq">How do you handle a search at the edge of two QuadTree leaves?</div>
+  <div class="ans"><strong>The radius spills into neighboring leaves; we follow leaf-list pointers.</strong> When the search circle isn't fully contained inside Sarah's home leaf, the algorithm walks to neighboring leaves via the doubly-linked leaf list (§7) and includes their candidates. Concretely: compute Sarah's bounding box from (lat, lng, radius), find every leaf whose rectangle intersects that box (could be 1, 4, or 9 leaves), gather candidates from all, merge. This is also why each shard returns a generous top-100 instead of top-20 — we want enough headroom that the post-merge global top-20 is correct even when results came from multiple leaves.</div>
+
+  <div class="iq">How do you build the QuadTree initially? Cold-start with 500M places?</div>
+  <div class="ans"><strong>Bulk-build, not insert-one-by-one.</strong> Inserting places one by one into an empty tree means cascading splits — inefficient. Instead, sort all 500M places by a space-filling curve (Hilbert or Z-order) so spatially-near places end up adjacent in the sorted list, then build the tree bottom-up by chunking the sorted list into 500-place leaves and recursively grouping leaves into parents. This takes minutes, not hours. Same trick used after a major shard re-shuffle.</div>
+
+  <div class="iq">How do you keep ranking fresh — new reviews, new ratings?</div>
+  <div class="ans"><strong>Async denormalization.</strong> When Sarah leaves a 5-star review, the Review service writes to its own table — instant. A background job (Kafka consumer) periodically rolls up <code>(avg_rating, review_count)</code> per place and updates the denormalized fields on the Place row in Place DB. The QuadTree itself doesn't store rating — it stores place_id; the Aggregator looks up the current rating from cache/Place DB at query time. So new reviews are reflected within seconds in cache misses, within 60s for cache hits (TTL). Heavier-weight personalization features (user history embeddings) can be recomputed nightly without breaking the user experience.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "We build an in-memory QuadTree that adapts to place density — leaves split when they exceed 500 places — shard it by place_id across many servers, fan out queries through an aggregator, cache hot places and hot search results, and treat the entire QuadTree as derived state rebuildable from Cassandra. The naive lat-and-lng-with-two-indexes approach falls down on density skew and disk IOPS; the QuadTree fleet turns 100ms-on-bad-days into 100ms-as-the-p99-target."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

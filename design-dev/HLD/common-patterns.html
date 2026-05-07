@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>The 8 Common Patterns Every HLD Interview Uses</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+.card a{color:var(--orange);text-decoration:none;border-bottom:1px dashed rgba(232,116,59,.4)}
+.card a:hover{border-bottom-style:solid}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">HLD Reference · Patterns Catalog</div>
+  <h1>The 8 Common Patterns <span>Every HLD Uses</span></h1>
+  <p class="sub">A reference catalog of the eight patterns that show up in nearly every system design interview — when to use each, what problem it solves, and concrete examples from real systems on this site.</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Why Patterns?</a></li>
+      <li><a href="#s2">The 8 at a Glance</a></li>
+      <li><a href="#s3">P1 — Real-time Updates</a></li>
+      <li><a href="#s4">P2 — Long-Running Tasks</a></li>
+      <li><a href="#s5">P3 — Dealing with Contention</a></li>
+      <li><a href="#s6">P4 — Scaling Reads</a></li>
+      <li><a href="#s7">P5 — Scaling Writes</a></li>
+      <li><a href="#s8">P6 — Handling Large Blobs</a></li>
+      <li><a href="#s9">P7 — Multi-Step / Sagas</a></li>
+      <li><a href="#s10">P8 — Proximity Services</a></li>
+      <li><a href="#s11">How Real Systems Stack</a></li>
+      <li><a href="#s12">Anti-Patterns</a></li>
+      <li><a href="#s13">Selection Cheat Sheet</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHY PATTERNS                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>Why Patterns? — Vocabulary Signals Seniority</h2>
+  <p>Picture the interview room. A junior engineer is asked to design Twitter's timeline. She thinks for a moment, then starts drawing: "OK so when Sarah tweets, we need to put it in front of her followers. Maybe each follower has an inbox? And we copy the tweet into every follower's inbox at write time?" She is, on the spot, painstakingly reinventing fan-out-on-write — taking five minutes to derive what has been a named technique for fifteen years.</p>
+
+  <p>Across the table, a senior engineer nods. He's not nodding because the answer is brilliant — he's nodding because he's heard the same derivation a hundred times. If she had just said "I'd use fan-out-on-write for normal users and fan-out-on-read for celebrities", he would have moved on in thirty seconds.</p>
+
+  <p>That is what patterns are for. They are <strong>vocabulary that compresses a five-minute explanation into a thirty-second one</strong>. Naming a pattern lets you skip the derivation and spend interview time on the thing that actually matters: <em>which pattern fits this problem, what the trade-offs are, and how you'd wire it into the rest of the system</em>.</p>
+
+  <div class="highlight hl-orange"><strong>The unfair advantage of pattern fluency:</strong> if you know that pushing real-time updates is a named problem with three named answers (polling, SSE, WebSockets) and you can rattle off when each wins, the interviewer instantly puts you in the "senior" bucket. If you re-derive WebSockets from scratch, you're in the "smart but green" bucket. Same answer, different label, very different offer.</div>
+
+  <p>This page catalogs the eight patterns that come up in nearly every HLD interview. Each section gives you: the scenario where it applies, the problem it solves, the canonical architecture, the trade-offs, a decision tree, and links to two or three real systems on this site that use it. Treat it as a lookup table — when an interviewer says "users edit a doc together in real time", you should immediately think <em>Pattern 1: Real-time Updates</em>, and have three candidate architectures ready before they finish the sentence.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: THE 8 AT A GLANCE                  -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>The 8 Patterns at a Glance</h2>
+  <p>A bird's-eye view first. Each row is one pattern; the rest of this page is a deep dive on each one. The mindmap below is the same content visually — useful for spotting which family a problem falls into.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+mindmap
+  root(("HLD Patterns"))
+    Real-time
+      WebSockets
+      SSE
+      Polling
+    Long-Running
+      Async jobs
+      Worker queues
+      202 + job_id
+    Contention
+      Pessimistic lock
+      Optimistic CAS
+      Distributed lock
+    Scaling Reads
+      Indexes
+      Replicas
+      Cache
+      CDN
+    Scaling Writes
+      Sharding
+      Partitioning
+      Write queues
+    Large Blobs
+      Presigned URLs
+      Object store
+      Metadata DB
+    Multi-Step
+      Orchestration
+      Choreography
+      Saga compensations
+    Proximity
+      Geohash
+      QuadTree
+      Redis GEO
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>#</th><th>Pattern</th><th>One-line description</th><th>Jump to</th></tr></thead>
+      <tbody>
+        <tr><td><strong>1</strong></td><td>Real-time Updates</td><td>Push state changes to clients within seconds without polling</td><td><a href="#s3" style="color:var(--orange)">§3</a></td></tr>
+        <tr><td><strong>2</strong></td><td>Long-Running Tasks</td><td>Don't block the HTTP request for a 30-second job</td><td><a href="#s4" style="color:var(--orange)">§4</a></td></tr>
+        <tr><td><strong>3</strong></td><td>Contention</td><td>Stop two users from grabbing the same seat / coupon / row</td><td><a href="#s5" style="color:var(--orange)">§5</a></td></tr>
+        <tr><td><strong>4</strong></td><td>Scaling Reads</td><td>Survive a 100:1 read-to-write ratio without melting the DB</td><td><a href="#s6" style="color:var(--orange)">§6</a></td></tr>
+        <tr><td><strong>5</strong></td><td>Scaling Writes</td><td>Spread write load past what one box can absorb</td><td><a href="#s7" style="color:var(--orange)">§7</a></td></tr>
+        <tr><td><strong>6</strong></td><td>Large Blobs</td><td>Get gigabyte uploads off your app servers</td><td><a href="#s8" style="color:var(--orange)">§8</a></td></tr>
+        <tr><td><strong>7</strong></td><td>Multi-Step / Sagas</td><td>Roll back a 4-step workflow when step 3 fails</td><td><a href="#s9" style="color:var(--orange)">§9</a></td></tr>
+        <tr><td><strong>8</strong></td><td>Proximity</td><td>Answer "find nearby X" without scanning every entity</td><td><a href="#s10" style="color:var(--orange)">§10</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-green"><strong>Reading order tip:</strong> if you're new, read 1 → 8 in order — they're sequenced from most-frequent to most-specialized. If you're prepping for a specific interview, jump to the patterns that match your target system: ride-sharing leans on 1+5+8, video sites lean on 2+4+6, ticketing leans on 3+7.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: PATTERN 1 — REAL-TIME              -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Pattern 1</span>
+  <h2>Pushing Real-time Updates</h2>
+  <p>Picture two people. Sarah is editing a Google Doc on her laptop. Raj, sitting in another country, is reading the same doc. Sarah types a sentence. Raj's screen needs to show that sentence within a second or two — without Raj's browser hammering the server every 200ms asking "anything new yet?". That is the problem this pattern exists to solve.</p>
+
+  <h3 class="subh">When to use it</h3>
+  <p>Chat apps (Messenger, Slack, WhatsApp), live notifications, real-time dashboards, collaborative editors (Docs, Figma), live driver tracking on a map, live sports scores, multiplayer game state, presence indicators. Any time you want a server-side change to appear on a client without the client asking.</p>
+
+  <h3 class="subh">The problem stated precisely</h3>
+  <p>HTTP is request-response. The server can't talk to the client unless the client asks first. So the naive answer is "have the client ask every second" — polling. That works, technically, but it's spectacularly wasteful: with a million idle users polling every 5 seconds, you're handling 200K requests/sec for nothing 99% of the time. We need a way for the server to push a message to the client only when something actually happens.</p>
+
+  <h3 class="subh">The three canonical architectures</h3>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(212,168,56,.4)">
+      <h3 style="color:var(--yellow)">A. Polling / Long-Polling</h3>
+      <p>Client repeatedly asks "anything new?" — either every N seconds (short poll) or holding the request open until the server has news (long poll).</p>
+      <p><strong>Pros:</strong> dead-simple HTTP, works behind any firewall, no special protocol.</p>
+      <p><strong>Cons:</strong> wasteful at idle, latency = poll interval, server holds many open connections in long-poll mode.</p>
+      <p><strong>When it wins:</strong> updates are rare (once per minute), or the client is short-lived (a checkout flow that polls payment status for 30 seconds).</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">B. Server-Sent Events (SSE)</h3>
+      <p>Client opens one HTTP connection; server streams text events down it indefinitely. One-way: server-to-client only.</p>
+      <p><strong>Pros:</strong> standard HTTP, works through proxies, auto-reconnect built into the browser, dead-simple to implement.</p>
+      <p><strong>Cons:</strong> one-way only — client cannot send messages back on the same connection. Browser limit of ~6 concurrent SSE per origin.</p>
+      <p><strong>When it wins:</strong> server pushes notifications, dashboards, live feeds — anywhere the client doesn't need to talk back in real time.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">C. WebSockets</h3>
+      <p>HTTP upgrades to a persistent full-duplex TCP connection. Either side can send a message at any time.</p>
+      <p><strong>Pros:</strong> truly bidirectional, lowest latency, lightest per-message overhead.</p>
+      <p><strong>Cons:</strong> not pure HTTP — some corporate proxies block it, sticky-session load balancing required, more operational complexity.</p>
+      <p><strong>When it wins:</strong> chat, multiplayer games, collaborative editing — anywhere the client needs to send messages too.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Decision tree — which transport?</h3>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TD
+  Q1{"Client needs to push to server in real time?"}
+  Q2{"Updates frequent enough that polling wastes traffic?"}
+  Q3{"Updates rarer than once per minute?"}
+  POLL["Polling — short or long poll"]
+  SSE["Server-Sent Events"]
+  WS["WebSockets"]
+
+  Q1 -- "yes" --> WS
+  Q1 -- "no" --> Q2
+  Q2 -- "yes" --> SSE
+  Q2 -- "no" --> Q3
+  Q3 -- "yes" --> POLL
+  Q3 -- "no" --> SSE
+
+  style WS fill:#171d27,stroke:#38b265,color:#d4dae5
+  style SSE fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style POLL fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">The fan-out backbone</h3>
+  <p>Whichever transport you pick, behind it sits a <strong>pub/sub backbone</strong> that delivers messages to the right connection. When Sarah types, her server publishes to a topic like <code>doc:42</code>; every connection subscribed to <code>doc:42</code> (Raj's WebSocket) receives the event. Common backbones: Redis Pub/Sub (simple, ephemeral), Kafka (durable, replay), or a managed service like Ably / Pusher / AWS API Gateway WebSockets.</p>
+
+  <h3 class="subh">Trade-offs &amp; gotchas</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>⚖️ Connection state</h3>
+      <p>WebSockets and SSE are stateful. The server knows "Raj's connection is on pod-7". If pod-7 crashes, Raj's connection drops. You need sticky-session load balancing or a connection registry (Redis with <code>{user_id → pod}</code>) so other pods can find Raj when they need to push to him.</p>
+    </div>
+    <div class="card">
+      <h3>⚖️ Backpressure</h3>
+      <p>If you're publishing 100 events/sec to a slow client, your pub/sub queue grows unbounded. Solutions: drop old events (live driver location — only the latest matters), batch events, or close the connection.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Live examples on this site</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>💬 Facebook Messenger</h3>
+      <p>WebSockets for bidirectional chat. Connection registry maps <code>user_id → chat_server_pod</code>. <a href="facebook-messenger-hld.html">See the full design →</a></p>
+    </div>
+    <div class="card">
+      <h3>🚗 Uber</h3>
+      <p>Driver location pushed to the rider's app every few seconds via WebSockets. The map dot moving smoothly is this pattern in action. <a href="uber-hld.html">See the full design →</a></p>
+    </div>
+    <div class="card">
+      <h3>🐦 Twitter timeline</h3>
+      <p>New-tweet notifications pushed to active users via WebSockets — "5 new tweets" appears without a refresh. <a href="twitter-hld.html">See the full design →</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: PATTERN 2 — LONG-RUNNING TASKS     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Pattern 2</span>
+  <h2>Managing Long-Running Tasks</h2>
+  <p>Picture this. Priya uploads a 4K wedding video to YouTube. The transcoding pipeline needs to produce 1080p, 720p, 480p, and 360p variants — about three minutes of work for a ten-minute video. Should her browser sit there spinning for three minutes waiting for the HTTP response? Of course not. The browser will time out, the load balancer will time out, and her experience will be terrible. We need a different shape.</p>
+
+  <h3 class="subh">When to use it</h3>
+  <p>Video transcoding, large report generation, bulk imports/exports, ML model training, sending a million emails, image processing pipelines, data exports. Anything where the work to be done is far longer than a reasonable HTTP response.</p>
+
+  <h3 class="subh">The pattern</h3>
+  <p>Three steps. First, the API accepts the work and immediately returns <code>202 Accepted</code> with a <code>job_id</code> — a receipt. Second, the actual work goes onto a queue (Kafka, SQS, RabbitMQ) where a pool of workers picks it up and processes asynchronously. Third, the client either <em>polls</em> the job status endpoint (<code>GET /jobs/{id}</code>) or <em>subscribes</em> via Pattern 1 to a push notification when the job completes.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant C as Client
+  participant API as API Server
+  participant Q as Queue — Kafka / SQS
+  participant W as Worker Pool
+  participant DB as Job Status DB
+
+  C->>API: POST /jobs (long task payload)
+  API->>DB: INSERT job_id status=PENDING
+  API->>Q: enqueue job_id
+  API-->>C: 202 Accepted job_id=abc
+  Note over Q,W: Async — request is done
+
+  W->>Q: dequeue job_id=abc
+  W->>W: process (3 minutes)
+  W->>DB: UPDATE job_id status=COMPLETED
+
+  C->>API: GET /jobs/abc
+  API->>DB: SELECT status
+  API-->>C: status=COMPLETED, result_url=...
+    </div>
+  </div>
+
+  <h3 class="subh">Trade-offs</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Synchronous request-response</h3>
+      <p><strong>When it wins:</strong> task completes in under 1-2 seconds. Simpler code, instant feedback, no queue infrastructure.</p>
+      <p><strong>When it loses:</strong> task is longer than the HTTP timeout (typically 30-60s). Browser disconnects; user retries; you do the work twice.</p>
+    </div>
+    <div class="card">
+      <h3>✅ Asynchronous job pattern</h3>
+      <p><strong>When it wins:</strong> task is long, variable, or expensive. Workers scale independently of API tier. Spike absorption — 10K uploads in a minute land in the queue and drain over an hour.</p>
+      <p><strong>When it loses:</strong> for short tasks, the polling overhead and status-tracking complexity isn't worth it.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">The hidden requirement — idempotency</h3>
+  <p>Workers crash. Queues retry. Your job will get processed twice sometimes. Every long-running task must be <strong>idempotent</strong> — running it twice produces the same result as running it once. Store the <code>job_id</code> on the output, check before doing work, and you're safe. Skipping this step is the most common production bug in this pattern.</p>
+
+  <h3 class="subh">Status-delivery — poll or push?</h3>
+  <p>Two ways for the client to learn the job is done. <strong>Polling</strong> the status endpoint is simple and works everywhere — fine if the job takes seconds to a few minutes. <strong>Push notification</strong> via Pattern 1 (WebSocket / SSE / webhook) is better for very long jobs (no wasted polls) or when the user has navigated away. Big systems offer both.</p>
+
+  <div class="highlight hl-purple"><strong>The interview move:</strong> when an interviewer hints at a long-running operation ("user generates a report", "user uploads a video", "user runs a backtest"), immediately propose the async-job pattern and draw the queue. They are watching to see if you reach for it without prompting.</div>
+
+  <h3 class="subh">Live examples on this site</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>📺 YouTube transcoding</h3>
+      <p>Upload returns 202 with <code>video_id</code>. A pipeline of workers runs ffmpeg for each resolution. User sees a progress bar driven by status polling. <a href="youtube-hld.html">See the full design →</a></p>
+    </div>
+    <div class="card">
+      <h3>🔔 Notification Service</h3>
+      <p>Sending a campaign to 10M users — API enqueues, workers fan out and send via SES/Twilio. <a href="../LLD/notification-service-lld.html">See the full design →</a></p>
+    </div>
+    <div class="card">
+      <h3>⏰ Job Scheduler</h3>
+      <p>The canonical case — schedule and run jobs by their kind, retry on failure, observe progress. <a href="job-scheduler-hld.html">See the full design →</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: PATTERN 3 — CONTENTION             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-red">Pattern 3</span>
+  <h2>Dealing with Contention</h2>
+  <p>Picture Taylor Swift's Eras Tour going on sale. At 10:00:00 sharp, two million fans hit "Buy" at the same instant. There are 50,000 seats. Every seat must end up assigned to exactly one fan — not zero, not two. If two fans both walk away thinking they bought seat A-12, that's a Ticketmaster lawsuit. This is the contention problem in its purest form.</p>
+
+  <h3 class="subh">When to use it</h3>
+  <p>Ticket booking, flash sales, auctions, inventory decrement, distributed counters that must not double-count, "claim a username", "redeem a coupon", any time multiple actors race for a finite resource.</p>
+
+  <h3 class="subh">The three canonical solutions</h3>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">A. Pessimistic locking</h3>
+      <p><code>SELECT seat_42 FOR UPDATE</code> — the DB takes a row lock; nobody else can read or write that row until you commit. Whoever gets there first wins; everyone else waits in line.</p>
+      <p><strong>Pros:</strong> simple, correct, no retry logic.</p>
+      <p><strong>Cons:</strong> slow under heavy contention — every loser waits. Lock-holder crash = stuck row until timeout. Can deadlock.</p>
+    </div>
+    <div class="card" style="border-color:rgba(212,168,56,.4)">
+      <h3 style="color:var(--yellow)">B. Optimistic concurrency (CAS)</h3>
+      <p>No lock taken upfront. Read row + version. Update with <code>WHERE version = old_version</code>. If 0 rows updated → someone else won → retry from scratch.</p>
+      <p><strong>Pros:</strong> fast happy path, no lock contention, no deadlocks.</p>
+      <p><strong>Cons:</strong> retry storms under heavy contention. If 1000 users race for one seat, 999 retry, then 998, then 997… O(N²).</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">C. Distributed locks / queues</h3>
+      <p>Redis Redlock or ZooKeeper for cross-DB locks. Or serialize all writes for a resource through one queue partition — only one consumer at a time → no contention by construction.</p>
+      <p><strong>Pros:</strong> works across services and DBs. Queue serialization is bulletproof.</p>
+      <p><strong>Cons:</strong> queue caps throughput at one-writer speed. Distributed locks have correctness gotchas (clock skew, fencing tokens).</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Decision tree</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Scenario</th><th>Pick</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Single relational DB, low-medium contention</td><td>Pessimistic <code>SELECT FOR UPDATE</code></td><td>Simplest correct answer; DB does the heavy lifting</td></tr>
+        <tr><td>Single DB, high contention but rare collisions</td><td>Optimistic CAS</td><td>Happy path is lock-free; retries handle the rare conflict</td></tr>
+        <tr><td>Multi-DB / multi-service resource</td><td>Distributed lock (Redis Redlock)</td><td>Only way to coordinate across systems</td></tr>
+        <tr><td>Strict order matters (FIFO booking)</td><td>Queue with single-consumer per partition</td><td>Order is guaranteed by the queue itself</td></tr>
+        <tr><td>Counter that must not double-count</td><td>Atomic increment (<code>INCR</code> in Redis)</td><td>Single op, race-free by definition</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="subh">The reservation pattern — most ticketing systems</h3>
+  <p>Ticket booking specifically uses a two-stage variant: <strong>reserve</strong> the seat for 10 minutes (locking it from others), then <strong>confirm</strong> when payment succeeds, or <strong>release</strong> on payment failure or timeout. The reservation is itself a CAS operation; the timeout protects against abandoned carts holding seats hostage.</p>
+
+  <div class="highlight hl-red"><strong>The classic interview trap:</strong> "How do you ensure two users don't book the same seat?" Don't say "transactions" and stop there — that's the answer for one DB, but the interviewer wants to hear "and what if the seat lookup is in cache and the booking is in DB? what if payment is a third service?". The right answer mentions the reservation pattern, the timeout, and the saga (Pattern 7) for cross-service rollback.</div>
+
+  <h3 class="subh">Live examples on this site</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>🎟️ Ticketmaster</h3>
+      <p>Reservation pattern with 10-minute holds, optimistic concurrency on the seat row, distributed lock for cross-region inventory. <a href="ticketmaster-hld.html">See the full design →</a></p>
+    </div>
+    <div class="card">
+      <h3>💳 Payment System</h3>
+      <p>Idempotency keys + optimistic CAS on the wallet balance. Saga rollback on downstream failure. <a href="payment-system-hld.html">See the full design →</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: PATTERN 4 — SCALING READS          -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-cyan">Pattern 4</span>
+  <h2>Scaling Reads</h2>
+  <p>Picture a Twitter timeline being loaded by 100 million daily users. Each user opens the app five times a day. Each open hits the timeline endpoint. That's 500 million reads a day, peaking at maybe 30,000 reads per second at lunchtime in the US. Now picture the writes — at most a few thousand tweets per second. The ratio is brutal: about 100 reads for every write. This shape is so common it's the default assumption — most systems are read-heavy.</p>
+
+  <h3 class="subh">When to use it</h3>
+  <p>Pretty much always. If your read-to-write ratio is above 10:1, you need this pattern. Social feeds, e-commerce product pages, news, search results, anything user-facing. The only systems that don't need it are pure write-heavy ones like log ingestion or telemetry.</p>
+
+  <h3 class="subh">The five tools, in order of cost and impact</h3>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num green">1</span> Indexes</h3>
+      <p>The cheapest first move. A missing index turns a 1ms lookup into a 1-second table scan. Add an index on every column you filter or sort by — primary key, foreign keys, common WHERE clauses. <strong>Cost:</strong> writes get ~10% slower per index; storage grows. <strong>Impact:</strong> the difference between a working DB and a melted one.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">2</span> Denormalization</h3>
+      <p>Stop joining at read time — store the joined view directly. Instead of <code>orders JOIN users JOIN products</code> on every page load, pre-compute an <code>order_summary</code> row with all three flattened. <strong>Cost:</strong> writes get more expensive (must update multiple places); risk of drift. <strong>Impact:</strong> turns 5-table joins into single-row reads.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">3</span> Read replicas</h3>
+      <p>Keep one primary for writes; spin up 3-5 read-only replicas asynchronously. Route reads to replicas, writes to primary. <strong>Cost:</strong> replication lag (replicas are seconds behind); read-after-write inconsistency must be handled. <strong>Impact:</strong> linear read scaling — 5 replicas = 5× read capacity.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">4</span> Cache (Redis / Memcached)</h3>
+      <p>An in-memory layer in front of the DB. The hot 20% of data lives in RAM and serves 80% of reads. <strong>Cost:</strong> invalidation is genuinely hard ("there are only two hard things…"); stale reads possible. <strong>Impact:</strong> 100× latency improvement on cache hits, frees the DB for the cold tail.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">5</span> CDN</h3>
+      <p>Cache at the edge — POPs in 200+ cities. User in Tokyo gets a response from a Tokyo node, not your US data center. Best for static or semi-static content (images, videos, public profile pages). <strong>Cost:</strong> invalidation lag (purges take seconds-minutes); per-byte egress cost. <strong>Impact:</strong> kills round-trip latency globally.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">+</span> Honorable mention — materialized views</h3>
+      <p>Pre-compute expensive aggregations and store them as a table. "Top 100 trending products" is computed every 5 minutes, not on every request. Halfway between denormalization and a cache. <strong>Use:</strong> dashboards, leaderboards, anything aggregated.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">The hard parts</h3>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🔥 Cache invalidation</h3>
+      <p>Phil Karlton's joke: "There are only two hard things in CS — naming things, and cache invalidation." When the source of truth changes, the cache holds stale data. Strategies: <strong>TTL</strong> (eventual freshness, simple), <strong>write-through</strong> (consistent, slow writes), <strong>write-behind</strong> (fast, eventual), <strong>explicit invalidation</strong> (precise, requires plumbing).</p>
+    </div>
+    <div class="card">
+      <h3>⏱️ Replica lag</h3>
+      <p>You wrote, then immediately read — but you read from a replica that hasn't caught up. The user updates their profile and refreshes — old name shows. Mitigations: read-your-writes flag (route the writer to primary for a few seconds), session stickiness, accept eventual consistency for non-user-facing reads.</p>
+    </div>
+    <div class="card">
+      <h3>🔥 Hot keys</h3>
+      <p>One celebrity's profile gets 100K reads/sec. Even cached, one Redis node can't serve that. Solution: <strong>replicate hot keys</strong> across multiple cache nodes; or <strong>shard by request_id mod N</strong> for read distribution; or push hot content to CDN.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Live examples on this site</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>🔗 URL Shortener</h3>
+      <p>170GB Memcached fronts the URL DB; CDN caches viral redirects at the edge. 80% of reads never touch the DB. <a href="url-shortener-hld.html">See the full design →</a></p>
+    </div>
+    <div class="card">
+      <h3>🐦 Twitter</h3>
+      <p>Pre-computed timeline cache per user (denormalization at write time). Hot tweets served from in-memory cache. <a href="twitter-hld.html">See the full design →</a></p>
+    </div>
+    <div class="card">
+      <h3>📷 Instagram</h3>
+      <p>Multi-tier cache: PostgreSQL → Memcached → CDN for photos. Profile pages denormalized for one-row reads. <a href="instagram-hld.html">See the full design →</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: PATTERN 5 — SCALING WRITES         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-orange">Pattern 5</span>
+  <h2>Scaling Writes</h2>
+  <p>Picture WhatsApp. A billion users send messages constantly — at peak load, the system absorbs millions of writes per second. A single Postgres instance maxes out around 10,000 write transactions per second. Even the fattest box on AWS tops out around 50,000. So when your write throughput exceeds what one machine can absorb, you cannot fix it with more cache or more replicas — those scale reads, not writes. You have to spread the writes themselves.</p>
+
+  <h3 class="subh">When to use it</h3>
+  <p>Message ingest, telemetry collection, write-heavy timelines (Twitter), high-volume order systems, IoT data, location updates, anything where new rows arrive faster than one machine can write them.</p>
+
+  <h3 class="subh">The four levers</h3>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔪 Horizontal sharding (the main lever)</h3>
+      <p>Split the data across N machines. Each row goes to exactly one shard, chosen by hashing a <strong>partition key</strong>. <code>shard = hash(user_id) mod N</code>. With 16 shards, write throughput is roughly 16× single-box. Sharding is the thing that turns "10K writes/sec" into "millions of writes/sec".</p>
+    </div>
+    <div class="card">
+      <h3>↕️ Vertical partitioning</h3>
+      <p>Split by data type, not by row. Put <code>user_profile</code> on one DB, <code>user_posts</code> on another, <code>user_messages</code> on a third. Each can scale independently. Common as a stepping stone before horizontal sharding.</p>
+    </div>
+    <div class="card">
+      <h3>📥 Write queues</h3>
+      <p>Put a Kafka or Kinesis between your API and your DB. Spike of 100K writes/sec? They land in the queue and drain to the DB at a sustainable rate. Acts as a shock absorber. Pairs with batching: dequeue 1000 writes, do one bulk INSERT.</p>
+    </div>
+    <div class="card">
+      <h3>📦 Batch writes</h3>
+      <p>One transaction inserting 1000 rows is dramatically cheaper than 1000 transactions inserting one row each. Batch on the client, the queue, or the API. Also write-coalescing: if the same user posts 5 location updates in a second, write only the latest.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Choosing the partition key — the most important decision</h3>
+  <p>Picking the wrong partition key cripples the system in ways no amount of more shards can fix. Three rules:</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>1. Distribute uniformly</h3>
+      <p>If 90% of writes have the same key, 90% of writes hit one shard. Shard by something with high cardinality and uniform distribution: <code>user_id</code> for user-scoped data, hash of <code>entity_id</code> for events.</p>
+    </div>
+    <div class="card">
+      <h3>2. Match the query pattern</h3>
+      <p>You'll mostly query by partition key. If you shard messages by <code>user_id</code> but your most common query is "give me the latest 100 messages globally", you scan every shard. Pick the key your reads look like.</p>
+    </div>
+    <div class="card">
+      <h3>3. Avoid hot keys</h3>
+      <p>Sharding Twitter by <code>user_id</code> means @elonmusk's shard handles 10× the load of others. Mitigations: sub-shard celebrity rows, write to a queue and fan out, or shard by <code>(user_id, time_bucket)</code>.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">The IDs trick — Snowflake</h3>
+  <p>Twitter's Snowflake ID embeds <code>(timestamp + worker_id + sequence)</code> into a 64-bit ID. This gives you three things at once: <strong>globally unique IDs</strong> generated independently on every server (no central counter); <strong>time-sortable</strong> (sort by ID = sort by creation time); <strong>natural sharding key</strong> (you can shard by ID and still range-scan recent items by mod-bucket). Most modern write-heavy systems use a Snowflake-style ID scheme.</p>
+
+  <h3 class="subh">The trade-offs you must accept</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>⚠️ Cross-shard joins are gone</h3>
+      <p>You cannot <code>JOIN users (shard A) ON orders (shard B)</code>. Either denormalize (Pattern 4), do the join in the application layer, or pick a partition key that co-locates the data.</p>
+    </div>
+    <div class="card">
+      <h3>⚠️ Rebalancing is painful</h3>
+      <p>With plain <code>hash mod N</code>, adding a shard means N→N+1 and every key moves. <strong>Always use consistent hashing</strong> instead — adding a shard moves only 1/(N+1) of keys.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Live examples on this site</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>🐦 Twitter</h3>
+      <p>Tweets sharded by Snowflake <code>tweet_id</code>; user-scoped data sharded by <code>user_id</code>. Celebrities get special-cased. <a href="twitter-hld.html">See the full design →</a></p>
+    </div>
+    <div class="card">
+      <h3>🕷️ Web Crawler</h3>
+      <p>URL frontier sharded by hostname so politeness rules — "max 1 RPS per domain" — stay co-located on one worker. <a href="web-crawler-hld.html">See the full design →</a></p>
+    </div>
+    <div class="card">
+      <h3>💬 Messenger</h3>
+      <p>Message store sharded by <code>conversation_id</code>; per-user inbox indexed separately. <a href="facebook-messenger-hld.html">See the full design →</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: PATTERN 6 — LARGE BLOBS            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-yellow">Pattern 6</span>
+  <h2>Handling Large Blobs</h2>
+  <p>Picture this. Mark uploads a 4GB raw video to YouTube. The naive design — POST it to your API server, which then writes it to storage — has a fatal flaw. Every byte of those 4GB has to flow through your app server. If 100 users upload at the same time, your app servers melt. Worse, your bandwidth bill triples because the bytes travel client → app → S3 instead of client → S3 directly. Your app servers, which should be doing CPU-light routing work, become file-transfer middleware.</p>
+
+  <h3 class="subh">When to use it</h3>
+  <p>Photo uploads, video uploads, file sharing, document storage, anywhere users upload payloads bigger than a few MB. Anything Dropbox, YouTube, or Instagram-shaped.</p>
+
+  <h3 class="subh">The pattern — presigned URLs</h3>
+  <p>The trick is to take the bytes out of the request path entirely. The client uploads <em>directly</em> to S3 (or GCS / Azure Blob), bypassing your app server. To make this safe — you don't want anonymous internet uploaders writing to your bucket — the app server issues a <strong>presigned URL</strong>: a temporary, signed URL that grants the client permission to PUT one object to one specific path for the next N minutes.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant C as Client
+  participant API as API Server
+  participant S3 as Object Store — S3
+  participant DB as Metadata DB
+
+  C->>API: POST /uploads — request upload slot
+  API->>DB: INSERT placeholder file_id status=PENDING
+  API->>S3: generate presigned PUT URL valid for 15 min
+  API-->>C: file_id + presigned_url
+
+  C->>S3: PUT bytes — directly, app server uninvolved
+  S3-->>C: 200 OK
+
+  S3->>API: webhook — object created at path
+  API->>DB: UPDATE file_id status=READY
+  Note over C,DB: Subsequent reads — client GETs metadata, then signed download URL
+    </div>
+  </div>
+
+  <h3 class="subh">The two-store architecture — blobs + metadata</h3>
+  <p>Object stores are great at storing bytes. They are <strong>terrible</strong> as your primary database — no efficient queries, no indexes, no relations. The pattern is always: object store for bytes + traditional DB (Postgres / DynamoDB) for metadata. The metadata row holds <code>{file_id, owner, name, size, content_type, s3_path, status, uploaded_at}</code>. Queries like "show me Sarah's photos from last week" run against the metadata DB; the actual bytes only get fetched when the user clicks a thumbnail.</p>
+
+  <h3 class="subh">The webhook problem — keeping metadata in sync</h3>
+  <p>The client uploads to S3, and your DB doesn't automatically know it succeeded. Two options. <strong>S3 event notifications</strong> — S3 sends a webhook (via SNS / EventBridge / Lambda) to your API when the object lands; your API flips the status to <code>READY</code>. <strong>Client-callback pattern</strong> — after the PUT succeeds, the client itself calls <code>POST /uploads/{file_id}/complete</code>. The webhook approach is more reliable (the client can crash; S3 won't). The callback approach is simpler.</p>
+
+  <h3 class="subh">Trade-offs</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Wins</h3>
+      <ul>
+        <li>App servers stay tiny — no bytes flow through them</li>
+        <li>S3 multi-part upload handles resumable, parallel chunking</li>
+        <li>Bandwidth cost halved — bytes go client → S3 once, not client → app → S3</li>
+        <li>S3 handles the durability story (11 9s) for you</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚠️ Costs</h3>
+      <ul>
+        <li>CORS configuration on the bucket (browsers won't PUT cross-origin without it)</li>
+        <li>Eventual consistency between blob and metadata (there's a window where bytes exist but DB says <code>PENDING</code>)</li>
+        <li>Cleanup of abandoned uploads (user requested URL but never PUT) — TTL'd lifecycle policy on the bucket</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>Critical anti-pattern:</strong> never store the binary blob inside your relational DB as a BLOB column. It bloats the table, kills backup performance, and makes every read slow. Always: bytes in object store, pointer in DB.</div>
+
+  <h3 class="subh">Live examples on this site</h3>
+  <div class="g4">
+    <div class="card">
+      <h3>📦 Dropbox</h3>
+      <p>Block store (S3) + metadata DB (sharded Postgres). Files chunked client-side. <a href="dropbox-hld.html">See →</a></p>
+    </div>
+    <div class="card">
+      <h3>📷 Instagram</h3>
+      <p>Photos in S3, metadata in Cassandra, CDN for delivery. Original + multiple variants. <a href="instagram-hld.html">See →</a></p>
+    </div>
+    <div class="card">
+      <h3>📺 YouTube</h3>
+      <p>Raw video presigned upload to S3, metadata in Vitess MySQL. Transcoding pipeline reads from S3. <a href="youtube-hld.html">See →</a></p>
+    </div>
+    <div class="card">
+      <h3>📋 Pastebin</h3>
+      <p>Paste body in S3, metadata in Postgres. Even small text uses object store for cost. <a href="pastebin-hld.html">See →</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: PATTERN 7 — SAGAS                  -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-purple">Pattern 7</span>
+  <h2>Multi-Step Processes &amp; Sagas</h2>
+  <p>Picture an Amazon order. Click "Buy" and four things must happen — reserve inventory, charge the credit card, create the order, ship it. Steps 1-3 are fast services owned by your team; step 4 is a third-party shipping API. Now imagine step 3 succeeds, step 4 fails. The credit card is charged, inventory is reserved, an order exists in the DB — but no shipment will ever happen. You cannot just throw an error to the user. You have to <em>undo</em> everything: refund the card, release the inventory, mark the order cancelled. That undo is what this pattern is about.</p>
+
+  <h3 class="subh">When to use it</h3>
+  <p>Order fulfillment, payment workflows, multi-service transactions, any business process spanning more than one service or DB where partial failure is unacceptable.</p>
+
+  <h3 class="subh">Why ACID transactions don't work here</h3>
+  <p>A database transaction (<code>BEGIN ... COMMIT</code>) gives you all-or-nothing across multiple rows in <em>one</em> database. But our four steps live in four different services with four different databases — payment service, inventory service, order service, shipping API. There is no global ACID. The classic solution, distributed two-phase commit (2PC), has been quietly abandoned by most modern systems because it's slow, fragile, and doesn't work across third-party APIs. The alternative is the <strong>saga pattern</strong>.</p>
+
+  <h3 class="subh">The saga idea — every step has a compensating action</h3>
+  <p>For each forward step, define an <em>undo</em>. If step 4 fails, the system runs the undo for step 3, then 2, then 1 — in reverse — until everything that was done is undone. The system is eventually consistent: it's never in a half-done state for long.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant O as Orchestrator
+  participant Inv as Inventory
+  participant Pay as Payment
+  participant Ord as Order
+  participant Ship as Shipping
+
+  O->>Inv: reserve item — step 1
+  Inv-->>O: ok
+  O->>Pay: charge card — step 2
+  Pay-->>O: ok
+  O->>Ord: create order — step 3
+  Ord-->>O: ok
+  O->>Ship: schedule shipment — step 4
+  Ship-->>O: FAIL
+  Note over O,Ship: Forward path failed — run compensations in reverse
+  O->>Ord: cancel order — undo step 3
+  O->>Pay: refund — undo step 2
+  O->>Inv: release item — undo step 1
+  Note over O: Eventually consistent again
+    </div>
+  </div>
+
+  <h3 class="subh">Two flavors — orchestration vs. choreography</h3>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">A. Orchestration — central engine</h3>
+      <p>One service (the orchestrator) drives the saga. It calls each step in sequence, tracks state, and triggers compensations on failure. Tools: Temporal, AWS Step Functions, Cadence, Netflix Conductor.</p>
+      <p><strong>Pros:</strong> centralized state machine, easy to observe, easy to reason about, easy to debug. The whole flow is one place in the code.</p>
+      <p><strong>Cons:</strong> orchestrator is a coordination hub — if it goes down, all sagas pause. Tighter coupling between services and the orchestrator.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">B. Choreography — event-driven</h3>
+      <p>No central engine. Each service publishes events; downstream services subscribe and react. <code>OrderCreated</code> → payment listens → <code>PaymentSucceeded</code> → shipping listens → and so on. Failures publish failure events that compensating subscribers handle.</p>
+      <p><strong>Pros:</strong> loosely coupled, no single point of coordination, services don't know about each other.</p>
+      <p><strong>Cons:</strong> hard to debug — the flow is implicit in event subscriptions, not visible in any one file. Watching a saga end-to-end requires distributed tracing.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">When to pick which</h3>
+  <p><strong>Orchestration</strong> wins when the flow is critical, the steps are owned by your team, and observability matters (payment, ticket booking, account opening). <strong>Choreography</strong> wins when services are owned by different teams, the flow is loose, and you want each team to evolve independently (a marketing event triggers six downstream effects across the company).</p>
+
+  <h3 class="subh">The hard parts of compensations</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>🪙 Some actions can't be undone</h3>
+      <p>You sent an email. You can't un-send. The undo here is a "sorry, ignore that email" follow-up — semantic, not literal. Design with this in mind: place irreversible steps at the end of the saga so they never need compensating.</p>
+    </div>
+    <div class="card">
+      <h3>🔁 Compensations must be idempotent</h3>
+      <p>If the orchestrator crashes during compensation and retries, you'd refund the card twice. Every undo must be safely re-runnable: keep an idempotency key, no-op if already compensated.</p>
+    </div>
+    <div class="card">
+      <h3>👀 Observability is non-negotiable</h3>
+      <p>A stuck saga is a money-losing bug. You need a dashboard showing every in-flight saga, its current step, and how long it's been there. This is why orchestrators have ops UIs out of the box.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Live examples on this site</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>💳 Payment System</h3>
+      <p>Multi-step charge flow with refund as compensation, idempotency keys, ledger entries for audit. <a href="payment-system-hld.html">See the full design →</a></p>
+    </div>
+    <div class="card">
+      <h3>🎟️ Ticketmaster</h3>
+      <p>Reserve → Pay → Confirm saga. If pay fails, release the reservation. Hold timeout as built-in compensation. <a href="ticketmaster-hld.html">See the full design →</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: PATTERN 8 — PROXIMITY             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-green">Pattern 8</span>
+  <h2>Proximity-Based Services</h2>
+  <p>Picture Maya opening Uber in Bangalore. She taps "Where to?" and within a second her screen lights up with eight driver dots within 2 km of her — out of the 50,000 drivers active in the city. The naive answer is "scan all 50,000 drivers, compute distance to Maya, return the eight closest". That works at 50,000. It does not work when Uber has 5 million drivers active globally and 10,000 Mayas tapping every second. We need a way to answer "what's near here?" in O(log N) instead of O(N).</p>
+
+  <h3 class="subh">When to use it</h3>
+  <p>Ride-sharing (find nearby drivers), food delivery (nearby restaurants), dating apps (nearby singles), Yelp (nearby businesses), AirTags (nearby devices), Pokemon Go (nearby spawns). Anywhere the query is "find entities within X meters of (lat, lon)".</p>
+
+  <h3 class="subh">The four canonical answers</h3>
+
+  <div class="g2">
+    <div class="card">
+      <h3>A. Geohash</h3>
+      <p>Encode (lat, lon) as a string where shared prefix = nearby. <code>tdr1y</code> and <code>tdr1z</code> are neighbors; <code>tdr1y</code> and <code>9q8yyk</code> are far. Query is "find all rows whose geohash starts with my prefix". Backed by Redis GEO commands or a Postgres index.</p>
+      <p><strong>Pros:</strong> simple, supported by Redis natively, easy to update (delete + re-insert).</p>
+      <p><strong>Cons:</strong> uneven cell sizes near poles; "edge effect" — two points just across a cell boundary look distant by prefix. Needs neighbor-cell padding.</p>
+    </div>
+    <div class="card">
+      <h3>B. QuadTree</h3>
+      <p>Recursively split space into four quadrants; subdivide any cell that holds too many entities. Sparse areas have one big leaf; dense areas (downtown) have many small leaves. Each leaf has roughly the same number of entities — uniform query cost.</p>
+      <p><strong>Pros:</strong> uniform leaf density makes searches fast everywhere. Great for sparse-then-dense data.</p>
+      <p><strong>Cons:</strong> updates are complex — a moving driver may cross cell boundaries, triggering tree rebalancing. Best for slowly-changing data.</p>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>C. R-Tree</h3>
+      <p>Hierarchy of bounding rectangles. Query: "what rectangles overlap this query box?" then recurse. Best for shapes with extent (not just points) — restaurant delivery zones, geofences.</p>
+      <p><strong>Pros:</strong> handles ranges and shapes natively. PostGIS, Elasticsearch use it under the hood.</p>
+      <p><strong>Cons:</strong> heavier than geohash for plain "nearest point" queries.</p>
+    </div>
+    <div class="card">
+      <h3>D. In-memory hash + grid (Uber-style)</h3>
+      <p>For frequently-moving entities — divide the world into fixed cells (e.g., S2 cells of ~100m); maintain <code>{cell_id → set_of_drivers}</code> in Redis. On driver location update: remove from old cell, add to new. On rider query: look up the rider's cell + 8 neighbors.</p>
+      <p><strong>Pros:</strong> updates are O(1). Reads are O(neighbor cell count). Scales to millions of moving entities.</p>
+      <p><strong>Cons:</strong> not durable on its own (pair with a backing store). Cell sizing matters — too small wastes lookups, too big returns too many candidates.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">QuadTree visualized — why it's so good for spatial search</h3>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  R["Root cell — whole world"]
+  NW["NW quadrant"]
+  NE["NE quadrant"]
+  SW["SW quadrant"]
+  SE["SE quadrant — dense, splits further"]
+
+  R --> NW
+  R --> NE
+  R --> SW
+  R --> SE
+
+  SE --> SE1["SE-NW"]
+  SE --> SE2["SE-NE — downtown, splits again"]
+  SE --> SE3["SE-SW"]
+  SE --> SE4["SE-SE"]
+
+  SE2 --> SE2a["leaf — 8 entities"]
+  SE2 --> SE2b["leaf — 7 entities"]
+  SE2 --> SE2c["leaf — 9 entities"]
+  SE2 --> SE2d["leaf — 6 entities"]
+
+  style R fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style SE fill:#171d27,stroke:#e05252,color:#d4dae5
+  style SE2 fill:#171d27,stroke:#e05252,color:#d4dae5
+  style NW fill:#171d27,stroke:#38b265,color:#d4dae5
+  style NE fill:#171d27,stroke:#38b265,color:#d4dae5
+  style SW fill:#171d27,stroke:#38b265,color:#d4dae5
+    </div>
+  </div>
+
+  <p>The downtown SE quadrant has thousands of entities, so the tree splits it further. Sparse rural NW stays as one big cell. Every leaf holds roughly 8-10 entities — so a "find nearby" query always returns ~30 candidates regardless of where on Earth the user is. That's the magic.</p>
+
+  <h3 class="subh">Decision tree</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Scenario</th><th>Pick</th></tr></thead>
+      <tbody>
+        <tr><td>Under 100K entities, slow updates</td><td>Postgres + bounding-box index (PostGIS)</td></tr>
+        <tr><td>100K — 100M entities, slow updates (restaurants, businesses)</td><td>QuadTree</td></tr>
+        <tr><td>Frequent updates (drivers, scooters, deliveries)</td><td>Geohash or grid + in-memory hash table</td></tr>
+        <tr><td>Range queries / shapes (geofences, delivery zones)</td><td>R-Tree (PostGIS, Elasticsearch geo_shape)</td></tr>
+        <tr><td>Pre-built solution preferred</td><td>Redis GEO commands — geohash-based, batteries included</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-green"><strong>The Uber lesson:</strong> Uber's drivers move continuously — a QuadTree would re-balance constantly. So Uber uses a hash-grid approach (DriverLocationHT) with fixed-size cells in memory; updates are O(1). Yelp's businesses don't move — Yelp uses a QuadTree because the structure is built once and queried millions of times. The right answer depends entirely on your update frequency.</div>
+
+  <h3 class="subh">Live examples on this site</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>📍 Yelp</h3>
+      <p>QuadTree for ~200M businesses globally. Built offline, queried at scale. <a href="yelp-hld.html">See the full design →</a></p>
+    </div>
+    <div class="card">
+      <h3>🚗 Uber</h3>
+      <p>Geohash + in-memory DriverLocationHT for the 5M moving drivers. Driver pings every 4s. <a href="uber-hld.html">See the full design →</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: HOW REAL SYSTEMS STACK            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-purple">Pattern Combinator</span>
+  <h2>How Real Systems Stack Patterns</h2>
+  <p>Real systems never use just one pattern. The interesting design work is in <em>composing</em> them. Here's how the systems on this site combine the eight — notice how the same patterns recur, but the combinations are unique to each problem domain.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>System</th><th>Pattern Stack</th><th>Where each fits</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Twitter</strong></td>
+          <td><code>P1 + P4 + P5 + P7</code></td>
+          <td>P1 — push new tweets to active timelines. P4 — pre-computed timeline cache. P5 — sharded by Snowflake tweet_id. P7 — fan-out write as a multi-step async process.</td>
+        </tr>
+        <tr>
+          <td><strong>Uber</strong></td>
+          <td><code>P1 + P5 + P8</code></td>
+          <td>P1 — driver location pushed to rider. P5 — DriverLocationHT sharded by region. P8 — geohash + in-memory grid for nearby search.</td>
+        </tr>
+        <tr>
+          <td><strong>Dropbox</strong></td>
+          <td><code>P4 + P6 + P7</code></td>
+          <td>P4 — metadata cache to avoid hitting DB on every folder open. P6 — presigned upload to block store. P7 — sync as a multi-step process across devices.</td>
+        </tr>
+        <tr>
+          <td><strong>Ticketmaster</strong></td>
+          <td><code>P3 + P7</code></td>
+          <td>P3 — reservation pattern with optimistic CAS on the seat row. P7 — Reserve → Pay → Confirm saga with timeout-driven compensation.</td>
+        </tr>
+        <tr>
+          <td><strong>YouTube</strong></td>
+          <td><code>P2 + P4 + P6</code></td>
+          <td>P2 — async transcoding pipeline. P4 — CDN + Memcached for hot videos. P6 — presigned upload of raw video to S3.</td>
+        </tr>
+        <tr>
+          <td><strong>WhatsApp / Messenger</strong></td>
+          <td><code>P1 + P5</code></td>
+          <td>P1 — WebSockets for real-time message delivery. P5 — message store sharded by conversation_id.</td>
+        </tr>
+        <tr>
+          <td><strong>Instagram</strong></td>
+          <td><code>P4 + P5 + P6</code></td>
+          <td>P4 — CDN for photo delivery, Memcached for feeds. P5 — sharded user/post stores. P6 — direct uploads to S3.</td>
+        </tr>
+        <tr>
+          <td><strong>Yelp</strong></td>
+          <td><code>P4 + P8</code></td>
+          <td>P4 — heavy read caching for popular businesses. P8 — QuadTree for "near me" queries.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The interview move:</strong> when designing a new system, list the patterns that apply <em>before</em> you start drawing boxes. "This is read-heavy (P4), has uploads (P6), and needs real-time updates (P1)" gives you three pre-built mental models. Then your architecture is just composing those three with the specifics of the domain.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: ANTI-PATTERNS                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-red">Anti-Patterns</span>
+  <h2>What NOT to Do — Common Pattern Misuse</h2>
+  <p>Patterns are tools. Like all tools, they hurt when misapplied. Here are the five reach-for-the-pattern reflexes that actually mark you as <em>junior</em> in an interview, not senior.</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--red)">
+      <h3>❌ "We'll just use Kafka"</h3>
+      <p>Kafka is great when you have justified throughput, durability, and replay needs. Saying "Kafka" without specifying <em>throughput, retention, partition count, consumer group strategy</em> is a red flag. The interviewer will press: "Why Kafka over SQS? Why not just an in-memory queue? What's the retention?" If you can't answer, you reached for it as a buzzword. <strong>Fix:</strong> say "I'd use a queue here — Kafka if I need replay and high throughput, SQS if it's just job dispatch", and pick based on the requirement.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--red)">
+      <h3>❌ Presigned URLs for 1KB JSON</h3>
+      <p>Pattern 6 exists to keep big bytes off your app servers. Using it for tiny payloads adds latency (extra round trip to get the URL) and complexity (signed URL plumbing, S3 cost) for no gain. <strong>Fix:</strong> presigned URLs only for payloads above ~1MB. Below that, just POST directly.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--red)">
+      <h3>❌ Sharding before proving the problem</h3>
+      <p>"And now we shard by user_id" — said before establishing a single DB can't handle the load. Sharding is expensive in operational complexity, cross-shard joins, and rebalancing pain. A modern Postgres can do 50,000 writes/sec on one box. <strong>Fix:</strong> always start with "single box → read replicas → cache → vertical partition → horizontal shard", and shard only when the previous steps demonstrably aren't enough.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--red)">
+      <h3>❌ Caching without invalidation strategy</h3>
+      <p>"We'll add Redis in front of the DB" with no plan for staleness, eviction, or write coherency. The cache will silently serve old data, users will report bugs, and you'll spend a week debugging why prod and DB disagree. <strong>Fix:</strong> always specify TTL, eviction policy (LRU?), and invalidation trigger (write-through? explicit purge on update? event-driven?).</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--red)">
+      <h3>❌ Distributed lock for single-DB scenarios</h3>
+      <p>Reaching for Redis Redlock when <code>SELECT FOR UPDATE</code> on one Postgres would have done it. Distributed locks have correctness gotchas (clock skew, fencing tokens, lock-holder GC pauses), and you don't need them if everything you're protecting lives in one DB. <strong>Fix:</strong> use the simplest lock that crosses the bounds of your data — DB lock if one DB, distributed lock only if you span DBs/services.</p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--red)">
+      <h3>❌ Async everything</h3>
+      <p>Pattern 2 exists for long jobs. Using async + queues for a 50ms operation just adds latency, complexity, and failure modes. Users now have to poll for results that could have been returned in the original request. <strong>Fix:</strong> sync by default; async only when the work exceeds ~1-2 seconds.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The unifying lesson:</strong> every pattern has a problem it solves. Naming the problem before the pattern is what separates senior from junior. "I have 10K writes/sec which exceeds single-box capacity, so I'll shard" is senior. "I'll shard" is junior. Make the cause-and-effect chain visible.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: SELECTION CHEAT SHEET             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-orange">Cheat Sheet</span>
+  <h2>Pattern Selection — Symptom-to-Pattern Lookup</h2>
+  <p>The fastest reference. Match the symptom in column 1 to the pattern in column 2. Use this in the first 60 seconds of any interview when you're sketching the requirements — the patterns to apply should pop out immediately.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Symptom / Requirement</th><th>Pattern</th><th>First-pass architecture</th></tr></thead>
+      <tbody>
+        <tr><td>Need to push updates from server to client</td><td><strong>P1 — Real-time</strong></td><td>WebSocket if bidirectional, SSE if one-way, polling if rare</td></tr>
+        <tr><td>Operation takes longer than a few seconds</td><td><strong>P2 — Long-Running</strong></td><td>API returns 202 + job_id, queue + worker pool</td></tr>
+        <tr><td>Concurrent edits to the same row / resource</td><td><strong>P3 — Contention</strong></td><td>Optimistic CAS for low contention, pessimistic for high, queue for FIFO</td></tr>
+        <tr><td>Read-to-write ratio above 10:1</td><td><strong>P4 — Scaling Reads</strong></td><td>Indexes → replicas → cache → CDN, in that order</td></tr>
+        <tr><td>DB CPU pegged at 100% on writes</td><td><strong>P5 — Scaling Writes</strong></td><td>Vertical partition first, then shard horizontally with consistent hashing</td></tr>
+        <tr><td>Users upload files larger than 1 MB</td><td><strong>P6 — Large Blobs</strong></td><td>Presigned URL to object store, metadata in DB, webhook to flip status</td></tr>
+        <tr><td>Workflow spans multiple services with rollback</td><td><strong>P7 — Sagas</strong></td><td>Orchestrator (Temporal/Step Functions) with compensating actions per step</td></tr>
+        <tr><td>"Find nearby X" query at scale</td><td><strong>P8 — Proximity</strong></td><td>Geohash for moving entities, QuadTree for static, Redis GEO out of the box</td></tr>
+        <tr><td>Read-after-write consistency required</td><td>P3 + P4</td><td>Route writer to primary for N seconds; sticky session</td></tr>
+        <tr><td>Hot-key problem (one row gets 80% of traffic)</td><td>P4 + P5</td><td>Replicate hot keys across cache nodes; sub-shard the row</td></tr>
+        <tr><td>Idempotency required (charges, sends)</td><td>P2 + P7</td><td>Idempotency key on every request; check-then-act in worker</td></tr>
+        <tr><td>Need durable, replayable event log</td><td>P2 + P7</td><td>Kafka with retention; consumers can replay from offset</td></tr>
+        <tr><td>Spike absorption (10× traffic for an hour)</td><td>P2 + P5</td><td>Queue acts as buffer; workers drain at sustainable rate</td></tr>
+        <tr><td>Global low-latency reads</td><td>P4</td><td>CDN at edge + multi-region read replicas</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="subh">The 30-second interview opening</h3>
+  <p>When the interviewer states the problem, mentally check off each row of the table above. Within 30 seconds you should have a list like: "OK, this has uploads (P6), it's read-heavy (P4), and there's a workflow (P7) — three patterns to wire in". Then the rest of the interview is composing them, picking the partition key, debating cache invalidation strategy. You've already won the framing battle.</p>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "Patterns are vocabulary. Eight of them cover the structural backbone of nearly every HLD interview. Naming them lets you skip derivation and spend interview time on trade-offs and composition — which is where seniority is judged."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

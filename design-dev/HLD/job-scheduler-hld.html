@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Distributed Job Scheduler — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* HERO */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* LAYOUT */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* SIDEBAR TOC */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* SECTION */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* CODE */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* DIAGRAM */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* HIGHLIGHT */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* INTERVIEW Q */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* COMPONENT NUMBER BADGE */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* METRIC PILL */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Distributed <span>Job Scheduler</span></h1>
+  <p class="sub">From "one cron daemon polling Postgres" to a sharded, time-bucketed, lease-protected scheduler that fires 100K jobs/second on time, every time</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is a Job Scheduler?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">High-Level Architecture</a></li>
+      <li><a href="#s6">Time-Bucketing — The Trick</a></li>
+      <li><a href="#s7">Hot Bucket / Cold Bucket</a></li>
+      <li><a href="#s8">Sharding &amp; Partition Assignment</a></li>
+      <li><a href="#s9">Lease-Based Execution</a></li>
+      <li><a href="#s10">Cron / Recurring Jobs</a></li>
+      <li><a href="#s11">Retry &amp; Backoff</a></li>
+      <li><a href="#s12">Cancellation</a></li>
+      <li><a href="#s13">Precise Timing</a></li>
+      <li><a href="#s14">Fault Tolerance</a></li>
+      <li><a href="#s15">Multi-Region</a></li>
+      <li><a href="#s16">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS A JOB SCHEDULER             -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is a Job Scheduler?</h2>
+  <p>Imagine 100 million users have all set the same calendar reminder — "ping me at 7:00 AM every weekday with my morning briefing." At exactly <code>07:00:00</code> local time, on a Monday, in 24 different timezones, those reminders must fire. Some are emails, some are push notifications, some kick off a workflow that fans out to ten downstream services. Miss the moment by even a minute and the user opens the app to dead silence — "what was that thing I was supposed to do today?" That's the job scheduler problem: a system that <strong>triggers code at scheduled times</strong> (cron-style: every Monday at 9, every hour on the hour) and <strong>at delayed offsets</strong> (one-shot: "send Sarah a reminder email in 3 days") at massive scale, reliably, on time.</p>
+
+  <p>You've used job schedulers without thinking about them. Quartz fires off Java tasks. Linux <code>cron</code> fires shell scripts. Airflow runs data pipelines. Celery beat schedules background workers. They're all the same shape underneath — a clock, a queue, and a worker — but they break in interesting ways the moment you ask them to do it for a billion jobs across hundreds of machines.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) When 100 million jobs all come due at <code>07:00:00</code>, how do we fire them within seconds of their target time without melting the database? (2) When a worker crashes mid-execution at <code>07:00:30</code> with 50,000 jobs in-flight, how do we make sure those jobs still fire — exactly once — and not zero times or twice?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Before drawing a single box, pin down what the system must do. Naming the asks early prevents the classic interview trap of designing for a workload nobody asked for.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Schedule a <strong>one-shot job</strong> at an exact future time — "fire at 2027-01-15T07:00:00Z"</li>
+        <li>Schedule a <strong>recurring job</strong> via cron expression — "every Monday at 9am"</li>
+        <li>Trigger an <strong>HTTP webhook</strong> or enqueue to a <strong>message broker</strong> (Kafka/SQS) when the job fires</li>
+        <li><strong>Retry</strong> on failure with exponential backoff; dead-letter after N attempts</li>
+        <li><strong>Cancel</strong> a pending job before it fires; <strong>query</strong> job state by ID</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Exactly-once execution</strong> — or at-least-once with idempotency keys (truly exactly-once is provably impossible across the network)</li>
+        <li><strong>Precise timing</strong> — fire within a few seconds of the scheduled instant; sub-second for premium tiers</li>
+        <li><strong>Massive scale</strong> — billions of pending jobs, tens of thousands firing per second at peak</li>
+        <li><strong>Highly available</strong> — no single machine death may stop or delay job firing</li>
+        <li><strong>Durable</strong> — once accepted, a job <em>must</em> fire (or end up in a dead-letter queue with an alert)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The hard non-functional requirements collide.</strong> Precise timing pushes you toward in-memory data structures; durability pushes you toward disk. Exactly-once pushes you toward distributed locks; high availability pushes you away from them. The architecture below is the practical compromise: a <em>two-tier store</em> (cold disk for everything, hot memory for what's about to fire) with <em>leased execution</em> for fault-tolerant near-exactly-once semantics.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers force decisions. Three knobs matter: how many jobs are pending in the system right now, how fast they fire at peak, and how big each job's metadata is.</p>
+
+  <h3 class="subh">Traffic estimates</h3>
+  <p>Assume <strong>1 billion active scheduled jobs</strong> at any instant (a mix of one-shot timers and the next-fire entries of cron jobs). Peak firing rate during global rush hours: <strong>100,000 jobs/second</strong>.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Pending jobs</h3><p><span class="metric">~1B active</span></p><p>across all users / cron entries</p></div>
+    <div class="card"><h3>Peak fire rate</h3><p><span class="metric">~100K jobs/sec</span></p><p>at 07:00 sharp across regions</p></div>
+    <div class="card"><h3>Storage / job</h3><p><span class="metric">~500 bytes</span></p><p>id + run_at + target + payload</p></div>
+    <div class="card"><h3>Hot DB</h3><p><span class="metric">~500 GB</span></p><p>1B × 500B for current jobs</p></div>
+  </div>
+
+  <h3 class="subh">Storage breakdown</h3>
+  <p>The <strong>hot store</strong> (DynamoDB / Cassandra) holds all 1B currently-pending jobs at 500 bytes each — about <span class="metric">500 GB</span>. The <strong>history archive</strong> (S3 / Parquet) holds every job that has ever fired, for audit and analytics, growing roughly <strong>3 TB / month</strong> at 100K fires/sec. Cold storage is cheap; we leave it indefinitely.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Pending jobs</td><td><code>1B</code></td><td>Forces sharding of the cold DB — too big for one node</td></tr>
+        <tr><td>Peak fire rate</td><td><code>100K/s</code></td><td>Forces N partitions, each handling a slice; no single worker can keep up</td></tr>
+        <tr><td>Storage hot</td><td><code>500 GB</code></td><td>DynamoDB scales linearly; partition by job_id hash</td></tr>
+        <tr><td>Storage history</td><td><code>3 TB/mo</code></td><td>S3 / cold tier; fire-and-forget audit log</td></tr>
+        <tr><td>Hot ZSET window</td><td><code>~1 hour</code></td><td>Holds at most 100K/s × 3600 = 360M jobs in the worst case; sharded to fit</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>Four endpoints carry everything. Notice that <code>POST /jobs</code> is overloaded — same endpoint, two flavors of payload (one-shot vs cron). The schema discriminates.</p>
+
+  <span class="code-label cl-green">REST API surface</span>
+<pre><span class="cmt">// Create a one-shot delayed job</span>
+POST /api/v1/jobs
+{
+  "type":         "one_shot",
+  "run_at":       "2027-05-10T14:02:00Z",   <span class="cmt">// exact UTC instant</span>
+  "target": {
+    "kind":       "http_webhook",
+    "url":        "https://api.example.com/reminder",
+    "method":     "POST",
+    "headers":    { "Authorization": "Bearer ..." },
+    "body":       { "user_id": 42, "msg": "stand-up in 5" }
+  },
+  "idempotency_key": "remind-user-42-standup-monday",
+  "max_retries":  5
+}
+→ 201 Created  { "job_id": "job_01HXY...", "status": "scheduled" }
+
+<span class="cmt">// Create a recurring cron job</span>
+POST /api/v1/jobs
+{
+  "type":           "cron",
+  "cron_expr":      "0 9 * * MON",          <span class="cmt">// every Monday 9 AM</span>
+  "timezone":       "America/Los_Angeles",
+  "target":         { ... },
+  "idempotency_key_template": "weekly-standup-{run_at}"
+}
+→ 201 Created  { "job_id": "job_01HXZ...", "next_run_at": "2027-05-12T16:00:00Z" }
+
+<span class="cmt">// Cancel a pending job</span>
+POST /api/v1/jobs/:id/cancel
+→ 200 OK  { "status": "cancelled" }
+
+<span class="cmt">// Query a job's state</span>
+GET /api/v1/jobs/:id
+→ 200 OK  {
+    "job_id": "...", "status": "scheduled|fired|failed|cancelled",
+    "next_run_at": "...", "last_fired_at": "...", "attempts": 0
+  }
+
+<span class="cmt">// Hard delete (rare; usually cancel is enough)</span>
+DELETE /api/v1/jobs/:id
+→ 204 No Content</pre>
+
+  <div class="highlight hl-blue"><strong>Why an idempotency key is in the API contract:</strong> if the network drops the response from a successful <code>POST /jobs</code>, the client retries — and a naive system creates a duplicate job. Same key → server returns the existing job_id instead of inserting again. Same idea protects against duplicate <em>execution</em> downstream: the target service uses the key to dedup if our scheduler fires the job twice (which can happen in the lease-expiration path, see §9).</div>
+
+  <div class="highlight hl-orange"><strong>Why <code>cancel</code> instead of <code>delete</code> as the default:</strong> a job that's about to fire in 200ms is already in the hot store, possibly already popped by a worker. A delete that races the worker is hard to reason about. <em>Cancel</em> just sets a flag; the worker checks the flag right before invoking the target and skips. Strictly safer.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: HIGH-LEVEL ARCHITECTURE             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-orange">Step 5 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart, and the production shape where every box justifies its existence. Numbers from §3 drive every decision.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Sketch the simplest system: one cron daemon polling a Postgres table every minute. The table has a <code>run_at</code> column. Every 60 seconds the daemon runs <code>SELECT * FROM jobs WHERE run_at &lt; NOW() AND status = 'scheduled'</code>, fires each row, and marks it done.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  CL["Client"] --> API["API Server"]
+  API --> PG[("Postgres jobs table")]
+  CRON["Single Cron Daemon"] -->|"poll every 60s"| PG
+  CRON -->|"fire"| TGT["Target — HTTP / Queue"]
+    </div>
+  </div>
+
+  <p>Four concrete failures emerge the moment real traffic shows up:</p>
+  <div class="g2">
+    <div class="card">
+      <h3>💥 Doesn't scale past ~100 jobs/sec</h3>
+      <p>One daemon firing webhooks serially tops out around 100 fires/sec on a single core. We need 100,000/sec. Even with a thread pool of 1000, you're now hammering Postgres with 100K concurrent updates per second to mark jobs done — the WAL fsync becomes the bottleneck and the daemon falls behind real-time.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Thundering herd at 07:00 sharp</h3>
+      <p>100 million users have a 7am reminder. At <code>07:00:00</code> the SELECT returns 100M rows. The daemon tries to process them all at once. Postgres pegs at 100% CPU returning the result set, the daemon's heap explodes, downstream HTTP targets get slammed by 100M synchronous calls in seconds. Everything queues, everything backs up, jobs that were supposed to fire at 07:00 actually fire at 07:14.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Single daemon = single point of failure</h3>
+      <p>The daemon process dies (OOM, hardware failure, deploy gone wrong). Until someone notices and restarts it, <em>zero jobs fire</em>. Your billing reminders, your "expire trial" jobs, your nightly batch — all silent. Discovering this is a 2 AM page.</p>
+    </div>
+    <div class="card">
+      <h3>💥 SELECT over billions of rows is slow</h3>
+      <p><code>SELECT WHERE run_at &lt; NOW() ORDER BY run_at LIMIT 10000</code> over 1 billion rows requires an index on <code>run_at</code>, but with billions of rows the index itself is gigabytes. Index scans take seconds. Each poll cycle eats the full poll interval just doing the SELECT. We can't poll faster than the SELECT takes — so we can't drive timing precision below ~minutes.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: time-bucketed sharded scheduler with leased execution</h3>
+  <p>Every problem in Pass 1 maps to one of four insights. Internalize them and the production shape draws itself.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">🗂 Insight 1 — Time-bucket the storage</h3>
+      <p>Instead of one giant <code>jobs</code> table sorted by <code>run_at</code>, partition jobs by their <strong>run minute</strong>. Finding "what's due in the next minute" reads <em>one</em> bucket — O(1) regardless of total job count. Think of pigeonhole mailboxes labeled by date: the postman doesn't search a pile, they walk to today's slot. Billions of pending jobs become irrelevant; only the current minute's bucket matters for the scheduler loop.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">🔪 Insight 2 — Shard across N workers</h3>
+      <p>One process can't fire 100K/sec. Hash each job_id into one of N partitions; each scheduler worker owns a subset of partitions and fires only its slice. With N=100 workers, each handles 1K jobs/sec — easy. Adding capacity = adding workers. The shard count and worker count scale independently, which is the whole point of horizontal scaling.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">🔑 Insight 3 — Leased execution</h3>
+      <p>When a worker pops a job from its slice, it sets a <strong>lease</strong> in Redis: "I own job_X for the next 5 minutes." If the worker crashes mid-execution, the lease expires and another worker can pick up the same job. Combined with an <em>idempotency key</em> on the target, this gives effectively-exactly-once semantics: jobs never get lost (the lease ensures retry), and double-fires are absorbed by the target's idempotency check.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🥶 Insight 4 — Two-tier hot/cold storage</h3>
+      <p>500 GB of pending jobs cannot fit in RAM, but the scheduler only needs the next hour's worth at any moment — that's millions, not billions. Keep <em>everything</em> in a cheap durable store (DynamoDB / Cassandra), and stage just the next 1–2 hours into a <strong>Redis sorted set</strong>. Schedulers query Redis at 100ms intervals (sub-ms response); the cold DB is only touched by background loaders. Result: precise timing on a small hot working set.</p>
+    </div>
+  </div>
+
+  <p>Together, these four insights kill all four Pass-1 failures: time-bucketing kills the slow SELECT, sharding kills the throughput ceiling, leased execution kills the single-process-failure problem, and two-tier storage kills the index-size problem.</p>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered — find its matching card below to see what it does and what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client — App / Service / SDK"]
+
+  subgraph API_PLANE["API Plane"]
+    API["② Job API Server"]
+  end
+
+  subgraph STORAGE["Storage Plane"]
+    JOBDB[("③ Job Store — DynamoDB / Cassandra")]
+    HOT[("④ Hot Bucket Cache — Redis ZSET")]
+  end
+
+  subgraph SCHED["Scheduler Plane"]
+    LOADER["⑤ Bucket Loader"]
+    WORKER["⑥ Scheduler Workers — N partitions"]
+    LEADER["⑦ Leader Election — ZooKeeper / etcd"]
+  end
+
+  subgraph EXEC["Execution Plane"]
+    KAFKA[("⑧ Execution Queue — Kafka topic")]
+    EXECW["⑨ Executor Workers"]
+    RETRY["⑩ Retry Manager"]
+    IDEMP[("⑪ Idempotency Store — Redis")]
+  end
+
+  subgraph OPS["Audit Plane"]
+    AUDIT[("⑫ Audit Log — DB / S3")]
+  end
+
+  CL --> API
+  API --> JOBDB
+  LOADER -->|"every 10 min"| JOBDB
+  LOADER --> HOT
+  WORKER --> HOT
+  WORKER --> KAFKA
+  LEADER -.assigns partitions.-> WORKER
+  KAFKA --> EXECW
+  EXECW --> IDEMP
+  EXECW -->|"on failure"| RETRY
+  RETRY --> JOBDB
+  EXECW -.fire / retry / done.-> AUDIT
+  WORKER -.skipped if cancelled.-> JOBDB
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style API fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style JOBDB fill:#171d27,stroke:#38b265,color:#d4dae5
+  style HOT fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style LOADER fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style WORKER fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style LEADER fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style KAFKA fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style EXECW fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style RETRY fill:#171d27,stroke:#e05252,color:#d4dae5
+  style IDEMP fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style AUDIT fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client</h3>
+      <p>Anything that wants something to happen later — a calendar app saying "remind me at 7am", a billing service saying "expire this trial in 14 days", a workflow engine saying "retry this step in 5 minutes". Clients call our REST API; from their view, the entire scheduler is two endpoints and a webhook that fires on time.</p>
+      <p><strong>Solves:</strong> nothing on its own — but every design decision flows backward from "what does the client expect?" Specifically: precise timing, durability, and the ability to cancel.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">②</span> Job API Server</h3>
+      <p>Stateless service that handles <code>POST /jobs</code>, <code>GET /jobs/:id</code>, <code>POST /jobs/:id/cancel</code>. Validates input (cron expression syntax, run_at in the future, target URL well-formed), computes the canonical <code>next_run_at</code>, and persists to the <strong>Job Store</strong>. Returns 201 with the job_id. Total budget: under 50ms.</p>
+      <p><strong>Solves:</strong> a clean stateless write tier that scales horizontally behind a load balancer. Without an isolated API tier, the scheduler workers would have to handle creation traffic too — coupling write spikes to firing capacity, exactly the wrong dependency.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">③</span> Job Store (DynamoDB / Cassandra)</h3>
+      <p>The durable source of truth. Holds every pending and recently-fired job. Sharded by <code>hash(job_id)</code> across many nodes, replicated 3× per shard. Schema includes a secondary index on <code>(partition_id, run_at_minute)</code> so the Bucket Loader can ask "give me all jobs in partition 5 due in the next hour" with a fast range query.</p>
+      <p><strong>Solves:</strong> durability and scale. 1 billion jobs cannot live in RAM and cannot live on one disk. NoSQL gives us automatic sharding and 3× replication. Without it, accepting a job and then losing it on a node failure would violate the system's core promise — once accepted, it must fire.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">④</span> Hot Bucket Cache (Redis ZSET)</h3>
+      <p>An in-memory sorted set per partition, with members = job_ids and scores = unix timestamp of <code>run_at</code>. Holds only jobs due in the next 1–2 hours. Scheduler workers query <code>ZRANGEBYSCORE bucket_p5 -inf NOW</code> in sub-millisecond time to find what's due. Replicated for failover; sharded by partition so no single Redis node holds the whole working set.</p>
+      <p><strong>Solves:</strong> precise timing. A SELECT against DynamoDB takes 5–20ms — fine for occasional queries, fatal at 10 polls/second per worker. The Redis ZSET serves the same query in 0.5ms, letting workers poll every 100ms without overloading anything. Think of it as the kitchen's "next 30 orders" board, while the Job Store is the back-office customer database.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑤</span> Bucket Loader</h3>
+      <p>A background service that runs every 10 minutes. For each partition, it queries the Job Store for jobs whose <code>run_at</code> falls in the next 1 hour and copies them into the corresponding Hot Bucket ZSET. Idempotent — re-running a load just refreshes existing entries. Acts as the bridge between the cold and hot tiers.</p>
+      <p><strong>Solves:</strong> staging the right working set into RAM without overloading the cold DB. Without the loader, scheduler workers would have to query DynamoDB directly on every tick — at 100K queries/sec the read cost alone would dominate. With the loader, the cold DB is read in calm batches every 10 min; workers only touch the cheap, fast hot tier.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑥</span> Scheduler Workers (N partitions)</h3>
+      <p>The clock-watchers. Each worker owns a slice of partitions. Every 100ms it does <code>ZRANGEBYSCORE</code> on its hot buckets to find jobs whose <code>run_at &lt;= now</code>. For each due job it: sets a <strong>lease</strong> in Redis (TTL 5 min), publishes the job to the <strong>Execution Queue</strong>, and <code>ZREM</code>s it from the hot bucket. The worker does <em>not</em> invoke the target itself — that's the executor's job. Keeping fire-detection separate from fire-execution prevents slow targets from blocking the clock loop.</p>
+      <p><strong>Solves:</strong> the throughput ceiling and the precision problem. Without sharded workers, one process tries to fire 100K/sec and falls behind. Without the fire-detection / fire-execution split, one slow webhook would block the worker from noticing the next 1000 due jobs.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑦</span> Leader Election (ZooKeeper / etcd)</h3>
+      <p>A consensus service that maintains the partition→worker assignment. When a worker joins or dies, the leader rebalances partitions among the survivors within seconds. Workers heartbeat to ZooKeeper; missed heartbeats trigger reassignment. Without this, two workers could both think they own partition 5 and double-fire every job in it.</p>
+      <p><strong>Solves:</strong> ownership clarity in a dynamic cluster. Workers come and go (deploys, crashes, scale-outs) — partitions must always have exactly one owner. The librarian model: the head librarian decides which clerk is responsible for which shelf; if a clerk goes home sick, the head librarian reassigns their shelves to others before customers notice.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑧</span> Execution Queue (Kafka topic)</h3>
+      <p>A durable buffer between scheduler workers (which detect "this job is due now") and executor workers (which actually invoke the target). Each "due now" event becomes a message; partitioned by job_id so a single job's events land on the same Kafka partition (preserves ordering for retries). Buffers absorb spikes — at 07:00 sharp, scheduler workers may dump millions of "fire now" events into Kafka in seconds, which executors then drain at their own pace.</p>
+      <p><strong>Solves:</strong> isolating the clock from the network. If executors talked to scheduler workers synchronously, a slow executor would back-pressure into the scheduler and the clock would drift. Kafka decouples them and lets each scale independently.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑨</span> Executor Workers</h3>
+      <p>A separate worker pool that consumes from the Execution Queue. For each message: check the Idempotency Store to make sure this job hasn't already been fired; invoke the target (HTTP POST or enqueue to a downstream Kafka/SQS topic); on success, write to the Audit Log and release the lease; on failure, hand the job to the Retry Manager. Pool sized for peak concurrent invocations — typically thousands of pods.</p>
+      <p><strong>Solves:</strong> the "fire" half of fire-detection-and-fire-execution. Separating it from scheduler workers means we can scale executor capacity (thousands of pods making slow HTTP calls) independently from scheduler capacity (a few hundred fast pollers).</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑩</span> Retry Manager</h3>
+      <p>When an executor fails to invoke a target (HTTP 5xx, timeout, downstream queue full), it hands the job here. Retry Manager computes the next retry time using exponential backoff with jitter — <code>now + base × 2^attempt + random_jitter</code> — and re-inserts the job into the Job Store with the new <code>run_at</code>. After <code>max_retries</code>, the job goes to the dead-letter queue and an alert fires.</p>
+      <p><strong>Solves:</strong> transient failure resilience. Networks are flaky; downstream services have hiccups. Without retries, a single transient blip means the user's reminder is gone forever. With backoff + jitter, we ride out short outages without melting the recovering target with a stampede.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑪</span> Idempotency Store (Redis)</h3>
+      <p>A short-TTL key-value store keyed by <code>execution_id = (job_id, scheduled_run_at)</code>. Before invoking a target, the executor does <code>SETNX execution_id "in_progress"</code>. If the key already exists with status "done", skip — this is a duplicate fire from a lease-expiration retry. The TTL is generous (24 hours) so even slow retries are deduped.</p>
+      <p><strong>Solves:</strong> the "duplicate fire" half of effectively-exactly-once. The lease mechanism ensures jobs always fire <em>at least</em> once, even if a worker crashes; the idempotency store ensures they fire <em>at most</em> once observable to the target. Together they approximate exactly-once.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑫</span> Audit Log</h3>
+      <p>Every fire, retry, success, failure, and cancellation appends a row to a durable log (DynamoDB time-series table or S3 + Parquet). Used for the <code>GET /jobs/:id</code> history view, post-mortem analysis ("why did Sarah's reminder fire 4 minutes late?"), and compliance audits ("prove this billing event fired").</p>
+      <p><strong>Solves:</strong> observability and compliance. Without an audit trail, debugging a stuck job is a nightmare and there's no defense in a regulator's "show me when this billing notification fired" demand.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Sarah schedules a 3-day reminder</h3>
+  <p>Two real scenarios, mapped to the numbered components above:</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>📅 Happy path — schedule and fire</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>At 14:02 today, Sarah's calendar app ① POSTs <code>{run_at: "2027-05-10T14:02:00Z" (+3 days), target: webhook-url}</code> to the <strong>Job API Server</strong> ②.</li>
+        <li>API server validates, generates <code>job_id = job_01HXY...</code>, hashes to <code>partition_5</code>, INSERTs into <strong>Job Store</strong> ③ with <code>run_at = T+3d</code>. Returns 201. <em>~40ms.</em></li>
+        <li>For 71 hours nothing happens — the job sits in DynamoDB, untouched, costing pennies.</li>
+        <li>~50 minutes before fire time, the <strong>Bucket Loader</strong> ⑤ runs its 10-min cycle, queries DynamoDB for partition_5 jobs due in the next hour, finds Sarah's job, and inserts it into <strong>Hot Bucket</strong> ④ <code>bucket_p5</code> with score = unix(run_at).</li>
+        <li>At 14:01:59.900, the <strong>Scheduler Worker</strong> ⑥ owning partition_5 runs <code>ZRANGEBYSCORE bucket_p5 -inf NOW</code>, sees Sarah's job is due, sets a 5-minute lease in Redis, publishes a "fire" message to <strong>Execution Queue</strong> ⑧, <code>ZREM</code>s the entry. <em>~2ms total.</em></li>
+        <li>An <strong>Executor Worker</strong> ⑨ picks up the Kafka message, checks <strong>Idempotency Store</strong> ⑪ (no record), invokes Sarah's webhook URL, gets 200 OK, marks <code>execution_id</code> as done in idempotency store, writes "fired ok" to <strong>Audit Log</strong> ⑫, releases the lease. <em>Total wall-clock from 14:02:00 to fire: ~150ms.</em></li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--red)">
+      <h3>💥 Crash path — worker dies mid-execution</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Same setup: at 14:02:00 the Scheduler Worker ⑥ leases the job and publishes to Kafka ⑧.</li>
+        <li>Executor Worker ⑨ picks up the message at 14:02:00.150, sets idempotency key to <code>"in_progress"</code>, starts the HTTP call to Sarah's webhook…</li>
+        <li>…and at 14:02:00.300 the executor's host crashes (kernel panic, network partition, OOM kill).</li>
+        <li>The webhook call may or may not have reached Sarah's server — we don't know. The idempotency key is stuck on <code>"in_progress"</code>.</li>
+        <li>5 minutes later, the lease in Redis expires. The Scheduler Worker for partition_5 sees the job is still in the hot bucket (or is re-loaded by a Bucket Loader sweep) and re-fires — publishes another Kafka message.</li>
+        <li>A <em>different</em> Executor Worker ⑨ picks it up. It checks the Idempotency Store ⑪: key is <code>"in_progress"</code> with TTL still alive, but the original holder is gone. Per policy, treat as <em>safe to retry</em> — overwrite the key and invoke. Sarah's webhook is idempotent (it checks her message-id), so the second call is a no-op if the first actually went through, or fires fresh if it didn't.</li>
+        <li>Result: Sarah gets <em>at least one</em> reminder, never zero, never two on her phone. The Audit Log ⑫ shows both attempts for forensic clarity.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around four insights — (1) <strong>time-bucket the storage</strong> so finding due jobs is O(1); (2) <strong>shard across N workers</strong> so throughput scales horizontally; (3) <strong>two-tier hot/cold</strong> so the working set fits in RAM without sacrificing durability; (4) <strong>leased execution + idempotency</strong> so we get effectively-exactly-once semantics despite worker crashes. Every box in the diagram exists to neutralize one specific failure mode of the naive Pass-1 design.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: TIME-BUCKETING                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-yellow">Step 6</span>
+  <h2>Time-Bucketing — The Storage Trick</h2>
+  <p>The single most important storage idea in the entire design. Instead of one giant table with a <code>run_at</code> index, partition jobs by their <strong>fire-minute</strong>. Querying "what's due in the next minute" reads <em>one</em> bucket, regardless of how many billions of total jobs exist.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  subgraph BUCKETS["Time Buckets — partitioned by run_at minute"]
+    B1["bucket: 2027-05-10T14:00<br/>jobs due at 14:00"]
+    B2["bucket: 2027-05-10T14:01<br/>jobs due at 14:01"]
+    B3["bucket: 2027-05-10T14:02<br/>jobs due at 14:02 — Sarah's job lives here"]
+    B4["bucket: 2027-05-10T14:03<br/>jobs due at 14:03"]
+    B5["bucket: ..."]
+  end
+
+  CLOCK["Scheduler — current minute = 14:02"] -->|"reads ONE bucket"| B3
+
+  style B3 fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style CLOCK fill:#e8743b,stroke:#e8743b,color:#fff
+    </div>
+  </div>
+
+  <h3 class="subh">How the bucket key is constructed</h3>
+  <p>Every job's primary partition key in the Job Store is <code>(partition_id, run_at_minute)</code>. <code>partition_id = hash(job_id) % N</code> spreads load across shards; <code>run_at_minute</code> = the unix-minute timestamp of the scheduled fire time, truncated. A query like "all jobs in partition 5 due between 14:00 and 15:00" scans 60 contiguous bucket entries — extremely fast, regardless of whether the table holds 1 million or 1 billion total jobs.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>⏱ Bucket granularity trade-off</h3>
+      <p><strong>Per-minute buckets</strong> are the sweet spot for most workloads. Per-second buckets create 60× more buckets (3600× when you factor in the hour-window scan) — too many small reads. Per-hour buckets dump 6M+ jobs into one read at peak — too coarse, defeats the point. Some systems use per-second for the "next 5 minutes" hot window and per-minute for further out — a hybrid.</p>
+    </div>
+    <div class="card">
+      <h3>🪣 Pigeonhole analogy</h3>
+      <p>Imagine a wall of mailboxes labeled by date. The postman doesn't search a giant pile of letters every morning — they walk to today's box, pull out exactly the letters in there, deliver them. Time-bucketing is the same: the scheduler doesn't search "all jobs ever", it reads "today's box" (or this minute's). The size of the rest of the wall is irrelevant.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>Before / after:</strong> with no bucketing, <code>SELECT * FROM jobs WHERE run_at &lt; NOW()</code> over 1B rows takes ~2 seconds even with an index — too slow to poll every 100ms. With per-minute bucketing, fetching the current minute's bucket is ~5ms — fast enough to poll every 100ms with capacity to spare.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: HOT / COLD                          -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-cyan">Step 7</span>
+  <h2>Hot Bucket / Cold Bucket — Two-Tier Storage</h2>
+  <p>500 GB of pending jobs cannot fit in RAM, but the scheduler doesn't need them in RAM — it only needs the next hour's worth. The two-tier pattern keeps everything cheap and durable, while making the part that matters at any given moment fast.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>❄️ Cold tier — Job Store (DynamoDB / Cassandra)</h3>
+      <p>The complete pending-jobs table. Sharded by <code>hash(job_id)</code>, replicated 3×. Holds all 1B jobs no matter how far in the future. Optimized for durability and write throughput; query latency 5–20ms is fine because we only read it during background loading or rare individual-job lookups.</p>
+    </div>
+    <div class="card">
+      <h3>🔥 Hot tier — Redis ZSET per partition</h3>
+      <p>An in-memory sorted set per partition, scored by unix-second of <code>run_at</code>. Holds only jobs due in the next 1–2 hours. <code>ZRANGEBYSCORE</code> in 0.5ms gives us "what's due now". Sharded across Redis nodes so no single node holds all 100K+ jobs/sec worth of working set.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">The Bucket Loader's role</h3>
+  <p>Every 10 minutes per partition, the Bucket Loader scans the cold DB for jobs due in the next 1 hour and inserts them into the corresponding hot ZSET. Idempotent — re-runs are safe. The loader uses the partition's secondary index <code>(partition_id, run_at_minute)</code> for a fast range query; it never does a full table scan.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant L as Bucket Loader
+  participant DB as Job Store cold
+  participant R as Redis ZSET hot
+
+  Note over L: Runs every 10 minutes per partition
+  L->>DB: SELECT jobs WHERE partition_id=5 AND run_at BETWEEN now AND now+1h
+  DB-->>L: 850K jobs
+  loop for each job
+    L->>R: ZADD bucket_p5 score=unix(run_at) member=job_id
+  end
+  R-->>L: OK
+  Note over L: Sleep 10 min, repeat
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>Why 10 minutes and 1-hour window?</strong> The window must exceed the loader interval — if loader runs every 10 min and the window is 10 min, a job created right after one run misses the next run. 1-hour window with 10-min cadence gives a 50-minute safety margin. You can tune both: tighter cadence + smaller window = lower hot-tier RAM, higher loader-on-DB pressure.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: SHARDING                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-green">Step 8</span>
+  <h2>Sharding &amp; Partition Assignment</h2>
+  <p>One worker can't fire 100K jobs/sec. We fan out to N workers, each owning a slice. The trick is making sure each partition has <em>exactly one</em> owner at any moment — two owners means double-firing, zero owners means missed firings.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔢 Partition assignment</h3>
+      <p>Choose M partitions where M &gt; expected worker count (say M=1024 logical partitions, with N=100 actual workers). Each worker owns ~10 partitions. Adding more workers means redistributing partitions — never reshuffling jobs. ZooKeeper or etcd holds the canonical <code>partition→worker</code> map.</p>
+    </div>
+    <div class="card">
+      <h3>💀 Worker death &amp; rebalancing</h3>
+      <p>Workers heartbeat every 5s. Two missed heartbeats (10s) → ZooKeeper marks the worker dead and reassigns its partitions to surviving workers. The dead worker's leases expire naturally over the next 5 minutes; surviving workers re-fire any in-flight jobs whose leases lapse. Total recovery time: ~10 seconds of "no firing" for that partition's slice, then back to normal.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Why per-partition Redis ZSETs?</h3>
+  <p>Each partition has its own Redis key (<code>bucket_p0</code>, <code>bucket_p1</code>, …, <code>bucket_p1023</code>). A worker only touches the keys for partitions it owns — no cross-talk, no cross-shard transactions. Redis cluster mode automatically distributes these keys across Redis nodes by hash slot, so the working set scales horizontally without manual sharding.</p>
+
+  <div class="highlight hl-green"><strong>The librarian analogy:</strong> the head librarian (ZooKeeper) writes a wall chart saying "Clerk Alice covers shelves 0–9, Clerk Bob covers shelves 10–19…". Each clerk works only their own shelves. If Alice goes home sick, the head librarian re-writes the chart and Bob picks up shelves 0–9 in addition to his own. Customers (jobs) never know there was a change — they just keep getting served.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: LEASE-BASED EXECUTION               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-purple">Step 9</span>
+  <h2>Lease-Based Effectively-Exactly-Once Execution</h2>
+  <p>Truly exactly-once execution across a network is provably impossible (the Two Generals problem). What we can build is "at-least-once + idempotent target = effectively exactly once observable to the user". Leases are the mechanism that gets us the at-least-once half safely.</p>
+
+  <h3 class="subh">The lease lifecycle</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant W as Scheduler Worker
+  participant R as Redis lease store
+  participant K as Kafka exec queue
+  participant E as Executor Worker
+  participant T as Target webhook
+  participant I as Idempotency Store
+
+  W->>R: SET lease:job_X owner=W1 EX 300
+  R-->>W: OK
+  W->>K: publish fire-event for job_X
+  K-->>E: deliver
+  E->>I: SETNX exec:job_X:t=14:02 in_progress
+  I-->>E: OK
+  E->>T: POST webhook
+  T-->>E: 200 OK
+  E->>I: SET exec:job_X:t=14:02 done
+  E->>R: DEL lease:job_X
+    </div>
+  </div>
+
+  <h3 class="subh">What happens on a worker crash</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant W as Scheduler Worker W1
+  participant R as Redis lease store
+  participant E1 as Executor E1 — dies
+  participant E2 as Executor E2
+  participant T as Target webhook
+  participant I as Idempotency Store
+
+  W->>R: SET lease:job_X owner=W1 EX 300
+  W->>E1: fire-event
+  E1->>T: POST webhook — uncertain if it landed
+  Note over E1: CRASH at 14:02:00.3
+  Note over R: lease:job_X TTL counting down...
+  Note over R: 5 minutes later — TTL expires
+  W->>R: ZRANGEBYSCORE bucket — sees job_X still due
+  W->>R: SET lease:job_X owner=W1 EX 300
+  W->>E2: fire-event retry
+  E2->>I: SETNX exec:job_X:t=14:02
+  I-->>E2: key exists in_progress — overwrite
+  E2->>T: POST webhook — second attempt
+  T-->>E2: 200 OK — target is idempotent
+  E2->>I: SET done
+  E2->>R: DEL lease:job_X
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔑 The lease as a library checkout</h3>
+      <p>A lease is like checking a book out from the library with a 5-minute due date. While you have it, nobody else can take it. If you bring it back, fine. If you wander off and never return — after 5 minutes the librarian declares it lost and lets someone else have it. The lease in Redis with a TTL is exactly this: a finite-duration claim that auto-releases on timeout.</p>
+    </div>
+    <div class="card">
+      <h3>🎯 Why the target must be idempotent</h3>
+      <p>The lease guarantees at-least-once: a job will fire at least once even if executors crash. It can't guarantee at-most-once because the executor may have completed the HTTP call <em>and</em> crashed before deleting the lease — the next executor will re-fire. That's why the target service must use the <code>idempotency_key</code> (or the <code>execution_id</code>) to dedup. Without an idempotent target, you get duplicate emails, duplicate billings, duplicate everything — and there's no fix at our layer.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The compromise spelled out:</strong> "exactly once" is a unicorn. What we ship is "at-least-once delivery + target idempotency = effectively exactly once observable to the user". Every real distributed scheduler (AWS EventBridge, Google Cloud Scheduler, Quartz cluster mode) makes the same trade.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: CRON                               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-blue">Step 10</span>
+  <h2>Cron / Recurring Jobs</h2>
+  <p>Recurring jobs reuse the entire one-shot machinery. The trick: store the cron expression as a <strong>template</strong>, and convert each occurrence into a one-shot job.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📋 Template + next-fire pattern</h3>
+      <p>When a client creates a cron job, we store: <code>{cron_expr, timezone, target, template_id}</code>. We compute <code>next_run_at</code> from the cron expression and create one one-shot job pointing at that time. When that one-shot fires successfully, the executor computes the <em>next</em> <code>run_at</code> and creates a fresh one-shot. The cron job is always represented as "exactly one upcoming one-shot".</p>
+    </div>
+    <div class="card">
+      <h3>🔄 Why not pre-create all future occurrences?</h3>
+      <p>"Every minute forever" would create infinite rows. Lazy generation keeps the table bounded — at most one pending occurrence per cron template at any time. Trade-off: if a cron job is paused for 3 days, when it resumes you decide policy: fire once for the missed slot, or skip back to "now".</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Computing the next run</h3>
+  <p>Use a battle-tested cron parser (<code>cron-utils</code> in Java, <code>croniter</code> in Python). It accepts standard cron syntax plus extensions (<code>0 9 * * MON</code>, <code>@daily</code>, <code>0 0 1 * *</code>). Always store the original expression and the user's timezone — compute next_run by converting "now in user TZ" forward, then converting back to UTC for storage. This handles DST transitions correctly.</p>
+
+  <div class="highlight hl-blue"><strong>Same machinery, two faces:</strong> the scheduler core knows nothing about cron expressions — it only fires one-shot jobs. The cron abstraction is a thin layer at the API and executor levels. This is the unix philosophy: do one thing well; build complex behaviors by composition.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: RETRY                              -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-red">Step 11</span>
+  <h2>Retry &amp; Backoff</h2>
+  <p>Targets fail. Networks blip. Downstream services have hiccups. Retry policy must absorb transient failures without melting a recovering target with a stampede.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>📈 Exponential backoff</h3>
+      <p><code>delay = base × 2^attempt</code>. With <code>base = 30s</code>: attempts at 30s, 1m, 2m, 4m, 8m. Bounded by <code>max_attempts</code> (typically 5–10) before dead-letter. Spreads retries over many minutes so a struggling target gets time to recover.</p>
+    </div>
+    <div class="card">
+      <h3>🎲 Jitter</h3>
+      <p>Add ±25% random noise: <code>delay × (0.75 + random())</code>. Without jitter, all jobs that failed at <code>14:02</code> retry simultaneously at <code>14:02:30</code> — same thundering-herd problem we just solved. Jitter spreads the retries across a window.</p>
+    </div>
+    <div class="card">
+      <h3>📦 Dead letter queue</h3>
+      <p>After <code>max_retries</code>, the job moves to a DLQ topic with the failure history. An on-call alert fires. Operators inspect, fix the target, and either replay the DLQ or accept the loss. Critical for "this billing event simply <em>must</em> fire" semantics.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Implementation: retry = re-schedule</h3>
+  <p>The Retry Manager doesn't keep retries in memory. On failure, it computes the next <code>run_at</code> and writes a fresh row to the Job Store via the same <code>POST /jobs</code> path internally. This way retries flow through the same hot/cold/lease machinery as fresh jobs — no special code path. The retry count and original_job_id ride along as metadata.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: CANCELLATION                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-yellow">Step 12</span>
+  <h2>Cancellation</h2>
+  <p>"I changed my mind — don't fire that reminder I scheduled for 7am." Easy when the fire is days away; tricky when it's 2 seconds away and the job is already in the hot bucket, possibly already popped by a worker.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🟢 Cancel — cooperative flag</h3>
+      <p><code>POST /jobs/:id/cancel</code> sets <code>status = "cancelled"</code> in the Job Store. We do NOT race-delete from the hot ZSET — that's flaky. Instead, when the Scheduler Worker pops the job from its bucket, it reads the job row and checks the cancelled flag. If cancelled, it skips firing and writes "cancelled" to the audit log. Worst case, the job is "popped and ignored" instead of "popped and fired".</p>
+    </div>
+    <div class="card">
+      <h3>⚠️ The 2-second-away edge case</h3>
+      <p>Cancel arrives at 14:01:58 for a job firing at 14:02:00. At 14:02:00 the worker pops it; reads the cancelled flag; skips. Total latency from cancel-API to worker-skip: typically &lt;200ms. If the cancel arrives during executor invocation (after worker pops, before HTTP call returns), it's too late — the job already fired. The contract: cancel is best-effort up to the moment of fire; once fired, you must compensate downstream.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>The right invariant:</strong> the <em>only</em> place that decides "fire vs skip" is the worker reading the canonical row from the Job Store immediately before publishing to Kafka. Anything else is a race condition waiting to happen. This costs one extra DynamoDB read per fire (~5ms), which is fine — we're firing 100K/sec, the DB sees ~100K reads/sec on the cancellation check, well within capacity.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: PRECISE TIMING                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-cyan">Step 13</span>
+  <h2>Precise Timing</h2>
+  <p>"Fire within a few seconds" works for most use cases — emails, push notifications, batch jobs. Some workloads demand tighter precision: financial markets opening at <code>09:30:00.000</code>, gameplay events tied to a global clock, ad auction windows. The architecture supports tiered precision.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🕐 Standard tier — a few seconds</h3>
+      <p>Default. Scheduler workers poll the hot ZSET every 1 second. Fire time = scheduled_run_at + 0–1s polling jitter + 50–200ms execution. End-to-end variance: under 2 seconds. Costs almost nothing.</p>
+    </div>
+    <div class="card">
+      <h3>⏱ Premium tier — sub-second</h3>
+      <p>Same architecture, faster polling: scheduler workers poll every 100ms. End-to-end variance: under 250ms. Costs 10× more Redis CPU on the polling, but otherwise unchanged. Used for paid tier customers.</p>
+    </div>
+    <div class="card">
+      <h3>🎯 Real-time tier — millisecond</h3>
+      <p>Different machinery: dedicated low-jitter executor pods using Linux <code>timerfd</code> (kernel-level timer interrupt) for the final hop. The scheduler hands off the job 1 second before fire time; the timerfd executor then waits for the exact instant and fires. Jitter: under 1ms. Used for financial / market-open workloads. Costs significantly more.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>Why tiering works:</strong> 99% of jobs (reminders, batch, billing) don't care about sub-second precision. Charging everyone for premium would be wasteful. By offering tiered SLAs, you collect 99% of jobs on cheap infrastructure and reserve expensive low-jitter executors for the few jobs that pay for them.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: FAULT TOLERANCE                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-red">Step 14</span>
+  <h2>Fault Tolerance</h2>
+  <p>Fire-and-forget systems are easy. Fire-on-time-or-explain-why is hard. Every component must survive its own failure modes; together they must survive the failures we can't predict.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>💾 Job Store — 3× replicated</h3>
+      <p>DynamoDB / Cassandra replicate every write to 3 nodes across 3 AZs. Quorum reads/writes (<code>R=2, W=2</code>) survive any single-node or single-AZ outage. The cold tier is the source of truth; even if every Redis node and every worker dies, the cold tier still holds every pending job.</p>
+    </div>
+    <div class="card">
+      <h3>🔥 Hot tier — Redis cluster + replicas</h3>
+      <p>Redis runs in cluster mode with master + 1 replica per shard. On master failure, replica is promoted in seconds. If the entire hot tier is lost, the Bucket Loader rebuilds it from cold storage on its next sweep — bounded data loss, no jobs missed (cold tier is intact).</p>
+    </div>
+    <div class="card">
+      <h3>👷 Workers — stateless</h3>
+      <p>Both Scheduler Workers and Executor Workers carry no state across restarts. State lives in Redis (lease, idempotency) and Job Store (canonical job rows). Killing and restarting a worker pod is a non-event — within seconds, ZooKeeper reassigns its partitions and another pod picks up the slack.</p>
+    </div>
+    <div class="card">
+      <h3>🗳 ZooKeeper — quorum consensus</h3>
+      <p>3 or 5 ZooKeeper nodes form a quorum. As long as a majority survive, partition assignment continues to work. If the entire ZK cluster dies, no <em>new</em> partition assignments happen; existing workers keep running on their last-known assignments. Recovery: bring ZK back, workers re-register, normal flow resumes.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">The "lose a whole AZ" test</h3>
+  <p>If AZ-A goes dark — every worker, every Redis master, every API server in AZ-A vanishes — what happens? (1) ALB stops routing to AZ-A. (2) ZK promotes ZK followers from B/C, partitions reassigned to surviving workers. (3) Redis replicas in B/C promote to masters. (4) DynamoDB serves reads from B/C replicas. (5) Within 30–60 seconds the system is fully operational from B+C. Pending jobs scheduled during the outage may fire 30–60s late but none are lost.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 15: MULTI-REGION                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s15">
+  <span class="sec-tag tag-purple">Step 15</span>
+  <h2>Multi-Region</h2>
+  <p>For latency, compliance, and disaster tolerance, run independent scheduler stacks per region. Most jobs stick to their home region; a small number of "global cron" jobs need cross-region coordination.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🌍 Per-region partitioning</h3>
+      <p>Jobs are pinned to a region at creation time, usually based on the user's home region or a region tag in the API call. Each region has its own Job Store, hot tier, scheduler workers, and executors — completely independent. No cross-region traffic on the fire path → low latency, no cross-region failure coupling.</p>
+    </div>
+    <div class="card">
+      <h3>🌐 Global cron expressions</h3>
+      <p>"Run this job once globally at 09:00 UTC" — only one region should fire it. Designate a primary region for the cron template (us-east-1). The primary region creates the next one-shot occurrence; if that region is down, a standby region detects it via cross-region heartbeat and takes over. Costs occasional cross-region replication of the template registry (small, low-traffic), keeps the fire path in one region.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The pattern:</strong> stay regional by default, opt into cross-region only for the small slice of jobs that explicitly need it. Most production schedulers (AWS EventBridge, GCP Scheduler) follow exactly this — region-scoped resources with optional global-replicated overlay.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 16: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s16">
+  <span class="sec-tag tag-blue">Step 16</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">How does this differ from cron on a single Linux box?</div>
+  <div class="ans"><strong>Linux cron is a single process reading a single config file on a single machine.</strong> It doesn't survive the machine dying, doesn't scale past a few hundred jobs, has no retry semantics, no cancellation, no observability. Our distributed scheduler keeps the cron model (declarative schedule → triggered execution) and adds: durability across machine failure (replicated job store), horizontal scale (sharded workers), exactly-once-effective execution (leases + idempotency), retries with backoff, cancel, and audit. Linux cron is a tool; this is a service.</div>
+
+  <div class="iq">What if 1M jobs all fire at exactly 07:00:00?</div>
+  <div class="ans"><strong>The architecture absorbs the spike via three buffers.</strong> (1) The hot ZSET pre-loaded those jobs an hour earlier — no DB scan at fire time. (2) Sharded workers process them in parallel: with 100 workers each handling 10K jobs/sec, the burst clears in ~1 second. (3) Kafka buffers the "fire" events between scheduler workers and executors, smoothing the spike — executors drain at their steady throughput while the queue temporarily inflates. End-to-end: 1M jobs scheduled for 07:00:00 actually fire between 07:00:00.1 and 07:00:02.5 — well within the "few seconds of scheduled time" SLA.</div>
+
+  <div class="iq">How do you handle a worker crashing mid-execution?</div>
+  <div class="ans"><strong>Leases and idempotency.</strong> When the scheduler worker pops a job, it sets a 5-minute lease in Redis. If the worker crashes after popping but before the executor finishes, the lease eventually expires and the job comes back into play — either via a Bucket Loader re-load or because the original entry was never <code>ZREM</code>ed (depends on where exactly the crash happened). Another worker fires it. The target dedup via <code>execution_id = (job_id, scheduled_run_at)</code>; if the original call actually went through, the second is a no-op. Net result: at-least-once delivery + idempotent target = the user observes exactly one fire.</div>
+
+  <div class="iq">How do you scale to 1B pending jobs?</div>
+  <div class="ans"><strong>Three orthogonal axes of scale.</strong> (1) <strong>Job Store</strong> sharded by <code>hash(job_id)</code> across DynamoDB partitions — 1B jobs at 500B each = 500GB, trivial for DynamoDB to spread across nodes. (2) <strong>Hot tier</strong> sharded across Redis cluster nodes by partition_id — at most 100K/s × 3600s = 360M jobs in the 1-hour window, spread across ~50 Redis shards. (3) <strong>Workers</strong> scaled horizontally — N workers each owning M/N of the 1024 logical partitions, add more workers to grow throughput. Nothing in the architecture is a vertical bottleneck; every layer scales by adding capacity.</div>
+
+  <div class="iq">Why two-tier storage (hot Redis + cold DynamoDB)?</div>
+  <div class="ans"><strong>Different access patterns at vastly different cost.</strong> The cold tier holds 1B jobs but is touched only by background loaders (every 10 min, batched range queries) and individual API reads — perfectly suited to DynamoDB's "cheap storage, modest QPS" profile. The hot tier holds &lt;1% of jobs but is hammered at 1000+ QPS per worker — perfectly suited to Redis's "expensive RAM, free QPS" profile. Trying to do everything in DynamoDB would cost a fortune in read units; trying to do everything in Redis would cost a fortune in RAM and lose durability. Two tiers, each playing to its strength, cost ~10× less than either single-tier alternative.</div>
+
+  <div class="iq">How do you cancel a job that's about to fire in 2 seconds?</div>
+  <div class="ans"><strong>Cooperative cancellation via a status flag.</strong> The cancel API just sets <code>status = "cancelled"</code> in the Job Store. We do <em>not</em> race-delete from Redis — that's flaky and creates inconsistency. Instead, when the scheduler worker pops the job for firing, it reads the canonical row from Job Store (one extra ~5ms read) and checks the flag; if cancelled, it skips and writes "cancelled" to the audit log. The window of "too late to cancel" is tiny — only between worker-pops-and-publishes-to-Kafka and executor-actually-fires, typically &lt;200ms. If you cancel before that window, you're guaranteed safe; inside it, best-effort.</div>
+
+  <div class="iq">What's the difference between exactly-once and at-least-once + idempotent?</div>
+  <div class="ans"><strong>Exactly-once across a network is provably impossible</strong> (Two Generals problem — you can never simultaneously guarantee delivery and confirm-of-delivery). What real systems ship is "at-least-once delivery with idempotent receivers" — the producer guarantees the message will be delivered ≥1 times, the consumer dedups so duplicates are absorbed. The user-observable behavior is <em>indistinguishable</em> from exactly-once. Our scheduler does this: leases + retries → at-least-once; <code>execution_id</code> in the idempotency store + idempotent target → dedup on the consumer side. The literature calls this "effectively exactly-once" — every production scheduler (Quartz cluster, Airflow, AWS EventBridge, GCP Scheduler) takes this trade.</div>
+
+  <div class="iq">How do you avoid hot partitions when 90% of jobs target 09:00?</div>
+  <div class="ans"><strong>Partition by job_id, not by run_at.</strong> If we partitioned by run_at_minute, the 09:00 bucket would contain billions of jobs and one Redis shard would melt. By partitioning by <code>hash(job_id) % N</code>, the 09:00 firings are spread evenly across all N partitions — each shard sees only 1/N of the load, no matter how time-skewed the scheduling distribution is. The time bucket within each partition is still per-minute, so reads are O(1), but the total fire load at 09:00 is amortized across the whole cluster.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "It's a sharded, time-bucketed scheduler with two-tier storage — DynamoDB cold, Redis hot — where workers poll their assigned partitions every 100ms, lease jobs to survive crashes, and rely on idempotency keys at the target for effectively-exactly-once semantics. Every box in the architecture exists to neutralize one specific failure of a single-process cron daemon."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Notification Service — LLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">Low-Level Design</div>
+  <h1>Notification <span>Service</span></h1>
+  <p class="sub">Multi-channel, retry-safe, template-driven — Strategy, Observer, Decorator, Chain of Responsibility & async workers, end-to-end</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Clarify Requirements</a></li>
+      <li><a href="#s2">Actors &amp; Use Cases</a></li>
+      <li><a href="#s3">Architecture Story</a></li>
+      <li><a href="#s4">Core Entities &amp; Enums</a></li>
+      <li><a href="#s5">ER Diagram</a></li>
+      <li><a href="#s6">Class Diagram</a></li>
+      <li><a href="#s7">Design Patterns Used</a></li>
+      <li><a href="#s8">Lifecycle State Machine</a></li>
+      <li><a href="#s9">Send Flow Sequence</a></li>
+      <li><a href="#s10">Java Implementation</a></li>
+      <li><a href="#s11">Concurrency &amp; Reliability</a></li>
+      <li><a href="#s12">Extension Points</a></li>
+      <li><a href="#s13">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>Clarify Requirements</h2>
+  <p>Imagine Sarah just placed an order on a food-delivery app. Within seconds, she expects a push notification on her phone, an email receipt in her inbox, and an SMS when her food is out for delivery. The Notification Service is the single backend system that fans every "something happened" event out to the right channel, in the right format, in the right language, while respecting Sarah's preferences and never spamming her if a downstream provider melts down. Let's pin down what it must do — and what we're explicitly leaving out.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Send notifications across multiple <strong>channels</strong> — Email, SMS, Push, In-app, WhatsApp, Slack</li>
+        <li>Support <strong>templates</strong> with variable substitution (<code>Hi {{name}}, your order #{{id}} is on the way</code>)</li>
+        <li>Respect per-user <strong>preferences</strong> (channel opt-out, do-not-disturb hours, language)</li>
+        <li>Schedule notifications for a future time and support recurring sends</li>
+        <li>Retry failed sends with <strong>exponential backoff</strong>; route to dead-letter after N attempts</li>
+        <li>Apply <strong>rate-limiting</strong> per user / per channel to prevent spam &amp; respect provider quotas</li>
+        <li>Audit log: every send attempt with status, provider, latency &amp; cost</li>
+        <li>Read-receipt callbacks (delivered / opened / clicked) from providers</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Throughput:</strong> 10K notifications/sec at peak (Black Friday-class load)</li>
+        <li><strong>Latency:</strong> p99 &lt; 2s from API call to provider hand-off for high-priority traffic</li>
+        <li><strong>Reliability:</strong> at-least-once delivery; never lose a message that was accepted</li>
+        <li><strong>Extensibility:</strong> adding a new channel (e.g., Discord) should be one new class, no edits elsewhere</li>
+      </ul>
+      <h3 style="margin-top:1rem">❌ Out of Scope</h3>
+      <ul>
+        <li>Drafting notification copy (that's a content-team job)</li>
+        <li>Building the email/SMS providers themselves — we integrate with SendGrid, Twilio, FCM, etc.</li>
+        <li>A/B testing of templates — assume an upstream experimentation system</li>
+        <li>End-user UI for managing preferences (we expose APIs only)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>Why these matter:</strong> retries + rate-limits + preferences are the three things that separate a 100-line "send an email" script from a real notification service. If you skip them in an interview, the next 30 minutes are spent retrofitting them awkwardly.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: ACTORS & USE CASES                  -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Actors &amp; Use Cases</h2>
+  <p>Four kinds of clients touch this system. Upstream <strong>microservices</strong> (Order, Payment, Auth) are the ones generating events — they're 99% of the traffic. <strong>End users</strong> never call the service directly; they only see the notifications and update their preferences via a settings UI. <strong>Admins</strong> manage templates and watch dashboards. <strong>External providers</strong> (Twilio, SendGrid) call back into us with delivery receipts.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  MS(["Microservice — Order, Payment, Auth"])
+  U(["End User"])
+  A(["Admin"])
+  P(["External Provider — Twilio, SendGrid, FCM"])
+
+  MS --> SN["Send Notification"]
+  MS --> SCH["Schedule Notification"]
+  MS --> CAN["Cancel Scheduled"]
+  U --> PREF["Update Preferences"]
+  U --> UNSUB["Unsubscribe"]
+  A --> TPL["Manage Templates"]
+  A --> DASH["View Audit Dashboard"]
+  A --> RP["Replay Failed Notifications"]
+  P --> CB["Delivery Callback"]
+
+  style MS fill:#e8743b,stroke:#e8743b,color:#fff
+  style U fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style A fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style P fill:#38b265,stroke:#38b265,color:#fff
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🟢 Happy Path</h3>
+      <ul>
+        <li>Order Service POSTs <code>/notifications</code></li>
+        <li>System renders template + checks preferences</li>
+        <li>Pushes to channel queue</li>
+        <li>Worker calls provider → success</li>
+        <li>Audit log updated to DELIVERED</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🟡 Retry Path</h3>
+      <ul>
+        <li>Provider returns 503 / timeout</li>
+        <li>Worker marks attempt as FAILED</li>
+        <li>Re-enqueues with backoff (1s, 4s, 16s…)</li>
+        <li>After N attempts → dead-letter queue</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🔴 Edge Cases</h3>
+      <ul>
+        <li>User has opted out of SMS</li>
+        <li>Quiet hours active for user's timezone</li>
+        <li>Rate limit exceeded for the channel</li>
+        <li>Template missing a required variable</li>
+        <li>Same event fired twice (idempotency)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: ARCHITECTURE STORY                  -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Architecture — From Naive to Production</h2>
+  <p>Before any class diagram, let's build up the architecture in three passes: the simplest thing that could work, why it falls over, and the production shape that earns every box.</p>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--heading);margin:1.4rem 0 .6rem">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Your first instinct: a single REST endpoint <code>POST /send</code>. The Order Service calls it, you connect to SendGrid synchronously, return 200, done. Three lines of code.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  OS["Order Service"] --> NS["Notification API"]
+  NS --> SG[("SendGrid")]
+  NS --> TW[("Twilio")]
+  NS --> FCM[("FCM")]
+    </div>
+  </div>
+
+  <p>Now fast-forward to Black Friday. Three concrete failures:</p>
+  <div class="g3">
+    <div class="card">
+      <h3>💥 Provider down = Order down</h3>
+      <p>SendGrid takes 30 seconds to time out. The Order Service is now blocked for 30 seconds per checkout. Customers see spinners and bounce. <strong>Synchronous coupling propagates failure upstream.</strong></p>
+    </div>
+    <div class="card">
+      <h3>💥 Burst traffic kills providers</h3>
+      <p>10K orders in one minute means 10K parallel SMS calls. Twilio rate-limits us to 100/sec and starts returning 429s. Every retry is a new call, amplifying the storm. <strong>No queue, no smoothing.</strong></p>
+    </div>
+    <div class="card">
+      <h3>💥 Preferences scattered everywhere</h3>
+      <p>Sarah unsubscribed from marketing emails. Did the Order Service check that? The Loyalty Service? The Promo Service? Without a central preference layer, every caller re-implements the rule and someone gets it wrong. <strong>Compliance lawsuit waiting to happen.</strong></p>
+    </div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--heading);margin:1.8rem 0 .6rem">Pass 2 — The mental model: API plane vs Worker plane</h3>
+  <p>The single most important split in this system is between <strong>accepting</strong> a notification request (must be fast, synchronous, returns an ID) and <strong>delivering</strong> it (slow, async, talks to flaky third parties). They have wildly different SLAs and scale independently. Once you internalize that split, every other component falls out naturally.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">📥 API Plane (Synchronous)</h3>
+      <p>Light, stateless, fast. Validates the request, enriches it with user preferences &amp; template, writes to DB, drops a job on a queue, returns <code>202 Accepted</code> with a tracking ID. Latency budget: <strong>50ms</strong>. Scales horizontally with load balancer.</p>
+      <p>What lives here: REST controllers, request validators, the Preference Service, the Template Service, the Idempotency check.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">⚙️ Worker Plane (Asynchronous)</h3>
+      <p>Heavy, stateful per-attempt, slow. Pulls jobs off the queue, picks the right channel handler, calls the provider, handles retries with backoff, writes the audit row. Latency budget: <strong>seconds, not ms</strong>. Scales independently per channel.</p>
+      <p>What lives here: channel workers (Email/SMS/Push), retry coordinator, rate limiter, dead-letter handler.</p>
+    </div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--heading);margin:1.8rem 0 .6rem">Pass 3 — The production shape</h3>
+  <p>Now we draw the whole thing. Every box has a number — find its matching card below to see what it does, and crucially, what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  OS["① Order / Payment / Auth Service"]
+
+  subgraph APIPLANE["API Plane"]
+    LB["② Load Balancer"]
+    NAPI["③ Notification API"]
+    IDP["④ Idempotency Store — Redis"]
+    PREF["⑤ Preference Service"]
+    TPL["⑥ Template Service"]
+    DB[("⑦ Notification DB — Postgres")]
+    Q["⑧ Channel Queues — Kafka"]
+  end
+
+  subgraph WORKERPLANE["Worker Plane"]
+    RL["⑨ Rate Limiter"]
+    CH{"⑩ Channel Dispatcher"}
+    EW["⑪ Email Worker"]
+    SW["⑪ SMS Worker"]
+    PW["⑪ Push Worker"]
+    EP[("⑫ SendGrid")]
+    SP[("⑫ Twilio")]
+    FP[("⑫ FCM / APNS")]
+    DLQ["⑬ Dead Letter Queue"]
+  end
+
+  CB["⑭ Provider Callback API"]
+  AUD["⑮ Audit / Metrics"]
+
+  OS --> LB
+  LB --> NAPI
+  NAPI --> IDP
+  NAPI --> PREF
+  NAPI --> TPL
+  NAPI --> DB
+  NAPI --> Q
+
+  Q --> RL
+  RL --> CH
+  CH -->|Email| EW
+  CH -->|SMS| SW
+  CH -->|Push| PW
+  EW --> EP
+  SW --> SP
+  PW --> FP
+  EW -.failed.-> DLQ
+  SW -.failed.-> DLQ
+  PW -.failed.-> DLQ
+
+  EP -.delivery receipt.-> CB
+  SP -.delivery receipt.-> CB
+  FP -.delivery receipt.-> CB
+  CB --> DB
+
+  Q -.events.-> AUD
+  EW -.events.-> AUD
+
+  style OS fill:#e8743b,stroke:#e8743b,color:#fff
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style NAPI fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style IDP fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style PREF fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style TPL fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style DB fill:#171d27,stroke:#38b265,color:#d4dae5
+  style Q fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style RL fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style CH fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style EW fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style SW fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style PW fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style EP fill:#171d27,stroke:#38b265,color:#d4dae5
+  style SP fill:#171d27,stroke:#38b265,color:#d4dae5
+  style FP fill:#171d27,stroke:#38b265,color:#d4dae5
+  style DLQ fill:#171d27,stroke:#e05252,color:#d4dae5
+  style CB fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style AUD fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--heading);margin:1.6rem 0 .6rem">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card below. Each one answers: <em>what is this?</em>, <em>why is it here?</em>, and <em>what breaks without it?</em></p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Calling Microservice</h3>
+      <p>Any internal service that wants to notify a user — Order, Payment, Auth, Promotions. They speak to us via a thin SDK that wraps the REST API, so they don't need to know about queues, retries, or providers. They send one HTTP call and forget.</p>
+      <p><strong>Solves:</strong> without a single notification service, every team would re-integrate Twilio/SendGrid themselves. We'd have 12 different retry policies and 12 different bugs.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> Load Balancer</h3>
+      <p>Spreads incoming HTTP across all API instances. Standard nginx / AWS ALB. Health-checks the API pods every few seconds and yanks any that go unhealthy.</p>
+      <p><strong>Solves:</strong> a single API instance dies under any real traffic. The LB lets us scale the API plane horizontally without clients knowing.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">③</span> Notification API</h3>
+      <p>The stateless front door. Validates the request schema (channel valid? template exists? user_id present?), pulls the user's preferences, renders the template with the supplied variables, writes a row to the DB with status <code>PENDING</code>, and drops a job onto the right channel queue. Returns <code>202 Accepted</code> with a <code>notification_id</code> the caller can use to track status. <strong>Total time: under 50ms.</strong></p>
+      <p><strong>Solves:</strong> if the API tried to call providers directly, every API instance would be tied up waiting on Twilio for seconds at a time. Decoupling write-to-queue from actually-send is what lets us absorb spikes.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">④</span> Idempotency Store (Redis)</h3>
+      <p>Every request carries a client-supplied <code>idempotency_key</code> (e.g., <code>order-9876-confirmation</code>). Before doing any work, the API does <code>SETNX key 1 EX 86400</code>. If the key existed, it returns the original notification's ID without doing anything. Keys live for 24 hours.</p>
+      <p><strong>Solves:</strong> microservices retry. If the Order Service calls us, times out, and retries, we'd send Sarah two emails — and she'd churn. Idempotency makes "retry" safe by default.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑤</span> Preference Service</h3>
+      <p>Holds Sarah's truth: she opted out of marketing SMS, prefers English, has quiet hours from 10pm to 7am IST. The API queries this for every send and either accepts, downgrades the channel (e.g., SMS → in-app), or drops it entirely with reason <code>SUPPRESSED_BY_PREFERENCE</code>.</p>
+      <p><strong>Solves:</strong> compliance. GDPR, TCPA, CAN-SPAM all require honoring opt-outs. Centralizing this rule means one place to audit, not twelve places to debug.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑥</span> Template Service</h3>
+      <p>Stores parameterized message templates by ID and version, e.g., <code>ORDER_CONFIRMED_v3</code>. The API passes in <code>{name: "Sarah", order_id: "9876"}</code> and gets back <code>"Hi Sarah, your order #9876 is on the way!"</code>. Supports localization — picks the template variant matching the user's language.</p>
+      <p><strong>Solves:</strong> without templates, the Order Service would hardcode message strings, and changing copy would require a deploy. With templates, the marketing team edits a row in a table.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑦</span> Notification DB (Postgres)</h3>
+      <p>The source of truth for every notification. Stores the rendered payload, recipient, channel, status (<code>PENDING / SENT / DELIVERED / FAILED / DEAD</code>), attempts, provider response, and timestamps. Every state change writes here. The API and the Worker both read &amp; write it.</p>
+      <p><strong>Solves:</strong> support tickets ("did Sarah get her receipt?"), audit trails, and the ability to replay any notification from history. Without a DB, a queue-only design loses everything the moment a message is consumed.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑧</span> Channel Queues</h3>
+      <p>Kafka topics (or RabbitMQ exchanges) — one per channel: <code>notifications.email</code>, <code>notifications.sms</code>, <code>notifications.push</code>. The API publishes here; workers consume. Each topic is partitioned by <code>user_id</code> so all of Sarah's notifications land on the same partition (preserving order per user).</p>
+      <p><strong>Solves:</strong> back-pressure. If SendGrid is slow today, the email topic fills up but the SMS workers keep humming. One slow channel can't block the others.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑨</span> Rate Limiter</h3>
+      <p>Token-bucket sitting between the queue and the workers. Two limits: per-user (Sarah gets max 5 SMS/hour to prevent harassment) and per-provider (we never exceed Twilio's 100/sec quota for our account). Backed by Redis.</p>
+      <p><strong>Solves:</strong> two pains at once. Without per-user limits, a runaway loop in the Promo Service spams Sarah 1000 times. Without per-provider limits, we get our Twilio account temporarily banned.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑩</span> Channel Dispatcher</h3>
+      <p>A small in-worker router that looks at the message's channel field and hands it to the correct strategy class (EmailSender, SMSSender, PushSender). This is where the Strategy pattern lives — adding WhatsApp later means adding one new sender class and registering it here.</p>
+      <p><strong>Solves:</strong> if every worker had giant <code>if (channel == EMAIL) ... else if ...</code> blocks, adding a channel would mean editing ten files. The dispatcher localizes that branching to one place.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑪</span> Channel Workers</h3>
+      <p>One worker pool per channel. Pulls a message, calls its sender strategy, handles the response. On success: updates DB to <code>SENT</code>, records latency. On failure: increments attempt count, schedules a retry with exponential backoff, or routes to dead-letter if attempts exceeded. Each pool autoscales independently — push workers might be 10 pods, email workers might be 50.</p>
+      <p><strong>Solves:</strong> independent scaling. Push notifications are 10× cheaper to send than emails, so we want different pool sizes. Lumping them into one pool means we can't tune them separately.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑫</span> External Providers</h3>
+      <p>The actual delivery infrastructure: SendGrid for email, Twilio for SMS, FCM/APNS for mobile push. We treat them as black boxes behind our sender strategies. Each one has its own API quirks, error codes, and rate limits — those quirks live inside the corresponding sender class and never leak out.</p>
+      <p><strong>Solves:</strong> we don't build email infra. SendGrid handles SPF, DKIM, deliverability, ISP relations — billions of dollars of work we'd never replicate.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑬</span> Dead Letter Queue (DLQ)</h3>
+      <p>Where messages go to die — but not silently. After N retry attempts (typically 5), the message is moved here with the full error history. An on-call engineer is paged if the DLQ depth crosses a threshold. From here, messages can be inspected, fixed, and replayed via the admin tool.</p>
+      <p><strong>Solves:</strong> visibility into systemic failure. Without a DLQ, a bad template or an expired API key would silently fail forever and nobody would notice until customers complained.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">⑭</span> Provider Callback API</h3>
+      <p>A separate webhook endpoint that providers call back asynchronously to tell us "this message was actually delivered to the device" or "the user opened it" or "the user clicked the link". Updates the DB row from <code>SENT</code> to <code>DELIVERED</code> / <code>OPENED</code> / <code>CLICKED</code>.</p>
+      <p><strong>Solves:</strong> "did SendGrid take it" ≠ "did it land in Sarah's inbox". Read receipts give product teams real engagement data and tell us when a phone is unreachable so we can stop trying.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑮</span> Audit &amp; Metrics</h3>
+      <p>Every state change emits an event to a metrics pipeline (Prometheus + Grafana for live dashboards, ClickHouse for historical queries). Tracks success rate per channel, per provider, per template — surfacing things like "SMS to India dropped from 99% to 84% delivery this hour".</p>
+      <p><strong>Solves:</strong> operating blind. You only know your provider switched their behavior when graphs change shape. Without dashboards, the first signal is angry customers.</p>
+    </div>
+  </div>
+
+  <h3 style="font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--heading);margin:1.8rem 0 .6rem">Concrete walkthrough — Sarah's order confirmation</h3>
+  <p>Sarah hits "Place Order" at 14:02:06. Here's exactly what happens, mapped to the numbered components above:</p>
+  <ol style="padding-left:1.5rem;margin-bottom:1rem">
+    <li><strong>Order Service</strong> ① POSTs <code>{user_id: 42, template: "ORDER_CONFIRMED_v3", channel: "EMAIL", vars: {...}, idempotency_key: "order-9876-confirm"}</code> to the <strong>Load Balancer</strong> ②.</li>
+    <li>The LB routes it to one of three <strong>Notification API</strong> ③ pods. The API checks <strong>Redis</strong> ④ — the key doesn't exist, so it claims it.</li>
+    <li>API calls <strong>Preference Service</strong> ⑤ → "Sarah accepts transactional email" ✓. Calls <strong>Template Service</strong> ⑥ with vars → renders subject &amp; body.</li>
+    <li>API writes a row to <strong>Postgres</strong> ⑦ with status <code>PENDING</code>, then publishes the message to the <code>notifications.email</code> topic in <strong>Kafka</strong> ⑧, partitioned by <code>user_id=42</code>. Returns <code>202 {notification_id: "n_abc123"}</code> to the Order Service. <em>Elapsed: 38ms.</em></li>
+    <li>An <strong>Email Worker</strong> ⑪ pulls the message. The <strong>Rate Limiter</strong> ⑨ checks: Sarah's email rate ✓, SendGrid's quota ✓.</li>
+    <li>The <strong>Channel Dispatcher</strong> ⑩ routes to the EmailSender strategy. EmailSender calls <strong>SendGrid</strong> ⑫. Returns <code>202 Accepted</code> in 740ms.</li>
+    <li>Worker updates Postgres row to <code>SENT</code>, emits a <code>notification.sent</code> event to <strong>Audit</strong> ⑮.</li>
+    <li>Six seconds later, SendGrid POSTs to our <strong>Callback API</strong> ⑭ → <code>delivered</code>. We update the row to <code>DELIVERED</code>.</li>
+    <li>Two minutes later, Sarah clicks the tracking link in the email. SendGrid POSTs again → <code>clicked</code>. Row updates to <code>CLICKED</code>. Marketing now knows the email worked.</li>
+  </ol>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the magic isn't any single component — it's the split between the API plane (fast, synchronous, returns immediately) and the Worker plane (slow, async, retries on its own). That split is what lets the Order Service finish in 50ms even when SendGrid is having a bad day.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: ENTITIES                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>Core Entities &amp; Enums</h2>
+  <p>Now we map the architecture to objects. The trick is to find the nouns ("notification", "template", "channel", "user preference") and the things that vary ("which channel?", "which retry policy?"). Variations become enums or strategy classes; nouns become entities.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>Entity</th><th>Responsibility</th><th>Key Fields</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>Notification</code></td><td>One send attempt for one user on one channel — the unit of work</td><td>id, userId, channel, templateId, payload, status, attempts, createdAt</td></tr>
+        <tr><td><code>NotificationRequest</code></td><td>The inbound API DTO — what callers actually post</td><td>userId, templateId, channel, vars, idempotencyKey, priority, scheduleAt</td></tr>
+        <tr><td><code>Template</code></td><td>A reusable, parameterized message body per channel + locale</td><td>id, version, channel, locale, subject, body, requiredVars[]</td></tr>
+        <tr><td><code>UserPreference</code></td><td>Per-user channel opt-ins, language, quiet-hours window</td><td>userId, channelOptIns Map, language, quietStart, quietEnd, timezone</td></tr>
+        <tr><td><code>Recipient</code></td><td>Resolved contact info for a user — email, phone, deviceTokens</td><td>userId, email, phone, deviceTokens List, slackId</td></tr>
+        <tr><td><code>DeliveryAttempt</code></td><td>One try at sending — captures provider response &amp; latency</td><td>id, notificationId, attemptNo, providerCode, status, errorMsg, latencyMs, attemptedAt</td></tr>
+        <tr><td><code>ChannelSender</code></td><td>Strategy interface — one impl per channel (Email/SMS/Push/...)</td><td>+ send(notif): Result, + getChannel(): Channel</td></tr>
+        <tr><td><code>RetryPolicy</code></td><td>Decides if &amp; when to retry after a failure</td><td>+ shouldRetry(attemptNo, error): boolean, + nextDelay(attemptNo): Duration</td></tr>
+        <tr><td><code>RateLimiter</code></td><td>Token-bucket gate — per user &amp; per provider</td><td>+ tryAcquire(key): boolean</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="g3" style="margin-top:1rem">
+    <div class="card">
+      <h3>📦 Channel (Enum)</h3>
+      <p><code>EMAIL, SMS, PUSH, IN_APP, WHATSAPP, SLACK</code></p>
+      <p>Each maps to one ChannelSender strategy. Adding a new channel = adding one enum constant + one sender class.</p>
+    </div>
+    <div class="card">
+      <h3>📦 Status (Enum)</h3>
+      <p><code>PENDING → SENT → DELIVERED → OPENED / CLICKED</code></p>
+      <p>Sad path: <code>PENDING → FAILED → RETRY → ... → DEAD</code> or <code>SUPPRESSED</code> when preferences block.</p>
+    </div>
+    <div class="card">
+      <h3>📦 Priority (Enum)</h3>
+      <p><code>CRITICAL, HIGH, NORMAL, LOW</code></p>
+      <p>Critical (OTP, payment receipts) skips quiet-hours and rate limits. Low (marketing) gets dropped first when overloaded.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: ER DIAGRAM                          -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>ER / Schema Diagram</h2>
+  <p>Before classes, lock down the data model. Notice how <code>delivery_attempt</code> is a separate table — every retry gets a new row, so we have a complete forensic trail when things go wrong. The <code>idempotency_key</code> is unique per client, preventing duplicate sends.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  USER {
+    bigint id PK
+    string name
+    string email
+    string phone
+    string timezone
+    string language
+  }
+  USER_PREFERENCE {
+    bigint user_id PK
+    string channel PK
+    boolean opt_in
+    time quiet_start
+    time quiet_end
+  }
+  DEVICE {
+    bigint id PK
+    bigint user_id FK
+    string platform
+    string token
+    timestamp last_seen
+  }
+  TEMPLATE {
+    string id PK
+    int version PK
+    string channel
+    string locale
+    text subject
+    text body
+    json required_vars
+  }
+  NOTIFICATION {
+    string id PK
+    bigint user_id FK
+    string template_id FK
+    int template_version FK
+    string channel
+    string priority
+    string status
+    json payload
+    string idempotency_key
+    int attempts
+    timestamp scheduled_at
+    timestamp created_at
+  }
+  DELIVERY_ATTEMPT {
+    bigint id PK
+    string notification_id FK
+    int attempt_no
+    string provider
+    string status
+    string error_msg
+    int latency_ms
+    timestamp attempted_at
+  }
+
+  USER ||--o{ USER_PREFERENCE : "configures"
+  USER ||--o{ DEVICE : "owns"
+  USER ||--o{ NOTIFICATION : "receives"
+  TEMPLATE ||--o{ NOTIFICATION : "renders"
+  NOTIFICATION ||--o{ DELIVERY_ATTEMPT : "tracks"
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>Indexing notes:</strong> <code>(user_id, created_at DESC)</code> for "show me Sarah's recent notifications". <code>(status, scheduled_at)</code> for the worker poll query. <code>idempotency_key</code> needs a UNIQUE index. <code>(template_id, locale)</code> for template lookup.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: CLASS DIAGRAM                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-yellow">Step 6</span>
+  <h2>Class Diagram</h2>
+  <p>The <strong>NotificationService</strong> is the façade. It composes a Preference checker, a Template renderer, and a SenderFactory that resolves the right strategy per channel. <strong>ChannelSender</strong> is the strategy interface — each concrete sender is a swappable implementation.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+classDiagram
+  class NotificationService {
+    -PreferenceService prefs
+    -TemplateService templates
+    -NotificationRepository repo
+    -QueuePublisher publisher
+    -IdempotencyStore idempotency
+    +send(req) String
+    +schedule(req, when) String
+    +cancel(notifId) boolean
+  }
+
+  class NotificationWorker {
+    -SenderFactory senderFactory
+    -RetryPolicy retryPolicy
+    -RateLimiter limiter
+    -NotificationRepository repo
+    +consume(notification) void
+  }
+
+  class ChannelSender {
+    <<interface>>
+    +send(notification) DeliveryResult
+    +getChannel() Channel
+  }
+
+  class EmailSender {
+    +send(notification) DeliveryResult
+    +getChannel() Channel
+  }
+  class SMSSender {
+    +send(notification) DeliveryResult
+    +getChannel() Channel
+  }
+  class PushSender {
+    +send(notification) DeliveryResult
+    +getChannel() Channel
+  }
+  class WhatsAppSender {
+    +send(notification) DeliveryResult
+    +getChannel() Channel
+  }
+
+  class SenderFactory {
+    -Map registry
+    +get(channel) ChannelSender
+    +register(sender) void
+  }
+
+  class RetryPolicy {
+    <<interface>>
+    +shouldRetry(attemptNo, cause) boolean
+    +nextDelay(attemptNo) Duration
+  }
+  class ExponentialBackoffPolicy {
+    -int maxAttempts
+    -Duration baseDelay
+    +shouldRetry(attemptNo, cause) boolean
+    +nextDelay(attemptNo) Duration
+  }
+
+  class RateLimiter {
+    <<interface>>
+    +tryAcquire(key) boolean
+  }
+  class TokenBucketLimiter {
+    -long capacity
+    -long refillPerSec
+    +tryAcquire(key) boolean
+  }
+
+  class Notification {
+    -String id
+    -long userId
+    -Channel channel
+    -Status status
+    -int attempts
+    -String payload
+    +markSent() void
+    +markRetry() void
+    +markDead() void
+  }
+
+  class PreferenceService {
+    +isAllowed(userId, channel, priority) Decision
+  }
+  class TemplateService {
+    +render(templateId, vars, locale) RenderedMessage
+  }
+
+  NotificationService --> PreferenceService
+  NotificationService --> TemplateService
+  NotificationService --> NotificationRepository
+  NotificationService --> QueuePublisher
+  NotificationWorker --> SenderFactory
+  NotificationWorker --> RetryPolicy
+  NotificationWorker --> RateLimiter
+  NotificationWorker --> NotificationRepository
+  SenderFactory o-- ChannelSender
+  ChannelSender <|.. EmailSender
+  ChannelSender <|.. SMSSender
+  ChannelSender <|.. PushSender
+  ChannelSender <|.. WhatsAppSender
+  RetryPolicy <|.. ExponentialBackoffPolicy
+  RateLimiter <|.. TokenBucketLimiter
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: DESIGN PATTERNS                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-orange">Step 7</span>
+  <h2>Design Patterns Used</h2>
+  <p>This problem is a pattern playground because the variation points are loud and clear. Each pattern below is paired with the exact question it answers.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🎯 Strategy — ChannelSender</h3>
+      <p><strong>Question it answers:</strong> "How do I send via email vs SMS vs push without a giant if-else?"</p>
+      <p>Each channel implements the same <code>ChannelSender</code> interface. The worker holds a reference to the interface and never knows which concrete sender it's calling. Adding WhatsApp = one new class, zero edits to existing code (Open/Closed).</p>
+    </div>
+    <div class="card">
+      <h3>🏭 Factory — SenderFactory</h3>
+      <p><strong>Question it answers:</strong> "Given a channel enum, how do I get the right sender?"</p>
+      <p>Maintains a <code>Map&lt;Channel, ChannelSender&gt;</code> populated at startup. The worker calls <code>factory.get(channel)</code> instead of newing senders. Makes mocking in tests trivial.</p>
+    </div>
+    <div class="card">
+      <h3>👀 Observer — Audit / Metrics</h3>
+      <p><strong>Question it answers:</strong> "How do I emit metrics &amp; audit logs without coupling them to send logic?"</p>
+      <p>The worker publishes lifecycle events (<code>SENT</code>, <code>FAILED</code>, <code>DELIVERED</code>) to a topic. Audit, Metrics, and Webhook subscribers each consume independently. Adding a new subscriber doesn't touch send code.</p>
+    </div>
+    <div class="card">
+      <h3>🎨 Decorator — Cross-cutting concerns</h3>
+      <p><strong>Question it answers:</strong> "Where do I put rate-limiting, logging, and circuit-breaking without polluting senders?"</p>
+      <p>Wrap a <code>ChannelSender</code> in <code>RateLimitedSender</code>, then in <code>LoggingSender</code>, then in <code>CircuitBreakerSender</code>. Each layer adds one concern. Composition order is configurable.</p>
+    </div>
+    <div class="card">
+      <h3>⛓️ Chain of Responsibility — Pre-send pipeline</h3>
+      <p><strong>Question it answers:</strong> "How do I run a sequence of validations (preferences → quiet hours → rate limit → template) cleanly?"</p>
+      <p>Each gate is a handler that either passes the notification along or short-circuits with <code>SUPPRESSED</code>. Easy to reorder, easy to add a new gate.</p>
+    </div>
+    <div class="card">
+      <h3>🔨 Builder — NotificationRequest</h3>
+      <p><strong>Question it answers:</strong> "How do I construct a request with 8 optional fields without a 12-arg constructor?"</p>
+      <p>Fluent builder: <code>NotificationRequest.builder().to(42).template("X").channel(EMAIL).var("name", "Sarah").priority(HIGH).build()</code>.</p>
+    </div>
+    <div class="card">
+      <h3>🪞 Singleton — Service registry &amp; factory</h3>
+      <p><strong>Question it answers:</strong> "How many SenderFactory instances should exist?"</p>
+      <p>One. The factory holds the registry of all channels. In production this is a Spring bean; in pure Java it's an enum-based singleton.</p>
+    </div>
+    <div class="card">
+      <h3>🧊 Template Method — AbstractChannelSender</h3>
+      <p><strong>Question it answers:</strong> "Every sender does the same setup/teardown — how do I avoid duplicating it?"</p>
+      <p>Abstract base class implements <code>send()</code> as: validate → call <code>doSend()</code> hook → record metrics. Concrete senders only override <code>doSend()</code>.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: STATE MACHINE                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-purple">Step 8</span>
+  <h2>Notification Lifecycle — State Machine</h2>
+  <p>A notification's life is more nuanced than "sent / not sent". Modeling every state explicitly lets us answer support questions like "did Sarah open the email?" and lets the worker safely resume after a crash by inspecting the state.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+stateDiagram-v2
+  [*] --> PENDING : created
+  PENDING --> SUPPRESSED : preference or quiet hours
+  PENDING --> SENT : provider accepted
+  PENDING --> RETRY : transient failure
+  RETRY --> SENT : retry succeeded
+  RETRY --> RETRY : still failing
+  RETRY --> DEAD : max attempts hit
+  SENT --> DELIVERED : provider callback
+  SENT --> BOUNCED : provider callback hard fail
+  DELIVERED --> OPENED : user opened email
+  OPENED --> CLICKED : user clicked link
+  SUPPRESSED --> [*]
+  DEAD --> [*]
+  CLICKED --> [*]
+  BOUNCED --> [*]
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>Why split SENT and DELIVERED?</strong> "SendGrid took the message" and "the message landed in Sarah's inbox" are different events that arrive seconds-to-minutes apart. Conflating them hides bouncing addresses and makes "delivery rate" metrics meaningless.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: SEND FLOW SEQUENCE                  -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-green">Step 9</span>
+  <h2>Send Flow — Sequence Diagram</h2>
+  <p>The happy-path send, end-to-end. Notice how the API returns to the caller <em>before</em> the provider is even called — that's the API/Worker split paying off.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor OS as Order Service
+  participant API as Notification API
+  participant IDP as Idempotency Redis
+  participant PREF as Preference Svc
+  participant TPL as Template Svc
+  participant DB as Postgres
+  participant Q as Kafka
+  participant W as Worker
+  participant RL as Rate Limiter
+  participant SG as SendGrid
+
+  OS->>API: POST /notifications with idemKey
+  API->>IDP: SETNX idemKey
+  alt key already exists
+    IDP-->>API: existed
+    API-->>OS: 200 existing notif_id
+  else new request
+    IDP-->>API: claimed
+    API->>PREF: isAllowed user EMAIL HIGH
+    PREF-->>API: ALLOWED
+    API->>TPL: render template vars locale
+    TPL-->>API: subject and body
+    API->>DB: INSERT notification PENDING
+    API->>Q: publish to notifications.email
+    API-->>OS: 202 with notif_id
+  end
+
+  Q-->>W: consume message
+  W->>RL: tryAcquire user and provider
+  RL-->>W: OK
+  W->>SG: POST mail send
+  alt success
+    SG-->>W: 202 Accepted
+    W->>DB: UPDATE status SENT
+  else transient failure
+    SG-->>W: 503 Service Unavailable
+    W->>DB: UPDATE status RETRY
+    W->>Q: publish with backoff delay
+  end
+
+  Note over SG,DB: Async callback later
+  SG->>API: POST webhook delivered
+  API->>DB: UPDATE status DELIVERED
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: JAVA IMPLEMENTATION                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-cyan">Step 10</span>
+  <h2>Java Implementation</h2>
+  <p>Pure Java 17, no frameworks. Order: enums → records → strategy interface → concrete senders → factory → service → worker → demo.</p>
+
+  <span class="code-label cl-orange">Channel.java — Enum</span>
+<pre><span class="kw">public enum</span> <span class="ty">Channel</span> { <span class="an">EMAIL</span>, <span class="an">SMS</span>, <span class="an">PUSH</span>, <span class="an">IN_APP</span>, <span class="an">WHATSAPP</span>, <span class="an">SLACK</span> }</pre>
+
+  <span class="code-label cl-orange">Priority.java &amp; Status.java</span>
+<pre><span class="kw">public enum</span> <span class="ty">Priority</span> { <span class="an">CRITICAL</span>, <span class="an">HIGH</span>, <span class="an">NORMAL</span>, <span class="an">LOW</span> }
+
+<span class="kw">public enum</span> <span class="ty">Status</span> {
+    <span class="an">PENDING</span>, <span class="an">SUPPRESSED</span>, <span class="an">SENT</span>, <span class="an">RETRY</span>,
+    <span class="an">DEAD</span>, <span class="an">DELIVERED</span>, <span class="an">BOUNCED</span>, <span class="an">OPENED</span>, <span class="an">CLICKED</span>
+}</pre>
+
+  <span class="code-label cl-green">NotificationRequest.java — Record + Builder</span>
+<pre><span class="kw">import</span> java.time.Instant;
+<span class="kw">import</span> java.util.*;
+
+<span class="kw">public record</span> <span class="ty">NotificationRequest</span>(
+    <span class="kw">long</span> userId,
+    <span class="ty">String</span> templateId,
+    <span class="ty">Channel</span> channel,
+    <span class="ty">Map</span>&lt;<span class="ty">String</span>, <span class="ty">Object</span>&gt; vars,
+    <span class="ty">String</span> idempotencyKey,
+    <span class="ty">Priority</span> priority,
+    <span class="ty">Instant</span> scheduledAt
+) {
+    <span class="kw">public static</span> <span class="ty">Builder</span> <span class="fn">builder</span>() { <span class="kw">return new</span> <span class="ty">Builder</span>(); }
+
+    <span class="kw">public static class</span> <span class="ty">Builder</span> {
+        <span class="kw">private long</span> userId;
+        <span class="kw">private</span> <span class="ty">String</span> templateId;
+        <span class="kw">private</span> <span class="ty">Channel</span> channel;
+        <span class="kw">private</span> <span class="ty">Map</span>&lt;<span class="ty">String</span>, <span class="ty">Object</span>&gt; vars = <span class="kw">new</span> <span class="ty">HashMap</span>&lt;&gt;();
+        <span class="kw">private</span> <span class="ty">String</span> idempotencyKey = <span class="ty">UUID</span>.<span class="fn">randomUUID</span>().<span class="fn">toString</span>();
+        <span class="kw">private</span> <span class="ty">Priority</span> priority = <span class="ty">Priority</span>.<span class="an">NORMAL</span>;
+        <span class="kw">private</span> <span class="ty">Instant</span> scheduledAt = <span class="ty">Instant</span>.<span class="fn">now</span>();
+
+        <span class="kw">public</span> <span class="ty">Builder</span> <span class="fn">to</span>(<span class="kw">long</span> u)            { <span class="kw">this</span>.userId = u;        <span class="kw">return this</span>; }
+        <span class="kw">public</span> <span class="ty">Builder</span> <span class="fn">template</span>(<span class="ty">String</span> t)     { <span class="kw">this</span>.templateId = t;    <span class="kw">return this</span>; }
+        <span class="kw">public</span> <span class="ty">Builder</span> <span class="fn">channel</span>(<span class="ty">Channel</span> c)     { <span class="kw">this</span>.channel = c;       <span class="kw">return this</span>; }
+        <span class="kw">public</span> <span class="ty">Builder</span> <span class="fn">var</span>(<span class="ty">String</span> k, <span class="ty">Object</span> v) { vars.<span class="fn">put</span>(k, v);          <span class="kw">return this</span>; }
+        <span class="kw">public</span> <span class="ty">Builder</span> <span class="fn">priority</span>(<span class="ty">Priority</span> p)   { <span class="kw">this</span>.priority = p;      <span class="kw">return this</span>; }
+        <span class="kw">public</span> <span class="ty">Builder</span> <span class="fn">idempotencyKey</span>(<span class="ty">String</span> k){ <span class="kw">this</span>.idempotencyKey = k; <span class="kw">return this</span>; }
+        <span class="kw">public</span> <span class="ty">Builder</span> <span class="fn">scheduleAt</span>(<span class="ty">Instant</span> at){ <span class="kw">this</span>.scheduledAt = at;   <span class="kw">return this</span>; }
+
+        <span class="kw">public</span> <span class="ty">NotificationRequest</span> <span class="fn">build</span>() {
+            <span class="kw">if</span> (templateId == <span class="kw">null</span> || channel == <span class="kw">null</span>)
+                <span class="kw">throw new</span> <span class="ty">IllegalStateException</span>(<span class="str">"template &amp; channel required"</span>);
+            <span class="kw">return new</span> <span class="ty">NotificationRequest</span>(userId, templateId, channel,
+                    <span class="ty">Map</span>.<span class="fn">copyOf</span>(vars), idempotencyKey, priority, scheduledAt);
+        }
+    }
+}</pre>
+
+  <span class="code-label cl-green">Notification.java — Domain entity</span>
+<pre><span class="kw">public class</span> <span class="ty">Notification</span> {
+    <span class="kw">private final</span> <span class="ty">String</span> id;
+    <span class="kw">private final long</span> userId;
+    <span class="kw">private final</span> <span class="ty">Channel</span> channel;
+    <span class="kw">private final</span> <span class="ty">Priority</span> priority;
+    <span class="kw">private final</span> <span class="ty">String</span> renderedPayload;
+    <span class="kw">private volatile</span> <span class="ty">Status</span> status;
+    <span class="kw">private final</span> <span class="ty">AtomicInteger</span> attempts = <span class="kw">new</span> <span class="ty">AtomicInteger</span>(<span class="num">0</span>);
+
+    <span class="kw">public</span> <span class="fn">Notification</span>(<span class="ty">String</span> id, <span class="kw">long</span> u, <span class="ty">Channel</span> c, <span class="ty">Priority</span> p, <span class="ty">String</span> body) {
+        <span class="kw">this</span>.id = id; <span class="kw">this</span>.userId = u; <span class="kw">this</span>.channel = c;
+        <span class="kw">this</span>.priority = p; <span class="kw">this</span>.renderedPayload = body;
+        <span class="kw">this</span>.status = <span class="ty">Status</span>.<span class="an">PENDING</span>;
+    }
+    <span class="kw">public int</span>    <span class="fn">incrementAttempts</span>() { <span class="kw">return</span> attempts.<span class="fn">incrementAndGet</span>(); }
+    <span class="kw">public void</span>   <span class="fn">markSent</span>()      { <span class="kw">this</span>.status = <span class="ty">Status</span>.<span class="an">SENT</span>; }
+    <span class="kw">public void</span>   <span class="fn">markRetry</span>()     { <span class="kw">this</span>.status = <span class="ty">Status</span>.<span class="an">RETRY</span>; }
+    <span class="kw">public void</span>   <span class="fn">markDead</span>()      { <span class="kw">this</span>.status = <span class="ty">Status</span>.<span class="an">DEAD</span>; }
+    <span class="kw">public void</span>   <span class="fn">markSuppressed</span>(){ <span class="kw">this</span>.status = <span class="ty">Status</span>.<span class="an">SUPPRESSED</span>; }
+    <span class="cmt">// getters omitted for brevity</span>
+    <span class="kw">public</span> <span class="ty">String</span>  <span class="fn">getId</span>()       { <span class="kw">return</span> id; }
+    <span class="kw">public long</span>    <span class="fn">getUserId</span>()   { <span class="kw">return</span> userId; }
+    <span class="kw">public</span> <span class="ty">Channel</span> <span class="fn">getChannel</span>()  { <span class="kw">return</span> channel; }
+    <span class="kw">public</span> <span class="ty">Priority</span> <span class="fn">getPriority</span>(){ <span class="kw">return</span> priority; }
+    <span class="kw">public</span> <span class="ty">String</span>  <span class="fn">getPayload</span>()  { <span class="kw">return</span> renderedPayload; }
+    <span class="kw">public</span> <span class="ty">Status</span>  <span class="fn">getStatus</span>()   { <span class="kw">return</span> status; }
+    <span class="kw">public int</span>     <span class="fn">getAttempts</span>() { <span class="kw">return</span> attempts.<span class="fn">get</span>(); }
+}</pre>
+
+  <span class="code-label cl-blue">ChannelSender.java — Strategy interface</span>
+<pre><span class="kw">public interface</span> <span class="ty">ChannelSender</span> {
+    <span class="ty">DeliveryResult</span> <span class="fn">send</span>(<span class="ty">Notification</span> n) <span class="kw">throws</span> <span class="ty">SendException</span>;
+    <span class="ty">Channel</span> <span class="fn">getChannel</span>();
+}
+
+<span class="kw">public record</span> <span class="ty">DeliveryResult</span>(<span class="kw">boolean</span> success, <span class="ty">String</span> providerMsgId, <span class="kw">long</span> latencyMs) {}
+
+<span class="kw">public class</span> <span class="ty">SendException</span> <span class="kw">extends</span> <span class="ty">Exception</span> {
+    <span class="kw">private final boolean</span> retryable;
+    <span class="kw">public</span> <span class="fn">SendException</span>(<span class="ty">String</span> msg, <span class="kw">boolean</span> retryable) {
+        <span class="kw">super</span>(msg); <span class="kw">this</span>.retryable = retryable;
+    }
+    <span class="kw">public boolean</span> <span class="fn">isRetryable</span>() { <span class="kw">return</span> retryable; }
+}</pre>
+
+  <span class="code-label cl-blue">EmailSender.java — Concrete strategy</span>
+<pre><span class="kw">public class</span> <span class="ty">EmailSender</span> <span class="kw">implements</span> <span class="ty">ChannelSender</span> {
+    <span class="kw">private final</span> <span class="ty">SendGridClient</span> client;
+    <span class="kw">public</span> <span class="fn">EmailSender</span>(<span class="ty">SendGridClient</span> c) { <span class="kw">this</span>.client = c; }
+
+    <span class="an">@Override</span>
+    <span class="kw">public</span> <span class="ty">DeliveryResult</span> <span class="fn">send</span>(<span class="ty">Notification</span> n) <span class="kw">throws</span> <span class="ty">SendException</span> {
+        <span class="kw">long</span> t0 = <span class="ty">System</span>.<span class="fn">currentTimeMillis</span>();
+        <span class="kw">try</span> {
+            <span class="ty">String</span> msgId = client.<span class="fn">sendEmail</span>(n.<span class="fn">getUserId</span>(), n.<span class="fn">getPayload</span>());
+            <span class="kw">return new</span> <span class="ty">DeliveryResult</span>(<span class="kw">true</span>, msgId, <span class="ty">System</span>.<span class="fn">currentTimeMillis</span>() - t0);
+        } <span class="kw">catch</span> (<span class="ty">RateLimitedException</span> | <span class="ty">TimeoutException</span> e) {
+            <span class="kw">throw new</span> <span class="ty">SendException</span>(e.<span class="fn">getMessage</span>(), <span class="kw">true</span>);   <span class="cmt">// retryable</span>
+        } <span class="kw">catch</span> (<span class="ty">InvalidAddressException</span> e) {
+            <span class="kw">throw new</span> <span class="ty">SendException</span>(e.<span class="fn">getMessage</span>(), <span class="kw">false</span>);  <span class="cmt">// permanent</span>
+        }
+    }
+    <span class="an">@Override</span> <span class="kw">public</span> <span class="ty">Channel</span> <span class="fn">getChannel</span>() { <span class="kw">return</span> <span class="ty">Channel</span>.<span class="an">EMAIL</span>; }
+}</pre>
+
+  <span class="code-label cl-purple">SenderFactory.java — Strategy registry</span>
+<pre><span class="kw">public class</span> <span class="ty">SenderFactory</span> {
+    <span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">Channel</span>, <span class="ty">ChannelSender</span>&gt; registry = <span class="kw">new</span> <span class="ty">EnumMap</span>&lt;&gt;(<span class="ty">Channel</span>.<span class="kw">class</span>);
+
+    <span class="kw">public void</span> <span class="fn">register</span>(<span class="ty">ChannelSender</span> s) { registry.<span class="fn">put</span>(s.<span class="fn">getChannel</span>(), s); }
+
+    <span class="kw">public</span> <span class="ty">ChannelSender</span> <span class="fn">get</span>(<span class="ty">Channel</span> c) {
+        <span class="ty">ChannelSender</span> s = registry.<span class="fn">get</span>(c);
+        <span class="kw">if</span> (s == <span class="kw">null</span>) <span class="kw">throw new</span> <span class="ty">IllegalArgumentException</span>(<span class="str">"No sender for "</span> + c);
+        <span class="kw">return</span> s;
+    }
+}</pre>
+
+  <span class="code-label cl-yellow">RetryPolicy.java — Exponential backoff</span>
+<pre><span class="kw">public interface</span> <span class="ty">RetryPolicy</span> {
+    <span class="kw">boolean</span> <span class="fn">shouldRetry</span>(<span class="kw">int</span> attemptNo, <span class="ty">Throwable</span> cause);
+    <span class="ty">Duration</span> <span class="fn">nextDelay</span>(<span class="kw">int</span> attemptNo);
+}
+
+<span class="kw">public class</span> <span class="ty">ExponentialBackoffPolicy</span> <span class="kw">implements</span> <span class="ty">RetryPolicy</span> {
+    <span class="kw">private final int</span> maxAttempts;
+    <span class="kw">private final</span> <span class="ty">Duration</span> baseDelay;
+
+    <span class="kw">public</span> <span class="fn">ExponentialBackoffPolicy</span>(<span class="kw">int</span> max, <span class="ty">Duration</span> base) {
+        <span class="kw">this</span>.maxAttempts = max; <span class="kw">this</span>.baseDelay = base;
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public boolean</span> <span class="fn">shouldRetry</span>(<span class="kw">int</span> attemptNo, <span class="ty">Throwable</span> cause) {
+        <span class="kw">if</span> (attemptNo &gt;= maxAttempts) <span class="kw">return false</span>;
+        <span class="kw">if</span> (cause <span class="kw">instanceof</span> <span class="ty">SendException</span> se) <span class="kw">return</span> se.<span class="fn">isRetryable</span>();
+        <span class="kw">return true</span>;
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public</span> <span class="ty">Duration</span> <span class="fn">nextDelay</span>(<span class="kw">int</span> attemptNo) {
+        <span class="kw">long</span> ms = baseDelay.<span class="fn">toMillis</span>() * (<span class="num">1L</span> &lt;&lt; attemptNo);          <span class="cmt">// 1s, 2s, 4s, 8s...</span>
+        <span class="kw">long</span> jitter = <span class="ty">ThreadLocalRandom</span>.<span class="fn">current</span>().<span class="fn">nextLong</span>(ms / <span class="num">4</span>);   <span class="cmt">// avoid thundering herd</span>
+        <span class="kw">return</span> <span class="ty">Duration</span>.<span class="fn">ofMillis</span>(ms + jitter);
+    }
+}</pre>
+
+  <span class="code-label cl-yellow">TokenBucketLimiter.java — Rate limiting</span>
+<pre><span class="kw">public class</span> <span class="ty">TokenBucketLimiter</span> <span class="kw">implements</span> <span class="ty">RateLimiter</span> {
+    <span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">String</span>, <span class="ty">Bucket</span>&gt; buckets = <span class="kw">new</span> <span class="ty">ConcurrentHashMap</span>&lt;&gt;();
+    <span class="kw">private final long</span> capacity;
+    <span class="kw">private final long</span> refillPerSec;
+
+    <span class="kw">public</span> <span class="fn">TokenBucketLimiter</span>(<span class="kw">long</span> capacity, <span class="kw">long</span> refillPerSec) {
+        <span class="kw">this</span>.capacity = capacity; <span class="kw">this</span>.refillPerSec = refillPerSec;
+    }
+
+    <span class="an">@Override</span>
+    <span class="kw">public boolean</span> <span class="fn">tryAcquire</span>(<span class="ty">String</span> key) {
+        <span class="kw">return</span> buckets
+            .<span class="fn">computeIfAbsent</span>(key, k -&gt; <span class="kw">new</span> <span class="ty">Bucket</span>(capacity, refillPerSec))
+            .<span class="fn">tryConsume</span>();
+    }
+
+    <span class="kw">private static class</span> <span class="ty">Bucket</span> {
+        <span class="kw">private final long</span> capacity, refillPerSec;
+        <span class="kw">private double</span> tokens;
+        <span class="kw">private long</span> lastRefillNs;
+
+        <span class="ty">Bucket</span>(<span class="kw">long</span> cap, <span class="kw">long</span> rps) {
+            <span class="kw">this</span>.capacity = cap; <span class="kw">this</span>.refillPerSec = rps;
+            <span class="kw">this</span>.tokens = cap; <span class="kw">this</span>.lastRefillNs = <span class="ty">System</span>.<span class="fn">nanoTime</span>();
+        }
+
+        <span class="kw">synchronized boolean</span> <span class="fn">tryConsume</span>() {
+            <span class="kw">long</span> now = <span class="ty">System</span>.<span class="fn">nanoTime</span>();
+            <span class="kw">double</span> elapsedSec = (now - lastRefillNs) / <span class="num">1_000_000_000.0</span>;
+            tokens = <span class="ty">Math</span>.<span class="fn">min</span>(capacity, tokens + elapsedSec * refillPerSec);
+            lastRefillNs = now;
+            <span class="kw">if</span> (tokens &gt;= <span class="num">1</span>) { tokens -= <span class="num">1</span>; <span class="kw">return true</span>; }
+            <span class="kw">return false</span>;
+        }
+    }
+}</pre>
+
+  <span class="code-label cl-cyan">NotificationService.java — API plane façade</span>
+<pre><span class="kw">public class</span> <span class="ty">NotificationService</span> {
+    <span class="kw">private final</span> <span class="ty">PreferenceService</span> prefs;
+    <span class="kw">private final</span> <span class="ty">TemplateService</span>   templates;
+    <span class="kw">private final</span> <span class="ty">NotificationRepository</span> repo;
+    <span class="kw">private final</span> <span class="ty">QueuePublisher</span>    publisher;
+    <span class="kw">private final</span> <span class="ty">IdempotencyStore</span>  idempotency;
+
+    <span class="kw">public</span> <span class="fn">NotificationService</span>(<span class="ty">PreferenceService</span> p, <span class="ty">TemplateService</span> t,
+                               <span class="ty">NotificationRepository</span> r, <span class="ty">QueuePublisher</span> q,
+                               <span class="ty">IdempotencyStore</span> i) {
+        <span class="kw">this</span>.prefs = p; <span class="kw">this</span>.templates = t; <span class="kw">this</span>.repo = r;
+        <span class="kw">this</span>.publisher = q; <span class="kw">this</span>.idempotency = i;
+    }
+
+    <span class="kw">public</span> <span class="ty">String</span> <span class="fn">send</span>(<span class="ty">NotificationRequest</span> req) {
+        <span class="cmt">// 1. Idempotency — return existing if duplicate</span>
+        <span class="ty">Optional</span>&lt;<span class="ty">String</span>&gt; existing = idempotency.<span class="fn">claim</span>(req.<span class="fn">idempotencyKey</span>());
+        <span class="kw">if</span> (existing.<span class="fn">isPresent</span>()) <span class="kw">return</span> existing.<span class="fn">get</span>();
+
+        <span class="cmt">// 2. Preference + quiet-hours check (CRITICAL bypasses)</span>
+        <span class="ty">Decision</span> d = prefs.<span class="fn">isAllowed</span>(req.<span class="fn">userId</span>(), req.<span class="fn">channel</span>(), req.<span class="fn">priority</span>());
+        <span class="kw">if</span> (d == <span class="ty">Decision</span>.<span class="an">SUPPRESS</span>) {
+            <span class="ty">String</span> id = repo.<span class="fn">save</span>(<span class="ty">Notification</span>.<span class="fn">suppressed</span>(req));
+            <span class="kw">return</span> id;
+        }
+
+        <span class="cmt">// 3. Render template</span>
+        <span class="ty">RenderedMessage</span> body = templates.<span class="fn">render</span>(req.<span class="fn">templateId</span>(),
+                                                  req.<span class="fn">vars</span>(),
+                                                  prefs.<span class="fn">getLocale</span>(req.<span class="fn">userId</span>()));
+
+        <span class="cmt">// 4. Persist + enqueue (in same transaction would be ideal — outbox pattern)</span>
+        <span class="ty">Notification</span> n = <span class="kw">new</span> <span class="ty">Notification</span>(<span class="ty">UUID</span>.<span class="fn">randomUUID</span>().<span class="fn">toString</span>(),
+                                              req.<span class="fn">userId</span>(), req.<span class="fn">channel</span>(),
+                                              req.<span class="fn">priority</span>(), body.<span class="fn">payload</span>());
+        repo.<span class="fn">save</span>(n);
+        publisher.<span class="fn">publish</span>(n);
+        <span class="kw">return</span> n.<span class="fn">getId</span>();
+    }
+}</pre>
+
+  <span class="code-label cl-cyan">NotificationWorker.java — Worker plane</span>
+<pre><span class="kw">public class</span> <span class="ty">NotificationWorker</span> {
+    <span class="kw">private final</span> <span class="ty">SenderFactory</span> factory;
+    <span class="kw">private final</span> <span class="ty">RetryPolicy</span>   retry;
+    <span class="kw">private final</span> <span class="ty">RateLimiter</span>   limiter;
+    <span class="kw">private final</span> <span class="ty">NotificationRepository</span> repo;
+    <span class="kw">private final</span> <span class="ty">QueuePublisher</span>  publisher;
+    <span class="kw">private final</span> <span class="ty">DeadLetterQueue</span> dlq;
+    <span class="kw">private final</span> <span class="ty">EventBus</span>        events;
+
+    <span class="kw">public void</span> <span class="fn">consume</span>(<span class="ty">Notification</span> n) {
+        <span class="kw">String</span> userKey     = <span class="str">"user:"</span> + n.<span class="fn">getUserId</span>();
+        <span class="kw">String</span> providerKey = <span class="str">"provider:"</span> + n.<span class="fn">getChannel</span>();
+
+        <span class="kw">if</span> (!limiter.<span class="fn">tryAcquire</span>(userKey) || !limiter.<span class="fn">tryAcquire</span>(providerKey)) {
+            publisher.<span class="fn">publishDelayed</span>(n, <span class="ty">Duration</span>.<span class="fn">ofSeconds</span>(<span class="num">1</span>));   <span class="cmt">// shed back to queue</span>
+            <span class="kw">return</span>;
+        }
+
+        <span class="kw">int</span> attemptNo = n.<span class="fn">incrementAttempts</span>();
+        <span class="kw">try</span> {
+            <span class="ty">DeliveryResult</span> r = factory.<span class="fn">get</span>(n.<span class="fn">getChannel</span>()).<span class="fn">send</span>(n);
+            n.<span class="fn">markSent</span>();
+            repo.<span class="fn">update</span>(n);
+            events.<span class="fn">publish</span>(<span class="kw">new</span> <span class="ty">SentEvent</span>(n.<span class="fn">getId</span>(), r.<span class="fn">latencyMs</span>()));
+        } <span class="kw">catch</span> (<span class="ty">SendException</span> e) {
+            <span class="kw">if</span> (retry.<span class="fn">shouldRetry</span>(attemptNo, e)) {
+                n.<span class="fn">markRetry</span>();
+                repo.<span class="fn">update</span>(n);
+                publisher.<span class="fn">publishDelayed</span>(n, retry.<span class="fn">nextDelay</span>(attemptNo));
+            } <span class="kw">else</span> {
+                n.<span class="fn">markDead</span>();
+                repo.<span class="fn">update</span>(n);
+                dlq.<span class="fn">add</span>(n, e);
+                events.<span class="fn">publish</span>(<span class="kw">new</span> <span class="ty">DeadEvent</span>(n.<span class="fn">getId</span>(), e.<span class="fn">getMessage</span>()));
+            }
+        }
+    }
+}</pre>
+
+  <span class="code-label cl-red">Demo.java — Wire it all up</span>
+<pre><span class="kw">public class</span> <span class="ty">Demo</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(<span class="ty">String</span>[] args) {
+        <span class="cmt">// Wire dependencies</span>
+        <span class="ty">SenderFactory</span> factory = <span class="kw">new</span> <span class="ty">SenderFactory</span>();
+        factory.<span class="fn">register</span>(<span class="kw">new</span> <span class="ty">EmailSender</span>(<span class="kw">new</span> <span class="ty">SendGridClient</span>()));
+        factory.<span class="fn">register</span>(<span class="kw">new</span> <span class="ty">SMSSender</span>(<span class="kw">new</span> <span class="ty">TwilioClient</span>()));
+        factory.<span class="fn">register</span>(<span class="kw">new</span> <span class="ty">PushSender</span>(<span class="kw">new</span> <span class="ty">FCMClient</span>()));
+
+        <span class="ty">NotificationService</span> svc = <span class="kw">new</span> <span class="ty">NotificationService</span>(
+            <span class="kw">new</span> <span class="ty">PreferenceService</span>(),
+            <span class="kw">new</span> <span class="ty">TemplateService</span>(),
+            <span class="kw">new</span> <span class="ty">NotificationRepository</span>(),
+            <span class="kw">new</span> <span class="ty">QueuePublisher</span>(),
+            <span class="kw">new</span> <span class="ty">IdempotencyStore</span>()
+        );
+
+        <span class="cmt">// Order Service sends a confirmation</span>
+        <span class="ty">String</span> notifId = svc.<span class="fn">send</span>(
+            <span class="ty">NotificationRequest</span>.<span class="fn">builder</span>()
+                .<span class="fn">to</span>(<span class="num">42L</span>)
+                .<span class="fn">template</span>(<span class="str">"ORDER_CONFIRMED_v3"</span>)
+                .<span class="fn">channel</span>(<span class="ty">Channel</span>.<span class="an">EMAIL</span>)
+                .<span class="fn">var</span>(<span class="str">"name"</span>, <span class="str">"Sarah"</span>)
+                .<span class="fn">var</span>(<span class="str">"orderId"</span>, <span class="str">"9876"</span>)
+                .<span class="fn">priority</span>(<span class="ty">Priority</span>.<span class="an">HIGH</span>)
+                .<span class="fn">idempotencyKey</span>(<span class="str">"order-9876-confirm"</span>)
+                .<span class="fn">build</span>()
+        );
+
+        <span class="ty">System</span>.<span class="fn">out</span>.<span class="fn">println</span>(<span class="str">"Tracking ID: "</span> + notifId);
+
+        <span class="cmt">// Duplicate request — returns same ID, no second send</span>
+        <span class="ty">String</span> dupe = svc.<span class="fn">send</span>(
+            <span class="ty">NotificationRequest</span>.<span class="fn">builder</span>()
+                .<span class="fn">to</span>(<span class="num">42L</span>).<span class="fn">template</span>(<span class="str">"ORDER_CONFIRMED_v3"</span>).<span class="fn">channel</span>(<span class="ty">Channel</span>.<span class="an">EMAIL</span>)
+                .<span class="fn">idempotencyKey</span>(<span class="str">"order-9876-confirm"</span>)
+                .<span class="fn">build</span>()
+        );
+        assert notifId.<span class="fn">equals</span>(dupe);   <span class="cmt">// idempotent ✓</span>
+    }
+}</pre>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: CONCURRENCY & RELIABILITY          -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-red">Step 11</span>
+  <h2>Concurrency &amp; Reliability</h2>
+  <p>Three things will bite you in production. Address them in the design conversation, not after the interview ends.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🔒 Outbox Pattern</h3>
+      <p>"INSERT to DB then publish to queue" is two operations. If the process crashes between them, you've lost a message. Fix: write both the notification row AND a "to_publish" outbox row in the same DB transaction. A separate publisher thread polls the outbox and pushes to Kafka, then deletes. <strong>Guarantees at-least-once delivery to the queue.</strong></p>
+    </div>
+    <div class="card">
+      <h3>🔁 Idempotent Workers</h3>
+      <p>At-least-once means the worker may see the same message twice (e.g., Kafka rebalance). Each <code>consume()</code> begins by checking <code>SELECT status FROM notifications WHERE id = ?</code>. If already <code>SENT</code>, skip. Otherwise, the first attempt that reaches the provider wins via a per-notification advisory lock.</p>
+    </div>
+    <div class="card">
+      <h3>🛡️ Circuit Breaker per Provider</h3>
+      <p>If SendGrid starts returning 5xx for &gt; 50% of calls in 30s, open the circuit — every email send fast-fails for the next 60s and the message stays queued. Without this, all worker threads pile up waiting on a dead provider, and the queue grows unbounded.</p>
+    </div>
+    <div class="card">
+      <h3>🧮 Per-User Ordering</h3>
+      <p>Sarah expects her "order shipped" email AFTER her "order confirmed" email. Kafka partitioning by <code>user_id</code> ensures all of Sarah's notifications land on the same partition and are processed in order by a single worker thread.</p>
+    </div>
+    <div class="card">
+      <h3>⏱️ Scheduled Sends</h3>
+      <p>For <code>scheduled_at &gt; now()</code>, write to DB but don't queue immediately. A scheduler thread polls <code>WHERE status = PENDING AND scheduled_at &lt;= now()</code> every 30s and enqueues due ones. For long delays, a delayed-message queue (Kafka with delay topic, or RabbitMQ TTL) avoids polling.</p>
+    </div>
+    <div class="card">
+      <h3>📊 Backpressure</h3>
+      <p>Worker plane signals queue depth back to API plane. When email queue depth &gt; threshold, API returns <code>429 Retry-After</code> for low-priority email requests but still accepts critical ones. Prevents the queue from becoming an unbounded buffer of stale messages.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: EXTENSION POINTS                   -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-green">Step 12</span>
+  <h2>Extension Points (Open/Closed)</h2>
+  <p>The shape of the design is justified by how easily it absorbs new requirements without editing existing code.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>➕ Add a new channel</h3>
+      <p>Want Discord? Add <code>DISCORD</code> to the Channel enum, create <code>DiscordSender implements ChannelSender</code>, and register it with the SenderFactory at startup. <strong>Zero changes to NotificationService, Worker, or any other sender.</strong></p>
+    </div>
+    <div class="card">
+      <h3>➕ Add a new retry strategy</h3>
+      <p>Linear backoff for low-priority? Implement <code>RetryPolicy</code> as <code>LinearBackoffPolicy</code>, inject per-channel via config. Different channels can have different policies — push gets aggressive retries, email gets gentle ones.</p>
+    </div>
+    <div class="card">
+      <h3>➕ Add a new pre-send gate</h3>
+      <p>Need GDPR consent verification before EU users get notifications? Add <code>ConsentGate</code> to the chain-of-responsibility pipeline between Preference and Template. <strong>No edits to existing gates.</strong></p>
+    </div>
+    <div class="card">
+      <h3>➕ Add bulk / batch sends</h3>
+      <p>Marketing wants to email 10M users at once. Add a <code>BulkNotificationService</code> that fans out to <code>send()</code> calls, throttled. The single-send path is unchanged.</p>
+    </div>
+    <div class="card">
+      <h3>➕ Add A/B template testing</h3>
+      <p>TemplateService accepts an experiment context and returns variant A or B based on user bucketing. The render call interface stays the same; the experimentation logic is internal to TemplateService.</p>
+    </div>
+    <div class="card">
+      <h3>➕ Add multi-tenancy</h3>
+      <p>For SaaS use, add <code>tenantId</code> to NotificationRequest, partition queues by tenant, and have per-tenant rate limits. The strategy/factory shape doesn't change — only the rate-limiter key includes tenant.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-blue">Step 13</span>
+  <h2>Interview Q&amp;A &amp; Trade-offs</h2>
+  <p>Real follow-ups you'll get after presenting this design. Each answer states the trade-off, not just the solution.</p>
+
+  <div class="iq">Why a queue between API and worker — why not call the provider directly?</div>
+  <div class="ans"><strong>Decoupling lifecycles.</strong> The API plane has a 50ms SLA to the calling microservice; SendGrid takes 200ms-30s. A queue lets the API return in 50ms regardless of provider latency, absorbs traffic spikes (10K orders/min becomes a queue, not 10K parallel HTTP calls), and gives us a natural retry buffer. Trade-off: we lose synchronous feedback ("did it actually send?"), so we add a status-tracking API and provider callbacks instead.</div>
+
+  <div class="iq">Why not store template rendering on the worker side?</div>
+  <div class="ans"><strong>Fail fast, fail at the edge.</strong> Rendering on the API side means a missing variable becomes a 400 to the caller (who can fix it immediately). Rendering on the worker means it becomes a DLQ entry an on-call sees three hours later. The API is also where we have full request context (locale, A/B bucket); the worker shouldn't care about that.</div>
+
+  <div class="iq">How do you handle the same notification being processed by two workers?</div>
+  <div class="ans"><strong>Idempotency at two layers.</strong> (1) Client-supplied <code>idempotency_key</code> at the API blocks duplicate <em>requests</em>. (2) At the worker, before calling the provider, we do a conditional update: <code>UPDATE notifications SET status='SENDING', attempt=attempt+1 WHERE id=? AND status IN ('PENDING','RETRY')</code>. Only the row that returned 1 row affected proceeds; the duplicate sees 0 rows and bails. Combined with Kafka's per-partition single-consumer guarantee, double-sends are vanishingly rare.</div>
+
+  <div class="iq">Provider charges per send. How do you avoid spending $10K when a bug fires 1M notifications?</div>
+  <div class="ans"><strong>Three layers of defense.</strong> (1) Per-user rate limit (Sarah max 5 SMS/hour) catches user-targeted floods. (2) Per-template rate limit (template <code>X</code> max 100K/hour) catches template-level bugs. (3) A circuit-breaker tied to "spend rate" — if our SendGrid spend exceeds $X/min, we pause low-priority sends and page on-call. Trade-off: occasional false positives during legitimate spikes, but cost incidents are unrecoverable.</div>
+
+  <div class="iq">SendGrid is down. What happens?</div>
+  <div class="ans"><strong>Three things in order.</strong> (1) Circuit breaker opens after error threshold — workers fast-fail and re-queue with backoff. (2) Email queue starts growing; metrics page on-call. (3) Optional: a <em>fallback provider</em> wired as a secondary EmailSender — if primary circuit is open, route to AWS SES. Trade-off: maintaining two integrations doubles ops cost; usually worth it only for transactional email, not marketing.</div>
+
+  <div class="iq">How do you handle priorities — should CRITICAL skip the queue?</div>
+  <div class="ans"><strong>Same queue infra, different topics.</strong> <code>notifications.email.critical</code> and <code>notifications.email.normal</code> as separate Kafka topics. Critical workers have higher concurrency and a dedicated provider account (so a marketing storm in <code>normal</code> doesn't starve OTPs). Critical also bypasses quiet-hours and per-user rate limits. <strong>Anti-pattern:</strong> using the same topic with a "priority" field — Kafka has no priority semantics, so consumers just process FIFO regardless.</div>
+
+  <div class="iq">How do you test this without hitting real providers?</div>
+  <div class="ans"><strong>The strategy interface is the seam.</strong> Inject a <code>FakeEmailSender</code> in tests that records sends to an in-memory list. The factory registry makes swap trivial. For integration tests against staging, use SendGrid's sandbox mode (returns success without actually emailing). For load tests, a <code>NoOpSender</code> returns immediately so we measure our own throughput, not the provider's.</div>
+
+  <div class="iq">What's the data retention story?</div>
+  <div class="ans"><strong>Two-tier storage.</strong> Hot: last 30 days in Postgres for support queries. Cold: archive older rows to S3 in Parquet for analytics and compliance. <code>delivery_attempts</code> rolls over faster (7 days) since it's high-volume and only useful for recent debugging. PII (email body, recipient address) is encrypted at rest; for GDPR deletion requests, we delete payload but keep the metadata row for audit.</div>
+
+  <div class="iq">A user wants their browser-push notifications to be quiet 10pm-7am. How is that enforced?</div>
+  <div class="ans"><strong>At the API plane, before queuing.</strong> The Preference Service computes "is right now in user 42's quiet hours, in user 42's timezone?". If yes and priority is &lt; CRITICAL, the notification is marked <code>SUPPRESSED</code> immediately and never enters the worker pipeline. Why not delay-then-send? Because by morning, "your friend liked your photo from yesterday" is stale and unwelcome. Trade-off: time-sensitive messages near the boundary may get suppressed; we accept that to honor user intent.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "It's a stateless API plane that validates and enqueues, plus an asynchronous worker plane with strategy-per-channel, retries with exponential backoff, idempotency at two layers, and a circuit breaker per provider. Adding a new channel is a single new class."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

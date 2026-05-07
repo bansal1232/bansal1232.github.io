@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pastebin — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Pastebin — <span>Share Text by URL</span></h1>
+  <p class="sub">From "drop a stack trace into a database BLOB" to a two-plane system that keeps small metadata fast and large blobs cheap — the architecture, the trade-offs, and the production shape that earns every box</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is Pastebin?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">Database Design</a></li>
+      <li><a href="#s6">High-Level Architecture</a></li>
+      <li><a href="#s7">Key Generation Service</a></li>
+      <li><a href="#s8">Data Partitioning</a></li>
+      <li><a href="#s9">Cache</a></li>
+      <li><a href="#s10">Load Balancer</a></li>
+      <li><a href="#s11">Purging &amp; Cleanup</a></li>
+      <li><a href="#s12">Security &amp; Permissions</a></li>
+      <li><a href="#s13">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS PASTEBIN?                   -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is Pastebin?</h2>
+  <p>It's 14:02. Raj is debugging a flaky deploy on his laptop and a 50KB Java stack trace explodes across his terminal. He needs to send it to Sarah on the SRE team. He could paste it into Slack — but Slack truncates after a few hundred lines and the indentation gets murdered. Instead Raj opens <code>pastebin.com</code>, pastes the trace into a text box, hits "Create" and gets back <code>https://pastebin.com/aZx9k2</code>. He drops the URL in chat. Sarah clicks it three minutes later and sees the same stack trace, formatted exactly as Raj pasted it. That round-trip is what we're designing.</p>
+
+  <p>Pastebin (and clones like Hastebin, GitHub Gist, Pastie) lets users save a chunk of <strong>plain text</strong> — code, config, log output, JSON dumps, error messages — and get back a unique, shareable URL. The text lives at that URL until it expires or is deleted. The defining trait: <strong>the URL returns the text content itself</strong>, not a redirect to somewhere else. That single difference, more than anything, drives the architecture away from a URL-shortener shape and into a two-plane storage system.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How do we generate a short, unique URL key for each paste without collisions? (2) How do we cheaply store billions of variable-sized blobs (1KB to 10MB each) and still serve any one of them in under 100ms?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Before drawing a single box, pin down what the system must do. In an interview, asking these questions out loud signals you know the difference between a 30-line CRUD app and a real distributed system.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Users can upload (paste) plain text and get back a unique URL</li>
+        <li>Hitting that URL returns the original text, exactly as pasted</li>
+        <li>Pastes are <strong>text-only</strong> — no images, video, or binary uploads</li>
+        <li>Pastes <strong>expire</strong> after a default window; users can override the expiry</li>
+        <li>Users can optionally pick a <strong>custom alias</strong> for their paste URL</li>
+        <li>Users can <strong>delete</strong> a paste they own before expiry</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Highly reliable</strong> — once a paste is saved, it must never silently disappear</li>
+        <li><strong>Highly available</strong> — paste URLs are shared in chat, tickets, runbooks; broken means embarrassing</li>
+        <li><strong>Real-time access with low latency</strong> — under 100ms p99 to fetch a paste</li>
+        <li><strong>Unguessable links</strong> — random keys, not sequential, so attackers can't crawl the namespace</li>
+      </ul>
+      <h3 style="margin-top:1rem">➕ Extended</h3>
+      <ul>
+        <li><strong>Analytics</strong> — view counts per paste, geo, referrer</li>
+        <li><strong>REST API</strong> for CLI tools, IDE plugins, CI pipelines to integrate</li>
+      </ul>
+      <h3 style="margin-top:1rem">🚫 Out of Scope</h3>
+      <ul>
+        <li>Rich media (images, video, binary blobs)</li>
+        <li>Comments, reactions, threading</li>
+        <li>Versioning / paste history (treat each paste as immutable)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>Reliability is the headline non-functional requirement.</strong> Unlike a URL shortener where the worst case is "this link redirects to nothing", Pastebin's worst case is "the actual content the user uploaded is gone forever". That makes <em>durability</em> — replicating blobs to multiple zones, never letting an ack precede a successful write — non-negotiable.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers drive every architectural choice. Pastebin is <strong>read-heavy but only modestly so</strong>: assume a <strong>5:1 read-to-write ratio</strong>. People paste once and a small group of teammates each click the link a few times. (Compare to a URL shortener at 100:1, where one viral link gets clicked millions of times — Pastebin links are usually shared with 2-10 specific people.)</p>
+
+  <h3 class="subh">Traffic estimates</h3>
+  <p>Assume <strong>1 million new pastes per day</strong>. With a 5:1 read ratio, that's <strong>5 million reads/day</strong>.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Writes</h3><p><span class="metric">~12 pastes/sec</span></p><p>1M / 86400</p></div>
+    <div class="card"><h3>Reads</h3><p><span class="metric">~58 reads/sec</span></p><p>5M / 86400</p></div>
+    <div class="card"><h3>Ingress</h3><p><span class="metric">~120 KB/s</span></p><p>12 × 10KB avg</p></div>
+    <div class="card"><h3>Egress</h3><p><span class="metric">~0.6 MB/s</span></p><p>58 × 10KB avg</p></div>
+  </div>
+
+  <h3 class="subh">Storage estimate (10 years)</h3>
+  <p>Average paste size: <strong>10 KB</strong> (a typical stack trace, a few hundred lines of YAML, a short snippet). Per day: <code>1M × 10KB = ~10 GB/day</code>. Over 10 years: <code>10 GB × 365 × 10 = ~36 TB</code>. With 70% capacity headroom: <span class="metric">~51.4 TB provisioned</span>.</p>
+
+  <h3 class="subh">Cache estimate (the 80/20 rule)</h3>
+  <p>Roughly 20% of pastes draw 80% of reads — they're the ones still being shared in active threads. Daily read volume is <code>58 × 86400 = ~5M requests/day</code>. To cache the hot 20% in memory: <code>0.2 × 5M × 10KB ≈</code> <span class="metric">~10 GB cache</span>. Comfortably fits on a single Memcached/Redis box; we'll still replicate for fault tolerance.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>New pastes/sec</td><td><code>12/s</code></td><td>Drives KGS throughput &amp; metadata write rate</td></tr>
+        <tr><td>Reads/sec</td><td><code>58/s</code></td><td>Drives blob cache size and read replicas</td></tr>
+        <tr><td>10-yr storage</td><td><code>36 TB</code></td><td>Forces blob-store split — too big for one DB</td></tr>
+        <tr><td>Hot cache</td><td><code>10 GB</code></td><td>Justifies a Memcached/Redis tier in front of S3</td></tr>
+        <tr><td>Egress</td><td><code>0.6 MB/s</code></td><td>Trivial — single LB tier handles it easily</td></tr>
+        <tr><td>Max paste size</td><td><code>10 MB</code></td><td>Hard cap to prevent abuse and streaming complexity</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-blue"><strong>Why cap individual pastes at 10MB?</strong> Without a limit, one user could upload a 1GB log file and force every read of that paste to stream a gigabyte through our app servers. 10MB covers 99.9% of real use cases (the longest real stack trace is rarely over 200KB), keeps memory bounded per request, and forces the abuse-case user toward a real file-sharing service like Dropbox.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>Three endpoints — create, fetch, delete. Defining APIs early locks down the contract before architecture. Note the key difference from a URL shortener: <strong>GET returns text content directly, not a 302 redirect</strong>.</p>
+
+  <span class="code-label cl-green">REST API surface</span>
+<pre><span class="cmt">// Create — write path, low QPS, payload up to 10MB</span>
+POST /api/v1/pastes
+{
+  "api_dev_key":  "abc123...",
+  "paste_data":   "Exception in thread \"main\" java.lang.NullPointerException...",
+  "paste_name":   "deploy-failure-2026-05-07",   <span class="cmt">// optional</span>
+  "custom_url":   "deploy-bug",                  <span class="cmt">// optional</span>
+  "expire_date":  "2026-05-14T00:00:00Z"         <span class="cmt">// optional</span>
+}
+→ 201 Created  { "paste_url": "https://pastebin.com/aZx9k2" }
+
+<span class="cmt">// Fetch — read path, returns raw text content (not a redirect)</span>
+GET /:paste_key
+→ 200 OK
+   Content-Type: text/plain; charset=utf-8
+   Body: &lt;the original paste content&gt;
+
+<span class="cmt">// Delete — owner only</span>
+DELETE /:paste_key
+Headers: { "X-API-Dev-Key": "abc123..." }
+→ 204 No Content</pre>
+
+  <div class="highlight hl-purple"><strong>Why GET returns content directly, not a redirect:</strong> a URL shortener's job is to point you elsewhere; Pastebin's job is to <em>be</em> the destination. A 302 to S3 would leak our internal storage URL, lose us analytics on every read after the first, and bypass any future ACL checks. Returning the body lets the app server enforce auth, log the view, and apply rate-limits before a single byte leaves the building.</div>
+
+  <div class="highlight hl-orange"><strong>Abuse prevention via <code>api_dev_key</code>:</strong> a malicious script could spam a million 10MB pastes and burn through our storage budget in a single afternoon. Every create is tied to a developer key that's rate-limited (e.g., 100 pastes/hour per free key, 10MB cap each). Anonymous users go through a captcha-gated UI flow and a per-IP quota.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: DATABASE                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>Database Design</h2>
+  <p>Look at the data and ask: what shape is it? Two very different shapes hide inside one paste. The <strong>metadata</strong> — paste_id, owner, expiry, creation time — is small (tens of bytes), structured, queryable, and tightly indexed. The <strong>content</strong> — the actual pasted text — is large (KB to MB), unstructured, and only ever fetched whole by primary key. Forcing both shapes into the same store is the central mistake we'll fix in the next section. Here we just acknowledge the split in the schema.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  PASTE {
+    string url_hash PK
+    string content_key
+    timestamp expiration_date
+    timestamp creation_date
+    bigint user_id FK
+    int size_bytes
+    string visibility
+  }
+  USER {
+    bigint id PK
+    string name
+    string email
+    timestamp creation_date
+    timestamp last_login
+  }
+  USER ||--o{ PASTE : "creates"
+    </div>
+  </div>
+
+  <h3 class="subh">Two-tier storage — the key design choice</h3>
+  <p>The <code>PASTE</code> row is small (~80 bytes) and lives in a relational or wide-column metadata DB (MySQL/Cassandra). The <code>content_key</code> column is a pointer into <strong>object storage (Amazon S3 or equivalent)</strong>, where the actual paste text lives as a single object. When Sarah opens <code>aZx9k2</code>, the app fetches the metadata row by <code>url_hash</code>, reads the <code>content_key</code>, then fetches the blob from S3.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📋 Metadata DB</h3>
+      <p>Holds the small, queryable rows: who owns this paste, when does it expire, what's its content_key, is it public or private. Workload: indexed lookups by <code>url_hash</code>, occasional range scans for cleanup. Either MySQL (sharded) or Cassandra works — Cassandra wins at the multi-million-row scale because of automatic sharding.</p>
+    </div>
+    <div class="card">
+      <h3>🪣 Blob Store (S3)</h3>
+      <p>Holds the large, opaque content blobs keyed by <code>content_key</code>. Workload: single-key GET / PUT, never queried by content. S3 is purpose-built for this — 11 nines of durability across multiple zones, costs roughly $0.023/GB/month for Standard, single-digit-ms latency for objects under a few MB.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>Why split the storage?</strong> A single MySQL row has practical limits — TEXT columns above a few MB cause replication lag, clog backups, and turn every <code>SELECT *</code> into a memory hog. Worse, you'd be paying premium DB storage ($0.10+/GB/month) to hold blobs that a flat object store handles for a quarter of the price with better durability. The split lets each tier do what it's good at: the DB indexes &amp; queries, S3 just serves bytes.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart, and the production shape where every box justifies itself. Numbers from §3 drive every decision.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Sketch the simplest possible system: one app server talks to one MySQL database. Each paste is a row with a <code>TEXT</code> column holding the full content. To create, INSERT. To fetch, SELECT.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C["Client"] --> APP["App Server"]
+  APP --> DB[("MySQL — metadata + blob")]
+    </div>
+  </div>
+
+  <p>Three concrete failures emerge the moment real traffic shows up:</p>
+  <div class="g3">
+    <div class="card">
+      <h3>💥 Big rows wreck the database</h3>
+      <p>A 10MB paste sitting in a TEXT column means every <code>SELECT</code> on that row has to deserialize 10MB. Replication streams every change byte-for-byte — a single 10MB write produces 30MB of replication traffic across 3 replicas. Index pages get fragmented around the giant rows, slowing down every neighboring query.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Backups become a nightmare</h3>
+      <p>At 36TB of pastes over 10 years, a full mysqldump takes days. Point-in-time recovery requires shipping every byte of every blob through the binlog. A storage layer optimized for tiny indexed rows is being asked to behave like a file server — the operational cost compounds every quarter.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Read traffic saturates the DB</h3>
+      <p>Each read pulls a multi-KB to multi-MB blob through the DB connection. Even at a modest 58 reads/sec, that's hundreds of MB/sec of data flowing through a system that's tuned for thousands of small queries per second. The DB CPU is fine; the I/O bandwidth and connection memory are what melt.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: Metadata Plane vs. Blob Plane</h3>
+  <p>The single most important insight in this design is that <strong>the small structured metadata and the large unstructured content have completely different shapes</strong>, and trying to store them together makes both worse. Split them into two planes that scale independently.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">📋 Metadata Plane</h3>
+      <p><strong>Tens of bytes per row, billions of rows.</strong> Workload: indexed lookups, joins to user/ACL tables, range scans for cleanup. Latency budget: under 10ms. Needs queries, indexes, transactions. <strong>What lives here:</strong> <code>(url_hash → content_key, owner, expiry, visibility)</code>. Storage: MySQL or Cassandra.</p>
+      <p><em>Think of it as the library catalog — small index cards, tightly indexed by Dewey decimal, fast to flip through.</em></p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">🪣 Blob Plane</h3>
+      <p><strong>KB to MB per object, billions of objects.</strong> Workload: pure single-key GET / PUT, never queried by content. Latency budget: under 50ms. Needs cheap durable storage, no querying. <strong>What lives here:</strong> the actual paste text bytes, keyed by <code>content_key</code>. Storage: Amazon S3 (or any object store).</p>
+      <p><em>Think of it as the actual library shelves — fat books, sit on the shelf, fetched whole by call number.</em></p>
+    </div>
+  </div>
+
+  <p><strong>What travels where, and why they scale differently:</strong> a single create generates one tiny metadata row (~80 bytes) <em>and</em> one big blob (up to 10MB). The metadata DB grows linearly in row count; the blob store grows linearly in bytes. They scale on totally different axes — sharding strategies, backup cadences, replication factors, even the cloud bills are different. Treating them as one thing is the original sin Pass 1 commits.</p>
+
+  <div class="highlight hl-cyan"><strong>So what changes:</strong> the central architectural idea is the two-plane split. Everything else — KGS, caches, load balancers — is the supporting cast that makes the two planes work together.</div>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered — find its matching card below to see what it does and crucially what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client — Web · CLI · SDK"]
+
+  subgraph EDGE["Edge Tier"]
+    LB["② Load Balancer"]
+  end
+
+  subgraph APPTIER["Application Tier"]
+    APP["③ Application Server"]
+  end
+
+  subgraph KEYTIER["Key Generation"]
+    KGS["④ Key Generation Service"]
+    KDB[("⑤ Key DB — unused + used pools")]
+  end
+
+  subgraph META["Metadata Plane"]
+    MDB[("⑥ Metadata DB — MySQL or Cassandra")]
+    MCACHE["⑧ Metadata Cache — Memcached"]
+  end
+
+  subgraph BLOB["Blob Plane"]
+    OBJ[("⑦ Object Storage — Amazon S3")]
+    BCACHE["⑨ Block Cache — Redis or CDN"]
+  end
+
+  subgraph OPS["Async Ops"]
+    CLEAN["⑩ Cleanup Service"]
+  end
+
+  CL --> LB
+  LB --> APP
+  APP --> KGS
+  KGS --> KDB
+  APP --> MCACHE
+  MCACHE -.miss.-> MDB
+  APP --> BCACHE
+  BCACHE -.miss.-> OBJ
+  APP --> MDB
+  APP --> OBJ
+  CLEAN -.scans.-> MDB
+  CLEAN -.deletes.-> OBJ
+  CLEAN -.recycles keys.-> KDB
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style APP fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style KGS fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style KDB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style MDB fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style OBJ fill:#171d27,stroke:#38b265,color:#d4dae5
+  style MCACHE fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style BCACHE fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style CLEAN fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client</h3>
+      <p>Anything that creates or fetches a paste — a browser hitting <code>pastebin.com</code>, a CLI tool like <code>pbcopy | paste</code>, an IDE plugin that uploads error output, a CI pipeline saving its build log. The client either POSTs text and gets back a URL, or GETs a URL and gets back text. From the client's view, the entire system is one URL.</p>
+      <p><strong>Solves:</strong> nothing on its own — but every design choice flows backward from "what does the client experience?" Latency, durability, and the URL contract are all client-facing concerns.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> Load Balancer</h3>
+      <p>The traffic cop. Sits in front of the app servers, distributes incoming HTTPS, terminates TLS, and yanks unhealthy backends out of rotation via health checks every few seconds. Round-robin is fine to start; switch to least-connections once a single 10MB upload can hog one pod's connection pool while sibling pods sit idle.</p>
+      <p><strong>Solves:</strong> single-server bottleneck and single-server failure. Without an LB, one app crash takes down the whole service. With it, we lose 1/N of capacity for a few seconds until health checks fail the bad node out.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">③</span> Application Server</h3>
+      <p>Stateless service that handles both write and read paths. <strong>Write flow:</strong> validate input → ask <strong>KGS</strong> for an unused key → PUT blob to <strong>S3</strong> with that key → INSERT metadata row pointing to the blob → return the paste URL. <strong>Read flow:</strong> parse hash from URL → check <strong>metadata cache</strong> then DB → check <strong>block cache</strong> then S3 → return the text body. We start with a single combined tier; if write/read shapes diverge under load (writes hold 10MB request bodies in memory, reads stream out), we split into separate write/read tiers later.</p>
+      <p><strong>Solves:</strong> the orchestration layer between the two planes. Without it the client would have to do "get a key, PUT the blob, write the metadata" itself — and any half-finished sequence (blob saved, metadata not) would orphan storage. The app server makes the create flow look atomic to the client.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">④</span> Key Generation Service (KGS)</h3>
+      <p>A standalone service whose only job is to pre-generate random 6-character base64 keys and stockpile them in the Key DB. With 64 characters and 6 positions, the namespace is <code>64⁶ ≈ 68.7 billion</code> keys — comfortably more than the <code>~3.65 billion</code> pastes we'd create in 10 years. Write app servers ask KGS for a key, then immediately use it. Same exact mechanism as the URL shortener (see §7); we lift it wholesale.</p>
+      <p><strong>Solves:</strong> the same write-path problem the URL shortener has. Without KGS, every create must do "generate hash → check DB for collision → retry if dup → insert", which gets expensive as the namespace fills. With KGS, the create path is one round-trip with zero collision risk by construction.</p>
+      <p><strong>What if KGS dies?</strong> Single point of failure — solved by running an active-standby pair plus each app server caches ~100 keys locally. A 30-second KGS outage doesn't block creates.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑤</span> Key DB (KGS storage)</h3>
+      <p>Two tables: <code>unused_keys</code> (the pool waiting to be claimed) and <code>used_keys</code> (already assigned). When a paste expires and the cleanup service deletes it, its key returns to the unused pool for recycling. Storage is tiny — even 10M unused keys ahead of demand is well under a gigabyte. A simple key-value store works fine.</p>
+      <p><strong>Solves:</strong> persisting the pool so KGS can restart without losing keys. If KGS held keys only in memory and crashed, every restart would lose 10K unallocated keys — acceptable, but persistence also lets us reserve a key for a specific user during multi-step flows ("draft a paste, publish later").</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑥</span> Metadata DB (MySQL / Cassandra)</h3>
+      <p>Source of truth for the small structured rows: <code>(url_hash, content_key, owner, expiration, visibility, size_bytes)</code>. At ~80 bytes per row times ~3.65 billion rows over 10 years that's ~290 GB — easily handled by a sharded MySQL or a Cassandra cluster of 5-10 nodes. Sharded by <code>url_hash</code> via consistent hashing so reads go straight to the right shard. Each shard replicated 3× across availability zones for durability.</p>
+      <p><strong>Solves:</strong> indexed lookups by url_hash in single-digit ms. Without it, an app server would have to know which S3 object belongs to a paste — but S3 has no concept of "paste expired" or "paste owner". The metadata DB carries every fact about the paste <em>except</em> its bytes.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑦</span> Object Storage (Amazon S3)</h3>
+      <p>The blob plane. Each paste's text is written as a single S3 object, keyed by <code>content_key</code> (a UUID, not the user-facing url_hash — that decoupling lets us re-key blobs during a future migration without touching user URLs). S3 gives us 11 nines of durability across 3 AZs, single-digit-ms first-byte latency for sub-MB objects, and storage costs roughly $0.023/GB/month — about a quarter of what equivalent DB storage would cost.</p>
+      <p><strong>Solves:</strong> cheap durable storage of variable-sized blobs at any scale. Without it, the metadata DB would carry the bytes too — and we'd be back at Pass 1's failures: bloated rows, slow backups, replication storms.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑧</span> Metadata Cache (Memcached)</h3>
+      <p>An in-memory key-value store holding the hottest metadata rows. Tiny (~1GB even at high hit rates because rows are tiny), but eliminates 80% of the DB hits for popular pastes. Read flow: app server sends <code>GET url_hash</code> → cache returns the row in microseconds → app then knows where to fetch the blob. Eviction: LRU.</p>
+      <p><strong>Solves:</strong> the metadata-DB read load. Without it every paste-fetch hits the DB just to find out where the blob lives — and a viral paste sees 1000s of metadata reads/sec all returning the same 80-byte row, which is wasted work.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑨</span> Block Cache (Redis or CDN)</h3>
+      <p>The bigger sibling of the metadata cache — caches the actual paste content bytes. Sized at ~10GB to hold the hot 20% (per §3). For public pastes this can also be a CDN — a viral 100KB paste cached at edge POPs gets fetched by users in 20ms instead of the 80ms it takes to round-trip to S3 from origin. Eviction: LRU. Invalidation: on delete/expire only (pastes are immutable).</p>
+      <p><strong>Solves:</strong> the S3 cost-and-latency problem for hot blobs. S3 charges per request; a viral paste at 1000 reads/sec costs real money in S3 GETs over a day. Caching it eliminates ~95% of those requests, slashing both the bill and the p50 latency.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑩</span> Cleanup Service</h3>
+      <p>A background worker that scans the metadata DB for expired entries (every paste has an <code>expiration_date</code>), deletes the matching S3 object, deletes the metadata row, and returns the freed key to the KGS unused pool. Runs in low-traffic windows. Also does <strong>lazy expiry on read</strong> — if an app server fetches an expired paste, it deletes both blob and row inline before returning 404.</p>
+      <p><strong>Solves:</strong> preventing storage from growing unbounded. Without cleanup, our 10-year storage estimate would be 10-year accumulation forever — and S3, while cheap, is not free at 100TB+ of dead pastes nobody clicks.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Raj pastes, Sarah opens</h3>
+  <p>Two real flows, mapped to the numbered components above:</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>✍️ Write flow — Raj uploads a 50KB stack trace at 14:02</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Raj's <strong>browser</strong> ① POSTs <code>{paste_data: "...50KB stack trace..."}</code> to <code>pastebin.com/api/v1/pastes</code>.</li>
+        <li>The <strong>Load Balancer</strong> ② routes it to an <strong>Application Server</strong> ③.</li>
+        <li>App server validates: payload &lt; 10MB ✓, api_dev_key under quota ✓.</li>
+        <li>App server calls <strong>KGS</strong> ④: "give me a key" → KGS pops <code>aZx9k2</code> from its in-memory pool and atomically marks it used in <strong>Key DB</strong> ⑤.</li>
+        <li>App server generates a UUID <code>content_key = "blob-7f3a...-9x"</code> and PUTs the 50KB blob to <strong>S3</strong> ⑦ at that key. S3 acknowledges only after replicating across 3 AZs.</li>
+        <li>App server INSERTs into <strong>Metadata DB</strong> ⑥: <code>{url_hash: "aZx9k2", content_key: "blob-7f3a...-9x", user_id: 42, expiration: 2026-05-14, size: 51200, visibility: "PUBLIC"}</code>.</li>
+        <li>App server returns <code>{paste_url: "https://pastebin.com/aZx9k2"}</code>. <em>Total elapsed: 80ms — most of it the S3 PUT.</em></li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h3>📖 Read flow — Sarah opens the URL 3 hours later</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah's <strong>browser</strong> ① GETs <code>pastebin.com/aZx9k2</code>.</li>
+        <li><strong>Load Balancer</strong> ② → <strong>Application Server</strong> ③ (any pod, stateless).</li>
+        <li>App server checks <strong>Metadata Cache</strong> ⑧ for <code>aZx9k2</code>:
+          <ul style="margin-top:.4rem">
+            <li><strong>Hit (Sarah is the 4th viewer in 3 hours, paste is hot):</strong> cache returns the row → app server reads <code>content_key</code>.</li>
+            <li><strong>Miss:</strong> app server queries <strong>Metadata DB</strong> ⑥, populates cache, reads <code>content_key</code>.</li>
+          </ul>
+        </li>
+        <li>App server checks <code>expiration_date</code> — not expired ✓.</li>
+        <li>App server checks <strong>Block Cache</strong> ⑨ for <code>blob-7f3a...-9x</code>:
+          <ul style="margin-top:.4rem">
+            <li><strong>Hit:</strong> returns the 50KB body in <em>~25ms total</em>. Done.</li>
+            <li><strong>Miss:</strong> app server fetches the blob from <strong>S3</strong> ⑦, populates the block cache, returns the body in <em>~80ms total</em>.</li>
+          </ul>
+        </li>
+        <li>App server emits an async view event for analytics. Browser renders the text.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> Pastebin keeps fast and cheap by never letting the metadata and blob workloads compete. Tiny indexed rows live in the metadata plane (DB + Memcached), where queries fly. Large opaque bytes live in the blob plane (S3 + a block cache), where storage is cheap and durable. Every other component — KGS, LB, cleanup — exists to make the two planes work together as if they were one. That's the architecture in one breath.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: KGS                                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-yellow">Step 7</span>
+  <h2>Key Generation Service — Brief Recap</h2>
+  <p>KGS in Pastebin is mechanically identical to KGS in the URL shortener. Rather than re-explain it from scratch, here's the short version with a pointer to the deeper discussion.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant W as App Server
+  participant K as KGS
+  participant KDB as Key DB
+  participant U as Metadata DB
+
+  Note over K,KDB: KGS pre-generates batches of keys in background
+  K->>KDB: Generate 10K random keys, INSERT into unused
+  KDB-->>K: OK
+
+  W->>K: Give me a key
+  K->>KDB: Atomically move 1 key from unused to used
+  KDB-->>K: aZx9k2
+  K-->>W: aZx9k2
+  W->>U: INSERT (aZx9k2, content_key, ...)
+  U-->>W: OK
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📝 The KGS recipe</h3>
+      <ul>
+        <li><strong>6-char base64 keys</strong> → <code>64⁶ = 68.7B</code> namespace, vs ~3.65B pastes over 10 years</li>
+        <li>KGS generates random keys in the background and stores them in the <code>unused_keys</code> table</li>
+        <li>App servers cache batches of ~100 keys locally for burst tolerance</li>
+        <li>Atomic POP from the pool — concurrent app servers can never get the same key</li>
+        <li>Active-standby KGS pair eliminates the single point of failure</li>
+        <li>Expired-paste cleanup recycles keys back into the unused pool</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>📚 Want the full discussion?</h3>
+      <p>The URL shortener page covers the <strong>encoding-vs-KGS trade-off</strong>, the <strong>collision math</strong>, the <strong>concurrency primitives</strong> (Redis atomic POP vs row-level <code>SELECT FOR UPDATE</code>), and the <strong>failure modes</strong> (what happens to a key handed out to an app that crashes before insert) in depth.</p>
+      <p style="margin-top:.55rem"><a href="url-shortener-hld.html#s7" style="color:var(--orange);font-weight:600">→ Read the full KGS section in the URL shortener HLD</a></p>
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>The reuse insight:</strong> any system that needs short, unguessable, unique keys at scale benefits from the same KGS pattern — Pastebin, URL shorteners, share-link generators, password reset tokens. Build it once as a service; reuse the contract everywhere.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: PARTITIONING                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-green">Step 8</span>
+  <h2>Data Partitioning &amp; Replication</h2>
+  <p>The two planes partition differently. The metadata plane we partition ourselves; the blob plane S3 partitions for us.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📋 Metadata DB — hash-based with consistent hashing</h3>
+      <p>Compute <code>shard = consistent_hash(url_hash) % N</code>. Distribution is uniform by construction — no hot shards even if a paste goes viral, because viral reads hit the cache, not the DB. Use <strong>consistent hashing</strong> (not modulo) so adding/removing a shard only relocates 1/N of keys instead of all of them — no global rebalancing during scale-out.</p>
+    </div>
+    <div class="card">
+      <h3>🪣 Object Storage — S3 handles it for us</h3>
+      <p>S3 partitions objects by key prefix internally and rebalances automatically. Our only job is to choose <code>content_key</code> values that don't share long prefixes (UUID v4 keys are perfect — random first characters spread load uniformly across S3's internal partitions). We give S3 the keys; S3 worries about where to put them.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Replication strategy</h3>
+  <p><strong>Metadata DB:</strong> each shard replicated to <strong>3 nodes across 3 availability zones</strong>. Cassandra's <code>R=2, W=2, N=3</code> gives writes acknowledged by 2 of 3 replicas (durable even if 1 zone dies) and reads from 2 replicas with conflict resolution. <strong>S3:</strong> built-in 11 nines of durability via cross-AZ erasure coding — we get this for free, no configuration.</p>
+
+  <div class="highlight hl-green"><strong>Why this two-tier partitioning is the win:</strong> we get the queryability of a sharded DB for the small data and the operational simplicity of a managed object store for the huge data. The DB cluster stays small (a dozen nodes for 290GB of metadata is wildly underutilized) and S3 absorbs the petabyte-scale future without any planning on our part.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: CACHE                               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-cyan">Step 9</span>
+  <h2>Cache</h2>
+  <p>Two caches, one per plane. Each has a different size and, surprisingly, a different optimal backing store.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📋 Metadata Cache — small, hot rows</h3>
+      <p><strong>Size:</strong> ~1 GB. Holds (url_hash → metadata row) for the active hot set. Eviction: LRU. Backing store: <strong>Memcached</strong> — purpose-built for tiny key-value lookups, microsecond latency, dead simple to operate. Hit rate target: 80%+.</p>
+      <p><strong>What it solves:</strong> a viral paste with 1000 concurrent viewers would otherwise hammer the metadata DB with 1000 reads/sec returning the same 80-byte row. The cache absorbs all of them.</p>
+    </div>
+    <div class="card">
+      <h3>🪣 Block Cache — bigger, hot blobs</h3>
+      <p><strong>Size:</strong> ~10 GB (hot 20% of blob bytes). Holds (content_key → text body). Eviction: LRU. Backing store: <strong>Redis</strong> for private/auth-required pastes, or a <strong>CDN</strong> (CloudFront) for public pastes — the CDN gives us global edge caching for free.</p>
+      <p><strong>What it solves:</strong> S3 GETs cost money per request and add 50-100ms of latency. For a viral paste, eliminating 95% of S3 GETs cuts both the bill and the p50 read latency dramatically.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Invalidation</h3>
+  <p>Pastes are <strong>immutable</strong> by design (no edit feature) — the only invalidation event is delete or expire. The cleanup service explicitly evicts both caches when it removes a paste. No write-through dance required, which makes the cache layer a lot simpler than in a system with mutable content.</p>
+
+  <h3 class="subh">Replication &amp; warm-up</h3>
+  <p>Each cache cluster is replicated 2× — losing one node means a few seconds of degraded hit rate as misses repopulate from DB/S3. Cold start: caches fill organically as requests come in; the first few minutes after a deploy see slightly higher backend load, then steady state.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: LOAD BALANCER                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-purple">Step 10</span>
+  <h2>Load Balancer</h2>
+  <p>Three LB tiers, each playing a slightly different role.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>① Client → App tier</h3>
+      <p>Public-facing LB (AWS ALB / nginx). Distributes incoming HTTPS across app pods. Health-checks every 5s, evicts unhealthy pods. Terminates TLS so backend pods don't pay the crypto cost. Handles WAF rules and per-IP rate limits.</p>
+    </div>
+    <div class="card">
+      <h3>② App → Cache</h3>
+      <p>Client-side or sidecar LB. Uses <strong>consistent hashing</strong> on the url_hash so the same paste always lands on the same cache node — maximizing hit rate. A simple round-robin would scatter the same paste across all cache nodes, killing the cache.</p>
+    </div>
+    <div class="card">
+      <h3>③ App → DB / S3</h3>
+      <p>Cassandra/MySQL drivers route to the right shard themselves via the cluster topology. S3 handles its own request distribution — we just call the SDK. No LB to operate here.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Algorithm choice</h3>
+  <p><strong>Start with Round Robin</strong> — simple, no overhead, no state. <strong>Upgrade to Least Connections</strong> once you see one pod's CPU consistently higher than others (often because it caught a 10MB upload that's still streaming and never freed its connection slot). Smart LBs also do per-pod load reporting and shift traffic away from struggling nodes proactively.</p>
+
+  <div class="highlight hl-purple"><strong>The LB is itself a single point of failure</strong> — solved with an active-passive pair using virtual IP failover, or natively in cloud LBs (AWS ALB is multi-AZ by default).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: PURGING                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-yellow">Step 11</span>
+  <h2>Purging &amp; Cleanup</h2>
+  <p>Pastes have <code>expiration_date</code> — what happens when it passes? Two strategies, used together.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🐢 Lazy cleanup — delete on first read after expiry</h3>
+      <p>App server fetches a paste, sees <code>expiration_date &lt; now()</code>, returns 404 to the user, and asynchronously: (a) DELETE the S3 object, (b) DELETE the metadata row, (c) return the key to the KGS unused pool. <strong>Pro:</strong> no scanning required, dead pastes get cleaned naturally as they get accessed. <strong>Con:</strong> expired-but-never-read pastes linger forever in storage.</p>
+    </div>
+    <div class="card">
+      <h3>🧹 Active cleanup — nightly batch sweep</h3>
+      <p>The Cleanup Service ⑩ runs in a low-traffic window, scans the metadata DB for <code>expiration_date &lt; now()</code>, and bulk-deletes the matching rows + S3 objects + recycles keys. Catches the long-tail of expired-but-unread pastes that lazy cleanup missed.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Two-step delete is critical</h3>
+  <p>Always delete the <strong>S3 blob first</strong>, then the metadata row. If we delete the metadata first and crash before the S3 delete, we orphan a blob with no metadata — invisible garbage that never gets reclaimed. Deleting the blob first means a crash leaves a dangling metadata row pointing at a missing blob, which the next read will detect (404) and clean up. Garbage that announces itself is much better than garbage that doesn't.</p>
+
+  <h3 class="subh">Default expiry policy</h3>
+  <p>Unlike URLs (which usually default to "never"), pastes default to expiring — most pastes are throwaway debug content that nobody needs after a week. Sensible defaults: <strong>1 day</strong> for anonymous pastes, <strong>1 month</strong> for logged-in users, <strong>"never"</strong> as an opt-in for paid tiers. Users can override per-paste up to a max of 1 year for free-tier accounts.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: SECURITY & PERMISSIONS             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-red">Step 12</span>
+  <h2>Security &amp; Permissions</h2>
+  <p>Pastes can carry sensitive content — leaked credentials, internal logs, half-finished code. Three layers of defense.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔐 Public vs Private pastes</h3>
+      <p>The metadata row carries a <code>visibility</code> column: <code>PUBLIC</code> (anyone with the URL can read), <code>UNLISTED</code> (only those who have the URL — same as PUBLIC but excluded from search/discovery), or <code>PRIVATE</code> (only the owner + a whitelist via an ACL table). On read, the app server checks the auth token against the ACL; mismatch returns 401, not 404, so a curious viewer knows the paste exists but can't see it.</p>
+    </div>
+    <div class="card">
+      <h3>🔒 Unguessable URLs</h3>
+      <p>KGS-generated keys are <strong>random 6-character base64</strong>, not sequential. An attacker can't enumerate <code>/aaaaaa, /aaaaab, ...</code> to discover private pastes — the keyspace is 68.7 billion, sparsely populated, so brute force is infeasible (you'd statistically need to try 20+ keys to find a single valid one). Combined with per-IP rate limiting on misses, scraping is impractical.</p>
+    </div>
+    <div class="card">
+      <h3>🚫 Rate limiting per api_dev_key</h3>
+      <p>Per-API-key quotas — say 100 pastes/hour for free tier, 10MB cap each, 1000 reads/hour. Token bucket implemented in Redis. Anonymous creates require captcha. Without this, a single script could exhaust 10TB of S3 storage in an afternoon.</p>
+    </div>
+    <div class="card">
+      <h3>🛡️ Abuse / phishing</h3>
+      <p>Submitted pastes go through async scanners — secret-detection (regex for AWS keys, GitHub tokens, etc.), malware signatures in attached scripts. Flagged pastes go into a moderation queue or are auto-redacted. Reactive: a "report abuse" link on every paste view; reported pastes get rate-limited and manually reviewed.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>Why visibility lives on the metadata row, not the S3 object:</strong> S3's per-object ACLs are slow to update and clunky to manage at billion-object scale. Far simpler to enforce permissions in the app server on every read — the app already has to fetch metadata before the blob, so the ACL check is one extra in-memory comparison. Defense in depth: S3 buckets are still <code>private</code> by default, so even a leaked content_key alone can't reach the bytes — only the app server has signed-URL access.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-blue">Step 13</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">Why split metadata and blob storage instead of one DB?</div>
+  <div class="ans"><strong>Different shapes, different stores.</strong> Metadata rows are tens of bytes, indexed, queried by url_hash. Blobs are KB to MB, opaque, fetched whole by content_key. Forcing both into one MySQL table means giant TEXT columns wreck replication and backups, while the small structured rows underuse the DB's indexing power. Splitting lets each tier do what it's good at — the DB indexes, S3 just serves bytes — and the cost is a single extra round-trip per read (which the metadata cache eliminates 80% of the time).</div>
+
+  <div class="iq">Why S3 (or any object store) instead of a filesystem on the app servers?</div>
+  <div class="ans"><strong>Durability, scale, and statelessness.</strong> A filesystem on the app server makes the app server stateful — kill the box and you lose the pastes that were on its disk. Replicating the filesystem yourself means re-implementing what S3 already does: cross-AZ replication, erasure coding, automatic rebalancing. S3 gives 11 nines of durability out of the box for $0.023/GB/month. The app servers stay stateless and become trivially horizontally scalable.</div>
+
+  <div class="iq">How do you handle 10MB pastes vs 1KB pastes — same code path?</div>
+  <div class="ans"><strong>Same metadata path, different blob path.</strong> The metadata row is the same size (~80 bytes) regardless of paste size. For S3, sub-5MB blobs use a single PUT; multipart upload kicks in above 5MB to allow resumable uploads and parallel chunk transfer. On read, sub-1MB blobs return as one body; larger blobs are streamed back to the client to keep app-server memory bounded. The 10MB hard cap exists specifically so we never have to design for 1GB pastes — that's a different system (file sharing).</div>
+
+  <div class="iq">How do you handle a viral paste getting 10K reads/sec?</div>
+  <div class="ans"><strong>The two caches absorb it entirely.</strong> A viral paste is by definition "hot" — its metadata row sits in the metadata cache, its blob sits in the block cache (or even the CDN if public). Origin S3 sees zero traffic from it. Origin DB sees zero traffic from it. The only choke point is bandwidth out of the cache/CDN, which both are explicitly designed for. View-count telemetry is async via Kafka, which buffers the spike without dropping events or melting a DB row.</div>
+
+  <div class="iq">What's the trade-off of a 5:1 read:write ratio (vs URL shortener's 100:1)?</div>
+  <div class="ans"><strong>The cache layer earns less.</strong> In a URL shortener, 100 reads-per-write means caching is wildly cost-effective — one cached entry pays for itself across hundreds of reads. In Pastebin at 5:1, a cached paste pays back across only 5 reads, so cache hit rate matters less. We still cache (because the bytes are bigger and S3 GETs cost money), but we don't need to obsess over edge POPs the way a shortener does. <em>However</em>: writes are 100× larger (10KB avg vs 100 bytes), so write durability and S3 PUT latency become the headline concerns instead of read fan-out.</div>
+
+  <div class="iq">How would you add syntax highlighting?</div>
+  <div class="ans"><strong>Client-side, async.</strong> The server returns plain text — never pre-rendered HTML. The browser loads a syntax-highlighting library (Prism, Highlight.js) and detects the language from the content or a user-selected hint stored in the metadata row (<code>language: "java"</code>). Doing it client-side keeps the server stateless and lets us add new language support without touching the backend. For the API, an optional <code>?format=html</code> query param could return server-rendered HTML, with the rendered output cached at the CDN layer keyed on (paste_id, format).</div>
+
+  <div class="iq">What if KGS goes down?</div>
+  <div class="ans"><strong>Three layers of defense.</strong> (1) Active-standby KGS pair with failover in seconds. (2) Each app server caches ~100 unallocated keys locally — a 30-second KGS outage means creates still succeed from local cache. (3) If both fail, app servers degrade to inline random-key generation with collision-check fallback (slower, occasional retries, but doesn't drop creates). Same playbook as the URL shortener — see that page for the deeper discussion.</div>
+
+  <div class="iq">How do you prevent storage cost from running away?</div>
+  <div class="ans"><strong>Three knobs.</strong> (1) <strong>Hard size cap</strong> at 10MB per paste, enforced before S3 PUT. (2) <strong>Default expiry</strong> — anonymous pastes expire in 1 day, free-tier in 1 month; only paid users get permanent. (3) <strong>Active cleanup</strong> nightly + lazy cleanup on expired reads ensures expired blobs actually leave S3. (4) <strong>Tiered storage</strong>: pastes not read in 90 days transition automatically from S3 Standard to S3 Infrequent Access, cutting their per-GB cost by ~70% with no code change.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "It's a two-plane storage system — small structured metadata in a sharded DB fronted by Memcached, large blob bytes in S3 fronted by a block cache, glued together by a stateless app tier and a Key Generation Service that pre-mints unique 6-char URL keys offline. Metadata stays fast, blobs stay cheap, neither competes with the other."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

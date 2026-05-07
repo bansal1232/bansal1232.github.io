@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TinyURL / Short URL Service — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>TinyURL / Short <span>URL Service</span></h1>
+  <p class="sub">From "redirect 20K times a second" to a sharded, cached, KGS-backed system — the architecture, the trade-offs, and the production shape that earns every box</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Why URL Shortening?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">Database Design</a></li>
+      <li><a href="#s6">High-Level Architecture</a></li>
+      <li><a href="#s7">Encoding vs. KGS — Algorithm</a></li>
+      <li><a href="#s8">Data Partitioning</a></li>
+      <li><a href="#s9">Cache</a></li>
+      <li><a href="#s10">Load Balancer</a></li>
+      <li><a href="#s11">Purging &amp; Cleanup</a></li>
+      <li><a href="#s12">Telemetry &amp; Security</a></li>
+      <li><a href="#s13">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHY URL SHORTENING?                 -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>Why URL Shortening?</h2>
+  <p>Imagine Sarah is tweeting a link to a long blog article. The original URL is <code>https://www.educative.io/collection/page/5668639101419520/5649050225344512/5668600916475904/</code> — 100+ characters that eat up half of her tweet, look ugly, and are easy to mistype. She runs it through TinyURL and gets back <code>http://tinyurl.com/jlg8zpc</code> — 25 characters, clean, clickable. Behind that one tap of the "shorten" button is a system that has to: generate a unique key nobody else has ever used, store it forever, and redirect billions of people to the right place in milliseconds. That's the system we're designing.</p>
+
+  <p>Beyond just being shorter, URL shorteners are useful for: <strong>tracking clicks</strong> (campaign analytics), <strong>hiding affiliated original URLs</strong>, <strong>device-optimized links</strong>, and <strong>QR codes that fit on a poster</strong>.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How do we generate a short, unique key for each URL without collisions? (2) How do we serve 20,000 redirects per second with under-100ms latency, when most of those redirects are for the same handful of viral links?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Before drawing a single box, pin down exactly what the system must do. In an interview, asking these questions shows you're not just regurgitating a memorized solution.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Given a long URL, generate a shorter unique alias (the "short link")</li>
+        <li>When users hit a short link, redirect them to the original URL</li>
+        <li>Users can optionally pick a <strong>custom alias</strong> for their URL</li>
+        <li>Links expire after a default timespan; users can override the expiry</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Highly available</strong> — if redirection is down, every link on the internet pointing at us is broken</li>
+        <li><strong>Real-time redirection</strong> — under 100ms latency p99</li>
+        <li><strong>Unguessable</strong> short keys — should not be predictable (for privacy &amp; abuse)</li>
+      </ul>
+      <h3 style="margin-top:1rem">➕ Extended</h3>
+      <ul>
+        <li><strong>Analytics</strong> — click counts, geo, referrer, browser</li>
+        <li><strong>REST APIs</strong> for other services to integrate</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The non-functional requirements are the harder ones.</strong> Generating a unique key is a 30-line problem. Serving 20K reads/sec with global low latency, and never losing a single mapping over 5 years, is the part that actually requires architecture.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers are not optional in HLD. They drive every architectural choice — sharding, caching, load balancing — so do them out loud, even if rough. Our system is <strong>read-heavy</strong>: assume a 100:1 read-to-write ratio (every URL gets created once but redirected hundreds of times).</p>
+
+  <h3 class="subh">Traffic estimates</h3>
+  <p>Assume <strong>500 million new URLs created per month</strong>. With a 100:1 read ratio, that's <strong>50 billion redirects/month</strong>.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Writes</h3><p><span class="metric">~200 URLs/sec</span></p><p>500M / (30 × 86400)</p></div>
+    <div class="card"><h3>Reads</h3><p><span class="metric">~20K redirects/sec</span></p><p>100 × 200/sec</p></div>
+    <div class="card"><h3>Ingress</h3><p><span class="metric">~100 KB/s</span></p><p>200 × 500 bytes</p></div>
+    <div class="card"><h3>Egress</h3><p><span class="metric">~10 MB/s</span></p><p>20K × 500 bytes</p></div>
+  </div>
+
+  <h3 class="subh">Storage estimate (5 years)</h3>
+  <p>500M new URLs × 12 months × 5 years = <strong>30 billion records</strong>. At ~500 bytes per record (URL + metadata): <span class="metric">~15 TB total</span>. With 70% capacity headroom: <span class="metric">~22 TB provisioned</span>.</p>
+
+  <h3 class="subh">Cache estimate (the 80/20 rule)</h3>
+  <p>20% of URLs generate 80% of traffic. Daily read volume is <code>20K × 86400 = ~1.7B requests/day</code>. To cache the hot 20% in memory: <code>0.2 × 1.7B × 500 bytes ≈</code> <span class="metric">170 GB cache</span>. A modern server has 256GB RAM — this fits on one box, but we'll replicate for redundancy.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>New URLs/sec</td><td><code>200/s</code></td><td>Drives KGS throughput &amp; write DB sizing</td></tr>
+        <tr><td>Redirects/sec</td><td><code>20K/s</code></td><td>Drives cache size, LB tier, and read replicas</td></tr>
+        <tr><td>5-yr storage</td><td><code>15 TB</code></td><td>Forces sharding — too big for one box</td></tr>
+        <tr><td>Hot cache</td><td><code>170 GB</code></td><td>Justifies a Memcached/Redis tier in front of DB</td></tr>
+        <tr><td>Egress</td><td><code>10 MB/s</code></td><td>Standard — single LB tier handles it</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>Two endpoints carry 99% of the traffic: <strong>create</strong> a short URL, and <strong>resolve</strong> a short URL (via HTTP redirect). A third for delete. Defining APIs early locks down the contract before architecture.</p>
+
+  <span class="code-label cl-green">REST API surface</span>
+<pre><span class="cmt">// Create — write path, low QPS</span>
+POST /api/v1/urls
+{
+  "api_dev_key":  "abc123...",
+  "original_url": "https://www.educative.io/...long-url...",
+  "custom_alias": "my-blog-post",   <span class="cmt">// optional</span>
+  "user_name":    "sarah",          <span class="cmt">// optional</span>
+  "expire_date":  "2027-12-31"      <span class="cmt">// optional</span>
+}
+→ 201 Created  { "short_url": "https://tinyurl.com/jlg8zpc" }
+
+<span class="cmt">// Resolve — read path, high QPS, served via HTTP redirect not JSON</span>
+GET /:url_key
+→ 302 Found  Location: https://www.educative.io/...long-url...
+   <span class="cmt">// 302 (not 301) so we keep getting hits for analytics</span>
+
+<span class="cmt">// Delete</span>
+DELETE /api/v1/urls/:url_key
+Headers: { "X-API-Dev-Key": "abc123..." }
+→ 204 No Content</pre>
+
+  <div class="highlight hl-blue"><strong>Why <code>302 Found</code> and not <code>301 Moved Permanently</code>?</strong> 301 lets the browser cache the redirect target and skip our server on the next click — great for latency, terrible for click-counting analytics. 302 makes the browser re-ask us each time, so every click flows through our telemetry. Trade-off: ~10ms per redirect we wouldn't otherwise spend, in exchange for accurate metrics.</div>
+
+  <div class="highlight hl-orange"><strong>Abuse prevention via <code>api_dev_key</code>:</strong> a malicious user could exhaust our 68 billion 6-character keys by spamming creates. We tie every create to a developer key and rate-limit per key (e.g., 1000 URLs/hour). Anonymous users go through a captcha-gated UI flow.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: DATABASE                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>Database Design</h2>
+  <p>What does our data actually look like? Four observations: (1) we'll store <strong>billions of records</strong>, (2) each record is <strong>tiny — under 1KB</strong>, (3) there are <strong>no relationships</strong> between records other than "user X created URL Y", and (4) the workload is <strong>read-heavy</strong> with extreme key-based access. This points loud and clear at a <strong>NoSQL key-value store</strong> — DynamoDB, Cassandra, or Riak. Joins are nonexistent; horizontal scaling is mandatory.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  URL {
+    string hash PK
+    string original_url
+    timestamp creation_date
+    timestamp expiration_date
+    bigint user_id FK
+  }
+  USER {
+    bigint id PK
+    string name
+    string email
+    timestamp creation_date
+    timestamp last_login
+  }
+  USER ||--o{ URL : "creates"
+    </div>
+  </div>
+
+  <p>The <code>URL</code> table's primary key is the <strong>short hash itself</strong> (the 6-8 character alias). This is the most-queried field by orders of magnitude, so making it the PK gives us O(1) lookups. The <code>original_url</code> is just a payload — we never search by it.</p>
+
+  <div class="highlight hl-cyan"><strong>Why NoSQL beats SQL here:</strong> our access pattern is <em>"give me the URL for hash X"</em> — the simplest possible key-value query, repeated 20K times/sec. SQL's joins, transactions, and schema rigidity buy us nothing; their cost (vertical scaling, harder sharding) hurts. A wide-column NoSQL store like Cassandra also gives us free multi-region replication, which we'll need for global low-latency redirects.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart, and the production shape where every box justifies itself. Numbers from §3 drive every decision.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Sketch the simplest possible system: one app server talks to one MySQL database. To create a URL, the app generates a hash and inserts it. To redirect, the app looks up the hash and returns a 302.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C[Client] --> APP[App Server]
+  APP --> DB[("MySQL")]
+    </div>
+  </div>
+
+  <p>Three concrete failures emerge the moment traffic shows up:</p>
+  <div class="g3">
+    <div class="card">
+      <h3>💥 Hash collisions at write time</h3>
+      <p>Two users submit the same long URL — they get the same short hash. Or worse, two <em>different</em> URLs hash to the same 6-character prefix. Each create now costs a DB read (to check collision) before the write. At 200 writes/sec each adding a round trip, write latency creeps up — and collision-retry storms can spike it 10×.</p>
+    </div>
+    <div class="card">
+      <h3>💥 20K reads/sec crushes one DB</h3>
+      <p>A single MySQL instance tops out around 5K-10K simple SELECTs/sec on commodity hardware. We need 20K, growing 20%/year. The DB CPU pegs at 100% and p99 latency balloons from 5ms to 500ms — every redirect on the internet now feels broken.</p>
+    </div>
+    <div class="card">
+      <h3>💥 15TB doesn't fit on one box</h3>
+      <p>Five years of growth gives us 15TB of data. A single MySQL server with one disk can't hold it. Even if it could, backup/restore takes hours and a single disk failure loses every link we ever made — which is unacceptable for a service whose entire promise is "this link works forever".</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: Write Path vs. Read Path vs. Key Generation</h3>
+  <p>The single most important insight in this design is that <strong>three workloads have wildly different shapes and must scale independently</strong>:</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">✍️ Write Path</h3>
+      <p><strong>200 req/sec.</strong> Low volume, but every request must be durable — losing a write means a user got back a short link that points to nothing. Latency budget: 50-100ms. Needs strong consistency on the unique-key constraint.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">📖 Read Path</h3>
+      <p><strong>20,000 req/sec.</strong> 100× the write volume. Latency budget: 50ms p99 — a slow redirect is a broken-feeling link. Stale reads are fine (URLs don't change). Cacheable up to the moon.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">🔑 Key Generation</h3>
+      <p><strong>Constant background process.</strong> Manufacture unique 6-char keys offline so the write path never has to retry on collisions. Decoupled from request traffic entirely — pre-fills a pool that workers drain.</p>
+    </div>
+  </div>
+
+  <p>This three-way split lets us scale the read path with cheap stateless replicas, keep the write path simple, and bury the collision problem inside a dedicated <strong>Key Generation Service (KGS)</strong> that runs on its own clock.</p>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered — find its matching card below to see what it does and crucially what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client — Browser, App, SDK"]
+
+  subgraph EDGE["Edge Tier"]
+    CDN["② CDN — CloudFront / Akamai"]
+    LB["③ Load Balancer"]
+  end
+
+  subgraph WRITE["Write Path"]
+    WAPP["④ Write App Server"]
+    KGS["⑤ Key Generation Service"]
+    KDB[("⑥ Key DB — unused + used pools")]
+  end
+
+  subgraph READ["Read Path"]
+    RAPP["⑦ Read App Server"]
+    CACHE["⑧ Cache — Memcached / Redis"]
+  end
+
+  subgraph DATA["Data Tier"]
+    DB[("⑨ URL DB — Cassandra / DynamoDB")]
+  end
+
+  subgraph OPS["Async / Ops"]
+    CLEAN["⑩ Cleanup Service"]
+    TEL["⑪ Telemetry Pipeline"]
+  end
+
+  CL --> CDN
+  CDN --> LB
+  LB -->|"POST create"| WAPP
+  LB -->|"GET resolve"| RAPP
+
+  WAPP --> KGS
+  KGS --> KDB
+  WAPP --> DB
+
+  RAPP --> CACHE
+  CACHE -.miss.-> DB
+  RAPP -.events.-> TEL
+
+  CLEAN -.scans.-> DB
+  CLEAN -.recycles keys.-> KDB
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style CDN fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style WAPP fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style KGS fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style KDB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style RAPP fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style CACHE fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style DB fill:#171d27,stroke:#38b265,color:#d4dae5
+  style CLEAN fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style TEL fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client</h3>
+      <p>Anything that hits a TinyURL — a browser following a tweet link, a mobile app deep-linking, an integration calling our API. The browser is the most common; it sends a plain HTTP GET on the short URL and expects a 302 redirect. From the client's view, the entire system is one URL.</p>
+      <p><strong>Solves:</strong> nothing on its own — but every design choice flows backward from "what does the client experience?" Latency, availability, and the redirect protocol are all client-facing concerns.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">②</span> CDN (CloudFront / Akamai)</h3>
+      <p>A globally-distributed edge network that sits in front of the load balancer. For very hot URLs (think the top 1000 viral links), the CDN caches the 302 response at edge POPs around the world. A user in Tokyo following a hot link never reaches our origin servers — they get the redirect from a CDN node 20ms away.</p>
+      <p><strong>Solves:</strong> global latency. Without a CDN, every redirect from Tokyo travels to our US-East data center and back — 200ms minimum on physics alone. A CDN turns that into 20ms for the head of the long-tail distribution, which is most of the traffic.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">③</span> Load Balancer</h3>
+      <p>The traffic cop. Sits in front of both write and read app servers, distributes incoming HTTP, and yanks unhealthy backends out of rotation via health checks every few seconds. Round-robin is fine to start; switch to least-connections once we have enough nodes that load skew matters.</p>
+      <p><strong>Solves:</strong> single-server bottleneck and single-server failure. Without an LB, one app crash takes down the whole service. With it, we lose 1/N of capacity for a few seconds until health checks fail the bad node out.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">④</span> Write App Server</h3>
+      <p>Stateless service that handles <code>POST /api/v1/urls</code>. The flow per request: validate input → ask <strong>KGS</strong> for an unused key → write <code>(hash, original_url, ...)</code> to the URL DB → return the short URL. Total budget: under 100ms. Scaling is easy because it's stateless — add pods behind the LB.</p>
+      <p><strong>Solves:</strong> isolating the heavy lifting (key generation, DB write) behind a clean API surface. Without a dedicated write tier, write traffic would compete with the much larger read traffic for app server CPU — causing reads to slow down whenever a write spike hits.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑤</span> Key Generation Service (KGS)</h3>
+      <p>A standalone service whose only job is to pre-generate random 6-character base64 keys and stockpile them in the Key DB. It runs on its own cadence — say batches of 10K keys every minute — and serves keys to write app servers from an in-memory queue. When a key is handed out, it's atomically moved from the "unused" pool to the "used" pool. With 68.7 billion possible keys and 200 writes/sec, the pool will outlast 5 years easily.</p>
+      <p><strong>Solves:</strong> the core write-path problem. Without KGS, every write must do "generate hash → check DB for collision → retry if dup → insert", which is two round trips minimum and gets worse as the namespace fills up. With KGS, the write path is one round trip with zero collision risk by construction.</p>
+      <p><strong>What if KGS dies?</strong> Single point of failure — solved by running an active-standby pair. Each write app server also caches a small batch of keys locally (~100 keys), so a 30-second KGS outage doesn't stop creates.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑥</span> Key DB (KGS storage)</h3>
+      <p>Two tables: <code>unused_keys</code> (the pool waiting to be claimed) and <code>used_keys</code> (already assigned). At 6 bytes per key × 68.7B keys this is <strong>~412GB</strong> if we ever fully populate it — but in practice we only keep maybe 1M unused keys ahead of demand, so it's tiny. A simple key-value store works fine.</p>
+      <p><strong>Solves:</strong> persisting the pool so KGS can restart without losing keys. If KGS held keys only in memory and crashed, we'd lose 10K unallocated keys per restart — acceptable, but persisting them lets us also support fancier schemes like "reserve a key for 5 minutes for a logged-in user".</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑦</span> Read App Server</h3>
+      <p>Stateless service that handles <code>GET /:url_key</code>. The flow per request: parse hash from URL → check <strong>cache</strong> → on hit, return 302; on miss, query <strong>URL DB</strong>, populate cache, return 302 → emit a click event to telemetry. Latency budget: under 50ms. Scaled aggressively because read traffic is 100× write traffic.</p>
+      <p><strong>Solves:</strong> serving the redirect workload at scale without touching the write path. Splitting reads from writes lets each tier scale independently — 50 read pods and 5 write pods, not 55 of each.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑧</span> Cache (Memcached / Redis)</h3>
+      <p>An in-memory key-value store holding the hottest 20% of URL mappings — about 170GB. Read flow: app server sends <code>GET hash</code> → cache returns the long URL in microseconds. Eviction policy: <strong>LRU</strong> — the least-recently-viewed mapping gets evicted first. Replicated for fault tolerance and to spread the load (no single cache node serves all 20K req/sec).</p>
+      <p><strong>Solves:</strong> the 20K req/sec problem. Without a cache, every redirect hits the DB. With it, 80% of requests never touch the DB — letting the DB tier stay sized for the cold-tail 4K req/sec instead of the full 20K.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑨</span> URL DB (Cassandra / DynamoDB)</h3>
+      <p>The source of truth — a partitioned, replicated NoSQL key-value store holding all 30 billion <code>(hash → original_url)</code> mappings. Sharded by hash via <strong>consistent hashing</strong>, with each shard replicated 3× across availability zones. Cassandra's quorum reads (<code>R=2, W=2, N=3</code>) give us strong-enough consistency without sacrificing availability.</p>
+      <p><strong>Solves:</strong> durable storage that scales horizontally. A single MySQL box maxes out around 1TB of healthy operation; we need 15TB. Cassandra spreads it across dozens of nodes and handles node failures automatically.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑩</span> Cleanup Service</h3>
+      <p>A background worker that scans the URL DB for expired entries (every link has an <code>expiration_date</code>) and either soft-deletes them or fully removes them, returning the freed key to the KGS unused pool for recycling. Runs in low-traffic windows. Also lazily expires URLs on read — if a read app server fetches an expired URL, it deletes it and returns 404.</p>
+      <p><strong>Solves:</strong> preventing the DB from growing unbounded with abandoned/expired links. Without cleanup, our 5-year storage estimate would be 5-year accumulation forever — eventually we'd be paying to store 100TB of dead links nobody clicks.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑪</span> Telemetry Pipeline</h3>
+      <p>Every redirect emits a click event (<code>{hash, timestamp, geo, referrer, user_agent}</code>) to a Kafka topic. Downstream consumers fan out: real-time aggregator updates click counts in a Redis sorted set; batch ETL feeds a data warehouse for "show me the click history of <em>tinyurl.com/abc</em>". Crucially this is <strong>async</strong> — the read app server doesn't wait for telemetry before returning the 302.</p>
+      <p><strong>Solves:</strong> click analytics without slowing down the redirect. If we tried to <code>UPDATE click_count = click_count + 1</code> in the URL DB on every read, a viral link with 10K clicks/sec would melt that DB row. The async pipeline absorbs the spike and rolls up counts safely in the background.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Sarah shortens, Raj clicks</h3>
+  <p>Two real flows, mapped to the numbered components above:</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>✍️ Write flow — Sarah shortens her blog link at 14:02:06</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah's <strong>browser</strong> ① POSTs to <code>tinyurl.com/api/v1/urls</code> with her long URL.</li>
+        <li>The <strong>Load Balancer</strong> ③ routes it to a <strong>Write App Server</strong> ④. (CDN ② doesn't cache write requests.)</li>
+        <li>The write app calls <strong>KGS</strong> ⑤: "give me a key" → KGS pops <code>jlg8zpc</code> from its in-memory pool and atomically marks it used in <strong>Key DB</strong> ⑥.</li>
+        <li>Write app inserts <code>{hash: "jlg8zpc", original_url: "https://...", user_id: 42, expiration: 2030-12-31}</code> into <strong>URL DB</strong> ⑨ — sharded by hash, replicated 3×.</li>
+        <li>Write app returns <code>{short_url: "https://tinyurl.com/jlg8zpc"}</code>. <em>Total elapsed: 60ms.</em></li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h3>📖 Read flow — Raj in Tokyo clicks the link 8 hours later</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Raj's <strong>browser</strong> ① GETs <code>tinyurl.com/jlg8zpc</code>. DNS routes him to the nearest <strong>CDN</strong> ② edge in Tokyo.</li>
+        <li><strong>CDN cache hit?</strong> If yes → 302 returned in <strong>15ms</strong>. Done.</li>
+        <li>If no → CDN forwards to our origin <strong>Load Balancer</strong> ③ → <strong>Read App Server</strong> ⑦.</li>
+        <li>Read app checks <strong>Cache</strong> ⑧ for <code>jlg8zpc</code> → hit (the link is hot today) → returns 302 with the long URL. <em>~30ms.</em></li>
+        <li>If cache miss → read app queries <strong>URL DB</strong> ⑨, populates the cache, returns 302. <em>~80ms.</em></li>
+        <li>Read app fires off a click event to <strong>Telemetry</strong> ⑪ asynchronously. CDN may also cache this 302 for next time.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around three insights — (1) <strong>writes and reads have different shapes</strong> so they get different tiers; (2) <strong>collisions are a write-path problem solved by pre-generation</strong> in KGS, not by retries; (3) <strong>the read path is mostly cacheable</strong>, so the DB is sized for the cold tail not the hot peak. Every box in the diagram earns its place by removing one of those failure modes from Pass 1.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: ENCODING vs KGS                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-yellow">Step 7</span>
+  <h2>Encoding the URL vs. Key Generation Service</h2>
+  <p>How do we actually produce a 6-character key? Two approaches; the PDF reference walks through both. We'll explain why production systems pick KGS.</p>
+
+  <h3 class="subh">Approach A — Hash &amp; encode the URL</h3>
+  <p>Compute a hash (MD5 or SHA-256) of the long URL, base64-encode it, take the first 6 characters. <strong>Why 6?</strong> Base64 has 64 characters (<code>A-Z, a-z, 0-9, -, _</code>), so <code>64⁶ = 68.7 billion</code> possible keys — comfortably more than the 30 billion we need over 5 years.</p>
+
+  <div class="card" style="border-color:rgba(224,82,82,.4)">
+    <h3 style="color:var(--red)">⚠️ Three problems with this approach</h3>
+    <ul>
+      <li><strong>Same URL → same key.</strong> Two users shortening the same URL get the same short link. Acceptable? Sometimes, but you lose per-user analytics and can't expire one without expiring the other.</li>
+      <li><strong>URL-encoding collisions.</strong> <code>foo.com/page?id=design</code> and <code>foo.com/page%3Fid%3Ddesign</code> are the same URL but hash differently — duplicate entries.</li>
+      <li><strong>Truncation collisions.</strong> Two different URLs may hash to different full SHA-256s but identical first-6-character prefixes. Now you must do "compute → check DB for collision → if dup, take the next 6 chars or rehash with salt → check again". Each write is now 1-3 DB round-trips, and the collision rate gets worse as the namespace fills.</li>
+    </ul>
+    <p><strong>Mitigations:</strong> append a sequence number or user_id to the URL before hashing (eliminates "same URL → same key"), but this still has the truncation-collision problem at write time.</p>
+  </div>
+
+  <h3 class="subh">Approach B — Key Generation Service (KGS) <span style="color:var(--green);font-size:.9rem">← production winner</span></h3>
+  <p>Manufacture random 6-character keys offline, store them in a "unused" pool. Writes claim a key from the pool — guaranteed unique by construction, zero collision checks at request time.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant W as Write App
+  participant K as KGS
+  participant KDB as Key DB
+  participant U as URL DB
+
+  Note over K,KDB: KGS pre-generates batches of keys in background
+  K->>KDB: Generate 10K random keys, INSERT into unused
+  KDB-->>K: OK
+
+  W->>K: Give me a key
+  K->>KDB: Atomically move 1 key from unused to used
+  KDB-->>K: jlg8zpc
+  K-->>W: jlg8zpc
+  W->>U: INSERT (jlg8zpc, original_url, ...)
+  U-->>W: OK
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Why KGS wins</h3>
+      <ul>
+        <li>Zero collision risk at write time — uniqueness is guaranteed by the unused pool</li>
+        <li>One round-trip per write (vs. 1-3 with hashing)</li>
+        <li>Same long URL submitted twice → two different short keys → independent analytics &amp; expiry</li>
+        <li>Can pre-warm the pool, app servers cache 100 keys locally for burst tolerance</li>
+        <li>Recycle expired keys back into the pool — namespace never permanently fills</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚠️ KGS's own challenges</h3>
+      <ul>
+        <li><strong>Single point of failure</strong> — solved with an active-standby replica that takes over via failover</li>
+        <li><strong>Concurrency</strong> — two write apps must not get the same key. Solved by an atomic <code>POP</code> from a Redis set, or a row-level <code>SELECT FOR UPDATE</code> on the unused table</li>
+        <li><strong>Lost keys on crash</strong> — if KGS hands a key to a write app that then crashes before INSERT, the key is gone. Acceptable: 68.7B keys, losing a few thousand to crashes is rounding error</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>The interview move:</strong> volunteer Approach A first ("simplest thing that could work"), then walk through its three failure modes, then introduce KGS as the production answer. This shows you understand <em>why</em> KGS exists, not just that it exists.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: PARTITIONING                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-green">Step 8</span>
+  <h2>Data Partitioning &amp; Replication</h2>
+  <p>15TB doesn't fit on one box, and even if it did we couldn't survive its failure. We must <strong>shard</strong> (split) the URL DB across many boxes and <strong>replicate</strong> each shard 3× for fault tolerance.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>❌ Range-based sharding by first letter</h3>
+      <p>"All URLs whose hash starts with A go to shard 1, B to shard 2…" Easy to implement, predictable. <strong>But:</strong> hashes aren't uniformly distributed across the alphabet, so some shards get hot. And custom aliases like <code>my-blog-post</code> all start with M — that shard melts.</p>
+    </div>
+    <div class="card">
+      <h3>✅ Hash-based sharding (with consistent hashing)</h3>
+      <p>Compute <code>shard = consistent_hash(url_hash) % N</code>. Distribution is uniform by construction. Use <strong>consistent hashing</strong> (not modulo) so adding/removing a shard only relocates 1/N of keys instead of all of them — no global rebalancing during scale-out.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Replication strategy</h3>
+  <p>Each shard is replicated to <strong>3 nodes across 3 availability zones</strong>. Cassandra's <code>R=2, W=2, N=3</code> gives us: writes acknowledged by 2 of 3 replicas (durable even if 1 zone dies), reads from 2 replicas with conflict resolution (consistent within seconds even if a node lags). Multi-region: extra replicas in EU and APAC for global low-latency reads, eventually consistent.</p>
+
+  <div class="highlight hl-green"><strong>Why consistent hashing matters specifically here:</strong> our shard count will grow over time (5 shards today, 50 in 5 years). With plain <code>hash % N</code>, adding a shard means N→N+1, every key's home changes, and we have a multi-day data migration with the cluster degraded throughout. Consistent hashing makes adding a shard a few-hour reshuffle of 1/(N+1) of keys.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: CACHE                               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-cyan">Step 9</span>
+  <h2>Cache</h2>
+  <p>The single biggest performance lever in the system. Without a cache, every redirect hits the DB. With a cache holding the hot 20%, the DB sees only 20% of read traffic.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>📦 Sizing</h3>
+      <p>170GB to hold the hot 20% (calculated in §3). Modern servers ship with 256GB+ RAM, but we use 4-6 cache nodes for redundancy and to spread the 20K QPS load. Memcached or Redis both work; Redis wins if we want to also cache click counts in sorted sets.</p>
+    </div>
+    <div class="card">
+      <h3>♻️ Eviction</h3>
+      <p><strong>LRU</strong> (least recently used). Hot URLs stay hot — a viral tweet's link lives in cache for days. Cold URLs naturally roll out as fresh content takes their slot. Implemented via a linked hash map / Redis LRU policy.</p>
+    </div>
+    <div class="card">
+      <h3>🔄 Invalidation</h3>
+      <p>URLs are immutable (you can't edit where a short link points), so we only invalidate on delete/expire. The cleanup service explicitly invalidates the cache key when it expires a URL. No write-through complexity needed.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Cache replication &amp; warm-up</h3>
+  <p>Each cache node is replicated 2× — if one dies, we lose 1/N of the hot set briefly until it gets re-fetched from DB on next read (a brief latency bump, not an outage). On startup, cache nodes don't pre-warm; they fill organically as requests come in. The first few minutes after a deploy see slightly higher DB load, then steady state.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: LOAD BALANCER                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-purple">Step 10</span>
+  <h2>Load Balancer</h2>
+  <p>LBs sit at three layers in our system, and each plays a slightly different role.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>① Client → App tier</h3>
+      <p>Public-facing LB (AWS ALB / nginx). Distributes incoming HTTPS across read and write app pods. Health-checks every 5s, evicts unhealthy pods. Terminates TLS so backend pods don't pay the crypto cost.</p>
+    </div>
+    <div class="card">
+      <h3>② App → Cache</h3>
+      <p>Client-side or sidecar LB. Uses consistent hashing on the URL hash so the same hash always goes to the same cache node — maximizing hit rate.</p>
+    </div>
+    <div class="card">
+      <h3>③ App → DB</h3>
+      <p>Cassandra/DynamoDB drivers do this themselves — the client knows the cluster topology and routes to the right shard's coordinator node.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Algorithm choice</h3>
+  <p><strong>Start with Round Robin</strong> — simple, no overhead, no state. <strong>Upgrade to Least Connections</strong> once you see one pod's CPU consistently higher than others (usually means it caught a few long-running requests and never recovered). Smart LBs also do per-pod load reporting and shift traffic away from struggling nodes proactively.</p>
+
+  <div class="highlight hl-purple"><strong>The LB is itself a single point of failure</strong> — solved with an active-passive pair using virtual IP failover, or natively in cloud LBs (ALB is multi-AZ by default).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: PURGING                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-yellow">Step 11</span>
+  <h2>Purging &amp; DB Cleanup</h2>
+  <p>URLs have <code>expiration_date</code> — what happens when it passes?</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🐢 Lazy cleanup (preferred)</h3>
+      <p>Don't actively scan for expired entries — wait until a user actually requests one. On read, the app server checks the expiration; if expired, returns 404 to the user and asynchronously deletes the row. Trade-off: expired-but-unread entries linger in the DB forever, but storage is cheap and we save a giant background scan.</p>
+    </div>
+    <div class="card">
+      <h3>🧹 Active cleanup (supplement)</h3>
+      <p>A lightweight Cleanup Service ⑩ runs nightly during low-traffic windows, scanning for entries where <code>expiration_date &lt; now()</code> and bulk-deleting them. Returns the freed keys to the KGS unused pool for recycling.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Default expiry policy</h3>
+  <p>Two-year default expiry for free-tier URLs, configurable per request, with paid-tier URLs being permanent. Storage is cheap enough that we can also choose <strong>"never expire"</strong> as the default — most production shorteners do, because a dead link breaks user trust permanently.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: TELEMETRY & SECURITY               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-red">Step 12</span>
+  <h2>Telemetry &amp; Security</h2>
+
+  <h3 class="subh">Telemetry — answering "how many clicks did this link get?"</h3>
+  <p>Every redirect emits an async event. Naïvely doing <code>UPDATE click_count = click_count + 1</code> on the URL row would melt that row for any viral link (10K writes/sec on one row = lock contention hell). Instead:</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  RAPP[Read App Server] -.click event.-> KAFKA[Kafka topic]
+  KAFKA --> AGG[Real-time aggregator]
+  KAFKA --> ETL[Batch ETL]
+  AGG --> RDS[("Redis sorted set<br/>per-URL counts")]
+  ETL --> WH[("Data warehouse<br/>geo, browser, history")]
+
+  style KAFKA fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style RDS fill:#171d27,stroke:#e05252,color:#d4dae5
+  style WH fill:#171d27,stroke:#9b72cf,color:#d4dae5
+    </div>
+  </div>
+
+  <p>Counts that we care about (<em>this URL got 1.2M clicks</em>) live in Redis sorted sets — atomic <code>ZINCRBY</code> handles 100K writes/sec on one node. Detailed per-event data (geo, referrer, user_agent) flows to a data warehouse for ad-hoc analytics queries.</p>
+
+  <h3 class="subh">Security &amp; Permissions</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>🔐 Private URLs</h3>
+      <p>Add a <code>visibility</code> column: PUBLIC (anyone can resolve) or PRIVATE (only the creator + whitelisted users). On read, the app server checks the auth token against an ACL table; on mismatch, return 401 instead of 302.</p>
+    </div>
+    <div class="card">
+      <h3>🛡️ Abuse / phishing</h3>
+      <p>Submitted URLs go through a real-time <strong>Google Safe Browsing</strong> check before being shortened. Rejected URLs return 400. Reactive: a "report abuse" link on every redirect page; reported URLs go into a moderation queue.</p>
+    </div>
+    <div class="card">
+      <h3>🚫 Rate limiting</h3>
+      <p>Per-API-key quota — 1000 URLs/hour for free tier, higher for paid. Implemented at the LB or in a dedicated rate-limiter service (token bucket in Redis). Anonymous creates require captcha.</p>
+    </div>
+    <div class="card">
+      <h3>🔒 Unguessable keys</h3>
+      <p>KGS-generated keys are random 6-character base64, not sequential. An attacker can't enumerate <code>/aaaaaa, /aaaaab, ...</code> to discover private URLs — the keyspace is 68.7B, sparsely populated, so brute force is infeasible.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-blue">Step 13</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">Why 302 redirects instead of 301?</div>
+  <div class="ans"><strong>Analytics.</strong> 301 lets the browser cache the redirect target permanently — every subsequent click bypasses our server, killing click counts. 302 forces the browser to ask us each time. Trade-off: ~10ms extra latency per click for accurate metrics. Bitly, TinyURL, and most shorteners pick 302.</div>
+
+  <div class="iq">Why NoSQL over SQL for the URL store?</div>
+  <div class="ans"><strong>Access pattern is pure key-value</strong> at huge scale. Our only query is "give me the URL for hash X" — no joins, no transactions, no complex filters. SQL's strengths (joins, ACID) buy us nothing; its weaknesses (vertical scaling ceiling, hard sharding) hurt. NoSQL like Cassandra/DynamoDB gives us automatic sharding, multi-region replication, and predictable single-digit-ms reads at any scale.</div>
+
+  <div class="iq">What if KGS goes down?</div>
+  <div class="ans"><strong>Three layers of defense.</strong> (1) Active-standby KGS pair with failover in seconds. (2) Each write app server caches ~100 unallocated keys locally — a 30-second KGS outage means writes still succeed from local cache. (3) If both fail, write apps degrade to inline hashing as fallback (slower, occasional collisions, but doesn't drop writes).</div>
+
+  <div class="iq">How do you handle a viral link getting 100K req/sec?</div>
+  <div class="ans"><strong>The cache + CDN absorb it entirely.</strong> A viral link is the definition of "hot" — it's in every CDN edge POP and every Memcached node. Origin DB sees zero traffic from it. The only choke point is bandwidth out of CDN, which is what CDNs are explicitly built to handle. Click telemetry is async via Kafka, which buffers the spike without dropping events.</div>
+
+  <div class="iq">How do you prevent collisions in the KGS unused pool?</div>
+  <div class="ans">KGS generates random keys (not sequential), then INSERTs into the unused table with a UNIQUE constraint. Duplicates fail and are skipped. With 68.7B keyspace and only 30B keys ever issued over 5 years, the birthday-paradox collision rate during generation is negligible (under 1 collision per 100K generated). Pool prefill makes this completely invisible to the write path.</div>
+
+  <div class="iq">How do you scale globally for low-latency reads?</div>
+  <div class="ans"><strong>Two layers.</strong> (1) <strong>CDN</strong> caches the 302 response at edge POPs in 200+ cities — a Tokyo user hits a Tokyo edge node, not US-East. (2) <strong>Multi-region DB replicas</strong> for cache misses — Cassandra/DynamoDB Global Tables replicate writes to EU and APAC within seconds. Read app servers in each region hit their local replica. Trade-off: writes are still single-region with global replication lag (~1-5s), so a URL just created in US-East might 404 in Tokyo for a few seconds. Acceptable for our use case.</div>
+
+  <div class="iq">What's the storage cost trade-off of "never expire" vs. "2-year default"?</div>
+  <div class="ans">15TB at 5 years vs. effectively unbounded growth. At AWS S3-class pricing (~$0.023/GB/mo for cold tier), 15TB costs ~$345/month — trivial. The reputational cost of expiring a link someone bookmarked 3 years ago is much higher. Most production shorteners default to permanent and only expire on user request or for spam.</div>
+
+  <div class="iq">How do you migrate from MySQL to Cassandra without downtime?</div>
+  <div class="ans"><strong>Dual-write pattern.</strong> Phase 1: read app servers read from MySQL only, write apps write to BOTH MySQL and Cassandra. Phase 2: backfill historical MySQL data into Cassandra via an ETL job. Phase 3: shadow-read from Cassandra and compare with MySQL for a week to verify correctness. Phase 4: flip read traffic to Cassandra, keep MySQL as fallback for a month. Phase 5: decommission MySQL. Total: ~6 weeks of planned migration with zero user-visible downtime.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "It's a NoSQL key-value store partitioned with consistent hashing, fronted by a Memcached cache and a CDN, with a separate Key Generation Service that pre-generates unique 6-char keys offline so the write path never collides — three independent tiers each scaled to its own workload."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

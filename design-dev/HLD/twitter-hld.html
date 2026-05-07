@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Twitter — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Designing <span>Twitter</span></h1>
+  <p class="sub">From "one DB melting under 325K reads/sec" to a fan-out-on-write timeline with a special lane for Elon — the architecture that earns every box</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is Twitter?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">Database Schema</a></li>
+      <li><a href="#s6">High-Level Architecture</a></li>
+      <li><a href="#s7">Data Sharding</a></li>
+      <li><a href="#s8">Cache</a></li>
+      <li><a href="#s9">Timeline Generation</a></li>
+      <li><a href="#s10">Replication &amp; Fault Tolerance</a></li>
+      <li><a href="#s11">Load Balancing</a></li>
+      <li><a href="#s12">Monitoring</a></li>
+      <li><a href="#s13">Extended Features</a></li>
+      <li><a href="#s14">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS TWITTER?                    -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is Twitter?</h2>
+  <p>Imagine it's 9:37am. Elon Musk fires off a 140-character tweet about a new Tesla feature. He has roughly 100 million followers. Within seconds, every one of those 100M people who opens the Twitter app should see that tweet near the top of their home timeline — interleaved with tweets from everyone else they follow, sorted by recency, with photos and videos rendering inline. At the same moment Elon is tweeting, Sarah in Bangalore is scrolling her own timeline (she follows 200 people, not 100M), Raj in São Paulo is searching for "World Cup", and 200 million other daily users are doing some mix of all of this. That choreography — happening 24/7 across the globe — is the system we're designing.</p>
+
+  <p>Twitter is, at its heart, a <strong>microblogging service</strong>: short messages called <em>tweets</em> (originally capped at 140 characters, now longer), a directional <em>follow</em> graph (you follow me; that doesn't mean I follow you back), and a <em>timeline</em> — the chronological stream of tweets from the people you follow. Add photos, videos, replies, retweets, hashtags, search, and trending topics, and you have the product.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) When Sarah opens the app, how do we assemble her timeline of 200 people's recent tweets in under 200ms — without re-querying the database every time? (2) When Elon tweets to 100M followers, how do we deliver it to all of them in seconds without his single tweet causing 100 million simultaneous database writes?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Pin down the product surface before drawing boxes. In an interview, asking these questions out loud signals you're not just regurgitating an architecture — you're deciding what to build first.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Users can <strong>post tweets</strong> (text, optionally with photos and videos)</li>
+        <li>Users can <strong>follow</strong> other users (directional)</li>
+        <li>Users can <strong>favorite</strong> (like) tweets</li>
+        <li>Users can <strong>view a home timeline</strong> — top tweets from the people they follow, sorted by recency</li>
+        <li>Service must support <strong>photos and videos</strong> attached to tweets</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Highly available</strong> — Twitter being down is a global news event</li>
+        <li><strong>Timeline latency under 200ms</strong> p99 — slower than that and users feel it</li>
+        <li><strong>Eventually consistent</strong> — small staleness OK; if Sarah's tweet shows up 3 seconds later in Raj's timeline, no one cares</li>
+      </ul>
+      <h3 style="margin-top:1rem">➕ Extended</h3>
+      <ul>
+        <li><strong>Search</strong> tweets by keyword</li>
+        <li><strong>Replies</strong> &amp; threaded conversations</li>
+        <li><strong>Trending topics</strong> (hashtag aggregation)</li>
+        <li><strong>Tag users</strong> with @mentions, push notifications</li>
+        <li><strong>Who to follow</strong> recommendations, Moments</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The hard requirements aren't the obvious ones.</strong> "Post a tweet" is a row insert. "Show a timeline" is the one that breaks every naive design — because it reads tweets from many users, sorted, paginated, with media URLs resolved, all in under 200ms while 200 million people do the same thing.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers drive every architectural choice. Twitter is famously <strong>read-heavy</strong>: people read far more than they post. Let's get rough quantities so the rest of the design has weight behind it.</p>
+
+  <h3 class="subh">Users &amp; activity</h3>
+  <p>Assume <strong>1 billion total users</strong> with <strong>200 million daily active users (DAU)</strong>. <strong>100 million new tweets per day</strong>. Each user follows on average <strong>200 other users</strong>.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Tweets/sec</h3><p><span class="metric">~1,150/sec</span></p><p>100M / 86400</p></div>
+    <div class="card"><h3>Timeline reads/sec</h3><p><span class="metric">~325K/sec</span></p><p>200M DAU × 7 page-views × 20 tweets / 86400</p></div>
+    <div class="card"><h3>Favorites/sec</h3><p><span class="metric">~12K/sec</span></p><p>1B favorites/day spread out</p></div>
+    <div class="card"><h3>Avg follows / user</h3><p><span class="metric">~200</span></p><p>Drives fan-out cost</p></div>
+  </div>
+
+  <h3 class="subh">Storage estimate (per day)</h3>
+  <p>Each tweet ≈ <strong>280 bytes of text + 30 bytes of metadata</strong> (id, user_id, timestamps, counters). That gives <code>100M × 310B ≈</code> <span class="metric">~30 GB/day text</span>. Add photos and videos:</p>
+
+  <div class="g3">
+    <div class="card"><h3>Text</h3><p><span class="metric">~30 GB/day</span></p><p>Tiny relative to media</p></div>
+    <div class="card"><h3>Photos (~5M/day, 200KB)</h3><p><span class="metric">~1 TB/day</span></p><p>Lives in object storage + CDN</p></div>
+    <div class="card"><h3>Videos (~720K/day, 30MB)</h3><p><span class="metric">~22 TB/day</span></p><p>Bulk of all storage</p></div>
+  </div>
+
+  <p>Total storage growth: <span class="metric">~24 TB/day</span> dominated by video. Over 5 years: <span class="metric">~43 PB</span>.</p>
+
+  <h3 class="subh">Bandwidth estimate</h3>
+  <p>Outgoing bandwidth (people watching videos and viewing photos in their timeline) dwarfs ingest. Roughly <span class="metric">~35 GB/sec egress</span>, mostly video served via CDN. Text is rounding error — 35 KB/sec wouldn't move the needle.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Tweets/sec</td><td><code>1,150/s</code></td><td>Drives write throughput &amp; fan-out worker pool</td></tr>
+        <tr><td>Timeline reads/sec</td><td><code>325K/s</code></td><td>Forces pre-computed timelines and aggressive caching</td></tr>
+        <tr><td>Avg follows/user</td><td><code>200</code></td><td>Each tweet fans out to 200 timeline caches on average</td></tr>
+        <tr><td>Storage/day</td><td><code>24 TB</code></td><td>Forces sharded storage; video → object store + CDN</td></tr>
+        <tr><td>Egress</td><td><code>35 GB/s</code></td><td>Video must be CDN-served — origin can't carry it</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-blue"><strong>The single most important ratio:</strong> <code>325K reads / 1,150 writes ≈ 280:1</code>. Reads dominate writes by almost three orders of magnitude. Any design that does work on the read path that could have been pre-computed at write time will lose at scale.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>Five endpoints carry essentially all the traffic. Defining them up front locks the contract before architecture, and reveals which calls are write-path (rare) vs. read-path (constant).</p>
+
+  <span class="code-label cl-green">REST API surface</span>
+<pre><span class="cmt">// 1. Post a tweet — write path, low QPS</span>
+POST /api/v1/tweet
+{
+  "api_key":   "abc123...",
+  "text":      "Just landed in SF!",
+  "location":  { "lat": 37.77, "lon": -122.41 },   <span class="cmt">// optional</span>
+  "media_ids": ["img_92af", "vid_71be"]            <span class="cmt">// optional, pre-uploaded</span>
+}
+→ 201 Created  { "tweet_id": "1648...3922", "created_at": "2026-05-07T14:02:06Z" }
+
+<span class="cmt">// 2. Fetch home timeline — read path, very high QPS</span>
+GET /api/v1/timeline?user_id=42&amp;count=20&amp;page_token=eyJ0Ijox...
+→ 200 OK
+{
+  "tweets": [ { "tweet_id": "...", "user": {...}, "text": "...", "media": [...] }, ... ],
+  "next_page_token": "eyJ0Ijox..."
+}
+
+<span class="cmt">// 3. Follow another user</span>
+POST /api/v1/follow
+{ "user_id": 42, "target_user_id": 99 }
+→ 204 No Content
+
+<span class="cmt">// 4. Favorite a tweet</span>
+POST /api/v1/favorite
+{ "user_id": 42, "tweet_id": "1648...3922" }
+→ 204 No Content
+
+<span class="cmt">// 5. Search tweets</span>
+GET /api/v1/search?api_key=...&amp;query=worldcup&amp;count=20&amp;sort=recent
+→ 200 OK  { "tweets": [...], "next_page_token": "..." }</pre>
+
+  <div class="highlight hl-purple"><strong>Why timeline uses a <code>page_token</code> and not <code>page=N</code>:</strong> tweets are constantly being added at the top. If we used numeric pages, "page 2" would shift down by however many new tweets appeared since "page 1" — users would see duplicates. A token encodes "give me items older than tweet X", which is stable as new tweets arrive on top.</div>
+
+  <div class="highlight hl-orange"><strong>Media is uploaded separately</strong> via a pre-signed S3 URL flow, not in the tweet POST. The client uploads the photo or video to object storage, gets back a <code>media_id</code>, and only sends the small <code>media_id</code> in the tweet body. This keeps tweet writes fast and lets media uploads stream directly to storage without our app servers in the path.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: DATABASE                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>Database Schema</h2>
+  <p>Four core entities. Two patterns matter: tweets are written constantly and queried by id or by user_id; the follow graph is queried as "who does user X follow?" and "who follows user X?". This shape — heavy writes on one table, fan-out reads on another — is what pushes us to a hybrid SQL + NoSQL stack.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  TWEET {
+    bigint id PK
+    bigint user_id FK
+    string content
+    string location
+    timestamp creation_date
+    int num_favorites
+  }
+  USER {
+    bigint id PK
+    string name
+    string email
+    timestamp creation_date
+    timestamp last_login
+  }
+  USER_FOLLOW {
+    bigint user1_id PK
+    bigint user2_id PK
+    timestamp created_at
+  }
+  FAVORITE {
+    bigint tweet_id PK
+    bigint user_id PK
+    timestamp created_at
+  }
+  USER ||--o{ TWEET : "posts"
+  USER ||--o{ USER_FOLLOW : "follows"
+  USER ||--o{ FAVORITE : "likes"
+  TWEET ||--o{ FAVORITE : "is liked by"
+    </div>
+  </div>
+
+  <h3 class="subh">SQL or NoSQL? Both — pick per table.</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>📦 Tweets → Cassandra (NoSQL)</h3>
+      <p>1,150 writes/sec sustained, 100M+ rows/day, queried almost exclusively by primary key (<code>tweet_id</code>) or by partition (<code>user_id</code>). No joins, no transactions across tweets. Cassandra's wide-column model is purpose-built for this — append-heavy, partition-by-key, replicated by default.</p>
+    </div>
+    <div class="card">
+      <h3>👤 Users &amp; Follow Graph → MySQL</h3>
+      <p>Lower write rate, strong consistency matters (a "follow" must be visible immediately to that user), and we want relational queries ("count my followers", "is user X following user Y"). MySQL with read replicas handles 10K writes/sec easily; the graph fits in a few hundred GB even at 1B users.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>Polyglot persistence is normal at this scale.</strong> No single database is best at everything. Twitter publicly splits like this: tweets in a custom Cassandra-derived store called Manhattan, social graph in a sharded MySQL called Gizzard, search in a Lucene-based system called Earlybird. Each table goes to the engine whose access pattern it matches.</p>
+
+  <p>The <code>num_favorites</code> column on <code>TWEET</code> is a <strong>denormalized counter</strong> — the source of truth lives in <code>FAVORITE</code> rows, but counting them on every render would be too slow. We update the counter asynchronously (more in §12).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart, and the production shape where every box justifies itself. Numbers from §3 drive every decision.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Sketch the simplest possible system: one app server talks to one MySQL database. To post a tweet, insert a row. To show Sarah's timeline, run a query like: "SELECT tweets FROM tweet WHERE user_id IN (the 200 people Sarah follows) ORDER BY creation_date DESC LIMIT 20". Done.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C["Client"] --> APP["App Server"]
+  APP --> DB[("MySQL — tweets + users + follows")]
+    </div>
+  </div>
+
+  <p>Three concrete failures emerge the moment real traffic shows up:</p>
+  <div class="g3">
+    <div class="card">
+      <h3>💥 Timeline read is a fan-in nightmare</h3>
+      <p>Sarah follows 200 people. To build her timeline, the DB must touch 200 user-partitions, sort their recent tweets by time, and return the top 20. Now imagine Raj follows 5,000 people — his query touches 5,000 partitions for a single page-view. With 200M DAU each refreshing 7 times a day, that's billions of multi-partition fan-in queries per day. No DB survives this.</p>
+    </div>
+    <div class="card">
+      <h3>💥 325K reads/sec melts one DB</h3>
+      <p>A single MySQL instance handles roughly 5K-10K simple queries/sec. We need <strong>325,000</strong>. Even with read replicas, the timeline query above hits dozens of partitions per request — multiplying the underlying DB load by 10×-50×. CPU pegs at 100%, p99 latency goes from 5ms to 5 seconds, every Twitter user's app feels broken.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Writes compete with reads</h3>
+      <p>1,150 tweet inserts/sec sounds tiny next to 325K reads — until you realize they share the same DB. Write contention on indexes (especially the timestamp index every timeline query depends on) makes both sides slower. A single celebrity tweet can lock indexes for milliseconds and ripple latency across thousands of in-flight reads.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: pre-compute timelines (fan-out-on-write)</h3>
+  <p>The single most important insight in this design comes from the read/write ratio in §3. <strong>Timelines are read 280× more often than tweets are written.</strong> So instead of computing the timeline at read time (expensive, repeated), <em>compute it once at write time and cache it</em>. When Sarah posts a tweet, push it into the pre-built timelines of every one of her followers. When Raj opens the app, his timeline is already assembled — read it from a single cache key in 5ms.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">✍️ Push (fan-out-on-write)</h3>
+      <p>On tweet, look up all of the author's followers and write the new <code>tweet_id</code> into each follower's timeline cache. Read becomes O(1): grab the cached list of tweet_ids, hydrate them, return. This is the classic "do work at write time so reads are free" trade.</p>
+      <p><strong>Breaks for celebrities.</strong> Elon has 100M followers. One tweet from him would trigger 100 million cache writes in a few seconds — overwhelming the fan-out workers and causing huge latency spikes for everyone else's tweets behind his in the queue.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">📖 Pull (fan-in-on-read)</h3>
+      <p>Don't fan out anything at write time. At read time, query each followed user's recent tweets and merge. Cheap writes, expensive reads. <em>This is the naive design from Pass 1.</em></p>
+      <p><strong>Doesn't scale</strong> for normal users (200 fan-in per refresh × 200M DAU × 7 refreshes/day) — exactly the problem we just rejected.</p>
+    </div>
+  </div>
+
+  <p>The fix is a <strong>hybrid model</strong>: <strong>push for normal users, pull for celebrities.</strong> When a regular user with 1,000 followers tweets, fan it out to all 1,000 timeline caches — fast, cheap. When Elon tweets, mark it as a "celebrity tweet" and skip fan-out entirely. At timeline-read time, the reader pulls Elon's recent tweets live and merges them with the pre-computed cache. This keeps fan-out work bounded (no user fans out to more than ~100K followers) and adds at most a handful of "live celebrity pull" queries per timeline read.</p>
+
+  <div class="highlight hl-yellow"><strong>The threshold:</strong> users with more than ~10K followers are flagged as celebrities. About 0.1% of all users. Their tweets skip fan-out and are pulled in at read time. Everyone else uses pure push. This split absorbs the worst of both worlds and keeps the system uniform for the 99.9%.</div>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered — find its matching card below to see what it does and what would break without it. Three planes: write (orange), read (blue), and async (yellow).</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client — Mobile / Web"]
+  LB["② Load Balancer"]
+
+  subgraph WRITE["Write Plane"]
+    WS["③ Tweet Write Service"]
+    TDB[("④ Tweet Storage — Cassandra")]
+    MEDIA[("⑤ Media Storage — S3 + CDN")]
+  end
+
+  subgraph ASYNC["Async Plane"]
+    FQ["⑥ Fan-out Service — Kafka + Workers"]
+    TC[("⑦ Timeline Cache — Redis")]
+  end
+
+  subgraph READ["Read Plane"]
+    TR["⑧ Timeline Read Service"]
+    UG["⑨ User Graph Service — MySQL"]
+    SR["⑩ Search Service — Elasticsearch"]
+    TT["⑪ Trending Topics Service"]
+  end
+
+  MON["⑫ Analytics &amp; Monitoring"]
+
+  CL --> LB
+  LB -->|"POST tweet"| WS
+  LB -->|"GET timeline"| TR
+  LB -->|"GET search"| SR
+  LB -->|"upload media"| MEDIA
+
+  WS --> TDB
+  WS --> FQ
+  FQ --> TC
+  FQ --> SR
+  FQ --> TT
+
+  TR --> TC
+  TR --> TDB
+  TR --> UG
+  TR --> MEDIA
+
+  WS -.events.-> MON
+  TR -.events.-> MON
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style WS fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style TDB fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style MEDIA fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style FQ fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style TC fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style TR fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style UG fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style SR fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style TT fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style MON fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client</h3>
+      <p>The Twitter mobile app or twitter.com in a browser. Sends three primary requests: POST a tweet (rare), GET the home timeline (constant), and GET search results (occasional). Also opens long-lived connections for push notifications. From the client's perspective, the entire backend is one URL — everything else is invisible.</p>
+      <p><strong>Solves:</strong> nothing on its own — but every latency and freshness budget downstream comes from "what does the client experience?" 200ms timeline budget, instant tweet appearance in the author's own timeline, the eventual-consistency window — all client-driven constraints.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> Load Balancer</h3>
+      <p>The traffic cop. Sits in front of every service tier, distributes incoming HTTPS, terminates TLS, and yanks unhealthy backends out of rotation via 5-second health checks. Round-robin for the write tier (low QPS, requests are uniform); least-connections for the read tier (some timelines take much longer to assemble than others).</p>
+      <p><strong>Solves:</strong> single-server bottlenecks and single-server failures. Without the LB, one app crash takes down the whole product. With it, we lose 1/N of capacity for a few seconds until health checks fail the bad pod out.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">③</span> Tweet Write Service</h3>
+      <p>Stateless service that handles <code>POST /api/v1/tweet</code>. Per request: validate input → generate a unique <strong>tweet_id</strong> (timestamp-embedded, see §7) → write the row to <strong>Tweet Storage</strong> ④ → publish a <code>NewTweet</code> event to the <strong>Fan-out Service</strong> ⑥ → return the new tweet_id. Total budget: under 100ms. Scaling is trivial because it's stateless — add pods behind the LB.</p>
+      <p><strong>Solves:</strong> isolating write traffic from read traffic. Without a dedicated write tier, the 1,150 writes/sec would compete for CPU and connections with the 325K reads/sec — and a write spike would slow every timeline read. Splitting them lets each tier be sized for its own workload.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">④</span> Tweet Storage (Cassandra)</h3>
+      <p>The source of truth for every tweet ever written. A wide-column NoSQL store sharded by <strong>tweet_id</strong> (which embeds a timestamp — see §7), replicated 3× across availability zones with quorum reads (<code>R=2, W=2, N=3</code>). Holds 100M new rows per day; ~365 billion rows over 10 years. Each row stores the tweet text, author user_id, creation timestamp, location, and media references.</p>
+      <p><strong>Solves:</strong> durable, horizontally-scalable storage for the 30 GB/day of text plus billions of historical rows. A single MySQL box maxes out around 1 TB of healthy operation; we need orders of magnitude more. Cassandra spreads it across hundreds of nodes and survives node failures automatically.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">⑤</span> Media Storage (S3 + CDN)</h3>
+      <p>Photos and videos live in object storage (S3 or equivalent), fronted by a global CDN (CloudFront, Akamai). Clients upload directly via pre-signed URLs — bytes never traverse our app servers. On timeline render, the app returns CDN URLs the client fetches itself. The CDN caches videos at 200+ edge POPs worldwide, so a Tokyo viewer streams from a Tokyo node, not from US-East.</p>
+      <p><strong>Solves:</strong> the 35 GB/sec egress problem. Without a CDN, all that video would have to flow out of our origin data centers — saturating links, spiking costs, and adding 200ms of trans-Pacific latency for every Asian viewer. With a CDN, origin sees maybe 5% of egress; the rest is served from the edge.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑥</span> Fan-out Service (Kafka + Workers)</h3>
+      <p>The asynchronous heart of the design. When the Write Service ③ publishes a <code>NewTweet</code> event, a Kafka topic absorbs it. Worker pods consume the topic and do three things in parallel: (1) look up the author's followers in the User Graph ⑨, (2) for each follower, push the new tweet_id to that follower's <strong>Timeline Cache</strong> ⑦ entry, (3) index the tweet text in the <strong>Search Service</strong> ⑩ and update <strong>Trending Topics</strong> ⑪ counters. For celebrity authors (≥10K followers), step 2 is skipped — read-time pull handles them.</p>
+      <p><strong>Solves:</strong> hiding the cost of fan-out from the user posting the tweet. Sarah hits "Tweet" and gets a 201 in 60ms. The actual delivery to her 1,000 followers' timelines happens in the background over the next ~2 seconds. Without this async layer, every tweet POST would block until all follower writes completed — a tweet from a user with 50K followers would take 5+ seconds to post.</p>
+      <p><strong>What if the queue backs up?</strong> Kafka buffers it; lag becomes visible delivery delay. We monitor consumer lag and auto-scale workers. Worst case during a viral spike: a tweet appears in followers' timelines 30 seconds late instead of 2. Users barely notice; the queue catches up within minutes.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑦</span> Timeline Cache (Redis)</h3>
+      <p>The core data structure of the read path. Per active user, Redis stores a list of the most recent <strong>~800 tweet_ids</strong> that should appear in their home timeline — already merged, already sorted, already filtered. Just tweet_ids, not full tweets (kept small: ~10 KB per user). When a user opens the app, the read service fetches this list, hydrates the top 20 tweet_ids into full tweet objects, and returns. <strong>5ms read.</strong></p>
+      <p><strong>Solves:</strong> the 325K reads/sec problem. Without pre-computed timelines, every read would do the multi-partition fan-in query that killed Pass 1. With it, reads are a single Redis GET. The DB is sized for the cold path (cache misses, deep pagination), not the hot peak.</p>
+      <p><strong>Sized for active users, not all users.</strong> 200M DAU × 10 KB ≈ 2 TB — fits in a sharded Redis cluster of 30-40 nodes. Inactive users (the other 800M) get their timeline rebuilt lazily on next login.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑧</span> Timeline Read Service</h3>
+      <p>Stateless service that handles <code>GET /api/v1/timeline</code>. Per request: fetch the user's pre-computed timeline list from <strong>Cache</strong> ⑦ → if author is a celebrity, also pull the celebrity's recent tweets live from <strong>Tweet Storage</strong> ④ and merge → hydrate tweet_ids into full tweet objects (text, media URLs, counters) → return. Latency budget: under 200ms. Scaled aggressively — read tier is the largest deployment.</p>
+      <p><strong>Solves:</strong> assembling the final timeline payload from its parts (cache + celebrity pull + media URLs). This is where the hybrid push/pull model is implemented: cached tweet_ids handle the 99.9% of regular-user content, the celebrity pull handles the long-tail of high-follower accounts.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑨</span> User Graph Service (MySQL)</h3>
+      <p>Owns the follow graph: who follows whom. Backed by sharded MySQL (consistent — when you tap "Follow", it has to take effect immediately for you). Two key queries: "give me user X's followers" (used by Fan-out ⑥ on every tweet) and "give me user X's follows" (used to compute timelines and recommendations). Heavily cached because the graph changes slowly relative to how often it's read.</p>
+      <p><strong>Solves:</strong> being the source of truth for the social graph. Without a dedicated graph service, fan-out would have to hit a generic user table and the storage tier would be flooded with "list followers of X" queries during every fan-out cycle. A specialized service with graph-shaped indexes and aggressive caching handles it cleanly.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑩</span> Search Service (Elasticsearch)</h3>
+      <p>Full-text search over every tweet ever written. Fan-out ⑥ writes each new tweet's text into an Elasticsearch index in near-real-time (a few seconds of lag). Search queries hit Elasticsearch directly: tokenized, ranked, paginated. Sharded the same way Cassandra is — by tweet_id with timestamp embedded, so "search worldcup, recent first" is a partition-pruned scan, not a full-cluster broadcast.</p>
+      <p><strong>Solves:</strong> the "search tweets" feature, which is its own product surface. We can't search a Cassandra wide-column store by text content — Cassandra is built for key lookups, not full-text scans. Elasticsearch is purpose-built for inverted-index text search and lives alongside, fed asynchronously.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑪</span> Trending Topics Service</h3>
+      <p>Counts hashtag occurrences over a sliding window (typically the last 5 minutes to 1 hour) and exposes the top-K via a min-heap kept in memory. Fan-out ⑥ extracts hashtags from each tweet and increments per-tag counters; a background process refreshes the trending list every minute. Personalized variants take location and follow-graph into account.</p>
+      <p><strong>Solves:</strong> the "What's happening" panel. Without a dedicated trending service, computing the top hashtags would require scanning every tweet from the last hour on every refresh — a multi-billion-row scan that no DB can serve at panel-refresh latency.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑫</span> Analytics &amp; Monitoring</h3>
+      <p>Captures everything: tweets/sec, p99 timeline latency, fan-out lag (how far behind real-time is the worker queue?), cache hit rate, DB replication lag, error rates per endpoint. Pipelined via Kafka into Prometheus + Grafana for live ops, and into a data warehouse for product analytics. Alerts page the on-call engineer when fan-out lag crosses 30 seconds or timeline p99 crosses 300ms.</p>
+      <p><strong>Solves:</strong> knowing the system is healthy. Twitter-scale systems fail in subtle ways — a single shard going slow, a Kafka partition skewing, a worker pool deadlocking — and without instrumentation you don't notice until users complain on Twitter (which is awkward when you <em>are</em> Twitter). Monitoring closes that loop.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Sarah tweets, Raj scrolls</h3>
+  <p>Two real flows, mapped to the numbered components above:</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>✍️ Write flow — Sarah (1,000 followers) tweets at 14:02:06</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah's <strong>app</strong> ① uploads a photo to <strong>Media Storage</strong> ⑤ via pre-signed URL → gets back <code>img_92af</code>.</li>
+        <li>App POSTs <code>{ text, media_ids: [img_92af] }</code> through the <strong>Load Balancer</strong> ② to a <strong>Tweet Write Service</strong> ③ pod.</li>
+        <li>Write service generates <code>tweet_id = 1648773726000_4271</code> (epoch + sequence), inserts the row into <strong>Tweet Storage</strong> ④ — sharded by tweet_id, replicated 3×.</li>
+        <li>Write service publishes a <code>NewTweet</code> event to Kafka and returns 201 to Sarah's app. <em>Total elapsed: 60ms.</em> Sarah sees her tweet appear instantly.</li>
+        <li>In the background, <strong>Fan-out workers</strong> ⑥ consume the event: look up Sarah's 1,000 followers in <strong>User Graph</strong> ⑨, push the tweet_id into each of those 1,000 entries in <strong>Timeline Cache</strong> ⑦. Total fan-out time: ~2 seconds.</li>
+        <li>In parallel, the worker indexes the tweet text in <strong>Search</strong> ⑩ and increments any hashtag counters in <strong>Trending</strong> ⑪.</li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h3>📖 Read flow — Raj opens the app at 14:03:14</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Raj's <strong>app</strong> ① GETs <code>/api/v1/timeline?user_id=raj</code>. <strong>LB</strong> ② routes to a <strong>Timeline Read Service</strong> ⑧ pod.</li>
+        <li>Read service fetches Raj's pre-computed timeline list from <strong>Timeline Cache</strong> ⑦ — gets back ~800 recent tweet_ids, including Sarah's from 68 seconds ago.</li>
+        <li>Read service checks: does Raj follow any celebrities? Yes — Elon. So it pulls Elon's last 20 tweets live from <strong>Tweet Storage</strong> ④ and merges them with the cached list, sorted by time.</li>
+        <li>Read service hydrates the top 20 tweet_ids → fetches full tweet rows from <strong>Tweet Storage</strong> ④ (or its read-cache), resolves <strong>Media</strong> ⑤ URLs to CDN paths.</li>
+        <li>Returns the assembled timeline JSON to Raj's app. <em>Total elapsed: ~80ms.</em> Sarah's tweet renders 4th in his feed; Elon's latest renders 1st.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around three insights — (1) <strong>reads outnumber writes 280-to-1</strong>, so we pre-compute timelines at write time and reads become a single cache fetch; (2) <strong>fan-out has a long tail</strong> (Elon's 100M followers), so we split into push-for-normal-users + pull-for-celebrities, bounding worker cost; (3) <strong>media is its own beast</strong>, so it lives in object storage + CDN, never traveling our application path. Every box in the diagram exists to remove one of those failure modes from Pass 1.</div>
+
+  <h3 class="subh">Sequence — tweet + fan-out</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor Sarah
+  participant App as Sarah App
+  participant W as Write Service
+  participant T as Tweet Storage
+  participant K as Kafka
+  participant F as Fan-out Worker
+  participant G as User Graph
+  participant TC as Timeline Cache
+
+  Sarah->>App: Tap Tweet
+  App->>W: POST /tweet
+  W->>T: INSERT row
+  T-->>W: OK
+  W->>K: publish NewTweet event
+  W-->>App: 201 Created
+  App-->>Sarah: Tweet appears
+  Note over K,F: Async — does not block the user
+  K->>F: deliver event
+  F->>G: get followers of Sarah
+  G-->>F: 1000 follower ids
+  loop for each follower
+    F->>TC: LPUSH tweet_id to follower timeline
+  end
+    </div>
+  </div>
+
+  <h3 class="subh">Sequence — timeline read with celebrity pull</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor Raj
+  participant App as Raj App
+  participant R as Timeline Read Service
+  participant TC as Timeline Cache
+  participant T as Tweet Storage
+  participant G as User Graph
+
+  Raj->>App: Open app
+  App->>R: GET /timeline
+  R->>TC: get Raj timeline list
+  TC-->>R: 800 tweet_ids
+  R->>G: which follows are celebrities?
+  G-->>R: Elon
+  R->>T: fetch Elon recent tweets
+  T-->>R: 20 tweets
+  R->>R: merge cached + celebrity, sort by time
+  R->>T: hydrate top 20 tweet_ids
+  T-->>R: full tweet rows
+  R-->>App: timeline JSON
+  App-->>Raj: render feed
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: SHARDING                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-green">Step 7</span>
+  <h2>Data Sharding</h2>
+  <p>43 PB of tweets doesn't fit on one box, and even if it did we couldn't survive its failure. We must <strong>shard</strong> Tweet Storage across many nodes. The choice of <em>sharding key</em> determines whether queries are fast or whether they scatter to every shard in the cluster.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>❌ Shard by user_id</h3>
+      <p>"All of user X's tweets live on shard <code>hash(user_id) % N</code>." Fast for "show me user X's profile" — single shard. <strong>But:</strong> Elon's shard holds tens of millions of tweets and gets hammered by every visitor — that's the <em>hot user problem</em>. And timeline queries that touch 200 users still scatter to ~200 shards.</p>
+    </div>
+    <div class="card">
+      <h3>❌ Shard by tweet_id (random)</h3>
+      <p>"<code>shard = hash(tweet_id) % N</code>." Even distribution, no hot shards. <strong>But:</strong> "show me tweets from user X in the last hour" must broadcast to every shard — there's no way to know which shards hold his tweets. Same for "search recent tweets". Every query is a fan-out.</p>
+    </div>
+    <div class="card">
+      <h3>✅ Tweet_id with embedded timestamp</h3>
+      <p>Build the tweet_id as <code>epoch_seconds (31 bits) + auto_inc_seq (17 bits)</code> = 48-bit unique, time-sortable id. Then shard by tweet_id range. Now "give me tweets after time T" maps to "the last few shards" — partition pruning works at the time dimension, which is what timelines actually need.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>The unlock:</strong> by encoding time into the primary key, the storage layer "knows" recent tweets cluster together physically. Timeline reads (which always want recent tweets) hit a few hot shards instead of broadcasting; older tweets naturally land on cold shards that can run on cheaper hardware.</div>
+
+  <p><strong>The 17-bit sequence part</strong> gives <code>2¹⁷ = 131,072</code> tweets per second per generator — comfortably above our 1,150/sec global rate even after 100× growth. <strong>The 31-bit epoch</strong> covers ~68 years of seconds. This Twitter-style id design is famously used in Twitter's own <em>Snowflake</em> service and inspired countless successors.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: CACHE                               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-cyan">Step 8</span>
+  <h2>Cache</h2>
+  <p>Two caches, doing different jobs. Both follow the 80/20 rule: 20% of users and 20% of tweets generate 80% of all reads.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📋 Timeline Cache (Redis)</h3>
+      <p>Per active user: a Redis list holding the latest ~800 tweet_ids merged from all the people they follow. Just ids — kept small (~10 KB per user) so we can hold 200M DAU × 10 KB ≈ 2 TB across a sharded Redis cluster of 30-40 nodes. Updated by Fan-out workers ⑥ on every new tweet.</p>
+      <p><strong>Why 800 tweet_ids?</strong> Most users scroll a few pages deep at most. 800 covers ~40 pages of 20 tweets each — well past where any normal session ends. Beyond 800, a deep-scroll falls through to live DB queries (rare).</p>
+    </div>
+    <div class="card">
+      <h3>📦 Tweet Object Cache (Memcached)</h3>
+      <p>Caches hydrated tweet objects (text, author, media URLs, counters) keyed by tweet_id. Hit rate is huge because the same hot tweets appear in many users' timelines — a viral tweet might be hydrated 10M times from one cache entry. LRU eviction; cache sized to hold the last ~3 days of tweets in memory (older tweets fall through to Cassandra on demand).</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Per-shard cache</h3>
+  <p>Each cache shard sits in front of its corresponding Cassandra shard, so cache misses for tweet_id <code>X</code> hit only the one Cassandra shard that owns <code>X</code>. This avoids cache stampedes across the cluster and keeps the network blast-radius small when a hot tweet evicts.</p>
+
+  <div class="highlight hl-cyan"><strong>The "3-day window" rule:</strong> 99% of timeline reads are for tweets posted within the last 3 days. Caching that window in memory means almost every tweet hydration is a cache hit. Tweets older than 3 days (rare reads — searches, profile drill-downs, deep-link clicks) go straight to Cassandra at slightly higher latency. This sizing is empirically chosen — not just an engineering guess.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: TIMELINE GENERATION                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-purple">Step 9</span>
+  <h2>Timeline Generation — Push, Pull, and the Hybrid Lane</h2>
+  <p>The mental model is in §6, Pass 2. Here we make the implementation concrete.</p>
+
+  <h3 class="subh">Push path (the 99.9% case)</h3>
+  <p>When user X tweets, the Fan-out worker reads X's follower list from User Graph ⑨, then for each follower performs a Redis <code>LPUSH</code> on that follower's timeline-cache key with the new tweet_id. After the push, an <code>LTRIM 0 799</code> keeps the list capped at 800 entries — the oldest tweet_id falls off the bottom. Cost per tweet: roughly <code>O(followers)</code> Redis writes. For a user with 1,000 followers, ~1,000 Redis ops; pipelined across worker pods, finishes in ~2 seconds.</p>
+
+  <h3 class="subh">Pull path (celebrities)</h3>
+  <p>If the author has more than the celebrity threshold (~10K followers), Fan-out skips the push entirely. The tweet still lands in Tweet Storage ④. At read time, the Timeline Read Service ⑧ checks each follow of the requesting user — if any are celebrities, it issues a quick query: "give me celebrity_X's tweets newer than my last-fetched-cursor" — and merges the result into the cached list before returning.</p>
+
+  <h3 class="subh">Why this is the right split</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>📉 Bounded fan-out cost</h3>
+      <p>No author ever fans out to more than ~10K followers via push. That bounds worker work per tweet, which means tweet-posting latency stays low even when a moderately popular user (~9,999 followers) tweets. If we let everyone push, Elon posting one tweet would back the queue up for minutes.</p>
+    </div>
+    <div class="card">
+      <h3>📈 Bounded read amplification</h3>
+      <p>The average user follows 200 people. Even on a worst-case timeline, only a handful are celebrities. So reads do at most ~5 extra "live celebrity pull" queries — a small fixed cost that doesn't grow with how many people you follow overall.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The threshold isn't fixed forever.</strong> It's tunable based on observed worker queue depth. During major events (election night, World Cup final) when fan-out is straining, we can lower the celebrity threshold from 10K to 5K, demoting more authors to pull-mode and offloading work from the queue. After the spike, raise it back.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: REPLICATION                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-green">Step 10</span>
+  <h2>Replication &amp; Fault Tolerance</h2>
+  <p>Twitter being unavailable for 5 minutes is a global news event. Every tier must survive node failures without users noticing.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>📦 Cassandra (Tweet Storage)</h3>
+      <p>Built-in replication: <code>R=2, W=2, N=3</code>. Every write must be acknowledged by 2 of 3 replicas before returning OK; reads consult 2 replicas and pick the freshest. Survives a full availability-zone failure with no data loss and no read errors.</p>
+    </div>
+    <div class="card">
+      <h3>🌐 Stateless services</h3>
+      <p>Write Service, Read Service, Search Service all run as stateless pods behind the LB. Failure = LB health-check fails the pod, traffic shifts to peers, autoscaler spins up a replacement. Recovery time: 10-30 seconds.</p>
+    </div>
+    <div class="card">
+      <h3>🔁 Cache</h3>
+      <p>Redis cluster with read-replicas per shard. Loss of a primary triggers automatic failover (~5s). Briefly we serve slightly stale timeline reads — acceptable. Memcached has no built-in replication; we use consistent hashing so a node loss only affects 1/N of cache keys, which refill from Cassandra on next read.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Multi-region for global low-latency reads</h3>
+  <p>Tweet Storage and Timeline Cache are replicated to regional clusters in EU, APAC, and the Americas. A user in Tokyo opens the app → DNS routes them to the APAC region → reads come from the local replica in <50ms instead of 250ms cross-Pacific. Writes flow to a primary region with eventual replication to others (a few seconds of lag is fine — the user posting the tweet sees their own tweet immediately because we update their local timeline cache synchronously).</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: LOAD BALANCING                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-purple">Step 11</span>
+  <h2>Load Balancing</h2>
+  <p>LBs sit at three layers in our system, and each plays a slightly different role.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>① Client → App tier</h3>
+      <p>Public-facing LB (AWS ALB / nginx). Distributes incoming HTTPS across Write, Read, and Search service pods. Health-checks every 5s. Terminates TLS so backend pods don't pay the crypto cost.</p>
+    </div>
+    <div class="card">
+      <h3>② App → Cache</h3>
+      <p>Client-side or sidecar LB. Uses consistent hashing on the cache key (tweet_id or user_id) so the same key always goes to the same cache node — maximizing hit rate and avoiding double-caching across nodes.</p>
+    </div>
+    <div class="card">
+      <h3>③ App → DB</h3>
+      <p>Cassandra and MySQL drivers handle this themselves — clients know the cluster topology and route requests directly to the correct shard's coordinator node, skipping any extra hop.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Algorithm choice</h3>
+  <p><strong>Start with Round Robin</strong> for the write tier (uniform requests, no sticky state). <strong>Use Least Connections</strong> for the read tier — some timeline reads take much longer than others (deep-pagination, many celebrity follows), and least-connections naturally avoids piling more work on a slow pod.</p>
+
+  <div class="highlight hl-purple"><strong>The LB is itself a single point of failure</strong> — solved with active-passive pairing using virtual-IP failover, or natively in cloud LBs (ALB is multi-AZ by default).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: MONITORING                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-cyan">Step 12</span>
+  <h2>Monitoring</h2>
+  <p>Twitter-scale failures are subtle — a slow shard, a skewed Kafka partition, a worker pool deadlocking. Without instrumentation you find out from users tweeting "Twitter is broken", which is awkward when you are Twitter.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>What it tells you</th><th>Alert threshold</th></tr></thead>
+      <tbody>
+        <tr><td>Tweets/sec</td><td>Write traffic — is there a spike?</td><td>±50% from baseline</td></tr>
+        <tr><td>Timeline p50 / p99 latency</td><td>Read path health</td><td>p99 &gt; 300ms</td></tr>
+        <tr><td>Fan-out lag</td><td>How far behind real-time is the worker queue</td><td>&gt; 30s</td></tr>
+        <tr><td>Cache hit rate</td><td>Is the cache actually helping</td><td>&lt; 90%</td></tr>
+        <tr><td>DB replication lag</td><td>Multi-region read freshness</td><td>&gt; 10s</td></tr>
+        <tr><td>5xx rate per endpoint</td><td>Service-level errors</td><td>&gt; 0.1%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>All metrics flow through Kafka into Prometheus + Grafana for live dashboards, and into a data warehouse for product analytics. PagerDuty wakes the on-call when red-line alerts fire.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: EXTENDED FEATURES                  -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-yellow">Step 13</span>
+  <h2>Extended Features</h2>
+  <p>The core product is post-tweet + timeline. The features below are layered on top using the same primitives.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🔍 Search</h3>
+      <p>Elasticsearch index over every tweet's text. Fan-out ⑥ feeds new tweets in near-real-time. Sharded by tweet_id with timestamp embedded so "search worldcup, recent first" is a partition-pruned scan, not a full-cluster broadcast. See the dedicated Twitter Search page for index design and ranking details.</p>
+    </div>
+    <div class="card">
+      <h3>📈 Trending Topics</h3>
+      <p>Sliding window count of hashtags over the last 5-60 minutes. A min-heap maintains the top-K (K=10 globally, with location-personalized variants). Refreshed every minute — small enough updates to feel real-time, large enough not to flap.</p>
+    </div>
+    <div class="card">
+      <h3>👥 Who to follow</h3>
+      <p>Graph algorithm (friends-of-friends — "people followed by people you follow") combined with ML signals (common location, similar interests inferred from engagement). Pre-computed nightly per user; refreshed on big follow-graph changes.</p>
+    </div>
+    <div class="card">
+      <h3>📚 Moments</h3>
+      <p>Editorially-curated tweet collections around a theme (a sports event, a breaking-news story). Stored as a list of tweet_ids in a "moments" table. ML helps surface candidate tweets; humans do final curation.</p>
+    </div>
+    <div class="card">
+      <h3>🔁 Retweets</h3>
+      <p>Stored as a separate object that references the original tweet_id (<code>{ retweet_id, retweeter_user_id, original_tweet_id, timestamp }</code>). On render, the original tweet is hydrated and shown with a "Retweeted by ..." header. Fans out to retweeter's followers exactly like a normal tweet.</p>
+    </div>
+    <div class="card">
+      <h3>🔔 Notifications &amp; @mentions</h3>
+      <p>Fan-out workers also extract @mentions from each tweet and push notification events to the mentioned users. A separate Notification Service holds per-user notification lists in Redis (similar shape to Timeline Cache) and drives push-notifications via APNs/FCM.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-blue">Step 14</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">Push vs pull for timeline — when to use each?</div>
+  <div class="ans"><strong>Push (fan-out-on-write)</strong> for normal users. Reads dominate writes 280:1, so doing the work once at write time and reading from cache is a massive net win. <strong>Pull (fan-in-on-read)</strong> for celebrities. A user with 100M followers can't be fan-out-pushed without melting the worker queue and delaying everyone else. The hybrid: push for ≤10K followers, pull for &gt;10K. Reader merges cached pre-built timeline + live celebrity pulls.</div>
+
+  <div class="iq">How do you handle Elon Musk?</div>
+  <div class="ans"><strong>Treat him as a pull-mode author.</strong> When Elon tweets, his row goes to Tweet Storage but Fan-out skips writing to 100M follower caches. At read time, any user who follows Elon does a quick "give me Elon's tweets after my last cursor" query and merges results into their cached timeline. Cost: one extra query per timeline read for that user. Compare to fan-out: 100M Redis writes per Elon tweet, which would back the queue up for hours.</div>
+
+  <div class="iq">How do you achieve under-200ms timeline latency?</div>
+  <div class="ans"><strong>Pre-compute, cache, parallelize.</strong> (1) Timelines are built at write time by Fan-out workers, so reads are a single Redis fetch (~5ms). (2) Hot tweet objects are cached in Memcached so hydration of the top 20 tweet_ids is also a cache hit. (3) Celebrity pulls happen in parallel with cache hydration. (4) Media URLs are served from CDN, never assembled by app servers. Net: ~80ms p50, ~200ms p99 — comfortably inside the budget.</div>
+
+  <div class="iq">Why Cassandra over MySQL for tweets?</div>
+  <div class="ans"><strong>Access pattern + scale.</strong> 100M new tweets/day on an append-heavy workload, queried almost exclusively by primary key (tweet_id) or partition key (user_id), with no joins or transactions across rows. Cassandra is built for exactly this — wide-column, partition-by-key, replicated by default, scales horizontally to hundreds of nodes. MySQL would force vertical scaling, painful resharding, and offers nothing we'd actually use (joins, complex transactions). MySQL still wins for the User Graph (smaller, relational queries, strong consistency on follow).</div>
+
+  <div class="iq">How do you generate trending topics?</div>
+  <div class="ans"><strong>Sliding window + min-heap.</strong> Fan-out workers extract hashtags from each new tweet and increment counters in a per-tag bucket keyed by 1-minute time slots (so we can drop old slots cheaply). A background process every minute sweeps the last 5-60 minutes of buckets, sums per tag, and maintains a min-heap of the top-K. Personalized variants additionally weight by user location and follow-graph signals.</div>
+
+  <div class="iq">What happens when the Fan-out service is backed up?</div>
+  <div class="ans"><strong>Degrade gracefully — don't drop tweets.</strong> Kafka buffers the queue; lag becomes visible delivery delay. We monitor consumer lag and auto-scale workers up to a ceiling. During a true overload (election night, World Cup), we temporarily lower the celebrity threshold from 10K to 5K, demoting more authors to pull-mode and shrinking the per-tweet fan-out cost. Worst case during a spike: tweets appear in followers' timelines 30 seconds late instead of 2 — barely perceptible. The author always sees their own tweet immediately because we update their own timeline cache synchronously in the Write Service.</div>
+
+  <div class="iq">How do you keep the same tweet_id from being generated twice?</div>
+  <div class="ans"><strong>Snowflake-style IDs.</strong> Each tweet_id is a 48-bit value: 31 bits of epoch seconds + 17 bits of per-second sequence, with the sequence generator sharded by node-id. Two different generator nodes can never collide because their node-id occupies the high bits of the sequence. Within a node, the sequence counter resets every second and is monotonically incremented — so within a second we can issue 2¹⁷ = 131K unique ids comfortably above our 1,150/sec rate. Twitter's open-source <em>Snowflake</em> service codifies exactly this.</div>
+
+  <div class="iq">What's the trade-off of "eventually consistent" timelines?</div>
+  <div class="ans"><strong>A few seconds of staleness in exchange for ~10x the read throughput.</strong> When Sarah tweets, her followers' timelines update over the next 1-3 seconds via Fan-out — not synchronously. So if Raj refreshes his app within that window, he might briefly miss her tweet. In exchange, every timeline read is a cache hit instead of a multi-shard fan-in query. Users overwhelmingly prefer "fast and slightly stale" over "perfectly fresh and slow" — Twitter consistently chooses the former, and so should we.</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

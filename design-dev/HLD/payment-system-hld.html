@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Payment System (Stripe / PayPal) — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Payment <span>System</span></h1>
+  <p class="sub">Stripe / PayPal style — idempotency, sagas, and a double-entry ledger that never loses a cent. The architecture, the failure modes, and why every box is non-negotiable when real money is on the wire.</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is a Payment System?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">Database Schema</a></li>
+      <li><a href="#s6">High-Level Architecture</a></li>
+      <li><a href="#s7">Idempotency — Foundational</a></li>
+      <li><a href="#s8">Double-Entry Ledger</a></li>
+      <li><a href="#s9">Saga Pattern with Temporal</a></li>
+      <li><a href="#s10">Fraud Detection</a></li>
+      <li><a href="#s11">Reconciliation</a></li>
+      <li><a href="#s12">PCI-DSS Compliance</a></li>
+      <li><a href="#s13">Multi-Currency</a></li>
+      <li><a href="#s14">Data Partitioning</a></li>
+      <li><a href="#s15">Fault Tolerance</a></li>
+      <li><a href="#s16">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS A PAYMENT SYSTEM             -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is a Payment System?</h2>
+  <p>Sarah is checking out at 14:02:06 on a Tuesday. The cart says one pair of sneakers, $89.00. She taps "Buy". Within two seconds, four things must happen and they must happen <em>together</em>: her credit card gets charged $89, the merchant's escrow balance goes up by $89, the inventory drops by one pair, and a confirmation email lands in her inbox. If any of those four steps fails — and the rest succeed — somebody loses money. If we charge her card but never tell the merchant, Sarah paid for sneakers that won't ship. If we tell the merchant but the charge fails, the merchant ships sneakers we never collected for. If Sarah retries because her Wi-Fi blinked, we must not charge her twice.</p>
+
+  <p>That's what a payment system is: a piece of software whose entire purpose is moving money between three parties — the buyer's bank, the merchant's bank, and the platform's escrow account — without ever creating, destroying, or duplicating a single cent. Stripe, PayPal, Adyen, Razorpay all solve this same problem at scale.</p>
+
+  <div class="highlight hl-red"><strong>The two questions that drive every design decision below:</strong> (1) How do we make a multi-step money transfer <em>atomic</em> across systems we don't control (card networks, banks, our own DB)? (2) How do we guarantee that retries — from network drops, server crashes, double-clicks — never result in a double-charge or a leak?</div>
+
+  <div class="highlight hl-orange"><strong>Why this is harder than a normal CRUD app:</strong> in a normal app, a failure means "user sees an error, retries, no harm done". In a payment system, a failure between step 2 (card charged) and step 3 (merchant credited) means real money has left Sarah's bank and is sitting in nobody's account. That's not a bug — that's a regulator-visible incident. So the architecture is built to make those middle-state losses literally impossible.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Before drawing a single box, pin down what the system must do — and explicitly what it does not. In an interview, asking these questions is half the score.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li><strong>Charge cards</strong> — accept a payment from a customer's card / wallet / bank</li>
+        <li><strong>Refunds</strong> — partial or full reversal of a previous charge</li>
+        <li><strong>Split payments</strong> — one charge, money goes to multiple recipients (marketplace use case)</li>
+        <li><strong>Recurring subscriptions</strong> — auto-charge on a schedule</li>
+        <li><strong>Payouts to merchants</strong> — move escrow money to merchants' bank accounts on a schedule</li>
+        <li><strong>Multi-currency</strong> — accept USD, EUR, INR, etc.; FX conversion when needed</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>ACID-strict</strong> — no money ever lost or duplicated, period</li>
+        <li><strong>Idempotent</strong> — every mutation safe to retry, same result every time</li>
+        <li><strong>Highly available</strong> — payment downtime is revenue lost forever</li>
+        <li><strong>Sub-second response</strong> — Sarah cannot wait 5 seconds at the checkout page</li>
+        <li><strong>Audit-ready</strong> — every cent traceable to a state change with a timestamp</li>
+        <li><strong>PCI-DSS compliant</strong> — card data handled per industry regulations</li>
+      </ul>
+      <h3 style="margin-top:1rem">🚫 Out of Scope</h3>
+      <ul>
+        <li>Card-network internals — we integrate with Stripe / Visa / Mastercard, we do not <em>be</em> them</li>
+        <li>Fraud-model training pipeline — we consume the model, not build it</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The non-functional requirements are the hard part.</strong> Charging a card via Stripe's API is a 5-line problem. Making the charge survive a network drop mid-flight, never double-charge on retry, balance to the cent against Stripe's daily statement, and stay PCI-compliant — that's the architecture.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers are not optional in HLD. They drive sharding, ledger sizing, and how big our database needs to be. Let's pick a Stripe-like mid-size scale.</p>
+
+  <h3 class="subh">Traffic estimates</h3>
+  <p>Assume <strong>1 million transactions per day</strong>, average ticket size $50, peak load is Black Friday at roughly 40× the daily average concentrated into a few hours.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Avg TPS</h3><p><span class="metric">~12 TPS</span></p><p>1M / 86400</p></div>
+    <div class="card"><h3>Peak TPS</h3><p><span class="metric">~500 TPS</span></p><p>Black Friday spike</p></div>
+    <div class="card"><h3>GMV / day</h3><p><span class="metric">~$50M</span></p><p>1M × $50 avg</p></div>
+    <div class="card"><h3>API latency</h3><p><span class="metric">p99 &lt; 1s</span></p><p>End-to-end checkout</p></div>
+  </div>
+
+  <h3 class="subh">Storage estimate (5-year regulatory retention)</h3>
+  <p>Each transaction record (transaction + payment + ledger entries + audit log) is roughly <strong>1 KB</strong> across the relevant tables. <code>1M × 1KB = 1 GB/day</code>. Over 5 years (the typical regulatory retention window for financial records): <span class="metric">~2 TB total</span>. With indices, replicas, and audit logs: <span class="metric">~6 TB provisioned</span>.</p>
+
+  <h3 class="subh">Ledger entry volume</h3>
+  <p>Every transaction writes <em>at least 2</em> ledger entries (debit + credit), often more for split payments and FX. Realistic average is 3 entries per transaction. <code>1M × 3 = 3M ledger rows/day = ~1B rows/year</code>. This is the dominant table by row count and drives the partitioning strategy in §14.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Avg TPS</td><td><code>12/s</code></td><td>Drives base sizing — small box can do this</td></tr>
+        <tr><td>Peak TPS</td><td><code>500/s</code></td><td>Drives autoscale ceilings &amp; rate-limit budgets</td></tr>
+        <tr><td>GMV / day</td><td><code>$50M</code></td><td>Defines the cost-of-error — every minute of downtime is ~$35K</td></tr>
+        <tr><td>5-yr storage</td><td><code>2-6 TB</code></td><td>Forces partitioning of the ledger by account_id</td></tr>
+        <tr><td>Ledger rows / yr</td><td><code>~1 B</code></td><td>Append-only — no UPDATE, ever; only INSERT</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>Four mutating endpoints carry the bulk of the value, plus webhooks for the async events the merchant cares about. Note the <code>Idempotency-Key</code> header is mandatory on every mutation — this is the contract that lets clients retry safely.</p>
+
+  <span class="code-label cl-green">REST API surface</span>
+<pre><span class="cmt">// Create a payment — mutation, requires Idempotency-Key</span>
+POST /v1/payments
+Headers: { "Idempotency-Key": "1f3b9c2a-..." }
+{
+  "amount":            8900,           <span class="cmt">// in cents</span>
+  "currency":          "USD",
+  "payment_method_id": "pm_abc123",    <span class="cmt">// Stripe-style token, no PAN</span>
+  "customer_id":       "cus_sarah42",
+  "merchant_id":       "mer_zappos99",
+  "description":       "Order #5512 — sneakers"
+}
+→ 201 Created  { "id": "pay_...", "status": "succeeded", ... }
+
+<span class="cmt">// Refund — mutation, requires Idempotency-Key</span>
+POST /v1/refunds
+Headers: { "Idempotency-Key": "..." }
+{ "payment_id": "pay_...", "amount": 8900, "reason": "requested_by_customer" }
+→ 201 Created
+
+<span class="cmt">// Read a payment — safe, no key needed</span>
+GET /v1/payments/:id
+→ 200 OK { ... }
+
+<span class="cmt">// Payout to a merchant's bank — mutation, requires Idempotency-Key</span>
+POST /v1/payouts
+Headers: { "Idempotency-Key": "..." }
+{ "merchant_id": "mer_zappos99", "amount": 50000, "currency": "USD" }
+→ 201 Created
+
+<span class="cmt">// Webhooks — async events fired to merchant's HTTPS endpoint</span>
+POST → merchant.example.com/webhook
+{ "type": "payment.succeeded", "data": { ... } }
+   <span class="cmt">// Retried with exponential backoff for up to 3 days on non-2xx</span></pre>
+
+  <div class="highlight hl-blue"><strong>Why <code>Idempotency-Key</code> is mandatory on every mutation:</strong> Sarah's phone might lose signal right after sending the request. Her browser auto-retries. Without an idempotency key, the second request is indistinguishable from a fresh charge, and Sarah pays $178 for one pair of sneakers. With the key, the second request is recognized as a replay, the original result is returned, and she pays $89 once. The key is a UUID generated <em>by the client</em> and included in the request header — analogous to a receipt number on a paper invoice.</div>
+
+  <div class="highlight hl-orange"><strong>Tokens, not PANs:</strong> the API never accepts raw card numbers (the PAN — Primary Account Number, the 16-digit digits on the front of the card). The client SDK posts the card directly to Stripe's hosted iframe and gets back an opaque <code>pm_...</code> token. Our backend only ever sees the token. This is the single biggest PCI-DSS scope reducer (more in §12).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: DATABASE SCHEMA                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>Database Schema</h2>
+  <p>A payment system has four core tables, and the relationships matter enormously. <strong>Account</strong> represents any party that holds a balance — customer, merchant, the platform's own escrow, the platform's revenue. <strong>Transaction</strong> is a single business event ("Sarah pays $89 to Zappos"). <strong>Payment</strong> attaches the payment-method specifics. <strong>LedgerEntry</strong> is the append-only double-entry record — the source of truth for every cent. We will use <strong>Postgres with strict serializability</strong> here; the trade-offs against NoSQL are covered in §15.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  ACCOUNT {
+    string id PK
+    bigint balance_cents
+    string currency
+    string customer_id FK
+    string type
+  }
+  TRANSACTION {
+    string id PK
+    string idempotency_key UK
+    string source_account_id FK
+    string dest_account_id FK
+    bigint amount_cents
+    string status
+    timestamp created_at
+  }
+  PAYMENT {
+    string id PK
+    string transaction_id FK
+    string payment_method_id
+    string status
+    string error_code
+  }
+  LEDGER_ENTRY {
+    string id PK
+    string account_id FK
+    string transaction_id FK
+    bigint amount_cents
+    string entry_type
+    timestamp created_at
+  }
+  ACCOUNT ||--o{ TRANSACTION : "source"
+  ACCOUNT ||--o{ TRANSACTION : "dest"
+  TRANSACTION ||--|| PAYMENT : "has"
+  TRANSACTION ||--o{ LEDGER_ENTRY : "produces"
+  ACCOUNT ||--o{ LEDGER_ENTRY : "owns"
+    </div>
+  </div>
+
+  <h3 class="subh">Why each table looks the way it does</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>🔑 <code>idempotency_key UNIQUE</code> on Transaction</h3>
+      <p>The single most important constraint in the schema. Even if the Redis idempotency cache is down or evicted, the database will reject a duplicate insertion with a primary-key violation. This is your last line of defense against double-charges, and it is enforced at the storage layer not the application — meaning even a buggy application server cannot bypass it.</p>
+    </div>
+    <div class="card">
+      <h3>📒 <code>LedgerEntry</code> is append-only</h3>
+      <p>No UPDATE, no DELETE. Ever. Reversing a transaction does not delete the original entries — it adds <em>new</em> entries that compensate. This gives us a perfect audit trail: the entire history of every account is reconstructable by replaying the ledger from the first day. Regulators love this; engineers learn to love it after their first incident.</p>
+    </div>
+    <div class="card">
+      <h3>💰 <code>balance_cents</code> as a derived snapshot</h3>
+      <p>The <code>balance</code> on Account is not the source of truth — it's a <em>cached snapshot</em> derived from <code>SUM(amount_cents) FROM ledger_entry WHERE account_id = ?</code>. The ledger is truth; the balance is convenience. This is what makes the system reconcilable.</p>
+    </div>
+    <div class="card">
+      <h3>💳 Payment ≠ Transaction</h3>
+      <p>A transaction is a business event ("$89 from Sarah to Zappos"); a payment is the mechanism ("Visa card ending 4242, auth code XYZ, captured at 14:02:06"). One transaction has exactly one payment, but separating them lets us swap the payment mechanism (card → wallet → bank transfer) without changing the business semantics.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>The audit invariant — write it on the wall:</strong> for every transaction, the sum of its ledger entries must equal zero (debits and credits balance). Globally, <code>SUM(amount_cents) FROM ledger_entry</code> across all accounts must equal zero too. If that sum ever diverges from zero, money has been created or destroyed in our system — that is a P0 incident that wakes up the on-call engineer.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it shatters the moment real money flows through it, and the production shape where every box exists to plug a specific failure mode.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>One app server. It receives the checkout POST, charges the card via Stripe's API, then in the same request handler updates the merchant's balance in the DB, then sends a confirmation email, then returns 200 to the browser. Three calls in series, one happy path.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C["Sarah's Browser"] --> APP["App Server"]
+  APP -->|"1. charge"| STR["Stripe API"]
+  APP -->|"2. update balance"| DB[("MySQL — merchant balance")]
+  APP -->|"3. email"| EM["SMTP"]
+  APP --> C
+    </div>
+  </div>
+
+  <p>Four catastrophic failure modes show up the moment this hits production:</p>
+  <div class="g2">
+    <div class="card">
+      <h3>💥 Network drop after step 1, before step 2</h3>
+      <p>Stripe charged Sarah's card for $89. Our app server crashed before writing the merchant balance. Sarah's bank statement shows the charge. Our DB shows nothing. The merchant has no idea Sarah paid and never ships sneakers. Sarah is angry, Zappos is angry, and nobody can find the $89 — it's sitting in our Stripe account with no internal record. <strong>Money has effectively leaked out of the system.</strong></p>
+    </div>
+    <div class="card">
+      <h3>💥 Sarah retries — double charge</h3>
+      <p>Browser timed out after step 1, Sarah hits "Buy" again. Our app receives a fresh request that looks identical. We run the whole flow again — Stripe charges Sarah <em>twice</em>. Now $178 has left her account for one pair of sneakers. She files a chargeback, the bank yanks back $89 plus a $25 dispute fee, and we still owe Zappos for the sneakers they shipped.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Hot-row contention on merchant balance</h3>
+      <p>Black Friday: Zappos receives 500 orders per second. Every order does <code>UPDATE merchant SET balance = balance + amount WHERE id = 'zappos'</code>. Postgres serializes these updates on the same row. Lock queue grows, p99 latency climbs from 50ms to 5 seconds, and Sarah sees a spinner on her checkout page.</p>
+    </div>
+    <div class="card">
+      <h3>💥 No audit trail, no recovery path</h3>
+      <p>A single <code>UPDATE balance</code> overwrites history. We can never answer "what was Sarah's balance at 14:02:05?" or "did this charge actually happen?" Regulators want a ledger of every state transition. Without one, we cannot pass an audit and we cannot debug incidents — we can only guess.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: Idempotency + Saga + Double-Entry Ledger</h3>
+  <p>The production design is built on three ideas. Each one solves exactly one of the failure modes above. Get these three right and the architecture writes itself.</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">🎟️ Idempotency Key</h3>
+      <p>Every mutation request carries a UUID generated by the client — a <em>receipt number</em>. The server keeps a record of every key it has seen. If the same key shows up twice, the server returns the original result instead of executing the operation again. Same as a hotel handing back the same room key when you re-show the same booking confirmation — they don't re-book the room.</p>
+      <p><strong>Solves:</strong> double-charge on retry. Sarah can mash the Buy button 100 times — the first request runs, the next 99 return the same result, no extra money moves.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">🔄 Saga Pattern</h3>
+      <p>A payment is not one operation — it is a <em>workflow</em>: authorize, then capture, then ledger update, then notify. Each step has a paired <strong>compensating action</strong> (auth → reverse-auth, capture → refund, ledger → reversing entry). An <em>orchestrator</em> drives the workflow, retrying transient failures, and on permanent failure runs the compensating actions in reverse to undo the partial work. Like a recipe with explicit "if you've already cracked the eggs but ran out of flour, throw the eggs out" instructions.</p>
+      <p><strong>Solves:</strong> partial-failure leaks (Pass 1 problem #1). No state where the card was charged but the merchant wasn't credited.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">📒 Double-Entry Ledger</h3>
+      <p>Every transaction writes <em>two</em> entries that sum to zero — a debit on one account and a credit on another. Money is never created or destroyed; only moved. The system's invariant is mathematical: <code>SUM(all ledger entries) = 0</code>. Borrowed directly from 700-year-old accounting practice, because accountants solved this problem long before computers existed. Reconciliation becomes a single SQL query.</p>
+      <p><strong>Solves:</strong> hot-row contention (Pass 1 problem #3) and audit gaps (Pass 1 problem #4). Append-only, no UPDATE locks; balances computed on demand from append history.</p>
+    </div>
+  </div>
+
+  <p>Crucially, these three ideas <em>compose</em>. Idempotency makes individual saga steps safe to retry. The ledger gives the saga's compensating actions a clean way to record reversals. The saga orchestrator commits ledger writes in transactions to guarantee step atomicity. Take any one out and the other two break — that is why all three appear in every serious payment system on the planet.</p>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered ①–⑬ — find its matching card below for what it does and what would break without it. The architecture is split into four planes by responsibility: <strong>Ingest</strong> (accept the request), <strong>Orchestration</strong> (drive the workflow), <strong>Ledger</strong> (record the truth), and <strong>Risk</strong> (decide whether to allow the transaction).</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client SDK — web / mobile checkout"]
+
+  subgraph INGEST["Ingest Plane"]
+    GW["② API Gateway"]
+    API["③ Payment API Server"]
+    IDC[("④ Idempotency Cache — Redis")]
+  end
+
+  subgraph ORCH["Orchestration Plane"]
+    ORC["⑤ Payment Orchestrator — Temporal"]
+    GA["⑥ Payment Gateway Adapter"]
+  end
+
+  subgraph LEDGER["Ledger Plane"]
+    LS["⑦ Ledger Service"]
+    LDB[("⑧ Ledger DB — Postgres serializable")]
+    SNAP[("⑨ Account Snapshot Cache")]
+  end
+
+  subgraph RISK["Risk Plane"]
+    FRAUD["⑩ Fraud Detection"]
+    NOTIF["⑪ Notification Service"]
+    REC["⑫ Reconciliation Service"]
+    AUD[("⑬ Audit Log — S3 append-only")]
+  end
+
+  CL --> GW
+  GW --> API
+  API --> IDC
+  API --> ORC
+  ORC --> FRAUD
+  ORC --> GA
+  GA --> STRIPE["Stripe / Card Networks"]
+  ORC --> LS
+  LS --> LDB
+  LS --> SNAP
+  ORC --> NOTIF
+  ORC -.events.-> AUD
+  REC -.daily.-> LDB
+  REC -.daily.-> STRIPE
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style GW fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style API fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style IDC fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style ORC fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style GA fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style LS fill:#171d27,stroke:#38b265,color:#d4dae5
+  style LDB fill:#171d27,stroke:#38b265,color:#d4dae5
+  style SNAP fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style FRAUD fill:#171d27,stroke:#e05252,color:#d4dae5
+  style NOTIF fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style REC fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style AUD fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style STRIPE fill:#0f1520,stroke:#7b8599,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram to find the matching card below. Each one answers <em>what is it</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client SDK</h3>
+      <p>The Stripe.js or PayPal SDK loaded in Sarah's browser or mobile app. It does two critical jobs: (1) it tokenizes her card by posting the raw PAN <em>directly</em> to Stripe's hosted iframe, never to our servers — getting back a token like <code>pm_abc123</code> that our backend can use without ever touching real card data. (2) It generates a fresh UUID for the <code>Idempotency-Key</code> header, locking in the receipt number before the user even clicks "Buy".</p>
+      <p><strong>Solves:</strong> two huge problems at once — keeps PCI scope off our servers (§12) and gives us the idempotency primitive we depend on for safe retries.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> API Gateway</h3>
+      <p>The first thing inbound traffic hits. Terminates TLS, enforces rate limits per API key (e.g., a customer can't fire 1000 charges/sec from the same key), validates auth tokens, and forwards clean requests to the payment API server. AWS API Gateway, Kong, or Envoy all fit.</p>
+      <p><strong>Solves:</strong> a misbehaving or malicious client trying to brute-force a fraud attempt. Without the gateway, every bad actor's request reaches our application logic — wasting CPU and risking DB exhaustion. With it, 99% of abuse is rejected at the edge.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">③</span> Payment API Server</h3>
+      <p>Stateless service. Validates the request body, looks up the customer and merchant, checks the idempotency key in <strong>Redis ④</strong>, and if it's a new key kicks off a workflow on the <strong>Orchestrator ⑤</strong>. Returns a synchronous response within ~200ms — even though the underlying work may continue asynchronously, we tell the client whether the payment succeeded synchronously by waiting on the orchestrator's first decisive result.</p>
+      <p><strong>Solves:</strong> isolating the synchronous request/response contract from the multi-step workflow. The API server's job is "answer the client cleanly"; the saga's job is "finish the work durably". Splitting them lets each scale on its own dimension.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">④</span> Idempotency Cache (Redis)</h3>
+      <p>Before starting any workflow, the API server runs <code>SETNX idempotency:&lt;key&gt; lock</code> with a 24-hour TTL. First time the key is seen, it gets the lock and proceeds. Second time, Redis says "key already exists" and the server returns the original cached response. The cache is the fast path; the database <code>UNIQUE</code> constraint on Transaction.idempotency_key is the slow but bulletproof backup.</p>
+      <p><strong>Solves:</strong> double-charge on retry. Without this, every retry is a fresh charge. With it, retries are safe — you can build clients that retry aggressively without ever fearing a duplicate.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑤</span> Payment Orchestrator (Temporal)</h3>
+      <p>The brain. A Temporal workflow that codifies the payment saga as a sequence of steps: <em>fraud-check → authorize → capture → write-ledger → notify-merchant</em>. Temporal persists the workflow state at every step boundary, automatically retries transient failures, and runs compensating actions in reverse if a step permanently fails. If the orchestrator pod dies mid-workflow, another picks up exactly where it left off — no work is lost, no work is duplicated.</p>
+      <p><strong>Solves:</strong> the partial-failure leak from Pass 1. Without an orchestrator, your app server crashes between "card charged" and "ledger updated" leave money in limbo. With Temporal, the workflow resumes after the crash and either finishes the work or undoes it.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑥</span> Payment Gateway Adapter</h3>
+      <p>A thin wrapper around Stripe, Adyen, or whichever upstream processor we use. It exposes a uniform internal API (<code>authorize</code>, <code>capture</code>, <code>refund</code>) so the orchestrator does not need to know which gateway it's talking to. This is also where we do gateway-specific retries with exponential backoff and circuit-breaker logic — if Stripe is timing out, we fail fast instead of pile-driving more requests.</p>
+      <p><strong>Solves:</strong> vendor lock-in and gateway outages. Without an adapter layer, Stripe-specific code is sprinkled through the codebase — making "fail over to Adyen on Stripe outage" a multi-month project. With it, we change one adapter implementation.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑦</span> Ledger Service</h3>
+      <p>The most carefully-guarded service in the system. Its only job is to accept a transaction and write the corresponding double-entry ledger rows in a strict-serializable Postgres transaction. Validates the audit invariant (sum of entries = 0) before committing. Refuses to write anything that violates double-entry. Single-writer per partition for max consistency.</p>
+      <p><strong>Solves:</strong> the source of truth for all money. Without a dedicated ledger service, ledger writes happen scattered across business-logic code paths — meaning a single bug in any caller can violate the audit invariant. With a dedicated service, every write goes through one validated path.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑧</span> Ledger DB (Postgres serializable)</h3>
+      <p>Postgres in <code>SERIALIZABLE</code> isolation level, with synchronous replication to a hot standby in another availability zone. Append-only LedgerEntry table partitioned by account_id (§14). Every transaction is a single Postgres TX that writes 2+ rows atomically — either all entries land or none do, and the database guarantees this even under crash.</p>
+      <p><strong>Solves:</strong> ACID for money. A NoSQL store with eventual consistency would let us briefly observe a state where the debit landed but the credit hadn't — and a balance read in that window would lie. Postgres serializable says: no, you cannot ever observe such a state.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑨</span> Account Snapshot Cache</h3>
+      <p>Computing <code>SUM(amount_cents) FROM ledger_entry WHERE account_id = ?</code> is slow once an account has a million entries. We materialize a periodic snapshot — every N minutes a job rolls up the ledger into a per-account balance row, and reads hit the snapshot first. If a snapshot is stale, we read the snapshot plus the small delta of entries since the snapshot timestamp. Truth is still the ledger; this is just a fast cached read.</p>
+      <p><strong>Solves:</strong> read latency on hot accounts. Without snapshots, fetching the platform escrow balance — a single account that touches every transaction — would scan billions of rows. With snapshots, it's an O(1) lookup plus a tiny tail.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑩</span> Fraud Detection</h3>
+      <p>Two-stage gate the orchestrator runs before authorizing the card. Stage 1: real-time deterministic rules — velocity checks (this card just tried 10 charges in 60 seconds), IP blacklists, BIN risk. Sub-100ms, blocks the obvious. Stage 2: an ML model (gradient-boosted trees scoring features like amount-vs-customer-history, geo mismatch, device fingerprint) runs in ~100ms and either approves, declines, or flags for manual review.</p>
+      <p><strong>Solves:</strong> chargebacks. A chargeback costs us the disputed amount plus a $25 fee and counts against our gateway's risk score. Stripe will throttle or terminate accounts whose chargeback rate exceeds 1%. Catching even 50% of fraud before authorization pays for the fraud team many times over.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑪</span> Notification Service</h3>
+      <p>The fan-out for downstream effects. Sends Sarah's confirmation email, fires the merchant webhook (<code>POST merchant.example.com/webhook</code> with the payment payload), pushes a real-time event to the merchant dashboard. Critically, this is async — the orchestrator queues notifications and moves on; if Zappos's webhook endpoint is slow, Sarah's checkout doesn't wait. Webhooks retry with exponential backoff for 3 days.</p>
+      <p><strong>Solves:</strong> coupling latency. Without async notifications, every checkout's p99 includes the slowest merchant webhook in the system. With them, the orchestrator commits the ledger and returns success in ~500ms regardless of how slow the merchant's server is.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑫</span> Reconciliation Service</h3>
+      <p>A daily batch job. Pulls Stripe's settlement statement (every charge they processed for us yesterday) and joins it against our internal ledger. Every Stripe row should match exactly one of our LedgerEntry rows; every one of our captured payments should match exactly one Stripe row. Discrepancies get flagged for a human and must be resolved within 24 hours per regulator expectations.</p>
+      <p><strong>Solves:</strong> the "did we actually move the money we think we moved" question. Bugs happen. Network glitches happen. Reconciliation is how we catch them within a day instead of discovering at year-end audit that we've been off by $50K for six months.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑬</span> Audit Log (S3 append-only)</h3>
+      <p>Every state transition in the system — workflow started, fraud checked, card authorized, ledger committed, notification sent — emits an immutable event record to S3 with object-lock turned on. The bucket is configured so even an admin with root credentials cannot delete or modify written objects. Mirrored to a separate DB for fast queries.</p>
+      <p><strong>Solves:</strong> regulatory and forensic requirements. After any incident, we need to reconstruct exactly what happened. After any audit, regulators need proof that records cannot have been tampered with. S3 object-lock plus append-only is the cheapest, most defensible answer.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Sarah buys $89 sneakers at 14:02:06</h3>
+  <p>Two scenarios, mapped to the numbered components: the happy path, and a network drop mid-workflow that demonstrates the saga's compensating logic.</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--green)">
+      <h3>✅ Happy path — everything works</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li><strong>Client SDK</strong> ① in Sarah's browser tokenizes her Visa, generates idempotency key <code>XYZ-abc-123</code>, POSTs to our API.</li>
+        <li><strong>API Gateway</strong> ② validates auth, rate-limits, forwards to <strong>Payment API Server</strong> ③.</li>
+        <li>API server checks <strong>Redis</strong> ④ — <code>SETNX</code> succeeds (new key), starts a Temporal workflow on the <strong>Orchestrator</strong> ⑤ with the request as input.</li>
+        <li>Orchestrator step 1: call <strong>Fraud Detection</strong> ⑩ — score 0.05, approve.</li>
+        <li>Orchestrator step 2: call <strong>Gateway Adapter</strong> ⑥ → <strong>Stripe</strong> with <code>authorize($89)</code> → success, <code>auth_id=auth_99</code>.</li>
+        <li>Orchestrator step 3: <strong>Gateway Adapter</strong> calls <code>capture(auth_99)</code> on Stripe → success, money is on the wire.</li>
+        <li>Orchestrator step 4: call <strong>Ledger Service</strong> ⑦ to write two entries — <code>-$89</code> from Sarah's payment-method account, <code>+$89</code> to Zappos's escrow account — in a single Postgres TX on <strong>Ledger DB</strong> ⑧. Snapshot ⑨ refreshed lazily.</li>
+        <li>Orchestrator step 5: enqueue notifications on <strong>Notification Service</strong> ⑪ — confirmation email to Sarah, webhook to Zappos.</li>
+        <li>API server returns <code>200 { id: pay_..., status: succeeded }</code> to Sarah's browser. <em>Total elapsed: ~600ms.</em> Every state transition logged to <strong>Audit Log</strong> ⑬.</li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--red)">
+      <h3>⚠️ Failure path — network drop after capture, before ledger write</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Steps 1-6 run as above. Sarah's card has been captured for $89 — <strong>real money has moved.</strong></li>
+        <li>Right before step 7, the orchestrator pod hosting our workflow loses its network connection.</li>
+        <li>Temporal's heartbeat fails; the workflow is rescheduled on a different pod within ~10s.</li>
+        <li>The new pod resumes the workflow at step 7 — <em>not from scratch.</em> Temporal knows steps 1-6 already completed.</li>
+        <li>Step 7 retries: write ledger entries. Succeeds this time. Workflow continues.</li>
+        <li>Sarah's browser, which timed out at 30s, hits "Buy" again with the <em>same</em> idempotency key <code>XYZ-abc-123</code>. API server sees the key in Redis, returns the in-flight workflow's eventual result. No second charge, no second ledger entry.</li>
+        <li><em>Alternate path:</em> if step 7 keeps failing (say, ledger DB outage), Temporal eventually escalates the workflow to its compensating actions: call <strong>Stripe</strong> with <code>refund(capture_99)</code>, undoing the $89 capture. Sarah sees a "payment failed" error; her card is not charged. <strong>No money lost, no money duplicated.</strong></li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture exists because money is allergic to "almost". Idempotency means retries are free. The saga means partial failures are recoverable. The double-entry ledger means we can prove every cent. Take any one of those out and you ship a system that, on its first bad Tuesday, charges someone twice or loses $89 into the void — and you find out about it a month later from an angry customer or, worse, a regulator.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: IDEMPOTENCY                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-cyan">Step 7</span>
+  <h2>Idempotency — The Foundational Property</h2>
+  <p>If you take only one idea from this page, take this one. Every other guarantee in the system depends on idempotency working correctly.</p>
+
+  <p>An operation is <strong>idempotent</strong> if executing it twice has the same effect as executing it once. <code>SET balance = 100</code> is idempotent (no matter how many times you run it, balance = 100). <code>balance = balance + 89</code> is <em>not</em> idempotent — running it twice charges $178. The entire point of the idempotency-key contract is to make non-idempotent operations <em>look</em> idempotent to the caller, so retries are safe.</p>
+
+  <h3 class="subh">How idempotency keys work end-to-end</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant CL as Client SDK
+  participant API as Payment API
+  participant R as Redis
+  participant DB as Postgres
+  participant ORC as Orchestrator
+
+  Note over CL: Generate UUID once, before request
+  CL->>API: POST /v1/payments<br/>Idempotency-Key: XYZ-abc-123
+  API->>R: SETNX idempotency:XYZ-abc-123<br/>TTL=24h
+  alt Key is new
+    R-->>API: OK (lock acquired)
+    API->>DB: INSERT Transaction(idem_key=XYZ-abc-123)<br/>UNIQUE constraint
+    DB-->>API: OK
+    API->>ORC: Start workflow
+    ORC-->>API: Result
+    API->>R: SET idempotency:XYZ-abc-123 = result
+    API-->>CL: 200 + result
+  else Key already seen
+    R-->>API: EXISTS — return cached result
+    API-->>CL: 200 + cached result (no re-execute)
+  end
+    </div>
+  </div>
+
+  <p>Two layers of defense: <strong>Redis</strong> is the fast path (1ms lookup), <strong>Postgres UNIQUE constraint on Transaction.idempotency_key</strong> is the bulletproof backup. Even if Redis is wiped, the database INSERT will fail with a unique-violation error on the duplicate, and our error handler reads the existing row and returns the original result. There is no race condition where a duplicate gets through both layers.</p>
+
+  <h3 class="subh">Rules every idempotency-aware service must follow</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Do</h3>
+      <ul>
+        <li>Generate the key on the <strong>client side</strong> before the first attempt — so all retries reuse it</li>
+        <li>Use a UUID v4 — sufficient entropy, no coordination needed</li>
+        <li>Store the full response, not just "yes done" — so retries see the same payload as the original</li>
+        <li>Tie the key to the <em>exact</em> request body — if the body differs, treat it as a different request and reject</li>
+        <li>TTL the key (24h is typical) — keys aren't kept forever</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>❌ Don't</h3>
+      <ul>
+        <li>Generate the key on the server — defeats the purpose; client's retry would generate a new key</li>
+        <li>Use the request body hash as the key — if the user genuinely wants to charge twice for the same amount, you've blocked them</li>
+        <li>Allow same key with different bodies — that's a bug, not an idempotent retry; return 422</li>
+        <li>Forget to make every step in the workflow itself idempotent — Stripe's API also takes idempotency keys; pass them through</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>End-to-end idempotency is a chain.</strong> The client passes a key to our API; our API passes a derived key to Stripe; the orchestrator's ledger-write step uses a third derived key. If <em>any</em> link in the chain is non-idempotent, retries can produce duplicates somewhere in the system. Audit each integration explicitly — Stripe takes <code>Idempotency-Key</code> headers, Postgres takes UNIQUE constraints, internal services take UUIDs in the request body.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: DOUBLE-ENTRY LEDGER                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-green">Step 8</span>
+  <h2>Double-Entry Ledger</h2>
+  <p>The ledger is the single most important piece of the system, and the idea behind it is 700 years old. Italian merchants in the 1400s figured out that if you record every transaction as <em>two equal-and-opposite entries</em>, errors become detectable and money becomes traceable. Modern payment systems are doing the same thing, just with Postgres instead of leather-bound books.</p>
+
+  <h3 class="subh">The mechanic</h3>
+  <p>Every transaction generates at least two LedgerEntry rows. One DEBITs an account, one CREDITs another, and the amounts sum to zero. Sarah's $89 sneaker purchase looks like this:</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  TX["Transaction tx_001<br/>Sarah buys sneakers $89"]
+  TX --> E1["Entry A — DEBIT<br/>account: sarah_card<br/>amount: −$89"]
+  TX --> E2["Entry B — CREDIT<br/>account: zappos_escrow<br/>amount: +$89"]
+  E1 --> SUM["SUM = $0 ✓<br/>audit invariant holds"]
+  E2 --> SUM
+
+  style TX fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style E1 fill:#171d27,stroke:#e05252,color:#d4dae5
+  style E2 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style SUM fill:#171d27,stroke:#38b265,color:#d4dae5
+    </div>
+  </div>
+
+  <p>The two entries land in the same Postgres transaction, so either both commit or neither does. After the commit: Sarah's payment-method account is $89 lower, Zappos's escrow is $89 higher, and the system as a whole has the same total amount of money it had before.</p>
+
+  <h3 class="subh">Why this beats a simple <code>balance</code> column</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>📊 Auditability</h3>
+      <p>Every cent ever moved is a row. You can answer "what was Zappos's balance at 14:02:05" by summing entries up to that timestamp. With a single <code>balance</code> column, that history is gone the moment the next transaction overwrites it.</p>
+    </div>
+    <div class="card">
+      <h3>🔐 The mathematical invariant</h3>
+      <p><code>SUM(amount_cents) FROM ledger_entry GROUP BY account_id</code> gives every account's balance. <code>SUM(amount_cents) FROM ledger_entry</code> across <em>all</em> accounts must equal <strong>zero</strong>. If it doesn't, money was created or destroyed — and you have a P0 incident regardless of which row caused it.</p>
+    </div>
+    <div class="card">
+      <h3>⚡ No hot-row contention</h3>
+      <p>Updating Zappos's balance with <code>UPDATE merchant SET balance = balance + 89</code> serializes every Zappos transaction on one row. Inserting a new ledger entry serializes nothing — Postgres can append in parallel. Black Friday goes from "spinner of death" to "actually responsive".</p>
+    </div>
+    <div class="card">
+      <h3>🔄 Reversals are clean</h3>
+      <p>Refunding Sarah doesn't UPDATE or DELETE the original entries. It writes <em>new</em> entries: <code>+$89</code> to her account, <code>-$89</code> from Zappos's escrow, with a reference to the original transaction. The original history is preserved; the reversal is a separate audit event.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">More complex example — split payment with platform fee</h3>
+  <p>Sarah pays $100 for a service. The platform takes a 3% fee. Three ledger entries, sum still zero:</p>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Entry</th><th>Account</th><th>Type</th><th>Amount</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>sarah_card</td><td>DEBIT</td><td><code>−$100.00</code></td></tr>
+        <tr><td>2</td><td>provider_escrow</td><td>CREDIT</td><td><code>+$97.00</code></td></tr>
+        <tr><td>3</td><td>platform_revenue</td><td>CREDIT</td><td><code>+$3.00</code></td></tr>
+        <tr><td colspan="3"><strong>Sum</strong></td><td><code>$0.00 ✓</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-green"><strong>The on-call sanity check:</strong> a payment system is healthy when <code>SELECT SUM(amount_cents) FROM ledger_entry</code> returns zero. We run that query as a Datadog metric every minute. If it ever drifts, an alarm fires before the next transaction even completes — because something is fundamentally broken and every additional transaction makes it worse.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: SAGA WITH TEMPORAL                  -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-blue">Step 9</span>
+  <h2>Saga Pattern with Temporal</h2>
+  <p>A payment is not an atomic operation — it spans multiple systems we don't control. We can't take a global lock across Stripe, our DB, and the merchant's webhook endpoint. The saga pattern is how we get atomicity-like guarantees without distributed transactions.</p>
+
+  <h3 class="subh">The saga as code (Temporal workflow)</h3>
+  <span class="code-label cl-blue">payment workflow — pseudocode</span>
+<pre><span class="kw">workflow</span> <span class="fn">processPayment</span>(req):
+  <span class="cmt">// each step is an "activity" — auto-retried, persistent</span>
+  fraudResult = <span class="fn">checkFraud</span>(req)
+  <span class="kw">if</span> fraudResult.declined: <span class="kw">return</span> failure(<span class="str">"fraud"</span>)
+
+  authId = <span class="fn">authorize</span>(req.amount, req.payment_method_id)   <span class="cmt">// step 1</span>
+  <span class="kw">try</span>:
+    captureId = <span class="fn">capture</span>(authId)                             <span class="cmt">// step 2</span>
+    <span class="kw">try</span>:
+      <span class="fn">writeLedger</span>(req.amount, req.source, req.dest)        <span class="cmt">// step 3</span>
+      <span class="kw">try</span>:
+        <span class="fn">notifyMerchant</span>(req)                                <span class="cmt">// step 4 — async, best-effort</span>
+      <span class="kw">catch</span>:
+        <span class="cmt">// step 4 failure does NOT roll back; webhooks retried separately</span>
+        <span class="kw">log</span>(<span class="str">"webhook will retry"</span>)
+    <span class="kw">catch</span> e:
+      <span class="fn">refund</span>(captureId)                                    <span class="cmt">// compensate step 2</span>
+      <span class="kw">throw</span>
+  <span class="kw">catch</span> e:
+    <span class="fn">reverseAuth</span>(authId)                                    <span class="cmt">// compensate step 1</span>
+    <span class="kw">throw</span>
+
+  <span class="kw">return</span> success</pre>
+
+  <h3 class="subh">What Temporal gives us for free</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>💾 Durable state</h3>
+      <p>Every step's input and output is persisted before the next step runs. If the orchestrator pod dies between step 2 and step 3, a different pod resumes at step 3 — never re-running step 2 (which already moved real money).</p>
+    </div>
+    <div class="card">
+      <h3>🔁 Auto-retry with backoff</h3>
+      <p>Transient failures (Stripe 502, network blip, DB timeout) are retried with exponential backoff up to a configured max. Permanent failures (declined card, validation error) escalate immediately to compensating actions.</p>
+    </div>
+    <div class="card">
+      <h3>🧯 Compensating actions</h3>
+      <p>Each step has an inverse. If we capture a charge but can't write the ledger, the orchestrator runs <code>refund</code> against Stripe to undo the capture. Sarah sees an error; her card is not charged. No half-completed state survives.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Saga vs. 2-Phase Commit (2PC)</h3>
+  <p>2PC is the classical answer to multi-system atomicity: a coordinator asks every participant "can you commit?", then if all say yes, says "commit". <strong>It does not work for us</strong> for two reasons:</p>
+  <div class="g2">
+    <div class="card">
+      <h3>🚫 Stripe doesn't support 2PC</h3>
+      <p>Card networks have no "prepare-to-commit" stage. Once we tell Stripe to capture, the money moves. You cannot ask the world's payment networks to please pause their transaction until our other systems are ready.</p>
+    </div>
+    <div class="card">
+      <h3>🚫 2PC blocks under coordinator failure</h3>
+      <p>If the 2PC coordinator dies after sending "prepare" but before "commit", participants hold locks indefinitely waiting for the verdict. In a payment context, that means the merchant's account row is locked for hours. Saga has no global lock, so failures degrade gracefully.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>Saga vs. 2PC in one line:</strong> 2PC tries to give you atomicity by holding everything hostage until everyone agrees; saga gives you atomicity by being willing to <em>undo</em> what's already been done. The first works only inside one DB; the second is the only thing that works across systems you don't own.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: FRAUD DETECTION                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-red">Step 10</span>
+  <h2>Fraud Detection</h2>
+  <p>Fraud is the single biggest non-engineering risk to a payment platform. A 1% chargeback rate gets you throttled by Stripe; a 2% chargeback rate gets your account terminated and you lose your business overnight. Catching fraud <em>before</em> the charge is therefore worth a lot of latency budget.</p>
+
+  <h3 class="subh">Two-stage gate</h3>
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">Stage 1 — Real-time deterministic rules</h3>
+      <p><strong>Sub-100ms.</strong> Cheap, fast, blocks the obvious. Examples:</p>
+      <ul>
+        <li><strong>Velocity check</strong> — same card seen 10 times in 60 seconds across our system → block</li>
+        <li><strong>IP blacklist</strong> — known fraudster IP / Tor exit node / data-center IP</li>
+        <li><strong>BIN risk</strong> — the card-issuer prefix tells us if it's a prepaid card from a high-fraud country</li>
+        <li><strong>Geo mismatch</strong> — billing address in California, IP in Nigeria, shipping address in Russia</li>
+        <li><strong>Amount threshold</strong> — first-ever charge on a brand-new account for $9999 → manual review</li>
+      </ul>
+      <p>Implemented as a Redis-backed counter set + hot rule list, evaluated in &lt;50ms.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">Stage 2 — ML scoring</h3>
+      <p><strong>~100ms.</strong> Catches the subtle. A gradient-boosted-tree model trained on years of historical fraud data scores every transaction on a 0-1 risk scale based on ~200 features:</p>
+      <ul>
+        <li><strong>Customer history</strong> — average transaction size, time-since-signup, prior chargebacks</li>
+        <li><strong>Merchant profile</strong> — chargeback rate, vertical, whether this is a typical purchase</li>
+        <li><strong>Device signals</strong> — fingerprint, browser, OS, language</li>
+        <li><strong>Transaction shape</strong> — amount-vs-typical, time-of-day, items in cart</li>
+      </ul>
+      <p>Score &gt; 0.9 → auto-decline. Score 0.5-0.9 → manual review queue. Score &lt; 0.5 → approve.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The latency-vs-precision trade-off:</strong> we pay roughly 150ms of fraud-check latency on every transaction, which gets us a chargeback rate near 0.1% (industry-leading). Skipping fraud entirely would let us return responses in 400ms instead of 550ms — and would also kill the business inside a year. There is no useful version of "skip fraud to go faster".</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: RECONCILIATION                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-yellow">Step 11</span>
+  <h2>Reconciliation</h2>
+  <p>"Trust but verify" is the entire job. Every day, a batch process compares our internal ledger against the source-of-truth statements from Stripe, the card networks, and the banks we settle with. The two views must match to the cent. If they don't, an engineer is paged.</p>
+
+  <h3 class="subh">The daily reconciliation pipeline</h3>
+  <ol style="padding-left:1.5rem;list-style:decimal;color:var(--text);max-width:760px;line-height:1.78">
+    <li><strong>02:00 UTC</strong> — pull yesterday's settlement statement from Stripe via their API. Lists every charge they processed for us, with their internal IDs and our metadata.</li>
+    <li><strong>02:15 UTC</strong> — query our LedgerEntry table for every successful payment from yesterday.</li>
+    <li><strong>02:30 UTC</strong> — full outer join on <code>(payment_id, amount, currency)</code>. Three buckets: (a) match on both sides — green; (b) in Stripe but not in our ledger — red, money received but unrecorded; (c) in our ledger but not in Stripe — red, we think we got paid but Stripe disagrees.</li>
+    <li><strong>02:45 UTC</strong> — non-empty red buckets page the on-call. Issue must be triaged within 24 hours per regulator expectations.</li>
+  </ol>
+
+  <h3 class="subh">Common discrepancy patterns</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>⏱️ Timing skew</h3>
+      <p>A transaction captured at 23:59 UTC might land in our ledger today and Stripe's statement tomorrow. Resolved by widening the window — match against today's <em>and</em> yesterday's Stripe statement.</p>
+    </div>
+    <div class="card">
+      <h3>🔄 Async webhook lag</h3>
+      <p>Stripe webhooks for capture-success can arrive after the next-day statement. We use the workflow's own state, not just webhooks, as the truth — webhooks are a hint, not the source.</p>
+    </div>
+    <div class="card">
+      <h3>🐞 Real bug</h3>
+      <p>Rare but real: an idempotency-key collision, a saga that didn't compensate properly, a manual UPDATE someone ran in production. Hands-on-deck investigation; ledger gets corrective entries (never modified) once root cause is found.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>The recon dashboard is the heartbeat of trust.</strong> Investors, auditors, and regulators all look at the same number: yesterday's reconciliation green-rate. 100% green every day is not a luxury — it is the whole reason a payment platform is allowed to exist.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: PCI-DSS COMPLIANCE                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-purple">Step 12</span>
+  <h2>PCI-DSS Compliance</h2>
+  <p>PCI-DSS is the payment-card industry's data-security standard. It is non-optional for anyone handling card data, and the cost of compliance scales sharply with how much of our infrastructure touches card numbers. The goal is therefore to <em>never see a real card number anywhere on our servers</em>.</p>
+
+  <h3 class="subh">Tokenization — the single most important PCI scope reducer</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  participant U as Sarah's Browser
+  participant SDK as Stripe.js iframe
+  participant ST as Stripe Vault
+  participant API as Our API
+  participant DB as Our DB
+
+  U->>SDK: Types card 4242-4242-4242-4242
+  Note over SDK: Card data NEVER leaves the iframe<br/>Posted directly to Stripe
+  SDK->>ST: Vault the card
+  ST-->>SDK: token = "pm_abc123"
+  SDK->>U: Page receives only token
+
+  U->>API: POST /v1/payments<br/>{ payment_method_id: "pm_abc123" }
+  Note over API: Backend never sees PAN —<br/>only the opaque token
+  API->>DB: INSERT (..., payment_method_id="pm_abc123")
+  API->>ST: charge using pm_abc123
+    </div>
+  </div>
+
+  <p>The Stripe.js iframe is hosted on Stripe's domain, so it doesn't even share the same browsing context as our checkout page. Card data is captured by Stripe, vaulted by Stripe, and we receive an opaque token like <code>pm_abc123</code> that we can use to charge but cannot reverse-engineer back into a real card number. This single design decision moves our PCI scope from <em>"we are a processor"</em> (PCI Level 1, hundreds of pages of audit) to <em>"we are a tokenized merchant"</em> (PCI SAQ-A, a checklist).</p>
+
+  <h3 class="subh">The other PCI guardrails</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>🔐 Network isolation</h3>
+      <p>Servers that handle payment tokens live in a tightly-firewalled VPC with no inbound internet access. Egress is whitelisted to Stripe's IPs and our other services only. Audit logs all egress for review.</p>
+    </div>
+    <div class="card">
+      <h3>📜 Logged everything, redacted forever</h3>
+      <p>Application logs run through a redaction pipeline that strips anything matching a card-number pattern (Luhn-checkable digit sequences) before writing to the log store. Even if a developer accidentally logs <code>req.body</code>, the PAN never lands on disk.</p>
+    </div>
+    <div class="card">
+      <h3>🔑 Secrets via vault, rotated quarterly</h3>
+      <p>Stripe API keys, signing secrets, and DB credentials are held in HashiCorp Vault or AWS Secrets Manager. Apps fetch at boot, no secrets in env files or git. Rotated every 90 days minimum.</p>
+    </div>
+    <div class="card">
+      <h3>📋 Annual audit + quarterly scans</h3>
+      <p>An external QSA (Qualified Security Assessor) audits us yearly. Quarterly ASV (Approved Scanning Vendor) scans probe our public surface for vulnerabilities. Findings are tracked to closure within 30-90 days depending on severity.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The one-line summary an auditor wants to hear:</strong> "We don't store, process, or transmit primary account numbers — we tokenize at the client and only handle opaque tokens server-side." If that sentence is true and provable, you've reduced ~80% of the PCI burden.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: MULTI-CURRENCY                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-cyan">Step 13</span>
+  <h2>Multi-Currency</h2>
+  <p>Sarah pays $89 USD; the merchant settles in EUR. Naïvely you might think "convert the amount, save the converted number". That breaks the audit invariant — the FX spread has to live somewhere too, and the conversion rate at transaction time has to be locked or you can't reconcile.</p>
+
+  <h3 class="subh">The rule — entries are always in the account's native currency</h3>
+  <p>An account has a fixed currency. <code>sarah_card</code> is USD. <code>zappos_escrow_eur</code> is EUR. A ledger entry's amount is always denominated in <em>that account's currency</em>. FX conversion is itself a transaction with multiple legs — and the spread is credited to a platform revenue account.</p>
+
+  <h3 class="subh">Sarah pays $89 USD, merchant settles EUR at rate 1 USD = 0.92 EUR</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>#</th><th>Account</th><th>Currency</th><th>Amount</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>sarah_card</td><td>USD</td><td><code>−$89.00</code></td><td>Card debited</td></tr>
+        <tr><td>2</td><td>platform_fx_pool_usd</td><td>USD</td><td><code>+$89.00</code></td><td>USD enters platform</td></tr>
+        <tr><td>3</td><td>platform_fx_pool_eur</td><td>EUR</td><td><code>−€81.88</code></td><td>EUR leaves platform pool</td></tr>
+        <tr><td>4</td><td>zappos_escrow_eur</td><td>EUR</td><td><code>+€81.88</code></td><td>Merchant credited at 1 USD = 0.92 EUR</td></tr>
+        <tr><td>5</td><td>platform_fx_revenue_eur</td><td>EUR</td><td><code>+€0.00</code></td><td>Spread / margin (if applicable)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Each currency's entries sum to zero on their own — USD entries (1, 2) sum to zero, EUR entries (3, 4, 5) sum to zero. The platform takes on the FX risk; we hedge by holding currency pools and rebalancing them periodically with our banking partners.</p>
+
+  <div class="highlight hl-cyan"><strong>The locked-rate rule:</strong> the FX rate used for entries 3 and 4 is captured at transaction time, written into the Transaction row, and never recalculated. If the rate later moves, that's our P&amp;L — but the ledger never changes. This is what makes multi-currency reconcilable.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: PARTITIONING                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-green">Step 14</span>
+  <h2>Data Partitioning</h2>
+  <p>1 billion ledger rows per year does not fit on one box once we factor in indices, replicas, and operational headroom. We partition the LedgerEntry table by <code>account_id</code>.</p>
+
+  <h3 class="subh">Why account_id, not transaction_id or time</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>✅ Account_id (chosen)</h3>
+      <p>Most queries are "give me all entries for account X" — balance lookup, statement generation, audit. Sharding by account_id keeps an account's full history co-located on one shard, so SUM queries are local and fast.</p>
+    </div>
+    <div class="card">
+      <h3>❌ Transaction_id</h3>
+      <p>Spreads each transaction's debit and credit entries across different shards — meaning every transaction commit becomes a distributed write. Atomic ledger writes become hard.</p>
+    </div>
+    <div class="card">
+      <h3>❌ Time</h3>
+      <p>Today's shard is hot; yesterday's is cold. Hot shard becomes the bottleneck. Better used as a secondary partition (sub-partition by month within each account-shard) for archival.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Hot accounts — the platform escrow problem</h3>
+  <p>Most accounts are tiny — a customer might have a few transactions per year. But the <strong>platform escrow account</strong> touches every single transaction we process. At 1M tx/day, escrow has 2M+ entries/day on a single shard. That shard becomes a write bottleneck.</p>
+
+  <p>Solution: <strong>sub-shard hot accounts</strong>. The platform escrow is virtually represented as N "shards" (escrow_001, escrow_002, …, escrow_032). Writes are randomly assigned to one of the N. Reads roll up across all N. The balance is <code>SUM</code> over the sub-shards. Net effect: we trade a tiny amount of read complexity for 32× write throughput on the hot account.</p>
+
+  <div class="highlight hl-green"><strong>Partition by access pattern, not data structure.</strong> Account_id is the right key because that's how we query. If our access pattern were "give me yesterday's transactions across all accounts" (e.g., for reconciliation), time-partitioning would win. Pick the partition key by looking at the queries, not the schema.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 15: FAULT TOLERANCE                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s15">
+  <span class="sec-tag tag-red">Step 15</span>
+  <h2>Fault Tolerance</h2>
+  <p>Every component in the system can fail. The interesting question is: <em>does that failure cause money to be lost, money to be duplicated, or just a temporary outage?</em> The first two are unacceptable; the third is recoverable. The architecture is built so that every plausible failure mode lands in bucket three.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>What fails</th><th>What happens</th><th>How we recover</th></tr></thead>
+      <tbody>
+        <tr><td>Payment API pod crashes mid-request</td><td>Client times out, retries with same idempotency key</td><td>Retry hits Redis or DB unique-constraint, returns original result</td></tr>
+        <tr><td>Orchestrator pod dies between steps</td><td>Workflow paused</td><td>Temporal reschedules workflow on a healthy pod, resumes at next step</td></tr>
+        <tr><td>Stripe gateway has 30-min outage</td><td>New payments fail on authorize step</td><td>Circuit breaker fails fast; client sees error; no money moved; saga not started</td></tr>
+        <tr><td>Stripe drops mid-capture</td><td>Workflow doesn't know if capture succeeded</td><td>Idempotent retry to Stripe; if still uncertain, query Stripe API for capture status</td></tr>
+        <tr><td>Ledger DB primary loses a disk</td><td>Sync replica promoted; ~30s of write blockage</td><td>Postgres synchronous replication; orchestrator retries blocked writes</td></tr>
+        <tr><td>Redis idempotency cache wiped</td><td>First retry would re-execute</td><td>DB UNIQUE constraint on Transaction.idempotency_key catches it; original row read and returned</td></tr>
+        <tr><td>Notification service down</td><td>Webhooks not delivered</td><td>Async retry with exponential backoff for 3 days; payment itself unaffected</td></tr>
+        <tr><td>Whole AZ goes down</td><td>~30% of capacity lost</td><td>Multi-AZ deployment: traffic shifted to remaining AZs; sync replicas promoted; degraded for &lt;5min</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-red"><strong>The mental model:</strong> failures are loud, not silent. Every failure surface is either (a) auto-retried by Temporal, (b) blocked by an idempotency-key, (c) caught by reconciliation the next morning, or (d) raised as an alert. There is no quiet failure path where money disappears and nobody knows for a week.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 16: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s16">
+  <span class="sec-tag tag-blue">Step 16</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">How do you ensure the same payment isn't charged twice if the user double-clicks?</div>
+  <div class="ans"><strong>Idempotency keys, two layers of defense.</strong> The client SDK generates a UUID before the first request and reuses it on every retry. Server-side: Redis <code>SETNX idempotency:&lt;key&gt;</code> on the fast path, plus a <code>UNIQUE</code> constraint on Transaction.idempotency_key in Postgres as the bulletproof backup. Even if Redis is wiped, the DB rejects the duplicate insert and we return the original cached response. The client can mash "Buy" 100 times — only the first request runs, the rest return the same result.</div>
+
+  <div class="iq">What happens if we capture the card but our DB write fails?</div>
+  <div class="ans"><strong>Temporal saga compensating action.</strong> The orchestrator persisted "capture succeeded" before attempting the ledger write. When the ledger write fails permanently (after retries), the saga runs the compensating action — <code>refund(captureId)</code> against Stripe — undoing the capture. Sarah sees a payment-failed error; her card is not charged. The audit log records all five state transitions: authorized → captured → ledger-failed → refund-issued → refund-confirmed. Money is never lost or duplicated; only briefly in flight.</div>
+
+  <div class="iq">Why double-entry ledger over a simple balance column?</div>
+  <div class="ans"><strong>Auditability, the math invariant, and zero hot-row contention.</strong> A balance column overwrites history (you can't answer "what was the balance at 2pm yesterday?"). Double-entry is append-only — every cent's movement is a row, queryable forever. The mathematical invariant <code>SUM(amount_cents) FROM ledger_entry = 0</code> globally is a free correctness check; if it ever drifts from zero, money has been created or destroyed and we can detect it within a minute. And appending parallel rows scales infinitely; updating one balance row serializes everything on Postgres row locks.</div>
+
+  <div class="iq">How would you build the refund flow?</div>
+  <div class="ans"><strong>It's a brand-new transaction, not a mutation of the original.</strong> A refund request creates a new Transaction with its own idempotency key, a reference to the original payment, and writes <em>new</em> ledger entries that are equal-and-opposite to the original (debit Zappos's escrow, credit Sarah's payment-method-account, both for $89). The orchestrator then calls Stripe's refund API. Original transaction stays in the ledger forever — refund is recorded as a separate event with full audit trail. Partial refunds work the same way with a smaller amount.</div>
+
+  <div class="iq">How does a saga differ from a 2-phase commit?</div>
+  <div class="ans"><strong>2PC takes locks; saga takes responsibility.</strong> 2PC asks every participant "can you commit?", holds locks, then says "commit". This requires every participant to support the protocol — and Stripe / Visa / Mastercard do not. 2PC also blocks indefinitely if the coordinator dies after "prepare". Saga gives up trying to be atomic, instead defining a compensating action for every step. When something fails, the saga undoes the partial work in reverse. Saga works across systems we don't own; 2PC works only inside one DB.</div>
+
+  <div class="iq">How do you keep PCI scope small?</div>
+  <div class="ans"><strong>Tokenize at the client, never see the PAN server-side.</strong> Stripe.js (a Stripe-hosted iframe) collects the card number directly in the browser and ships it to Stripe's vault, returning an opaque <code>pm_...</code> token. Our backend only ever stores tokens. We don't store, process, or transmit primary account numbers — which moves us from PCI Level 1 (full audit) to PCI SAQ-A (a checklist). Backed up by network isolation, secret rotation, log redaction, quarterly ASV scans, and an annual QSA audit.</div>
+
+  <div class="iq">How do you handle a Stripe outage mid-transaction?</div>
+  <div class="ans"><strong>It depends where in the saga we were.</strong> If we hadn't called Stripe yet (before authorize), the circuit breaker fails fast — client sees error, no money moved, no compensation needed. If we'd authorized but not captured, Temporal retries capture with exponential backoff; if Stripe stays down for hours we run the reverse-auth compensating action and tell the client we can't fulfill. If we'd captured but couldn't confirm, we use Stripe's idempotency-key feature to safely re-query — never re-charge. After Stripe recovers, the reconciliation job verifies our internal ledger matches Stripe's settlement to the cent.</div>
+
+  <div class="iq">How do you scale the ledger to a billion rows per year?</div>
+  <div class="ans"><strong>Partition by account_id; sub-shard hot accounts.</strong> Most accounts have tiny histories so partitioning by account_id keeps each account's full record co-located for fast SUM queries. The platform escrow account — which touches every single transaction — gets sub-sharded into 32 virtual shards (escrow_01..escrow_32) so writes don't bottleneck on one row. Reads roll up by summing across the sub-shards. Snapshot caches materialize per-account balances every few minutes so balance reads are O(1) instead of O(N) over the entire ledger.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "It's a saga-orchestrated workflow with strict idempotency keys writing into a double-entry ledger — the saga handles partial-failure recovery, the keys make retries safe, and the ledger guarantees that <code>SUM(all entries) = 0</code> always holds. Every other component exists to support those three properties."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

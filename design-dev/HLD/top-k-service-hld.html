@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Top-K Service (Trending) — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Top-K Service — <span>Trending Now</span></h1>
+  <p class="sub">From "count everything and sort" to a sharded, sketched, sub-100ms ranking engine — how YouTube Trending, Twitter top tweets, and Google top searches actually compute the leaderboard</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is a Top-K Service?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">Algorithms — The Core Problem</a></li>
+      <li><a href="#s6">High-Level Architecture</a></li>
+      <li><a href="#s7">Count-Min Sketch Deep Dive</a></li>
+      <li><a href="#s8">Min-Heap for Top-K</a></li>
+      <li><a href="#s9">Sliding Windows</a></li>
+      <li><a href="#s10">Sharding</a></li>
+      <li><a href="#s11">Approximate vs. Exact</a></li>
+      <li><a href="#s12">Cache &amp; Fault Tolerance</a></li>
+      <li><a href="#s13">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS A TOP-K SERVICE?            -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is a Top-K Service?</h2>
+  <p>Imagine Raj opens YouTube on a Saturday morning. The homepage greets him with a row labeled "Trending Now" — ten thumbnails, ranked. In the eight seconds it took him to launch the app, somewhere around <strong>800,000 other people clicked play on something</strong>. To put ten thumbnails on his screen, a system has to answer: <em>out of the millions of videos that got viewed in the last hour, which ten got viewed the most?</em> The naive answer — "count every view, sort all videos by count, take the top ten" — is mathematically right and operationally impossible. There are billions of videos and millions of views per second. You will not finish counting, let alone sorting, before Raj closes the app and goes to make coffee.</p>
+
+  <p>This pattern shows up everywhere on the modern web: <strong>Twitter Trending Topics</strong> (top hashtags in the last 5 minutes), <strong>Google Top Searches</strong> (most-searched queries today), <strong>Reddit r/all</strong> (top posts right now), <strong>Spotify Daily Top 50</strong>, <strong>Amazon Best Sellers</strong>, <strong>fraud-detection top suspicious IPs</strong>. They are all the same problem in disguise — a firehose of events arrives, and someone needs the top K most frequent items over a time window.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How do we count events from a 100,000-events-per-second firehose without storing every event forever? (2) How do we serve the top-10 leaderboard in under 100ms while the underlying counts are constantly moving?</div>
+
+  <p>The trick the industry settled on is a beautiful one: <strong>give up on exact answers</strong>. Nobody on Earth verifies whether the trending video at rank 7 is <em>really</em> the seventh most-watched or actually the eighth. Once you accept "approximate is fine", a 60-year-old algorithm called <strong>Count-Min Sketch</strong> lets you count billions of distinct items in a few megabytes of RAM. Pair it with a min-heap, and the leaderboard practically maintains itself.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Before drawing a single box, pin down what the system must do. Top-K looks deceptively simple ("just count and sort, right?"); the requirements are where you reveal you understand why it isn't.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Ingest a stream of events <code>(item_id, timestamp)</code> — video views, tweets, search queries</li>
+        <li>Serve <code>getTopK(window, k)</code> for windows of <strong>1 minute, 1 hour, 24 hours, all-time</strong></li>
+        <li>K is small — typically 10 to 1000 (nobody asks for "top 10 million")</li>
+        <li>Ranking by raw count is the default; weighted rankings (likes × 2 + shares × 5) are a stretch goal</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Low query latency</strong> — getTopK p99 under 100ms (it's on the homepage)</li>
+        <li><strong>Approximate is OK</strong> — small ranking errors are invisible to users</li>
+        <li><strong>Throughput</strong> — handle 100K events/sec sustained, 1M/sec at peak</li>
+        <li><strong>Cardinality</strong> — billions of distinct items in the long tail</li>
+        <li><strong>Fault tolerant</strong> — no event drops, surviveable to single-node failure</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>Out of scope (explicitly):</strong> exact counts (use a separate Ad Click Aggregator if you need them for billing), per-user personalized trending (that's a recommendations system, not a Top-K), and per-item drill-down history ("show me this video's hourly view chart" — that's an analytics warehouse problem). Mixing these in is the most common interview mistake.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers drive every architectural choice in Top-K — they are the entire reason the algorithm changes from "naive sort" to "sketch + heap". Do them out loud.</p>
+
+  <h3 class="subh">Traffic estimates (using a YouTube-scale model)</h3>
+  <p>Assume <strong>100,000 video views per second</strong> sustained, peaking at 1M/sec during Super Bowl moments. Assume <strong>1 billion distinct videos</strong> in the catalog (long tail of historical content). Assume the Trending page is loaded <strong>10,000 times per second</strong> globally.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Event ingest</h3><p><span class="metric">100K events/s</span></p><p>Steady state, peaks at 1M</p></div>
+    <div class="card"><h3>Distinct items</h3><p><span class="metric">~1B items</span></p><p>Total catalog cardinality</p></div>
+    <div class="card"><h3>getTopK QPS</h3><p><span class="metric">10K req/s</span></p><p>Trending page loads</p></div>
+    <div class="card"><h3>K range</h3><p><span class="metric">10 – 1000</span></p><p>Page sizes</p></div>
+  </div>
+
+  <h3 class="subh">Storage estimate — and why it forces approximation</h3>
+  <p>If we logged every single event with <code>(item_id, timestamp) = 16 bytes</code>: <code>100K × 16B × 86,400s = </code> <span class="metric">~138 GB / day</span> = <span class="metric">~50 TB / year</span>. We <em>do</em> keep this in cold storage for offline analytics — but using it to answer <em>real-time</em> top-K means scanning terabytes per query, which is hopeless.</p>
+
+  <p>If we kept exact counts per item: <code>1B items × (8B id + 8B counter + window metadata) ≈</code> <span class="metric">~30 GB</span>. Tractable for single-tier storage — but updating <em>and reading</em> at 100K updates/sec while sorting 1B rows on every query is what kills it.</p>
+
+  <p>With a Count-Min Sketch approximation: <code>5 hash functions × 100K columns × 4B counter =</code> <span class="metric">~2 MB per sketch</span>, regardless of how many distinct items show up. We can keep <em>1,440 sketches</em> (one per minute of the last 24 hours) in <span class="metric">~3 GB</span> of RAM per node. That's the magic.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Ingest rate</td><td><code>100K/s</code></td><td>Forces stream-processing; one box can't keep up</td></tr>
+        <tr><td>Cardinality</td><td><code>1B items</code></td><td>Forces probabilistic counters; per-item map is too big to update fast</td></tr>
+        <tr><td>Top-K QPS</td><td><code>10K/s</code></td><td>Forces a precomputed cache; cannot recompute on every read</td></tr>
+        <tr><td>Sketch size</td><td><code>2 MB</code></td><td>Why approximation is cheap — fits in L2/L3 cache</td></tr>
+        <tr><td>Cold log</td><td><code>50 TB/yr</code></td><td>Goes to S3 for offline exact analytics, not real-time</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>Two endpoints carry all the traffic: one to <strong>ingest events</strong> (write path, very high QPS), one to <strong>read the top-K</strong> (read path, much lower QPS but must be fast).</p>
+
+  <span class="code-label cl-green">REST API surface</span>
+<pre><span class="cmt">// Ingest — write path, 100K/sec</span>
+<span class="cmt">// Almost always called server-to-server (not directly from browsers)</span>
+POST /api/v1/events
+{
+  "item_id":   "vid_8a3f2b",
+  "timestamp": 1715072526123,
+  "weight":    1                  <span class="cmt">// optional, default 1</span>
+}
+→ 202 Accepted   <span class="cmt">// fire-and-forget, returns immediately</span>
+
+<span class="cmt">// Read — getTopK, 10K/sec, sub-100ms</span>
+GET /api/v1/topk?window=1h&amp;k=10
+→ 200 OK
+{
+  "window":    "1h",
+  "generated": "2026-05-07T14:02:30Z",
+  "items": [
+    { "item_id": "vid_8a3f2b", "approx_count": 1240000 },
+    { "item_id": "vid_91e0a4", "approx_count":  980000 },
+    ...
+  ]
+}</pre>
+
+  <div class="highlight hl-blue"><strong>Why <code>202 Accepted</code> for ingest, not <code>200 OK</code>?</strong> The client (the watch-page service that fired the event) must not be blocked waiting for our pipeline to actually count it. We acknowledge receipt the moment the event lands in Kafka — counting happens asynchronously. If we made the client wait, a Kafka hiccup would slow down <em>every video page on YouTube</em>, which is unacceptable.</div>
+
+  <div class="highlight hl-orange"><strong>Why no <code>getCount(item_id)</code> endpoint?</strong> Because Count-Min Sketches store counts cell-collision-style — you <em>can</em> ask "how many views does this specific video have", but the answer over-estimates. For per-item exact counts you'd hit the warehouse. The sketch is optimized for "what are the top items", not "how many views did <em>this</em> item get".</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: ALGORITHMS                          -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>Algorithms — The Core Problem</h2>
+  <p>Forget the architecture for a second. The hard part of Top-K is <em>algorithmic</em>: how do you compute the top K from a high-velocity stream over billions of items, in bounded memory, in milliseconds? Three approaches are worth weighing — only one survives.</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">❌ Naive — count in DB, sort on query</h3>
+      <p>Keep <code>(item_id, count)</code> rows in Postgres. On every event, <code>UPDATE counts SET count=count+1 WHERE item_id=X</code>. On every getTopK, <code>SELECT * ORDER BY count DESC LIMIT K</code>.</p>
+      <p><strong>Why it fails:</strong> 1B-row sort on every read = seconds per query. 100K writes/sec on a single Postgres = lock contention meltdown. And there is no notion of a sliding time window — counts are forever.</p>
+    </div>
+    <div class="card" style="border-color:rgba(212,168,56,.4)">
+      <h3 style="color:var(--yellow)">⚠️ Heap-based exact</h3>
+      <p>Keep a min-heap of size K. On every event, look up the item's current exact count, push into the heap if it beats the heap's minimum.</p>
+      <p><strong>Why it fails:</strong> O(log K) per event is fast, but to know "current count" you still need an exact per-item counter — back to the 1B-row map problem. And in a sharded world the per-shard heap doesn't compose into the global top-K cleanly when an item is split across shards.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✅ Count-Min Sketch + Min-Heap</h3>
+      <p>Use a probabilistic counter (Count-Min Sketch) of fixed size — a few MB regardless of how many items show up. Keep a min-heap of size K alongside. On every event: increment the sketch, then check if the item's sketched count beats the heap min — if yes, swap.</p>
+      <p><strong>Why it wins:</strong> O(1) update, O(log K) heap maintenance, fixed memory, mergeable across shards. Trade-off: counts over-estimate by a bounded amount with bounded probability. Acceptable for ranking.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>The mental model that makes this click:</strong> Count-Min Sketch is like an approximate vote tally that <em>always overcounts but never undercounts</em>. Min-Heap is like a leaderboard with constant-size memory — the moment a contender beats the lowest-ranked person on the board, it kicks them off. Combined, you have a leaderboard where the count next to each name is "at most this many votes, possibly fewer" — accurate enough to rank, cheap enough to maintain at firehose speed.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart, and the production shape where every box justifies itself. The numbers from §3 drive every box.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Sketch the simplest possible system: a single counter table in Postgres, updated by every event, sorted by every query.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C["Event Source"] --> APP["App Server"]
+  APP -->|"UPDATE counts SET count=count+1"| DB[("Postgres")]
+  USER["User Browser"] -->|"SELECT * ORDER BY count DESC LIMIT 10"| APP
+    </div>
+  </div>
+
+  <p>Three concrete failures emerge the moment real traffic shows up:</p>
+  <div class="g3">
+    <div class="card">
+      <h3>💥 Write contention at 100K/sec</h3>
+      <p>Postgres tops out around 5K–10K row updates per second on commodity hardware. We need 100K. The <code>counts</code> table becomes a lock-contention zoo — viral items have their row updated thousands of times per second, blocking each other. The DB CPU pegs at 100% and writes start timing out.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Sort across 1B rows per query</h3>
+      <p>Every getTopK does <code>ORDER BY count DESC LIMIT 10</code> over 1B rows. Even with an index on count, maintaining that index under 100K updates/sec is itself a workload — and ordered scans across that many rows take seconds. Your homepage is now a stopwatch.</p>
+    </div>
+    <div class="card">
+      <h3>💥 No sliding window concept</h3>
+      <p>The counter is monotonically increasing forever. If a video went viral two years ago and got 100M views, it dominates "trending today" forever. There's no notion of "decay" or "last hour". Adding one means storing per-event timestamps, which dumps us back into the 50 TB/year log problem.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: Two-stage pipeline with probabilistic compression</h3>
+  <p>Three insights flip the design from "impossible" to "elegant":</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">① Decouple write and read</h3>
+      <p>Writes go into an event stream (Kafka). Reads hit a precomputed top-K cache. Counting happens <em>between</em> them in stream processors. No request ever blocks on the other workload's resources. This is the same write-path/read-path split that the URL shortener uses, only here the "count and rank" computation is what bridges the two.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">② Approximate counting in fixed memory</h3>
+      <p>Per-shard <strong>Count-Min Sketch</strong> tracks counts in a few MB regardless of how many distinct items appear. Per-shard <strong>min-heap of size K</strong> always knows that shard's current top-K contenders. Memory cost stops growing; compute cost per event stays O(log K).</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">③ Time-bucketed sketches for sliding windows</h3>
+      <p>Don't try to "decay" counts continuously — instead keep <strong>one sketch per minute</strong> (so 60 sketches cover the last hour, 1440 cover last 24h). Querying "last hour" merges the most recent 60 sketches. Old sketches age out and free their memory.</p>
+    </div>
+  </div>
+
+  <p>The Kafka topic is partitioned by <code>item_id</code> using consistent hashing. Each Flink task owns one partition's full sketch + heap state. At query time, we read each shard's locally-computed top-K, merge them in the API server, and return the global top-K. Approximate at every step, but correct enough for a homepage.</p>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered — find its matching card below to see what it does and what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Event Sources — Watch Page · App · Search Box"]
+
+  subgraph EDGE["Edge / Ingest"]
+    GW["② API Gateway"]
+    KAFKA["③ Kafka — partitioned by item_id"]
+  end
+
+  subgraph AGG["Aggregation Plane"]
+    FLINK["④ Stream Processor — Flink / Kafka Streams"]
+    STATE[("⑤ Per-Shard State — RocksDB · CMS + Heap")]
+    WIN["⑥ Window Aggregator — flushes per-minute"]
+  end
+
+  subgraph QUERY["Query Plane"]
+    CACHE[("⑦ Top-K Cache — Redis ZSET, sharded")]
+    API["⑧ Aggregator API Server"]
+  end
+
+  subgraph COLD["Cold / Ops"]
+    S3[("⑨ Cold Event Log — S3 / Warehouse")]
+    REPLAY["⑩ Replay Service — backfill, sketch rebuild"]
+    MON["⑪ Monitoring — sketch error, heap accuracy"]
+  end
+
+  USER["End User Browser"]
+
+  CL --> GW
+  GW --> KAFKA
+  KAFKA --> FLINK
+  FLINK --> STATE
+  FLINK --> WIN
+  WIN --> CACHE
+  KAFKA --> S3
+
+  USER -->|"GET /topk"| API
+  API --> CACHE
+
+  REPLAY -.replay.-> KAFKA
+  FLINK -.metrics.-> MON
+  CACHE -.metrics.-> MON
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style GW fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style KAFKA fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style FLINK fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style STATE fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style WIN fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style CACHE fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style API fill:#171d27,stroke:#38b265,color:#d4dae5
+  style S3 fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style REPLAY fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style MON fill:#171d27,stroke:#e05252,color:#d4dae5
+  style USER fill:#171d27,stroke:#38b265,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Event Sources</h3>
+      <p>The internal services that produce the firehose: the YouTube watch-page service ("a play just started"), the Twitter post service ("a tweet was retweeted"), the Search service ("a query was issued"). Each one fires a small JSON event whenever the relevant action occurs. These are <em>internal</em> producers — events are not posted directly from browsers because that lets users tamper with counts.</p>
+      <p><strong>Solves:</strong> nothing on its own — but the entire pipeline downstream exists to absorb their throughput. The fact that they emit fire-and-forget (they don't wait for our acknowledgment to render the user's action) is what lets the rest of the system be asynchronous.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> API Gateway</h3>
+      <p>The thin HTTP layer in front of Kafka. Validates the event payload (does it have <code>item_id</code> and <code>timestamp</code>? is the timestamp within sane bounds?), authenticates the producer service, applies per-source rate limits, then publishes to Kafka. Returns 202 in microseconds.</p>
+      <p><strong>Solves:</strong> protecting Kafka from malformed traffic and keeping the producer-facing API stable while the internal stream evolves. Without it, every producer would have to embed Kafka client libs and know broker topology — operationally a nightmare.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">③</span> Kafka — partitioned by item_id</h3>
+      <p>The durable event log that buffers everything. Partitioned by <code>hash(item_id) % N</code>, so all events for the same item land on the same partition — that's what makes per-shard counting possible. Configured with 3× replication so a broker death loses zero events. Retention is short for the hot tier (24 hours is enough — the cold log handles long-term storage).</p>
+      <p><strong>Solves:</strong> <em>everything</em>. Decouples producers from consumers (producers don't care if Flink is healthy). Provides replay (restart Flink from any offset). Provides natural sharding (each partition is one consumer's whole world). Without Kafka, ingest spikes would directly hammer the stream processors and a Flink restart would lose data.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">④</span> Stream Processor (Flink / Kafka Streams)</h3>
+      <p>The brain. A cluster of Flink jobs, one task per Kafka partition. Each task consumes events for its partition and updates two pieces of state: (a) a Count-Min Sketch for the current minute's counts, and (b) a min-heap of the top K items observed in the current window. Every event is one O(1) sketch increment plus one O(log K) heap maintenance — fast enough to keep up with the partition's share of 100K/sec.</p>
+      <p><strong>Solves:</strong> the actual counting. Without Flink (or an equivalent stream processor), we'd be storing every event raw and recomputing top-K from scratch on every query — back to the impossible naive design. Flink's checkpointing also provides exactly-once semantics so we don't double-count on restart.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑤</span> Per-Shard State Store (RocksDB)</h3>
+      <p>Embedded RocksDB inside each Flink task holds the per-minute sketches and heaps. Why RocksDB and not pure heap memory? Because over a 24-hour sliding window we keep 1,440 sketches per shard — that's a few GB per shard, more than fits comfortably in JVM heap. RocksDB stores it on local SSD with an in-memory cache for the active sketches.</p>
+      <p><strong>Solves:</strong> holding sketch state larger than RAM, and persisting it across crashes. Combined with Flink's periodic checkpoints to S3, this means a Flink task can die and resume in seconds without losing its count history.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑥</span> Window Aggregator</h3>
+      <p>A timer-driven function inside Flink that fires once per minute (and once per hour, once per day, depending on the windows we serve). When it fires, it snapshots the current sketch and heap, computes that shard's top-K for that window, and writes it to the Top-K Cache. Old sketches that age out of all configured windows are deleted to free memory.</p>
+      <p><strong>Solves:</strong> the gap between "Flink has live state" and "the API server can read a fast precomputed answer". Without this aggregator, every getTopK would have to ask Flink to compute on demand — adding hundreds of milliseconds and coupling read latency to write throughput.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑦</span> Top-K Cache (Redis ZSET, sharded)</h3>
+      <p>A Redis cluster holding precomputed per-shard top-K results, one entry per (window, shard) tuple. Stored as Redis sorted sets (ZSETs) so an API server can read the top K of one shard in a single <code>ZREVRANGE</code> call. TTL matches the window length so stale data evicts itself. Sharded across multiple Redis nodes; replicated for fault tolerance.</p>
+      <p><strong>Solves:</strong> sub-100ms read latency. Every getTopK becomes a few cache reads + a merge — never touches Flink, never touches the cold log. Without this, the read path would be coupled to Flink's processing latency, which spikes whenever event throughput spikes (exactly when users are most likely to load the trending page).</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑧</span> Aggregator API Server</h3>
+      <p>The stateless service that answers <code>GET /api/v1/topk</code>. On each request it reads each shard's precomputed top-K from Redis (e.g. 8 ZREVRANGE calls in parallel), merges them with a single global heap pass, and returns the top K. Total work: 8 cache reads + a 8K-element merge sort = under 30ms typical.</p>
+      <p><strong>Solves:</strong> stitching per-shard approximate top-Ks into a global answer. Why merge in the API tier and not in Redis? Because the merge needs cross-shard heap logic that's awkward to express in Redis Lua, and the merge cost (8K items max) is cheap enough to do per request.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑨</span> Cold Event Log (S3 / Data Warehouse)</h3>
+      <p>A second consumer of the Kafka topic — a Kafka Connect S3 sink — writes the raw event stream to Parquet files in S3, partitioned by hour. Downstream, a Spark / BigQuery job runs nightly to compute exact top-K, generate dashboards, and feed the recommendations team. The hot path never reads this; only offline analytics does.</p>
+      <p><strong>Solves:</strong> exact counts when we need them (auditing the approximate pipeline, computing weekly leaderboards where exact ranking matters), and the ability to <em>replay</em> events through Flink if we change the sketch parameters or fix a counting bug.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑩</span> Replay Service</h3>
+      <p>An on-demand tool that re-streams events from S3 (or from an arbitrary Kafka offset) back through a fresh Flink job, used to rebuild sketches after a parameter change ("we want 7 hash functions instead of 5") or to backfill a new time window ("add a 7-day window"). Runs on a separate Flink cluster so it doesn't disturb production.</p>
+      <p><strong>Solves:</strong> the "we changed our mind about sketch parameters" problem, which would otherwise require taking the live system down. Without replay, every algorithmic change would be a one-way migration.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑪</span> Monitoring</h3>
+      <p>Tracks the metrics that matter for an approximate system: sketch over-estimation rate (compared periodically against exact counts from the warehouse), per-shard heap accuracy, Kafka consumer lag, Flink checkpoint duration, Redis hit rate. Alerts fire when over-estimation drifts above the configured ε bound.</p>
+      <p><strong>Solves:</strong> the special debugging burden of probabilistic systems — when the trending list looks "off", you need to know whether the sketch widened its error or whether something else broke. Without dedicated monitoring, you can't tell.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Raj watches a viral video, then opens Trending</h3>
+  <p>Two flows, mapped to the numbered components above.</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>✍️ Ingest flow — 14:02:06, Raj presses play</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>The watch-page service ① fires <code>POST /events { item_id: vid_8a3f2b, timestamp: ... }</code> to the API Gateway ②. Returns 202 in 5ms — Raj's video starts playing instantly, no blocking.</li>
+        <li>Gateway publishes the event to Kafka ③. <code>hash("vid_8a3f2b") % 8 = 3</code>, so it lands on partition 3.</li>
+        <li>Flink task ④ for partition 3 consumes the event. It updates its current-minute Count-Min Sketch ⑤ — incrementing 5 cells (one per hash function). It then queries the sketch for vid_8a3f2b's count, sees it's now 1,240,001, and updates its min-heap ⑤ — vid_8a3f2b was already in the top-K, so just bumps its score.</li>
+        <li>In parallel, the Kafka S3 sink writes the raw event to <code>s3://events/2026-05-07/14/part-...parquet</code> for tomorrow's exact analytics ⑨.</li>
+        <li>At 14:03:00, the Window Aggregator ⑥ fires. Snapshots partition 3's top-K and writes it to Redis ⑦ as <code>ZSET topk:1m:shard3</code> with TTL 5 minutes.</li>
+      </ol>
+      <p style="margin-top:.55rem"><em>Total latency from event-fired to "appears in top-K cache": under 60 seconds (the window flush interval), often much less.</em></p>
+    </div>
+    <div class="card" style="border-left:3px solid var(--green)">
+      <h3>📖 Read flow — 14:02:30, a user opens the Trending page</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Browser GETs <code>/api/v1/topk?window=1h&amp;k=10</code>, hits the Aggregator API Server ⑧.</li>
+        <li>API server fires 8 parallel <code>ZREVRANGE topk:1h:shard{0..7} 0 9 WITHSCORES</code> calls to Redis ⑦. Each returns that shard's top-10 items with scores. Total Redis time: about 5ms.</li>
+        <li>API server merges the 80 candidates into a single max-heap and pops the top 10 — about 1ms of CPU.</li>
+        <li>Returns JSON with the top 10 video IDs and their approximate counts. <em>End-to-end latency: about 30ms.</em></li>
+      </ol>
+      <p style="margin-top:.55rem"><em>The read path never touches Flink, Kafka, or the cold log. It is one cache lookup and a tiny merge — exactly as fast as a single Redis call would be.</em></p>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around three insights — (1) <strong>writes and reads are decoupled by Kafka</strong>, so a 10× ingest spike doesn't slow down getTopK; (2) <strong>counts live in fixed-size probabilistic sketches</strong>, so 1B distinct items don't blow up memory; (3) <strong>per-shard top-K is precomputed and cached</strong>, so the read path is always one-cache-lookup fast. Every box in the diagram exists to remove one of the failure modes from Pass 1.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: COUNT-MIN SKETCH                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-yellow">Step 7</span>
+  <h2>Count-Min Sketch — Deep Dive</h2>
+  <p>Count-Min Sketch (CMS) is the algorithm that makes everything else possible. It's a 2D array of integer counters with <code>d</code> rows (one per hash function) and <code>w</code> columns. Every item maps to exactly one cell per row — and the magic is in how it handles collisions.</p>
+
+  <h3 class="subh">How it works in 30 seconds</h3>
+  <p>To <strong>increment</strong> item X: hash X with each of the <code>d</code> hash functions. Each hash gives you a column index. Increment the cell at <code>(row, hash_row(X))</code> for every row. So a single increment touches exactly <code>d</code> cells — typically 4 or 5.</p>
+
+  <p>To <strong>query</strong> item X's count: hash X again, look up all <code>d</code> cells, return the <strong>minimum</strong>. Why min? Because every cell holds at least X's true count (X incremented it) plus possibly some other items' counts (collisions). The cell with the fewest collisions gives the tightest upper bound.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  EVENT["Event: item X arrives"]
+  EVENT --> H1["hash_1 X = column 7"]
+  EVENT --> H2["hash_2 X = column 3"]
+  EVENT --> H3["hash_3 X = column 12"]
+  EVENT --> H4["hash_4 X = column 5"]
+  EVENT --> H5["hash_5 X = column 9"]
+
+  H1 --> R1["Row 1 col 7: ++"]
+  H2 --> R2["Row 2 col 3: ++"]
+  H3 --> R3["Row 3 col 12: ++"]
+  H4 --> R4["Row 4 col 5: ++"]
+  H5 --> R5["Row 5 col 9: ++"]
+
+  R1 --> Q["Query count of X = MIN of all 5 cells"]
+  R2 --> Q
+  R3 --> Q
+  R4 --> Q
+  R5 --> Q
+
+  style EVENT fill:#e8743b,stroke:#e8743b,color:#fff
+  style Q fill:#171d27,stroke:#38b265,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Why this is a beautiful trade-off</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>📐 Fixed memory regardless of cardinality</h3>
+      <p>The sketch is <code>d × w × 4 bytes</code>. Pick d=5, w=100,000 → <span class="metric">2 MB</span>. That same 2 MB tracks counts for 100 items, 10 million items, or 10 billion items — the size doesn't grow with input cardinality, only with the desired accuracy bounds.</p>
+    </div>
+    <div class="card">
+      <h3>📊 Bounded error</h3>
+      <p>The over-estimation error is bounded by <code>ε = e/w</code> (Euler's e divided by columns) with probability <code>1 - δ</code> where <code>δ = 1/eᵈ</code>. With d=5, w=100K, total events N: error ≤ <code>2.7e-5 × N</code>, with probability 99.3%. For 100M events, error ≤ 2,700 — meaningless when the top item has 1.2M views.</p>
+    </div>
+    <div class="card">
+      <h3>↔️ Mergeable across shards</h3>
+      <p>Two sketches with the same dimensions and hash functions can be added <em>cell by cell</em> to form the union sketch. This is what lets us shard the input — each Flink task maintains a sketch, and at query time we conceptually merge them (in practice we merge the per-shard top-Ks, which is cheaper).</p>
+    </div>
+    <div class="card">
+      <h3>⚠️ Always over-counts, never under-counts</h3>
+      <p>Because cells only ever increment and the query takes MIN, the worst the sketch can say is "X has more votes than X really does". It will never report a smaller count than the truth. For a leaderboard this is exactly the right asymmetry — a borderline item might be falsely included, never falsely excluded.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>The interview move:</strong> CMS is often confused with Bloom filters. Both use multiple hash functions and a fixed array. The difference: <em>Bloom answers "is X in the set?" (yes/no), CMS answers "how many times has X been seen?" (a number)</em>. Bloom uses bits; CMS uses counters. Both can give false positives; only CMS gives an actual count.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: MIN-HEAP                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-green">Step 8</span>
+  <h2>Min-Heap for Top-K</h2>
+  <p>The CMS knows everyone's approximate count. We don't want to scan all 1B items to find the top 10 — we want the top 10 to <em>maintain themselves</em> as events stream by. That's a min-heap of size K's job.</p>
+
+  <h3 class="subh">The algorithm in five lines</h3>
+<pre><span class="kw">on</span> event(item):
+  cms.increment(item)
+  newCount = cms.query(item)
+  <span class="kw">if</span> heap.size &lt; K:                heap.push(item, newCount)
+  <span class="kw">elif</span> newCount &gt; heap.min().count:
+    heap.pop(); heap.push(item, newCount)</pre>
+
+  <p>The heap is keyed by count, with the smallest count at the root (that's what "min-heap of size K" means). Insertion is O(log K). For K = 1000 that's ~10 operations per event — negligible compared to the network and serialization cost of getting the event there.</p>
+
+  <h3 class="subh">Subtleties that bite you in production</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>🔁 Duplicate items in the heap</h3>
+      <p>If item X is already in the heap and arrives again, we shouldn't add it twice — we should update its existing entry's count. Implement the heap as a hash-map-of-handles → heap-positions so you can find and update in O(log K). Lazy alternative: tolerate duplicates and dedupe at read time, simpler but uses more memory.</p>
+    </div>
+    <div class="card">
+      <h3>📉 Counts only go up</h3>
+      <p>The CMS within a single window is monotonic — counts only increase. So an item that fell out of the heap can re-enter only by getting more events. When a window rotates, the heap for that window is reset to empty.</p>
+    </div>
+    <div class="card">
+      <h3>🧮 Heap holds K, not all candidates</h3>
+      <p>Critical: the heap is bounded at K. We do <em>not</em> keep an entry for every item the sketch has seen. The sketch is the "memory of all items"; the heap is the "current top-K shortlist". Memory stays bounded.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: SLIDING WINDOWS                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-purple">Step 9</span>
+  <h2>Sliding Windows — Counting "the Last Hour"</h2>
+  <p>Trending isn't all-time popularity — it's <em>recent</em> popularity. So the system must answer queries like "top-K in the last 1 hour" and have those counts naturally <em>decay</em> as time advances.</p>
+
+  <h3 class="subh">Approach — bucketed sketches</h3>
+  <p>Don't try to continuously decay counters (that's expensive and arithmetically messy). Instead, keep <strong>one sketch per minute-bucket</strong>. To answer "last hour", merge the most recent 60 buckets. To answer "last 24 hours", merge the most recent 1,440. To roll the window forward, drop the oldest bucket.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  subgraph Buckets["Per-Minute Sketches — last 60 minutes"]
+    B0["minute 0<br/>sketch + heap"]
+    B1["minute 1<br/>sketch + heap"]
+    B2["minute 2<br/>sketch + heap"]
+    BN["...<br/>minute 59"]
+  end
+
+  Q1["Query last 5m"] --> M1["MERGE buckets 55-59"]
+  Q2["Query last 1h"] --> M2["MERGE all 60 buckets"]
+  Q3["Query last 1m"] --> M3["READ bucket 59 only"]
+
+  style B0 fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style B1 fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style B2 fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style BN fill:#171d27,stroke:#9b72cf,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Memory cost — and why it's tiny</h3>
+  <p>One sketch is 2 MB. 1,440 sketches per shard × 8 shards = <code>11,520 sketches × 2 MB ≈</code> <span class="metric">~23 GB</span> across the whole cluster. RocksDB-backed, with only the active hour or so kept in RAM. Old buckets evict to SSD; expired buckets get deleted entirely.</p>
+
+  <h3 class="subh">Pre-aggregating common windows</h3>
+  <p>Merging 1,440 sketches per query is wasteful when "last 24h" is the most common window. So we <strong>pre-aggregate</strong>: every minute, the Window Aggregator ⑥ merges the latest minute into the running 1h, 24h, and all-time sketches and writes their top-K straight to Redis. Queries for those windows hit a single ZSET — no merge required.</p>
+
+  <div class="highlight hl-purple"><strong>Why bucketed beats continuous decay:</strong> continuous-decay schemes (like exponentially-weighted moving averages) work but are arithmetically expensive on every event and hard to make exactly correct under failures. Buckets are dumber and more robust — counting in a bucket is just CMS, rolling a window is just dropping a bucket. Boring and reliable beats clever and broken.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: SHARDING                           -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-green">Step 10</span>
+  <h2>Sharding — Why item_id, Not Time</h2>
+  <p>The Kafka topic is partitioned. The most important question: partition by what? Two candidates, only one survives.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">❌ Partition by time bucket</h3>
+      <p>"All events in minute N go to partition N % 8." Sounds clean for window logic. <strong>But:</strong> at 100K events/sec all going to one partition for that minute, you've melted that partition and idled the other 7. And the next minute, the hot partition rotates — every consumer is hammered in turn. Total throughput is bottlenecked by one partition.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✅ Partition by item_id (consistent hash)</h3>
+      <p>"Hash the item_id, modulo N." Events for the same item always go to the same partition — so per-shard counts are <em>complete</em> for that item, and the per-shard heap is meaningful. Load is naturally uniform because there are billions of distinct items, way more than partitions. Hot items (viral videos) are still concentrated on one partition, but at most one partition out of N.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">The hot-key problem (and how to defuse it)</h3>
+  <p>What if one item is <em>so</em> viral that its single partition can't keep up? Real example: a Super Bowl halftime moment can drive 50K events/sec for a single video. If our partitions are sized for 12K/sec each, that one item drowns its partition.</p>
+
+  <p>Two defenses: (1) <strong>sub-key salting</strong> for known hot items — append a random 0–9 suffix to spread across 10 partitions, then sum at query time; (2) <strong>local pre-aggregation</strong> in the producer — buffer events for 100ms locally and ship batched <code>(item_id, count)</code> instead of individual events, reducing the partition load 100×. Most production systems use both.</p>
+
+  <h3 class="subh">The "missed top item" caveat</h3>
+  <p>Sharding by item_id has one subtle correctness issue: an item that ranks #11 on every shard could in aggregate be #1 globally — but our per-shard heaps only keep top K, so it's invisible to the merge. In practice this is rare because heavy hitters concentrate on one shard (all their events go there). The fix when it matters: keep <strong>top 5K per shard, return top 10 globally</strong> — over-collect at the shard level so the long tail of "almost-top" items is preserved through the merge.</p>
+
+  <div class="highlight hl-green"><strong>Rule of thumb:</strong> if you need top-K, keep top-(K × 50) per shard. The cost is negligible (50KB more per heap), the correctness improvement is huge for items distributed evenly across shards.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: APPROXIMATE vs EXACT               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-red">Step 11</span>
+  <h2>Approximate vs. Exact — When You Can't Cheat</h2>
+  <p>The whole design above only works because <strong>approximate is fine</strong>. The Trending page tolerates "video #7 is actually #8" — nobody verifies, nobody complains. But not every "top-K" use case is so forgiving.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Approximate is fine — Trending UIs</h3>
+      <ul>
+        <li>YouTube Trending — viewers don't verify exact ranks</li>
+        <li>Twitter Trending Topics — fast-moving, noisy by nature</li>
+        <li>Reddit r/all — order shifts every refresh anyway</li>
+        <li>Most leaderboards consumed by humans</li>
+      </ul>
+      <p style="margin-top:.55rem">Use this design — Kafka + Flink + CMS + min-heap + Redis cache.</p>
+    </div>
+    <div class="card">
+      <h3>❌ Exact required — Money or compliance</h3>
+      <ul>
+        <li>Ad click counts (used for billing)</li>
+        <li>Vote tallies in elections</li>
+        <li>Inventory counts in commerce</li>
+        <li>Financial transactions</li>
+      </ul>
+      <p style="margin-top:.55rem">CMS would over-count by ~0.001%, which is fine for ranking but means "we billed Coca-Cola for 100 extra clicks they didn't get". Here you build an <strong>Ad Click Aggregator</strong> — Flink with exact per-key counters, idempotent writes via deduplication keys, and a transactional sink. More expensive, but correct to the cent.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The interview move:</strong> when asked about Top-K, your first clarifying question should be "what's the use case — ranking or accounting?" If they say ranking, you propose this sketch-based design. If they say accounting, you pivot to an exact aggregator with deduplication. Asking shows you understand the design space; just charging into one solution shows you don't.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: CACHE & FAULT TOLERANCE            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-cyan">Step 12</span>
+  <h2>Cache Strategy &amp; Fault Tolerance</h2>
+
+  <h3 class="subh">Cache strategy — Redis ZSET as the read serving layer</h3>
+  <p>Each (window, shard) tuple is one Redis sorted set: <code>topk:1h:shard3 = { vid_8a3f2b: 1240000, vid_91e0a4: 980000, ... }</code>. The Window Aggregator refreshes it every minute (or every window-tick, configurably). TTL is set to <code>2 × window_size</code> so a temporarily-stalled aggregator doesn't expose users to empty data.</p>
+
+  <p>The read path is a pure cache hit — sub-10ms even at 10K QPS. Cache miss is impossible in steady state because the aggregator pre-populates everything; if a key is missing it's a real outage of the aggregator, not a normal cache eviction. We monitor "topk cache miss rate" as a critical alert, not a performance metric.</p>
+
+  <h3 class="subh">Fault tolerance — what happens when Flink dies?</h3>
+  <p>Flink checkpoints its full state (sketches + heaps + Kafka offsets) to S3 every 10 seconds. On task failure, Kubernetes restarts the task, which restores from the latest checkpoint and rewinds Kafka to the checkpointed offset. Result: at most 10 seconds of events are reprocessed; zero events are lost.</p>
+
+  <p>Sketch state per shard is small (a few GB), so checkpoints are fast — typically under 2 seconds to write to S3. Restore time is similar. End-to-end recovery from a node death: under 30 seconds, with at-most-once consequences only on the freshest 10s window (which gets recomputed).</p>
+
+  <h3 class="subh">What about Kafka dying?</h3>
+  <p>Kafka itself is replicated 3× across availability zones, so a single broker death is invisible. A whole-cluster outage is a different beast — but in that case the API Gateway buffers events in a small local queue and refuses ingest after a few seconds, while the read path keeps serving stale-but-correct top-K from Redis. Trending degrades gracefully: it stops updating but doesn't go blank.</p>
+
+  <h3 class="subh">Backfill via Replay</h3>
+  <p>If we discover a counting bug or want to add a new window (say, a 7-day one), the Replay Service ⑩ streams events from S3 back through a parallel Flink cluster, builds the new sketches from scratch, and atomically swaps them into Redis when complete. The live system is never disturbed.</p>
+
+  <div class="highlight hl-cyan"><strong>The takeaway:</strong> probabilistic systems are not "best effort" systems. With Kafka durability, Flink checkpointing, and S3-backed cold storage, the Top-K pipeline gives the same uptime guarantees as any production-grade ETL — the approximation is in the <em>answer's last few digits</em>, never in whether the answer arrives.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-blue">Step 13</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">Why approximate? Why not just count exactly?</div>
+  <div class="ans"><strong>Memory and speed.</strong> Exact counts mean a counter per distinct item — at 1B items × 16 bytes that's 16GB per shard, but more critically every increment is a hash-map lookup with potentially poor cache behavior. CMS is 2MB, fits in L2 cache, and increments are simple array writes. For ranking (where small errors don't matter), the trade-off is a no-brainer. For billing, you'd build a different system.</div>
+
+  <div class="iq">How does Count-Min Sketch differ from a Bloom filter?</div>
+  <div class="ans"><strong>Different question, similar shape.</strong> Bloom filter answers "have I seen this item before? (yes/no)" with bit cells and OR semantics. CMS answers "how many times have I seen this item? (a number)" with integer cells and increment semantics. Bloom can give false positives (says yes when truth is no); CMS can give over-estimates (says 105 when truth is 100). Both use multiple hash functions and bounded memory — that's where the family resemblance ends.</div>
+
+  <div class="iq">How do you handle a sliding window of 24h with minute granularity?</div>
+  <div class="ans"><strong>Bucketed sketches.</strong> Keep one sketch per minute, so 1,440 sketches per shard cover the last 24 hours. To answer "last hour" merge the most recent 60. To roll the window forward, drop the oldest bucket. Hot buckets live in RAM; cold buckets sit on RocksDB SSD; aged-out buckets are deleted. For very common windows (1h, 24h) we pre-aggregate in the Window Aggregator so reads are a single ZSET lookup.</div>
+
+  <div class="iq">Why partition Kafka by item_id and not by time?</div>
+  <div class="ans"><strong>Two reasons.</strong> (1) Time-partitioning means all events for the current minute go to one partition — a 100K/sec firehose into one consumer, while the others idle. Throughput is bottlenecked. (2) item_id partitioning keeps all events for a given item on the same shard, which is what makes per-shard counts complete and per-shard heaps meaningful. Hot items can still concentrate on one partition (the viral video), defused by sub-key salting or producer-side pre-aggregation.</div>
+
+  <div class="iq">What if an item is just-below threshold on every shard — could it actually be the global #1?</div>
+  <div class="ans"><strong>Yes, theoretically — and the fix is over-collection.</strong> Each shard's heap of size K throws away items at rank K+1. If item X is rank K+1 on all 8 shards, it's invisible to the merge but globally has 8× the votes of any single shard's #1. In practice, heavy hitters concentrate on one shard (all their events hash to the same partition), so this is rare. The defensive fix: keep <code>top (K × 50)</code> per shard, return <code>top K</code> globally. Costs ~50KB per heap; eliminates the long-tail miss.</div>
+
+  <div class="iq">How would you change the design for exact counts (e.g., ad clicks for billing)?</div>
+  <div class="ans"><strong>Replace CMS with exact per-key counters in Flink state, and add deduplication.</strong> Each event carries a unique <code>event_id</code>; Flink keeps a Bloom filter (or short-TTL key-value store) of recently-seen IDs to drop duplicates from at-least-once Kafka delivery. Counters are stored exactly in RocksDB (one per ad_id), updated transactionally, and aggregated to a transactional sink (e.g. Postgres or Iceberg). Costs more memory and CPU than CMS, but gives you the cents-accurate counts that billing requires. This system is usually called an "Ad Click Aggregator".</div>
+
+  <div class="iq">How fresh is the data — what's the lag from event-to-Trending?</div>
+  <div class="ans"><strong>Tunable, typically under 1 minute.</strong> The dominant component is the Window Aggregator's flush cadence — if it fires every 60s, the freshest displayed top-K is at most 60s stale. You can tighten this to 10s or even 1s at the cost of more frequent Redis writes and slightly fuzzier counts (less data per bucket = wider relative error). Real systems usually pick 30–60s as a sweet spot.</div>
+
+  <div class="iq">How do you size the Count-Min Sketch (pick d and w)?</div>
+  <div class="ans"><strong>Pick the error bounds first, derive sizes second.</strong> CMS guarantees: error ≤ <code>ε × N</code> with probability <code>1 - δ</code>, where <code>w = ⌈e/ε⌉</code> and <code>d = ⌈ln(1/δ)⌉</code>. For our case: 100M events per minute, want error under 0.01% of total = 10K, want 99.9% confidence. So ε = 1e-4, δ = 1e-3 → w ≈ 27,200, d ≈ 7. Round up to w=32K, d=8 → sketch size = 1MB. Cheap.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "It's a Kafka-fed Flink pipeline that maintains per-shard Count-Min Sketches plus min-heaps in bucketed time windows, with the per-window per-shard top-K precomputed into Redis sorted sets so the read path is one cache lookup — approximate counts, exact uptime, sub-100ms reads at any scale."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

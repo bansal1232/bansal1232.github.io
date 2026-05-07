@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Instagram — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Instagram — <span>Photo Sharing Service</span></h1>
+  <p class="sub">From a single MySQL box that crumbles under 200KB photo blobs to a three-plane production system where uploads, reads, and feed generation each scale on their own clock</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is Instagram?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">System APIs</a></li>
+      <li><a href="#s5">Database Schema</a></li>
+      <li><a href="#s6">High-Level Architecture</a></li>
+      <li><a href="#s7">Reliability &amp; Redundancy</a></li>
+      <li><a href="#s8">Data Sharding</a></li>
+      <li><a href="#s9">News Feed Generation</a></li>
+      <li><a href="#s10">Cache &amp; Load Balancing</a></li>
+      <li><a href="#s11">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS INSTAGRAM?                  -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is Instagram?</h2>
+  <p>It's 14:02 in San Francisco. Sarah lifts her phone, snaps a photo of the sunset over the Golden Gate Bridge, and taps "Share". Thirty seconds later, in Tokyo — 5,100 miles away — Raj opens Instagram on his commute home. The very first thing he sees on his feed is Sarah's sunset, sharp and instantly loaded, sitting at the top of a personalised stream of photos curated from the 312 people he follows. He didn't search for it. He didn't refresh and wait. The system <em>knew</em> the photo would matter to him, fetched it from a server geographically close to him, and rendered it in under 200ms. That choreography — between Sarah's upload, the global photo storage, the follow graph, and Raj's pre-computed timeline — is what we're designing.</p>
+
+  <p>Instagram (in its original photo-sharing form) lets users <strong>upload photos and videos</strong>, <strong>follow other users</strong>, and <strong>see a personalised news feed</strong> made up of the latest top photos from the people they follow. Two ingredients drive every architectural decision: photos are <strong>big and write-once read-many</strong>, and feeds are <strong>per-user and have to feel instant</strong>.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How do we store and serve billions of 200KB photo blobs at low latency without breaking the bank? (2) How do we generate a personalised feed for 1M daily active users in under 200ms, when each feed depends on hundreds of follow relationships and millions of new photos a day?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Before drawing a single box, pin down what the system must (and must not) do. Asking these questions in an interview shows you're not just regurgitating a memorised solution — you're listening for the actual constraints.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Users can <strong>upload, download, and view</strong> photos</li>
+        <li>Users can perform <strong>search by photo title</strong> or caption</li>
+        <li>Users can <strong>follow</strong> other users</li>
+        <li>The system generates a <strong>news feed</strong> of top photos from the people a user follows</li>
+        <li>Feeds should feel personalised and timely</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Highly available</strong> — Instagram is the entry point for a billion users; downtime is brand damage</li>
+        <li><strong>News feed latency under 200ms</strong> — anything slower feels sluggish on a phone</li>
+        <li><strong>Eventually consistent</strong> — a brand-new photo not appearing in a follower's feed for a few seconds is fine</li>
+        <li><strong>100% reliable photo storage</strong> — once uploaded, a photo must never be lost</li>
+      </ul>
+      <h3 style="margin-top:1rem">🚫 Out of Scope</h3>
+      <ul>
+        <li>Tagging photos with users or locations</li>
+        <li>Comments and likes</li>
+        <li>"Who to follow" recommendations</li>
+        <li>Stories, Reels, DMs — original photo-sharing surface only</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The non-functional requirements are the hard ones.</strong> Uploading a photo is a 30-line problem. Serving 23 photos uploaded per second to a billion read requests with under 200ms feed latency, while never dropping a single byte of someone's wedding photo, is the part that demands architecture.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers drive every architectural choice — sharding, caching, load balancing, replication factor. Do them out loud, even if rough. Instagram is <strong>read-heavy by an enormous margin</strong>: every uploaded photo is viewed hundreds of times by followers, often thousands of times for popular accounts.</p>
+
+  <h3 class="subh">User &amp; traffic estimates</h3>
+  <p>Assume <strong>500M total users</strong>, <strong>1M daily active users (DAU)</strong>. Each DAU posts ~2 photos per day on average → <strong>2M new photos/day</strong>.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Uploads</h3><p><span class="metric">~23 photos/sec</span></p><p>2M / 86,400</p></div>
+    <div class="card"><h3>Avg photo size</h3><p><span class="metric">~200 KB</span></p><p>typical compressed JPEG</p></div>
+    <div class="card"><h3>Daily ingest</h3><p><span class="metric">~400 GB/day</span></p><p>2M × 200KB</p></div>
+    <div class="card"><h3>10-yr storage</h3><p><span class="metric">~1,425 TB</span></p><p>400GB × 365 × 10</p></div>
+  </div>
+
+  <h3 class="subh">Storage by table (10-year horizon)</h3>
+  <p>Big numbers, but each table has very different shape — and that drives where each lives.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Table</th><th>Row size</th><th>Rows over 10 yrs</th><th>Total</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Photo metadata</td><td><code>~284 bytes</code></td><td><code>2M × 365 × 10 = 7.3B</code></td><td><code>~1.88 TB</code></td><td>Photo blobs in S3; only metadata in DB</td></tr>
+        <tr><td>User</td><td><code>~68 bytes</code></td><td><code>500M</code></td><td><code>~32 GB</code></td><td>Tiny; fits comfortably on one shard</td></tr>
+        <tr><td>UserFollow</td><td><code>~16 bytes</code></td><td><code>500M × ~250 follows = 125B</code></td><td><code>~1.82 TB</code></td><td>Wide-column friendly (one row per user)</td></tr>
+        <tr><td><strong>Total metadata</strong></td><td>—</td><td>—</td><td><code>~3.7 TB</code></td><td>Excludes photo blobs (1,425 TB in S3)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="subh">Bandwidth — read-heavy by orders of magnitude</h3>
+  <p>Uploads are bounded: 23 photos/sec × 200KB ≈ <span class="metric">~4.6 MB/s ingress</span>. Reads are not. If each DAU views ~500 photos/day across feed-scrolling, profile visits, and explore pages, that's <code>1M × 500 = 500M views/day</code> ≈ <span class="metric">~5,800 reads/sec</span>, or <span class="metric">~1.16 GB/s egress</span>. <strong>Reads are roughly 250× writes by request count and bandwidth</strong>, which is exactly why CDN + cache + read-replica DB are non-negotiable.</p>
+
+  <div class="highlight hl-blue"><strong>So what:</strong> photos themselves (1,425 TB) absolutely cannot live in a relational DB — they go to <strong>S3 / HDFS</strong>. Metadata (3.7 TB) is small enough to live in a sharded NoSQL store like Cassandra. And bandwidth dominates everything: 1.16 GB/s of read traffic must be fanned out through a CDN, not served from origin.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: APIS                                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-purple">Step 4</span>
+  <h2>System APIs</h2>
+  <p>Five endpoints carry virtually all the traffic: <strong>upload</strong> a photo, <strong>fetch</strong> a photo, <strong>get the feed</strong>, <strong>follow</strong> a user, and <strong>search</strong>. Defining the API surface up front locks down the contract before architecture.</p>
+
+  <span class="code-label cl-green">REST API surface</span>
+<pre><span class="cmt">// Upload — write path. Multipart (the photo bytes ride in the body).</span>
+POST /api/v1/photos
+Content-Type: multipart/form-data
+{
+  "api_dev_key": "abc123...",
+  "user_id":     42,
+  "title":       "Sunset over Golden Gate",
+  "photo":       &lt;binary blob, ~200KB&gt;
+}
+&rarr; 201 Created  { "photo_id": "p_8f2a", "cdn_url": "https://cdn.instagram.com/p_8f2a.jpg" }
+
+<span class="cmt">// Fetch a single photo — high QPS, served via CDN almost always</span>
+GET /api/v1/photos/:photo_id
+&rarr; 302 Found  Location: https://cdn.instagram.com/p_8f2a.jpg
+
+<span class="cmt">// News feed — the personalised stream for one user</span>
+GET /api/v1/feed?user_id=99&amp;limit=20&amp;cursor=...
+&rarr; 200 OK
+{
+  "photos": [
+    { "photo_id": "p_8f2a", "owner": "sarah", "cdn_url": "...", "created_at": "..." },
+    ...
+  ],
+  "next_cursor": "..."
+}
+
+<span class="cmt">// Follow another user</span>
+POST /api/v1/follow/:target_user_id
+Headers: { "X-API-Dev-Key": "abc123..." }
+&rarr; 204 No Content
+
+<span class="cmt">// Search photos by title / caption</span>
+GET /api/v1/search?q=sunset&amp;limit=20
+&rarr; 200 OK  { "photos": [ ... ] }</pre>
+
+  <div class="highlight hl-purple"><strong>Why upload returns a CDN URL, not the bytes:</strong> the client uploads once, then everyone (including the uploader's own profile fetch) reads from the CDN. That single indirection means our origin servers handle 23 writes/sec but zero of the 5,800 reads/sec — the CDN absorbs it.</div>
+
+  <div class="highlight hl-orange"><strong>Pagination via cursors, not offsets:</strong> the feed uses an opaque <code>cursor</code> (last-seen photo_id + timestamp) instead of <code>offset=200</code>. Offsets break when new photos arrive between page fetches; cursors are stable.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: DATABASE                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>Database Schema</h2>
+  <p>Three observations drive the schema design: (1) photo <em>blobs</em> are huge but <em>metadata</em> is tiny, so they live in different stores; (2) the access patterns are key-based and graph-based, not relational-join-heavy; (3) the follow graph is read on every feed fetch, so it must be indexed for "give me everyone user X follows" in O(1).</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+erDiagram
+  PHOTO {
+    string photo_id PK
+    bigint user_id FK
+    string photo_path
+    float latitude
+    float longitude
+    timestamp creation_date
+    string title
+  }
+  USER {
+    bigint user_id PK
+    string name
+    string email
+    timestamp creation_date
+    timestamp last_login
+  }
+  USERFOLLOW {
+    bigint user_id1 PK
+    bigint user_id2 PK
+    timestamp followed_at
+  }
+  USER ||--o{ PHOTO : "uploads"
+  USER ||--o{ USERFOLLOW : "follows"
+    </div>
+  </div>
+
+  <h3 class="subh">Where each table lives</h3>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">📦 Photo blobs</h3>
+      <p>The 200KB JPEGs themselves go to <strong>distributed object storage</strong> — S3 or HDFS. Each blob is named by its <code>photo_id</code>. Replication-3, multi-AZ, served via CDN. <strong>Never</strong> store these in a database.</p>
+    </div>
+    <div class="card" style="border-color:rgba(60,191,191,.4)">
+      <h3 style="color:var(--cyan)">📋 Photo metadata</h3>
+      <p>Stored in a wide-column NoSQL store like <strong>Cassandra</strong>. Primary key = <code>photo_id</code>. Cassandra's quorum reads, multi-region replication, and tunable consistency are exactly what we need.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">🕸️ UserFollow graph</h3>
+      <p>Wide-column friendly: one row per user, columns are the user_ids they follow. Reading "who does Raj follow?" becomes a single row read. Same store (Cassandra) keyed by <code>user_id1</code>.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Wide-column layout for UserPhoto and UserFollow</h3>
+  <p>NoSQL wide-column shines here. For a "user's photos" table, we use the <strong>user_id as row key</strong> and <strong>photo_ids as columns</strong>. Reading "all of Sarah's photos in reverse-chrono order" is a single row read instead of a fanout query. Same trick for the follow graph: row key = user, columns = users they follow.</p>
+
+  <div class="highlight hl-cyan"><strong>Why NoSQL beats SQL here:</strong> our queries are <em>"give me user X's photos"</em>, <em>"who does X follow?"</em>, <em>"give me photo P's metadata"</em> — all single-key lookups at huge scale. SQL's joins and ACID buy us nothing on this workload, and they cost us horizontal scaling. Cassandra also gives us free multi-region replication, which we'll need for global low-latency reads.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart, and the production shape where every box justifies itself. Numbers from §3 drive every decision.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>The simplest possible system: one app server, one MySQL database, and we'll just be lazy and store photo BLOBs as <code>BLOB</code> columns in MySQL alongside the metadata. Uploads write to MySQL. Reads SELECT the BLOB column and stream it back to the client. Feed generation runs a giant join across <code>users</code>, <code>follows</code>, and <code>photos</code> at request time.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C["Client — Phone, Web"] --> APP["App Server"]
+  APP --> DB[("MySQL — metadata + photo BLOBs + follow graph")]
+    </div>
+  </div>
+
+  <p>Three concrete failures emerge the moment real traffic shows up:</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>💥 Photo uploads block reads</h3>
+      <p>A single 200KB photo upload pins one MySQL connection for the duration of the byte transfer. At 23 uploads/sec each holding a connection for 1-2 seconds, write connections saturate. Read queries queue up behind them — feed latency spikes from 50ms to 5 seconds. The "uploads choke reads" failure is the first one a real workload exposes.</p>
+    </div>
+    <div class="card">
+      <h3>💥 MySQL chokes on 200KB BLOBs</h3>
+      <p>Relational DBs are tuned for small rows. A 200KB BLOB blows the row out of one page, fragments the buffer pool, and shreds throughput. At 1,425 TB over 10 years, we'd need a MySQL cluster the size of a data center just to hold the bytes — at 100× the cost of S3, with worse durability.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Feed generation is a triple join</h3>
+      <p>To build Raj's feed, the naive query is <code>SELECT photos.* FROM follows JOIN photos ON ... WHERE follows.user = raj ORDER BY created DESC LIMIT 20</code>. With 250 follows × thousands of photos each, this scans millions of rows on every feed open. Doing it under 200ms for 1M DAU? Impossible without pre-computation.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: three independent planes</h3>
+  <p>The single most important insight in this design is that <strong>three workloads have wildly different shapes and must scale independently</strong>. Pass 1 fails because all three live on the same box, fighting for the same CPU, disk, and connection pool.</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">⬆️ Upload Plane</h3>
+      <p><strong>23 req/sec, slow, bandwidth-bound.</strong> Each request streams a 200KB photo. The bottleneck is network and disk, not CPU. Latency budget is generous — users tolerate a 1-2 second upload spinner. Goal: never drop a byte, never lose a photo.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">📖 Read / Serve Plane</h3>
+      <p><strong>5,800+ req/sec, fast, latency-sensitive.</strong> Photos are immutable and cacheable up to the moon. Served from CDN edge POPs globally so a Tokyo user doesn't pay a trans-Pacific round trip. Goal: under 50ms for a cached photo, under 200ms for a feed.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">🌀 Feed Generation Plane</h3>
+      <p><strong>Async, expensive, runs offline.</strong> Pre-computes per-user timelines so the feed read is a single cache lookup, not a triple join. Workers fan out new photos to followers' timelines in the background, decoupled from the request path.</p>
+    </div>
+  </div>
+
+  <p>This three-way split is THE central insight. Splitting these planes lets each scale independently and prevents uploads from breaking reads — which was the very first failure of Pass 1. Goodbye, blocked connection pool.</p>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered ①–⑫ — find its matching card below to see what it does, why it's there, and crucially what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  CL["① Client — Mobile · Web"]
+  LB["② Load Balancer"]
+
+  subgraph UPLOAD["Upload Plane"]
+    UPS["③ Upload Service"]
+    BLOB[("④ Image Storage — S3 / HDFS")]
+    META[("⑤ Image Metadata DB — Cassandra")]
+  end
+
+  subgraph SERVE["Read / Serve Plane"]
+    RS["⑥ Read / Serve Service"]
+    CDN["⑦ CDN — CloudFront / Akamai"]
+  end
+
+  subgraph FEED["Feed Plane"]
+    FG["⑧ Feed Generation Service"]
+    TLC[("⑨ User Timeline Cache — Redis")]
+    UG[("⑩ User Graph DB — UserFollow")]
+  end
+
+  subgraph EXTRA["Adjacent Services"]
+    NS["⑪ Notification Service"]
+    SS["⑫ Search Service — Elasticsearch"]
+  end
+
+  CL --> LB
+  LB -->|"upload"| UPS
+  LB -->|"fetch photo"| RS
+  LB -->|"get feed"| FG
+
+  UPS --> BLOB
+  UPS --> META
+  UPS -.fanout event.-> FG
+  UPS -.index event.-> SS
+
+  RS --> CDN
+  CDN -.miss.-> BLOB
+
+  FG --> TLC
+  FG --> UG
+  FG --> META
+  FG -.push.-> NS
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style UPS fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style BLOB fill:#171d27,stroke:#38b265,color:#d4dae5
+  style META fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style RS fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style CDN fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style FG fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style TLC fill:#171d27,stroke:#e05252,color:#d4dae5
+  style UG fill:#171d27,stroke:#38b265,color:#d4dae5
+  style NS fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style SS fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this thing</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Client</h3>
+      <p>The Instagram mobile app on Sarah's iPhone or the web client in Raj's browser. The client is responsible for <strong>compressing the photo locally</strong> before upload (resizing to a sane max resolution and JPEG-compressing) so the server doesn't waste bandwidth on raw camera bytes. It also caches recently-viewed photos in local memory so scrolling back up is instant.</p>
+      <p><strong>Solves:</strong> nothing on its own — but every design choice flows backward from "what does the client experience?" Latency, cell-network reliability, and the upload protocol are all client-facing concerns.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> Load Balancer</h3>
+      <p>The traffic cop. Sits in front of upload, read, and feed services, distributes incoming HTTPS, terminates TLS, and yanks unhealthy backends out of rotation via 5-second health checks. Round-robin is fine to start; switch to least-connections once you have enough nodes that load skew matters.</p>
+      <p><strong>Solves:</strong> single-server failure and uneven load. Without an LB, one app crash takes down the service. With it, we lose 1/N of capacity for a few seconds until the bad node gets evicted.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">③</span> Upload Service</h3>
+      <p>Stateless service handling <code>POST /api/v1/photos</code>. Per request: validate the multipart payload, generate a unique <code>photo_id</code>, stream the bytes to <strong>Image Storage</strong> ④ in chunks, then write a metadata row to the <strong>Image Metadata DB</strong> ⑤. Finally it emits an async event to the <strong>Feed Generation Service</strong> ⑧ saying "user X just posted photo Y, fan it out to their followers" and another event to <strong>Search</strong> ⑫ to index the title. Stateless &rarr; we just add pods behind the LB to scale.</p>
+      <p><strong>Solves:</strong> isolating the slow, bandwidth-heavy upload work from everything else. Without a dedicated upload tier, photo bytes streaming through the same connection pool as feed reads would block reads — the original Pass 1 failure.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">④</span> Image Storage (S3 / HDFS)</h3>
+      <p>The actual photo bytes — billions of 200KB blobs — live here. Each photo is written to a path keyed by <code>photo_id</code>, replicated 3× across availability zones, never deleted (only soft-deleted via metadata flag). At 1,425 TB over 10 years, this is the biggest bill in the system, but storage at this scale is dirt-cheap compared to running it on relational DB disks.</p>
+      <p><strong>Solves:</strong> the "where do the bytes physically live" problem. A relational DB cannot economically hold 1.4 PB of opaque blobs. Object storage is purpose-built: cheap, durable (11-nines), automatically replicated, and <strong>directly addressable from a CDN</strong>.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑤</span> Image Metadata DB (Cassandra)</h3>
+      <p>A wide-column NoSQL store holding the <code>photo</code> table — <code>photo_id, user_id, photo_path, lat, long, creation_date, title</code>. Sharded by <code>photo_id</code> with consistent hashing, replicated 3× across AZs. Cassandra's <code>R=2, W=2, N=3</code> quorum gives us strong-enough consistency without sacrificing availability. Total size: ~1.88 TB over 10 years — easy at this distribution.</p>
+      <p><strong>Solves:</strong> indexing the photo blobs so we can answer "what photos does Sarah have?", "when was photo X uploaded?", "where was it taken?" without reading the bytes themselves. Without metadata, the blob store is opaque — we couldn't even find a photo without already knowing its path.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑥</span> Read / Serve Service</h3>
+      <p>Stateless service handling <code>GET /api/v1/photos/:photo_id</code>. Per request: look up the photo metadata, then return a 302 redirect to the <strong>CDN</strong> ⑦ URL. For most photos, the client never even talks to this service again — the second hit comes straight from CDN. Scaled aggressively because read traffic is 250× write traffic.</p>
+      <p><strong>Solves:</strong> serving the redirect at scale and acting as the gatekeeper for visibility / privacy checks before exposing the CDN URL. Without it, the upload service would have to also handle reads — combining the slow path with the hot path, which we've already said is fatal.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">⑦</span> CDN (CloudFront / Akamai)</h3>
+      <p>A globally-distributed edge network in 200+ cities. Photos are immutable and cache-friendly to a fault — once a CDN edge in Tokyo has the bytes, every Tokyo user's request is answered in 20ms with zero load on our origin. Hot photos (a celebrity's latest post) live in every edge POP within seconds.</p>
+      <p><strong>Solves:</strong> global latency and origin bandwidth. Without a CDN, every photo view from Tokyo travels to our US-East data center and back — 200ms of speed-of-light penalty just on physics. And our origin would have to push 1.16 GB/s constantly. With a CDN, origin sees only the cold-tail traffic — maybe 5% of total reads.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑧</span> Feed Generation Service</h3>
+      <p>The brain of the personalised stream. Async workers consume "new photo" events from the upload service, look up the uploader's followers in the <strong>User Graph DB</strong> ⑩, and <strong>push</strong> the new photo onto each follower's pre-computed timeline in the <strong>Timeline Cache</strong> ⑨. When a user opens the app, fetching their feed becomes a single Redis read — no joins, no scans. Hybrid push/pull (see §9) handles celebrity edge cases.</p>
+      <p><strong>Solves:</strong> the 200ms feed latency requirement. Without pre-computation, every feed open would scan all of a user's follows' photos and rank them — impossible to do under 200ms for 1M DAU. By doing the work at write time once, we make every read O(1).</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num red">⑨</span> User Timeline Cache (Redis)</h3>
+      <p>An in-memory key-value store keyed by <code>user_id</code>, whose value is the user's pre-computed timeline — a list of the most recent ~500 photo_ids (with metadata) from people they follow. Backed by Redis sorted sets (score = timestamp) so range queries by time are trivially fast.</p>
+      <p><strong>Solves:</strong> the speed of feed reads. Memory is microsecond-fast; disk is millisecond-fast. With 1M DAU × ~10KB timeline each = 10GB — fits trivially in a small Redis cluster. Without this, every feed open hits Cassandra with a multi-key fanout query.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑩</span> User Graph DB (UserFollow)</h3>
+      <p>Holds the follow graph. Wide-column layout: row key = <code>user_id</code>, columns = users they follow (~125B rows total over 10 years). Reading "who does Raj follow?" is a single row read. Reading "who follows Sarah?" (the inverse) needs a denormalised second table — same layout, keyed by the followee.</p>
+      <p><strong>Solves:</strong> graph queries on the follow relationship at scale. The feed generator can't fan a new photo out to followers without a fast "give me this user's followers" query, and a relational JOIN on a 125B-row table doesn't end well.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑪</span> Notification Service</h3>
+      <p>Pushes a phone notification ("Sarah just posted!") to followers who have notifications enabled. Consumes the same "new photo" event as feed generation, looks up notification preferences, and fires off APNS/FCM messages. Async — never on the upload path.</p>
+      <p><strong>Solves:</strong> engagement (telling Raj a photo he'd care about exists). Without it, users would have to open the app to discover new content. Crucially separated from upload so notification backpressure can never slow uploads.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑫</span> Search Service (Elasticsearch)</h3>
+      <p>An inverted index of photo titles and captions, kept up to date by ingesting "new photo" events from the upload service. Handles <code>GET /api/v1/search?q=sunset</code> in tens of milliseconds. Photo metadata in Cassandra is the source of truth; Elasticsearch is purely a derived index.</p>
+      <p><strong>Solves:</strong> the search-by-title functional requirement. Cassandra is great at key lookups but terrible at full-text search. Elasticsearch is purpose-built for it. Decoupled and async — losing the search index for an hour doesn't affect uploads or feeds.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Sarah uploads, Raj scrolls</h3>
+  <p>Two real flows mapped to the numbered components above:</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>📸 Upload flow — Sarah posts a sunset at 14:02:06</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sarah's <strong>iPhone</strong> ① compresses the 4MB raw photo to a 200KB JPEG and POSTs to <code>/api/v1/photos</code>.</li>
+        <li>The <strong>Load Balancer</strong> ② routes to an <strong>Upload Service</strong> ③ pod.</li>
+        <li>Upload service generates <code>photo_id = p_8f2a</code>, streams the bytes to <strong>Image Storage</strong> ④ (S3), and writes the metadata row to <strong>Image Metadata DB</strong> ⑤.</li>
+        <li>Upload service emits a <em>"new photo"</em> event onto Kafka. <strong>Feed Generation</strong> ⑧, <strong>Notification</strong> ⑪, and <strong>Search</strong> ⑫ all consume it asynchronously.</li>
+        <li>Upload service returns <code>{ photo_id, cdn_url }</code> to Sarah's phone. <em>Total elapsed: ~1.2 seconds, mostly bandwidth.</em></li>
+        <li>Meanwhile, in the background: feed generation looks up Sarah's followers in <strong>User Graph DB</strong> ⑩, and for each follower (~600 of them) pushes the photo onto their timeline in <strong>Timeline Cache</strong> ⑨. <em>Done within ~5 seconds of upload.</em></li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h3>📱 Feed-fetch flow — Raj opens Instagram in Tokyo at 14:03:11</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Raj's <strong>app</strong> ① calls <code>GET /api/v1/feed?user_id=raj</code>.</li>
+        <li><strong>Load Balancer</strong> ② routes to a feed endpoint on <strong>Feed Generation Service</strong> ⑧.</li>
+        <li>Feed service does a single <strong>Redis</strong> ⑨ read on key <code>timeline:raj</code> &rarr; gets back a list of 20 photo_ids including <code>p_8f2a</code> at the top. <em>~3ms.</em></li>
+        <li>For each photo_id, hydrate metadata from <strong>Image Metadata DB</strong> ⑤ (or a cache in front of it). <em>~10ms.</em></li>
+        <li>Return the JSON list with <code>cdn_url</code>s embedded. Raj's app fetches each photo from the <strong>CDN</strong> ⑦ — Tokyo edge POP, ~20ms each, fully parallel.</li>
+        <li>Sarah's sunset renders at the top of Raj's feed. <em>Total elapsed: under 200ms from app open to first paint.</em></li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around three insights — (1) <strong>uploads, reads, and feed generation have totally different shapes</strong> so each gets its own plane; (2) <strong>photo bytes never travel through the same path as photo metadata or feed answers</strong>, which is why the CDN can absorb 95% of read traffic with zero origin load; (3) <strong>feeds are pre-computed at write time, not at read time</strong>, which is the only way to hit the 200ms latency budget. Every box in the diagram earns its place by removing one of those failure modes from Pass 1.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: RELIABILITY & REDUNDANCY            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-green">Step 7</span>
+  <h2>Reliability &amp; Redundancy</h2>
+  <p>Instagram's promise is "your wedding photo from 2014 will still be there in 2034". One byte lost is reputational damage forever. Reliability is non-negotiable — and it has a price tag, which we pay deliberately.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🗂️ Photo storage replicated 3×</h3>
+      <p>Every photo blob is written to <strong>three availability zones</strong>, in different buildings on different power grids. S3 promises 99.999999999% durability (11 nines) — at our scale that's about 1 photo lost per <code>10⁶</code> uploaded across the lifetime of the service. Acceptable.</p>
+    </div>
+    <div class="card">
+      <h3>🔁 Stateless app servers</h3>
+      <p>Upload, read, and feed services hold no local state. Killing any pod loses zero data — the next request just hits a sibling pod. We run N+2 capacity per service so we can lose two pods at once and keep serving. Deployments are rolling: 10% of pods at a time, health-checked between waves.</p>
+    </div>
+    <div class="card">
+      <h3>🌐 Active-active across regions</h3>
+      <p>Every service is deployed to multiple regions (US-East, EU, APAC), all serving live traffic. DNS routes a user to their nearest region. If a whole region falls over, traffic shifts to the others within minutes. Cassandra's multi-region replication keeps metadata consistent eventually.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>The reliability hierarchy:</strong> photo blobs &rarr; never lost (3× replication, multi-AZ); metadata &rarr; eventually consistent (Cassandra quorum); feeds &rarr; best-effort (Redis LRU eviction is fine, we'll just regenerate from metadata if needed). The further from "the photo bytes themselves", the more we tolerate transient loss.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: PARTITIONING                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-yellow">Step 8</span>
+  <h2>Data Sharding — by user_id or by photo_id?</h2>
+  <p>1.88 TB of photo metadata fits on one box only on paper — at this volume we need to shard before we hit a single-node ceiling on either disk or QPS. The interesting question is <em>what to shard on</em>. Two strategies, and the trade-off matters.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">❌ Shard by user_id</h3>
+      <p>Compute <code>shard = hash(user_id) % N</code>. All of a user's photos live on the same shard. Reading "Sarah's profile" is a single-shard query — fast. <strong>But three problems:</strong></p>
+      <ul>
+        <li><strong>Hot users overload one shard.</strong> A celebrity with millions of photos crushes their shard's CPU and disk. Their followers' read traffic on that one shard is 1000× heavier than another user's shard.</li>
+        <li><strong>Uneven distribution.</strong> Power-law popularity means some shards run hot, others run cold. Capacity is wasted.</li>
+        <li><strong>Profile photo limit.</strong> If a single user has more photos than fits on one shard, we'd have to split them — defeating the original "one user, one shard" simplicity.</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">✅ Shard by photo_id <span style="font-size:.85rem;color:var(--muted)">(production winner)</span></h3>
+      <p>Compute <code>shard = consistent_hash(photo_id) % N</code>. Each photo lands on a uniformly-random shard. Distribution is even by construction — no hot shards.</p>
+      <ul>
+        <li><strong>Uniform load</strong> across shards regardless of user popularity</li>
+        <li><strong>Trivial horizontal scaling</strong> — add a shard, consistent hashing reshuffles 1/(N+1) of keys</li>
+        <li><strong>One trade-off:</strong> reading "Sarah's photos" now requires a fanout query across all shards. Solved by the wide-column UserPhoto table (keyed by user_id) which acts as a secondary index</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="subh">Photo ID generation — embed the timestamp</h3>
+  <p>Like the URL shortener's KGS, we want photo_ids that are <strong>globally unique without coordination</strong>. Use a <strong>64-bit ID</strong> with the layout:</p>
+<pre>┌──────────────────┬───────────┬──────────┐
+│  41-bit timestamp │ 10-bit shard │ 13-bit seq │
+└──────────────────┴───────────┴──────────┘</pre>
+  <p>Bits 0-40 are milliseconds since epoch (good for ~70 years). Bits 41-50 identify the generator shard (1024 possible). Bits 51-63 are a per-millisecond counter (8192/ms per shard). This is essentially the Twitter Snowflake scheme. <strong>Big win:</strong> sorting photo_ids gives time-sorted access for free — useful for "the last 20 photos" queries.</p>
+
+  <div class="highlight hl-yellow"><strong>The interview move:</strong> volunteer "shard by user_id" first as the natural simple answer, walk through the celebrity-hot-shard failure mode, then propose photo_id sharding with consistent hashing as the fix. This shows you understand <em>why</em> the better answer is better, not just that it exists.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: NEWS FEED                           -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-purple">Step 9</span>
+  <h2>News Feed Generation — Push, Pull, or Hybrid?</h2>
+  <p>The feed is Instagram's killer feature and the hardest engineering problem in the system. The question: when Sarah uploads a photo, <em>when</em> does it materialise in Raj's feed? Three strategies, and the right answer is "all three, depending on user".</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  subgraph PULL["Pull — fan-out-on-load"]
+    R1["Raj opens app"] --> Q1["Query all of Raj's follows"]
+    Q1 --> M1["Merge + rank photos"]
+    M1 --> F1["Return feed — slow"]
+  end
+
+  subgraph PUSH["Push — fan-out-on-write"]
+    S1["Sarah uploads"] --> W1["Look up Sarah's followers"]
+    W1 --> X1["Push photo onto each follower's timeline"]
+    X1 --> READ["Raj opens — single timeline read — fast"]
+  end
+
+  style PULL fill:#171d27,stroke:#e05252,color:#d4dae5
+  style PUSH fill:#171d27,stroke:#38b265,color:#d4dae5
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🐢 Pull (fan-out-on-load)</h3>
+      <p>Do nothing on upload. When Raj opens the app, query all 312 of his follows for their recent photos, merge by timestamp, return the top 20.</p>
+      <ul>
+        <li>✓ Cheap on write (the celebrity case is fine)</li>
+        <li>✗ Slow on read — hits hundreds of shards, hard to do in 200ms</li>
+        <li>✗ Wasted work for inactive users (we still query but they never look)</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">⚡ Push (fan-out-on-write)</h3>
+      <p>On every upload, push the photo onto every follower's pre-computed timeline. Reads are O(1).</p>
+      <ul>
+        <li>✓ Reads are blazing fast — single Redis lookup</li>
+        <li>✗ Catastrophic for celebrities — a user with 100M followers triggers 100M writes per upload</li>
+        <li>✗ Wastes work pushing to inactive followers' timelines</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="subh">The hybrid wins — push for normal users, pull for celebrities</h3>
+  <p>Most users have a few hundred followers. Pushing 600 timeline writes per upload is cheap and keeps reads fast. <strong>But celebrities (Cristiano Ronaldo with 600M followers) break push entirely</strong> — one of his uploads would trigger 600M timeline writes, melting Redis.</p>
+
+  <p>The hybrid: classify each user as <strong>normal</strong> or <strong>celebrity</strong> (e.g., &gt;1M followers). When Sarah (normal) uploads, push to her followers' timelines. When a celebrity uploads, <em>don't push</em> — instead, on every feed read, the feed service merges the user's pushed timeline with a pull-query of any celebrities they follow. Celebrities are few, so the pull-side merge stays cheap.</p>
+
+  <h3 class="subh">Pre-generate top 500 per active user</h3>
+  <p>Each active user's timeline holds the top 500 most recent photos in Redis. Sliding window — when a new photo arrives, push it to the front, evict the oldest. Inactive users (no app open in 30 days) get their timeline torn down — we'll regenerate it lazily if they come back.</p>
+
+  <div class="highlight hl-purple"><strong>So what:</strong> the feed is a write-time problem, not a read-time problem. Pre-computing turns "scan thousands of photos per request" into "single Redis read per request" — 100× the writes for 1000× the read speedup. That's the whole game.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: CACHE & LOAD BALANCING             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-cyan">Step 10</span>
+  <h2>Cache &amp; Load Balancing</h2>
+  <p>The single biggest performance lever in the system. Without caching, every photo view hits S3 and every feed open hits Cassandra. With the right cache layout, the origin sees a fraction of the actual user load.</p>
+
+  <h3 class="subh">CDN — for photo blobs at the edge</h3>
+  <p><strong>CloudFront / Akamai</strong> caches the actual photo bytes at edge POPs in 200+ cities. Photos are immutable (once a photo_id is taken, the bytes never change), so the CDN can cache aggressively with a long TTL — days or weeks. The CDN has its own LRU; popular photos stay in every edge POP, cold photos roll off naturally.</p>
+
+  <h3 class="subh">Memcache — for hot metadata rows</h3>
+  <p>In front of Cassandra, we run a Memcache cluster holding hot photo_id &rarr; metadata mappings and hot user profile rows. Eviction is LRU. Sized at ~10% of total metadata = ~200GB across a small cluster.</p>
+
+  <h3 class="subh">The 80/20 rule applies</h3>
+  <p>20% of photos generate 80% of view traffic. Caching just the hot 20% absorbs the bulk of reads. Specifically: <strong>cache the top 20% of <em>daily</em> volume, not the top 20% of <em>all-time</em> volume</strong> — yesterday's viral post is irrelevant today.</p>
+
+  <h3 class="subh">Load balancing at three layers</h3>
+
+  <div class="g3">
+    <div class="card">
+      <h3>① Client &rarr; App tier</h3>
+      <p>Public-facing AWS ALB / nginx. Distributes incoming HTTPS to upload, read, and feed pods. Health-checks every 5s, evicts unhealthy pods. Terminates TLS so backend pods don't pay the crypto cost.</p>
+    </div>
+    <div class="card">
+      <h3>② App &rarr; Cache</h3>
+      <p>Client-side or sidecar LB. Uses consistent hashing on the cache key so the same key always lands on the same Memcache node — maximises hit rate, avoids cache duplication.</p>
+    </div>
+    <div class="card">
+      <h3>③ App &rarr; DB</h3>
+      <p>Cassandra drivers handle this themselves — the client knows the cluster topology and routes each query to the coordinator node for the relevant token range.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>The LB itself is a single point of failure</strong> — solved with an active-passive pair using virtual IP failover, or natively in cloud LBs (ALB is multi-AZ by default).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-blue">Step 11</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">Why shard by photo_id instead of user_id?</div>
+  <div class="ans"><strong>Uniform load distribution.</strong> Sharding by user_id means a celebrity's shard gets crushed: their photos and the read traffic for them concentrate on one node, while another shard sits idle. Sharding by photo_id with consistent hashing distributes both storage and read load uniformly. The trade-off — that "give me Sarah's photos" now spans many shards — is solved by a denormalised UserPhoto wide-column table keyed by user_id that acts as a secondary index.</div>
+
+  <div class="iq">How do you handle a celebrity user with 100M followers?</div>
+  <div class="ans"><strong>Don't push their photos to followers' timelines.</strong> Push fan-out works great for normal users (a few hundred follower writes per upload), but a celebrity upload would trigger 100M writes — a Redis-killer. Instead, classify users as normal or celebrity. Celebrities skip push entirely; on each follower's feed read, the feed service merges the follower's pushed timeline with a small pull-query of any celebrities they follow. Celebrities are few, so the merge stays cheap.</div>
+
+  <div class="iq">How do you generate the news feed for a user with 5,000 follows?</div>
+  <div class="ans"><strong>Pre-compute it via push fan-out.</strong> When any of those 5,000 users uploads, the feed generation service immediately writes the new photo into the requesting user's Redis timeline. By the time the user opens the app, the feed is already a single Redis read away — no scanning, no joins, no per-request fanout. The push happens once per upload, regardless of how many followers the uploader has (capped via the celebrity exclusion).</div>
+
+  <div class="iq">Why pre-generate feeds instead of computing on read?</div>
+  <div class="ans"><strong>Latency budget.</strong> Computing a feed on read means querying every shard the user's follows are scattered across, merging by timestamp, and ranking — easily 500ms+ for someone with 1000 follows. Pre-generating moves that work to upload time (where the latency budget is generous), turning the read into an O(1) Redis lookup. We trade more total compute (we pre-compute for users who never look) for blazingly fast reads. With 1M DAU and most having 1-2 daily app opens, the math works.</div>
+
+  <div class="iq">How do you ensure photos aren't lost?</div>
+  <div class="ans"><strong>Three layers of durability.</strong> (1) Photo blobs written to S3 with 3× replication across availability zones — 11 nines durability. (2) Upload service waits for "durable" ack from S3 before returning success to the client; if the ack never comes, the client retries. (3) Metadata writes use Cassandra quorum (W=2 of N=3) — at least two replicas have the metadata before we acknowledge. Combined: a photo is "lost" only if all 3 S3 zones lose the bytes simultaneously AND 2 of 3 Cassandra replicas die — vanishingly rare.</div>
+
+  <div class="iq">Push vs. pull vs. hybrid for feed delivery — when to use each?</div>
+  <div class="ans"><strong>Push</strong> when the average user has few followers (Twitter early days, Instagram default for normal users). Reads are blazing fast, write cost stays bounded. <strong>Pull</strong> when celebrity users dominate — fan-out on write would be ruinous. Slow-but-cheap reads. <strong>Hybrid</strong> is what real systems use: push for the long tail, pull for celebrities, merge at read time. Instagram, Twitter, and Facebook all do this. The classification threshold (e.g., "celebrity = >1M followers") is a tuning knob — set it where push cost equals pull cost.</div>
+
+  <div class="iq">Why store photo bytes in S3 instead of the database?</div>
+  <div class="ans"><strong>Three reasons.</strong> (1) <em>Cost</em> — S3 storage is roughly 10× cheaper than relational DB disk. At 1.4 PB over 10 years, that's the difference between a $30K/month bill and a $300K/month bill. (2) <em>Performance</em> — relational DBs are tuned for small rows; 200KB BLOBs fragment the buffer pool and tank throughput. (3) <em>CDN integration</em> — S3 URLs can be served directly from CloudFront with no origin involvement. A DB BLOB requires the app server to stream it through itself, eating CPU and bandwidth.</div>
+
+  <div class="iq">How do you keep the search index in sync with photo uploads?</div>
+  <div class="ans"><strong>Async event stream.</strong> Upload service emits a "new photo" event to Kafka after the durable write to S3 + metadata. Elasticsearch consumers pick it up and index the title/caption within seconds. Loose coupling means: a search outage doesn't block uploads, an upload outage doesn't corrupt the index, and we can rebuild the entire search index from scratch by replaying Cassandra into Kafka if needed. The price: search results may lag uploads by a few seconds — perfectly acceptable for our requirements.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "Three independent planes — uploads, reads, and feed generation — each scaled on its own clock. Photo bytes live in S3 served via CDN; metadata in sharded Cassandra; feeds pre-computed via push fan-out into Redis with a pull fallback for celebrities. The whole architecture is designed so reads never wait for writes, and feeds never wait for joins."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

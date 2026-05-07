@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Median of 10 Billion Integers — Bucket Counting Deep Dive</title>
+<meta name="description" content="A story-driven walkthrough of how to compute the median of 10 billion integers across 50 files with only 16 GB of RAM, using two-pass bucket counting."/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:760px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.4rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.4rem;max-width:760px}
+.sec h3{color:var(--heading);margin:1.6rem 0 .55rem;font-size:1.05rem;font-weight:700}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.45rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.02rem;font-weight:700;color:var(--heading);margin:0 0 .35rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.88rem;color:var(--text);line-height:1.75}
+.card ul{list-style:none;margin-top:.35rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.35rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+code.inline{font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--orange);background:var(--orange-d);padding:.08rem .42rem;border-radius:4px}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+.highlight{border-radius:var(--r);padding:1.05rem 1.3rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.7}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-orange strong{color:var(--orange)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-green strong{color:var(--green)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-blue strong{color:var(--blue)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-red strong{color:var(--red)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-yellow strong{color:var(--yellow)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.hl-purple strong{color:var(--purple)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.6rem .85rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.08rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+.bigp{font-size:1.05rem;line-height:1.78;color:var(--text);font-weight:500;margin-bottom:1.4rem;padding:1.05rem 1.25rem;border-left:4px solid var(--orange);background:linear-gradient(90deg,rgba(232,116,59,.08) 0%,transparent 100%);border-radius:0 var(--r) var(--r) 0}
+.bigp strong{color:var(--orange)}
+
+.kvrow{display:grid;grid-template-columns:160px 1fr;gap:.4rem 1.2rem;font-size:.88rem;margin:.6rem 0 1rem}
+.kvrow .k{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;padding-top:.1rem}
+.kvrow .v{color:var(--text)}
+.kvrow .v code{font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--orange);background:var(--orange-d);padding:.05rem .4rem;border-radius:3px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">Tech · Algorithm Deep Dive</div>
+  <h1>Median of <span>10 Billion Integers</span></h1>
+  <p class="sub">50 files. 40 GB of data. 16 GB of RAM. No, you can't sort it. Here's how bucket counting cracks it in two clean passes — explained from scratch.</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">The Friday-afternoon problem</a></li>
+      <li><a href="#s2">Why sorting is the wrong instinct</a></li>
+      <li><a href="#s3">The reframe: rank, not order</a></li>
+      <li><a href="#s4">The bucket idea (voting boxes)</a></li>
+      <li><a href="#s5">Pass 1 — the coarse histogram</a></li>
+      <li><a href="#s6">Pass 2 — zoom into the right bucket</a></li>
+      <li><a href="#s7">Worked example, end to end</a></li>
+      <li><a href="#s8">Memory, I/O, and time math</a></li>
+      <li><a href="#s9">Nuances and edge cases</a></li>
+      <li><a href="#s10">When buckets don't fit</a></li>
+      <li><a href="#s11">60-second recap</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: THE PROBLEM                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">The Setup</span>
+  <h2>It's Friday afternoon. Maya gets handed 50 files.</h2>
+
+  <p class="bigp">
+    <strong>"We need the median of all of it. Before Monday."</strong> Maya looks at the disk: <strong>50 files, 10 billion 32-bit integers in total — about 40 gigabytes of raw data.</strong> Her laptop has 16 GB of RAM. The math is unkind.
+  </p>
+
+  <p>The first instinct of every engineer who has ever passed a coding interview is the same: <em>just sort it and pick the middle one</em>. That instinct is correct on a whiteboard with 7 numbers. It is catastrophically wrong with 10 billion. The whole point of this article is to show you why it's wrong, and what the right shape of the answer looks like — without any black magic, just one simple idea applied twice.</p>
+
+  <p>Before we touch a line of code, let's get the units straight. They will matter for every decision we make later.</p>
+
+  <div class="kvrow">
+    <div class="k">N (total ints)</div>      <div class="v"><code>10,000,000,000</code> — ten billion</div>
+    <div class="k">Width per int</div>       <div class="v"><code>4 bytes</code> (32-bit signed)</div>
+    <div class="k">Total bytes</div>         <div class="v"><code>40 GB</code> on disk</div>
+    <div class="k">RAM available</div>      <div class="v"><code>16 GB</code> — less than half the data</div>
+    <div class="k">Files</div>               <div class="v"><code>50</code> &nbsp;(~800 MB each, sequential read-friendly)</div>
+    <div class="k">Median definition</div>   <div class="v">value at sorted position <code>⌈N/2⌉</code> &nbsp;(the lower median — keeps the math simple)</div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The brutal constraint.</strong> You cannot hold the data in memory. You cannot afford a random walk over disk — random reads at 40 GB scale will run for hours. Whatever you do, it has to be a small number of <em>sequential</em> passes through the files.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: WHY SORTING FAILS                  -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-red">The Wrong Instinct</span>
+  <h2>"Just sort it" — and the wall it runs into</h2>
+  <p>Maya's first attempt looks like every textbook answer: load the data, sort it, return <code class="inline">arr[N/2]</code>. Watch what happens at each step.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  A[50 files · 40 GB] --> B[Load into RAM]
+  B --> C{Fits in 16 GB?}
+  C -->|No| X[💥 OutOfMemory]
+  style X fill:#e05252,stroke:#e05252,color:#fff
+  style A fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style B fill:#171d27,stroke:#7b8599,color:#d4dae5
+  style C fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <p>Right. So we don't load it all. The next-best textbook answer is <strong>external merge sort</strong> — break the input into RAM-sized chunks, sort each chunk, write each sorted chunk back to disk, then merge them all into one giant sorted file. This is a real algorithm; databases use it. Let's count what it costs us.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📦 Chunk &amp; sort</h3>
+      <p>Read 40 GB once. Sort each ~10 GB chunk in RAM. Write 40 GB back. <strong>I/O so far: 80 GB.</strong></p>
+    </div>
+    <div class="card">
+      <h3>🔀 K-way merge</h3>
+      <p>Open all sorted runs at once and merge them with a min-heap, writing one giant sorted file. Read 40 GB, write 40 GB. <strong>Another 80 GB of I/O.</strong></p>
+    </div>
+    <div class="card">
+      <h3>🎯 Walk to position N/2</h3>
+      <p>Open the sorted file, skip 5 billion entries, read the median. <strong>Up to 20 GB more I/O.</strong></p>
+    </div>
+    <div class="card">
+      <h3>🧾 The bill</h3>
+      <p><strong>~180 GB of disk I/O</strong> and a 40 GB sorted file you'll never use again. On a 500 MB/s SSD, that's 6+ minutes of pure I/O — and we threw away most of the work.</p>
+    </div>
+  </div>
+
+  <p>This is the trap: external merge sort produces an artifact (a fully sorted file) that is <em>far more powerful than the question asked for</em>. We don't need every element in order. We need <strong>one element</strong> — the one at rank N/2. Paying to sort all 9,999,999,999 of the others is wasted work.</p>
+
+  <div class="highlight hl-red"><strong>The reframe is coming.</strong> If sorting feels expensive, it's because you're answering a harder question than you were asked. The next section shows what you were actually asked.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: THE REFRAME                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-yellow">The Reframe</span>
+  <h2>You don't need order. You need <em>rank</em>.</h2>
+
+  <p>Here is the single insight that unlocks everything: <strong>the median is defined purely by its position in the sorted list, not by the sort itself.</strong> You only need to find the value <code class="inline">v</code> such that exactly <code class="inline">N/2</code> values in the dataset are ≤ <code class="inline">v</code>. You don't need to know what's to the left of it. You don't need to know what's to the right of it. You just need to know <em>where the boundary sits</em>.</p>
+
+  <p>Think of it like this analogy. Imagine you ask 10 billion people their height and want to find the median height. You don't need to line them all up in a row. You can just ask each person to step into the room labeled with their height-bracket — under 150 cm, 150–160, 160–170, and so on. Then you walk the rooms in order and count: <em>"room 1 has 1.8 billion, room 2 has 2.0 billion, room 3 has 2.5 billion — that's 6.3 billion, we've crossed the halfway mark of 5 billion in room 3, the median is somewhere in this room."</em></p>
+
+  <p>You never sorted anyone. You just counted who landed where. That's the entire trick.</p>
+
+  <div class="highlight hl-yellow"><strong>Counting is cheap. Sorting is expensive.</strong> If you can replace "sort and look up position K" with "count how many fall into each bracket and find which bracket position K lives in", you've replaced an O(N log N) operation with an O(N) one — and, more importantly, an operation that needs almost no RAM.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: THE BUCKET IDEA                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-green">The Idea</span>
+  <h2>Buckets — voting boxes for numbers</h2>
+
+  <p>A 32-bit signed integer has a fixed, finite range: from <code class="inline">−2³¹</code> (about <code class="inline">−2.15 billion</code>) to <code class="inline">2³¹ − 1</code> (about <code class="inline">+2.15 billion</code>). That's roughly 4.3 billion possible distinct values. <strong>Bounded range</strong> is the magic word — it means we can pre-define a fixed grid of buckets that covers every possible value, no surprises.</p>
+
+  <p>Here is the picture. Carve up the entire integer range into <code class="inline">2¹⁶ = 65,536</code> equal-sized buckets. Each bucket is just a counter — an entry in an array. When we read a number <code class="inline">v</code> from disk, we figure out which bucket it belongs to, and increment that counter. That's it. We never store <code class="inline">v</code> itself.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  F1[(File 1)] --> S
+  F2[(File 2)] --> S
+  Fn[(File 50)] --> S
+  S[Stream every int<br/>one at a time] --> H[Hash to bucket index<br/>idx = high 16 bits of v]
+  H --> B[bucket-array<br/>65,536 counters · 512 KB]
+  style S fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style H fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style B fill:#171d27,stroke:#38b265,color:#d4dae5
+    </div>
+  </div>
+
+  <h3>Why "high 16 bits"?</h3>
+  <p>A 32-bit integer is just two halves stitched together: 16 high bits and 16 low bits. The high bits tell you the <em>coarse</em> position of the number (which broad bracket it's in); the low bits tell you the fine position within that bracket. If you split the value range into 65,536 equally-sized buckets, then which bucket a number falls into is determined entirely by its high 16 bits.</p>
+
+  <p>The bucket index is just one CPU instruction:</p>
+
+  <pre><span class="cmt">// for unsigned thinking; we'll handle signed offset in a moment</span>
+<span class="kw">int</span> idx = (v <span class="kw">&gt;&gt;&gt;</span> <span class="num">16</span>) & <span class="num">0xFFFF</span>;   <span class="cmt">// high 16 bits, value in [0, 65535]</span>
+buckets[idx]++;</pre>
+
+  <div class="g2">
+    <div class="card">
+      <h3>💾 RAM for the bucket array</h3>
+      <p>65,536 buckets × 8 bytes per <code class="inline">long</code> counter = <strong>512 KB</strong>. That fits in your CPU's L2 cache, never mind your RAM. The 16 GB constraint is a non-issue.</p>
+    </div>
+    <div class="card">
+      <h3>⚡ CPU per element</h3>
+      <p>One bit shift, one mask, one array increment. We can process numbers as fast as the disk can hand them to us. The job is now <strong>I/O-bound</strong>, not CPU-bound.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>Where this leaves us.</strong> After one pass through all 40 GB, we have a 65,536-entry array that says, for every coarse bracket, exactly how many of the 10 billion numbers landed there. That summary is enough to <em>locate</em> the median's bracket — but not yet to name the exact value. That's what Pass 2 is for.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: PASS 1                             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-blue">Pass 1</span>
+  <h2>Coarse histogram — find the bracket</h2>
+
+  <p>Pass 1 is a single sequential read of all 50 files. For every integer <code class="inline">v</code> we see, we increment <code class="inline">buckets[high16(v)]</code>. At the end of the pass, the array tells us how the 10 billion values are distributed across 65,536 brackets.</p>
+
+  <p>Now we go hunting for the median. We walk the buckets in order, keeping a running sum. The moment that sum first reaches <code class="inline">N/2</code>, the bucket we just stepped into is the one that contains the median.</p>
+
+  <pre><span class="kw">long</span> target = N / <span class="num">2</span>;
+<span class="kw">long</span> cumulative = <span class="num">0</span>;
+<span class="kw">int</span> medianBucket = -<span class="num">1</span>;
+<span class="kw">long</span> countBefore = <span class="num">0</span>;
+
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">65536</span>; i++) {
+  <span class="kw">if</span> (cumulative + buckets[i] &gt;= target) {
+    medianBucket = i;
+    countBefore = cumulative;        <span class="cmt">// values strictly before this bucket</span>
+    <span class="kw">break</span>;
+  }
+  cumulative += buckets[i];
+}</pre>
+
+  <p>Two things come out of this loop, and we'll use both in Pass 2:</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🎯 <code class="inline">medianBucket</code></h3>
+      <p>The index of the bucket containing the median value. We now know the median's <em>coarse</em> location — the high 16 bits of its value are pinned down.</p>
+    </div>
+    <div class="card">
+      <h3>🔢 <code class="inline">countBefore</code></h3>
+      <p>How many of the 10 billion numbers landed in <em>earlier</em> buckets. The median is the <code class="inline">(target − countBefore)</code>-th smallest <strong>within</strong> <code class="inline">medianBucket</code>.</p>
+    </div>
+  </div>
+
+  <h3>What about negative numbers?</h3>
+  <p>A small detail that trips people up. With signed 32-bit ints, the bit pattern <code class="inline">0x80000000</code> is the most-negative number, and <code class="inline">0x7FFFFFFF</code> is the most-positive. If you bucket by raw high-16-bits, the negatives land at the <em>top</em> of the array, not the bottom — which would silently break the "walk in order" loop above.</p>
+  <p>The fix is a one-liner at read time: add <code class="inline">2³¹</code> to every value (or equivalently, XOR the sign bit). That maps the signed range <code class="inline">[−2³¹, 2³¹−1]</code> to the unsigned range <code class="inline">[0, 2³²−1]</code>, preserving order. Now bucket index 0 holds the most negative numbers, bucket 65,535 holds the most positive, and the cumulative walk works correctly. We undo the offset only at the very end when we report the answer.</p>
+
+  <div class="highlight hl-blue"><strong>So what does Pass 1 give us?</strong> A 512 KB summary of 40 GB of data, plus two numbers: which bucket the median is in, and how many values are below that bucket. That's enough to throw away 65,535 of the 65,536 buckets and zoom in on just one.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: PASS 2                             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-purple">Pass 2</span>
+  <h2>Zoom in — find the exact value</h2>
+
+  <p>Pass 1 narrowed the median to one of 65,536 brackets. Each bracket is <code class="inline">2¹⁶ = 65,536</code> values wide. We now do <strong>the same trick again</strong> — but this time we only care about values that land in <code class="inline">medianBucket</code>, and we sub-bucket them by their <em>low 16 bits</em>.</p>
+
+  <p>It's the same algorithm, scoped down. We allocate another 65,536-entry counter array (<code class="inline">sub[]</code>). We re-stream all 50 files. For each integer, we filter — if its high 16 bits don't match <code class="inline">medianBucket</code>, we ignore it. Otherwise, we extract its low 16 bits and increment <code class="inline">sub[low16(v)]</code>.</p>
+
+  <pre><span class="kw">long</span>[] sub = <span class="kw">new long</span>[<span class="num">65536</span>];
+
+<span class="kw">for</span> (<span class="kw">int</span> v : streamAllFiles()) {
+  <span class="kw">int</span> hi = (v <span class="kw">&gt;&gt;&gt;</span> <span class="num">16</span>) & <span class="num">0xFFFF</span>;
+  <span class="kw">if</span> (hi == medianBucket) {
+    <span class="kw">int</span> lo = v & <span class="num">0xFFFF</span>;
+    sub[lo]++;
+  }
+}</pre>
+
+  <p>After Pass 2, <code class="inline">sub[]</code> tells us how many copies of every individual value in <code class="inline">medianBucket</code> exist in the dataset. We do one last cumulative walk:</p>
+
+  <pre><span class="kw">long</span> needRank = target - countBefore;   <span class="cmt">// rank within medianBucket</span>
+<span class="kw">long</span> cum = <span class="num">0</span>;
+<span class="kw">int</span> medianLow = -<span class="num">1</span>;
+
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">65536</span>; i++) {
+  cum += sub[i];
+  <span class="kw">if</span> (cum &gt;= needRank) { medianLow = i; <span class="kw">break</span>; }
+}
+
+<span class="kw">int</span> median = (medianBucket &lt;&lt; <span class="num">16</span>) | medianLow;   <span class="cmt">// stitch back together</span></pre>
+
+  <p>Two 16-bit halves combine to give the exact 32-bit median value. Done — in two sequential reads of the data, with under 1 MB of RAM total.</p>
+
+  <div class="highlight hl-purple"><strong>Why two passes is the natural number.</strong> Each pass narrows the search space by a factor of 65,536 (16 bits at a time). Two passes is enough to pin down all 32 bits. If we were dealing with 64-bit longs, we'd just do four passes — same idea, more zoom levels.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: WORKED EXAMPLE                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-cyan">Worked Example</span>
+  <h2>Tiny numbers, full trace</h2>
+
+  <p>Algorithms feel abstract until you watch them eat real numbers. Let's shrink the problem so the whole thing fits on a screen.</p>
+
+  <p>Pretend our integers are 4 bits wide (range <code class="inline">[0, 15]</code>) and we have <code class="inline">N = 16</code> of them across two files. We'll use 4 buckets in each pass instead of 65,536, but the math is identical.</p>
+
+  <div class="kvrow">
+    <div class="k">File 1</div> <div class="v"><code>3, 1, 4, 1, 5, 9, 2, 6</code></div>
+    <div class="k">File 2</div> <div class="v"><code>5, 3, 5, 8, 9, 7, 9, 3</code></div>
+    <div class="k">N</div>      <div class="v"><code>16</code> &nbsp;→ &nbsp;target rank = <code>N/2 = 8</code> (the 8th smallest)</div>
+    <div class="k">Sorted (just to verify)</div> <div class="v"><code>1,1,2,3,3,3,4,<strong>5</strong>,5,5,6,7,8,9,9,9</code> &nbsp;→ &nbsp;answer should be <strong>5</strong></div>
+  </div>
+
+  <h3>Pass 1 — coarse buckets (high 2 bits)</h3>
+  <p>With 4 buckets, each covers 4 values. The "bucket index" of a number is just <code class="inline">v &gt;&gt; 2</code> (the high 2 bits of a 4-bit number).</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Bucket</th><th>Range</th><th>Values that land here</th><th>Count</th><th>Cumulative</th></tr></thead>
+      <tbody>
+        <tr><td><code>0</code></td><td><code>0–3</code></td><td>1, 1, 2, 3, 3, 3</td><td><code>6</code></td><td><code>6</code></td></tr>
+        <tr><td><code>1</code></td><td><code>4–7</code></td><td>4, 5, 5, 5, 6, 7</td><td><code>6</code></td><td><code>12</code> &nbsp;← crosses <code>8</code> here</td></tr>
+        <tr><td><code>2</code></td><td><code>8–11</code></td><td>8, 9, 9, 9</td><td><code>4</code></td><td><code>16</code></td></tr>
+        <tr><td><code>3</code></td><td><code>12–15</code></td><td>—</td><td><code>0</code></td><td><code>16</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Cumulative count first reaches the target (8) at <strong>bucket 1</strong>. So:</p>
+  <div class="kvrow">
+    <div class="k">medianBucket</div> <div class="v"><code>1</code></div>
+    <div class="k">countBefore</div>  <div class="v"><code>6</code> &nbsp;(elements in earlier buckets)</div>
+    <div class="k">needRank</div>     <div class="v"><code>target − countBefore = 8 − 6 = 2</code> &nbsp;→ the median is the 2nd smallest <em>within</em> bucket 1</div>
+  </div>
+
+  <h3>Pass 2 — sub-buckets (low 2 bits, only for bucket 1)</h3>
+  <p>Re-stream both files. Filter to values in bucket 1 (range 4–7). Increment <code class="inline">sub[v &amp; 0b11]</code> for each.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Sub-bucket (low 2 bits)</th><th>Actual value</th><th>Count</th><th>Cumulative</th></tr></thead>
+      <tbody>
+        <tr><td><code>0</code></td><td><code>4</code> &nbsp;(bucket_base + 0)</td><td><code>1</code></td><td><code>1</code></td></tr>
+        <tr><td><code>1</code></td><td><code>5</code></td><td><code>3</code></td><td><code>4</code> &nbsp;← crosses <code>2</code> here</td></tr>
+        <tr><td><code>2</code></td><td><code>6</code></td><td><code>1</code></td><td><code>5</code></td></tr>
+        <tr><td><code>3</code></td><td><code>7</code></td><td><code>1</code></td><td><code>6</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Cumulative first reaches <code class="inline">needRank = 2</code> at sub-bucket <code class="inline">1</code>. The actual value is <code class="inline">(medianBucket &lt;&lt; 2) | 1 = (1 &lt;&lt; 2) | 1 = 5</code>. ✓</p>
+
+  <div class="highlight hl-cyan"><strong>Two passes, two tiny arrays, exact answer.</strong> Notice we never sorted anything. We never moved a single value. We just counted who landed where, and walked the counters in order. Scale the array sizes from 4 to 65,536 and the integers from 4-bit to 32-bit, and you have the production algorithm.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: MEMORY / IO MATH                   -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-orange">The Numbers</span>
+  <h2>Memory, I/O, and wall-clock time</h2>
+
+  <p>Now that the shape of the algorithm is clear, let's price it out for the real 40 GB problem.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Resource</th><th>External merge sort</th><th>Bucket counting (this article)</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Peak RAM</strong></td><td>Tunable, typically 1–4 GB for buffers</td><td><code>~1 MB</code> &nbsp;(two 65k-entry long arrays)</td></tr>
+        <tr><td><strong>Disk reads</strong></td><td><code>~120 GB</code> &nbsp;(chunk-read + merge-read + walk)</td><td><code>~80 GB</code> &nbsp;(two streaming passes)</td></tr>
+        <tr><td><strong>Disk writes</strong></td><td><code>~80 GB</code> &nbsp;(sorted runs + final sorted file)</td><td><code>0</code> &nbsp;— no intermediate output</td></tr>
+        <tr><td><strong>CPU per element</strong></td><td>O(log N) inside heap-merge</td><td><code>O(1)</code> &nbsp;— shift, mask, array increment</td></tr>
+        <tr><td><strong>Time on a 500 MB/s SSD</strong></td><td>~7 minutes (I/O-dominated)</td><td><code>~3 minutes</code></td></tr>
+        <tr><td><strong>Parallel-friendly?</strong></td><td>Sort phase yes; merge phase serial</td><td>Yes — both passes embarrassingly parallel</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Why the I/O numbers matter more than the CPU numbers</h3>
+  <p>At 40 GB, every second of wall-clock time is dictated by how many bytes you move. A modern NVMe SSD reads at 3–5 GB/s sequential; a SATA SSD at 500 MB/s; a network-attached blob store at maybe 200 MB/s. The bucket method's win isn't that it's smarter — it's that it does <em>less I/O</em> and the I/O it does is purely sequential, which is the fastest mode on every storage medium.</p>
+
+  <h3>How to actually read the files fast</h3>
+  <p>Three rules of thumb that turn this from "an algorithm" into "a program that finishes":</p>
+  <ul style="list-style:none;padding:0;margin-top:.5rem">
+    <li style="padding:.5rem 0 .5rem 1.4rem;position:relative;color:var(--text)"><span style="position:absolute;left:0;top:.5rem;color:var(--orange);font-weight:700">›</span><strong>Big buffered reads.</strong> Use 8–64 MB read buffers. Don't read int-by-int; read a slab, parse it in memory.</li>
+    <li style="padding:.5rem 0 .5rem 1.4rem;position:relative;color:var(--text)"><span style="position:absolute;left:0;top:.5rem;color:var(--orange);font-weight:700">›</span><strong>One thread per file.</strong> 50 files, 50 reader threads. Each thread keeps a local 65k bucket array, then a final reduction step sums them. No contention, no locks.</li>
+    <li style="padding:.5rem 0 .5rem 1.4rem;position:relative;color:var(--text)"><span style="position:absolute;left:0;top:.5rem;color:var(--orange);font-weight:700">›</span><strong>Memory-mapped I/O if your OS permits it.</strong> <code class="inline">mmap</code> lets the kernel page in file pages on demand and skip a userspace copy. For sequential scans of bounded-size files it's often the single biggest win.</li>
+  </ul>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: NUANCES                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-purple">Nuances</span>
+  <h2>The edge cases that get asked in interviews</h2>
+
+  <p>The two-pass story is the headline. The rest of this section is the small print that separates a good answer from a great one.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>① Even N — two middles</h3>
+      <p>If <code class="inline">N</code> is even, the median is conventionally defined as the average of the two middle values (rank <code class="inline">N/2</code> and <code class="inline">N/2+1</code>). Track both ranks during the cumulative walk. Often they fall in the same final sub-bucket — answer is that value. If they fall in different sub-buckets, it's the average of the two values.</p>
+    </div>
+    <div class="card">
+      <h3>② Long (64-bit) integers</h3>
+      <p>You can't bucket the full 64-bit range in one shot — too many buckets. Solution: do <strong>four</strong> passes of 16 bits each (high → mid-high → mid-low → low). Or 3 passes with 21-bit slices. Same algorithm, just one more zoom level. RAM is still kilobytes per pass.</p>
+    </div>
+    <div class="card">
+      <h3>③ Severe skew — one giant bucket</h3>
+      <p>What if Pass 1 dumps 6 of the 10 billion values into a single bucket (e.g., almost all zeros)? Pass 2 still works — the sub-bucket array doesn't grow with input size, only with bucket width. But if even one sub-bucket is huge, you simply <em>recurse</em>: 16 bits → 8 bits → 8 bits. The algorithm is self-correcting — never run out of zoom levels until you're naming a single value.</p>
+    </div>
+    <div class="card">
+      <h3>④ Negative numbers (offset binary)</h3>
+      <p>Mentioned in §5: signed integers don't bucket in natural order without a fix. Add <code class="inline">2³¹</code> at read time to map <code class="inline">[−2³¹, 2³¹−1]</code> → <code class="inline">[0, 2³²−1]</code>, preserving order. Subtract it back at the end. One arithmetic op per element — basically free.</p>
+    </div>
+    <div class="card">
+      <h3>⑤ Duplicates</h3>
+      <p>Trivially handled. The bucket counter just increments more often. Counting doesn't care about distinctness.</p>
+    </div>
+    <div class="card">
+      <h3>⑥ Parallelism — the embarrassing kind</h3>
+      <p>Pass 1 has zero cross-thread state. Each thread keeps its own 512 KB bucket array; at the end of the pass, sum them element-wise. With 50 files and 16 cores, you're disk-bound long before you're CPU-bound — the algorithm scales with how fast you can pull bytes off storage.</p>
+    </div>
+  </div>
+
+  <h3>Pointers worth knowing about</h3>
+  <ul style="list-style:none;padding:0;margin-top:.5rem">
+    <li style="padding:.5rem 0 .5rem 1.4rem;position:relative;color:var(--text)"><span style="position:absolute;left:0;top:.5rem;color:var(--blue);font-weight:700">›</span><strong>Quickselect on disk.</strong> The classical alternative — pick a pivot, partition, recurse on the half containing rank K. Average-case great, worst-case awful (bad pivot choice can blow up). Bucket counting is deterministic and pivot-free; that's why it wins at scale.</li>
+    <li style="padding:.5rem 0 .5rem 1.4rem;position:relative;color:var(--text)"><span style="position:absolute;left:0;top:.5rem;color:var(--blue);font-weight:700">›</span><strong>This is just radix selection.</strong> What you've learned is the disk-friendly form of <em>radix selection</em> (a cousin of radix sort). The "two passes of 16 bits" is two iterations of radix narrowing. Useful term to know.</li>
+    <li style="padding:.5rem 0 .5rem 1.4rem;position:relative;color:var(--text)"><span style="position:absolute;left:0;top:.5rem;color:var(--blue);font-weight:700">›</span><strong>MapReduce-able.</strong> Pass 1 is a map (emit bucket-index per int) followed by a reduce (sum bucket counts). Pass 2 is the same with a filter. Drop this into Spark / Flink / a Hadoop job and you can scale it to petabytes.</li>
+    <li style="padding:.5rem 0 .5rem 1.4rem;position:relative;color:var(--text)"><span style="position:absolute;left:0;top:.5rem;color:var(--blue);font-weight:700">›</span><strong>Generalizes to any percentile.</strong> The 50th percentile (median) was illustrative. Replace <code class="inline">target = N/2</code> with <code class="inline">target = N * p</code> for the <em>p</em>-th percentile. Same two passes. Useful when you need P95, P99, etc. on huge logs.</li>
+  </ul>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: WHEN IT DOESN'T FIT               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-red">Limits</span>
+  <h2>When buckets <em>don't</em> work — and what replaces them</h2>
+
+  <p>The bucket method has one hard prerequisite: <strong>the values must come from a bounded, discretizable range that you can carve into buckets ahead of time.</strong> When that breaks, you need a different tool. Three real-world cases:</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🌊 Floating-point numbers</h3>
+      <p>Floats can be reinterpreted as integers (the IEEE 754 bit pattern is monotonic for non-negative floats), so you can apply the same trick — but the math is fiddly: handle NaN, ±0, denormals, and flip bits for negatives. Doable, but most teams give up exact answers and use approximation.</p>
+    </div>
+    <div class="card">
+      <h3>📈 Unbounded ranges (BigInteger, strings)</h3>
+      <p>If values can be arbitrarily large, you can't pre-allocate a bucket grid. Fall back to <strong>quickselect-on-disk</strong> with sampled pivots, or external merge sort, or sketches.</p>
+    </div>
+    <div class="card">
+      <h3>⏱️ Streaming / single-pass requirement</h3>
+      <p>Sometimes you can't make two passes — the data is a live stream. You give up exact median for an approximate one. <strong>t-digest</strong>, <strong>P²</strong>, and <strong>HDR Histogram</strong> are the standard tools. Each gives you any percentile, with bounded error, in fixed memory, in one pass.</p>
+    </div>
+    <div class="card">
+      <h3>🤝 "Close enough" is enough</h3>
+      <p>If your business doesn't actually need the exact median to the integer — just "around 5,000-ish, ±1%" — random reservoir sampling is the simplest correct answer. Sample 10 million numbers uniformly, sort the sample in RAM, take the middle. Ten lines of code, near-perfect accuracy for typical distributions.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The decision gate.</strong> Bounded range + need exact answer + can do a few passes → bucket counting wins. Anything else (floats, unbounded values, streams, "close is fine") → reach for sketches or sampling instead.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: RECAP                             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-green">Recap</span>
+  <h2>The 60-second version</h2>
+
+  <p>If someone stops you in the hallway and asks you to explain the whole article in a minute, here's the script.</p>
+
+  <div class="card" style="border-left:3px solid var(--green)">
+    <p><strong>The problem.</strong> 10 billion 32-bit integers across 50 files, 40 GB of data, 16 GB RAM. Find the median. Sorting is wasteful — we don't need the order, just the value at rank N/2.</p>
+    <p style="margin-top:.7rem"><strong>The trick.</strong> A 32-bit integer's range is bounded. Carve it into 65,536 brackets (one per high-16-bits value) and just <em>count</em> how many numbers land in each bracket. Counting is O(N) and needs ~512 KB of RAM — trivial.</p>
+    <p style="margin-top:.7rem"><strong>Pass 1.</strong> Stream all 50 files once. For each int, increment <code class="inline">buckets[high16(v)]</code>. Walk the bucket array cumulatively — the bucket where the running sum first crosses N/2 contains the median.</p>
+    <p style="margin-top:.7rem"><strong>Pass 2.</strong> Re-stream the files. Only count values whose high 16 bits match the median bucket. Sub-bucket them by their low 16 bits. Walk the sub-array cumulatively. The sub-bucket where the count crosses (N/2 − countBefore) is the exact median value. Stitch the high and low halves back together — done.</p>
+    <p style="margin-top:.7rem"><strong>The cost.</strong> Two streaming reads of the data (~80 GB I/O), under 1 MB of RAM, no intermediate writes, embarrassingly parallel across files.</p>
+    <p style="margin-top:.7rem"><strong>The general idea.</strong> When you only need a <em>positional</em> answer (median, percentile, k-th smallest) over a large dataset with a bounded value range, replace sorting with counting. Counting fits in cache. Sorting fits in pain.</p>
+  </div>
+
+  <div class="highlight hl-green" style="margin-top:1.2rem"><strong>One sentence to remember.</strong> Don't sort 40 GB to find one number — bucket-count by the high half to locate the median's neighborhood, then bucket-count the low half within just that neighborhood. Two passes, kilobytes of RAM, no sorting.</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

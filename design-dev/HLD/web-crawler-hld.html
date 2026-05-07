@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Web Crawler — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Web <span>Crawler</span></h1>
+  <p class="sub">From "one thread chasing links" to a globally distributed pipeline that crawls 15 billion pages a month — politely, durably, and without DDoS-ing anyone</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is a Web Crawler?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Design Considerations</a></li>
+      <li><a href="#s4">Capacity Estimation</a></li>
+      <li><a href="#s5">High-Level Algorithm</a></li>
+      <li><a href="#s6">Difficulties</a></li>
+      <li><a href="#s7">High-Level Architecture</a></li>
+      <li><a href="#s8">URL Frontier</a></li>
+      <li><a href="#s9">Fetcher Module</a></li>
+      <li><a href="#s10">Document Dedupe</a></li>
+      <li><a href="#s11">URL Dedupe</a></li>
+      <li><a href="#s12">Checkpointing</a></li>
+      <li><a href="#s13">Fault Tolerance</a></li>
+      <li><a href="#s14">Data Partitioning</a></li>
+      <li><a href="#s15">Crawler Traps</a></li>
+      <li><a href="#s16">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS A WEB CRAWLER?              -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is a Web Crawler?</h2>
+  <p>Imagine Googlebot waking up at midnight. It has one URL on its desk — <code>https://www.google.com</code>. It opens it, reads the HTML, scribbles down every link it finds (say 200 of them), and adds them to a giant TODO list. Then it picks the next URL off the list, opens that one, scribbles down <em>its</em> links, and keeps going. Two weeks later, that one starting URL has fanned out into <strong>15 billion pages</strong> indexed and stored. That's a web crawler — a piece of software that systematically browses the internet by following links, downloading pages, and feeding them to a search engine's index, an archive, or a data-mining pipeline.</p>
+
+  <p>Crawlers power more than search engines. They're how the <strong>Internet Archive</strong> snapshots the web, how <strong>SEO tools</strong> like Ahrefs build link graphs, how <strong>price comparison</strong> sites learn that a TV dropped $50, and how <strong>academic researchers</strong> measure the spread of misinformation. Whenever a system needs a fresh, structured view of the public web, a crawler is the thing that goes and gets it.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How do we visit billions of pages without spending decades doing it? (2) How do we do that <em>politely</em> — without hammering one site so hard that it bans us, or getting trapped in an infinite loop of generated calendar pages?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Before drawing a single box, pin down what the crawler must do. In an interview, asking these questions out loud signals you understand <em>why</em> the production design looks the way it does.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Start from a list of <strong>seed URLs</strong> and discover linked pages by recursively following hyperlinks</li>
+        <li>Download each page's HTML and hand it off to downstream consumers (search index, dedupe, etc.)</li>
+        <li>Skip pages we've already crawled (URL dedupe) and pages whose <em>content</em> we already have (document dedupe)</li>
+        <li>Honor <code>robots.txt</code> — the website's rule file that says which paths a crawler may or may not visit</li>
+        <li>Survive worker crashes and pause/resume across multi-week crawls without restarting from zero</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Scalable</strong> — must crawl the entire visible web, hundreds of millions to tens of billions of pages</li>
+        <li><strong>Extensible</strong> — modular pipeline so adding a new document type (PDF, video, JSON-LD) or protocol (FTP, gRPC) doesn't require a rewrite</li>
+        <li><strong>Polite</strong> — never overwhelm a single host; respect crawl-delay directives</li>
+        <li><strong>Efficient</strong> — saturate available bandwidth without wasting it on duplicate fetches or dead ends</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The hard part isn't crawling — it's crawling at scale, politely.</strong> A 50-line Python script with <code>requests</code> + <code>BeautifulSoup</code> is a working crawler for 100 pages. The architecture below exists because we need <em>15 billion</em> pages in <em>4 weeks</em> while staying off every site's blocklist.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: DESIGN CONSIDERATIONS               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-purple">Step 3</span>
+  <h2>Design Considerations</h2>
+  <p>What's in scope today, and what should the architecture leave room for tomorrow? A crawler that hard-codes "HTML over HTTP" will be unusable the day someone asks it to also index PDFs or follow FTP links. Decide upfront which axes are flexible.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>📄 Document types</h3>
+      <p>Start with <strong>HTML only</strong>. But the parser is a pluggable module — adding a PDF extractor or an image OCR pass tomorrow should be a new class behind the same interface, not a fork of the codebase. Sarah on the search team will thank us when she wants to index research papers.</p>
+    </div>
+    <div class="card">
+      <h3>🌐 Protocols</h3>
+      <p>Start with <strong>HTTP and HTTPS</strong> only — they cover 99.9% of the public web. But the fetcher layer is also pluggable. If we ever need to mirror an FTP archive or a gRPC API surface, we add an FTPFetcher behind the same Fetcher interface.</p>
+    </div>
+    <div class="card">
+      <h3>🤖 Robots Exclusion Protocol</h3>
+      <p>Every site can publish <code>https://example.com/robots.txt</code> declaring which paths crawlers may visit. <strong>Honoring it is non-negotiable</strong> — ignore it and you get banned, sued, or both. Cache each host's robots.txt aggressively (one parse per host per day) so we don't re-fetch it on every page.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>Out of scope for this design:</strong> JavaScript rendering (would require headless browsers — 100× the CPU cost), authenticated/login-walled content, real-time freshness (we batch-crawl, not live-stream), and obeying CAPTCHA challenges. These are fascinating but separate problems.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-blue">Step 4</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers drive every architectural choice — sharding, queue depth, bandwidth provisioning. Do them out loud, even if rough. Our target: <strong>crawl 15 billion pages every 4 weeks</strong> (a refresh interval that matches Google's reported re-crawl cadence for medium-rank sites).</p>
+
+  <h3 class="subh">Throughput target</h3>
+  <p>15B pages over 4 weeks = 15,000,000,000 / (4 × 7 × 86,400) ≈ <strong>6,200 pages/second</strong>. That's the steady-state rate the entire pipeline must sustain — fetch, parse, dedupe, store — for a month straight.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Pages/sec</h3><p><span class="metric">~6,200</span></p><p>15B / (4 weeks)</p></div>
+    <div class="card"><h3>Avg page size</h3><p><span class="metric">100 KB</span></p><p>HTML + assets metadata</p></div>
+    <div class="card"><h3>Metadata/page</h3><p><span class="metric">500 B</span></p><p>URL, headers, timing</p></div>
+    <div class="card"><h3>Bandwidth in</h3><p><span class="metric">~620 MB/s</span></p><p>~5 Gbps sustained</p></div>
+  </div>
+
+  <h3 class="subh">Storage estimate</h3>
+  <p>15B pages × (100 KB page + 500 B metadata) ≈ <strong>1.5 PB</strong> for one full crawl. With 70% capacity headroom (so we don't fill disks before the next crawl finishes): <span class="metric">~2.14 PB provisioned</span>. This goes to a blob store — HDFS or S3 — not a relational DB.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Pages/sec</td><td><code>6,200/s</code></td><td>Drives fetcher pool size and DNS resolver capacity</td></tr>
+        <tr><td>Sustained bandwidth</td><td><code>5 Gbps</code></td><td>Forces multiple network egresses; one NIC is not enough</td></tr>
+        <tr><td>Crawl storage</td><td><code>1.5 PB</code></td><td>Mandates blob store (HDFS/S3); no SQL DB at this scale</td></tr>
+        <tr><td>URL set size</td><td><code>~60 GB</code></td><td>15B × 4 bytes (checksum) — fits a sharded in-memory set with disk fallback</td></tr>
+        <tr><td>Crawl duration</td><td><code>4 weeks</code></td><td>Long enough that worker crashes <em>will</em> happen — checkpointing is mandatory</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: HIGH-LEVEL ALGORITHM                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-cyan">Step 5</span>
+  <h2>The High-Level Algorithm — BFS with friends</h2>
+  <p>Strip away the distributed-systems machinery and a crawler is just <strong>graph traversal</strong>. Pages are nodes; hyperlinks are edges; we walk the graph from a small set of seed nodes outward.</p>
+
+  <span class="code-label cl-cyan">Pseudocode — the entire crawler in 8 steps</span>
+<pre><span class="kw">while</span> frontier <span class="kw">not</span> empty:
+  url       = frontier.pop()                  <span class="cmt"># 1. take next URL</span>
+  ip        = dns_resolver.resolve(url.host)  <span class="cmt"># 2. host → IP</span>
+  <span class="kw">if not</span> robots_allowed(url): <span class="kw">continue</span>     <span class="cmt"># 3. politeness check</span>
+  html      = fetcher.get(url, ip)            <span class="cmt"># 4. download bytes</span>
+  <span class="kw">if</span> doc_seen_before(checksum(html)): <span class="kw">continue</span>  <span class="cmt"># 5. dedupe content</span>
+  storage.save(url, html)                     <span class="cmt"># 6. persist</span>
+  <span class="kw">for</span> link <span class="kw">in</span> parser.extract_links(html):  <span class="cmt"># 7. discover new edges</span>
+    <span class="kw">if not</span> url_seen_before(link):
+      frontier.push(link)                     <span class="cmt"># 8. enqueue</span></pre>
+
+  <h3 class="subh">BFS vs DFS — and why we mix them</h3>
+  <div class="g2">
+    <div class="card">
+      <h3>🌊 BFS (default)</h3>
+      <p><strong>Breadth-first</strong> — explore all of <code>news.com</code>'s direct links before going deeper. The frontier is a FIFO queue. This is the default because it spreads load across many hosts naturally — we crawl <em>shallow</em> across the whole web before going <em>deep</em> into any one site, which keeps freshness uniform.</p>
+    </div>
+    <div class="card">
+      <h3>🪜 DFS (per-host)</h3>
+      <p><strong>Depth-first within one host</strong> is useful for amortizing the cost of TCP/TLS handshake and DNS — once a connection to <code>news.com</code> is open, drain a bunch of its URLs through that same connection before tearing it down. We use DFS <em>inside</em> a host's queue while BFS is the global discipline.</p>
+    </div>
+  </div>
+
+  <p>The frontier is <strong>not</strong> one queue — it's a forest of per-host queues fronted by a global priority dispatcher. We'll see why in §8.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: DIFFICULTIES                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-red">Step 6</span>
+  <h2>The Five Difficulties of Crawling the Web</h2>
+  <p>If you build the pseudocode from §5 verbatim, you'll hit five walls — fast. Every box in our production architecture exists to work around exactly one of these.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3 style="color:var(--red)">🌌 Volume</h3>
+      <p>The web is roughly 50 billion pages and growing. Even at 6,200 pages/sec we need 4 weeks. We can't crawl <em>everything</em>; we must <strong>prioritize</strong> — high-PageRank, recently-changed, and seed-anchored URLs first.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--orange)">⚡ Velocity</h3>
+      <p>Pages change while we're crawling them. By the time we've indexed <code>nytimes.com</code>, the homepage has been edited 50 times. We accept stale-by-design and re-crawl on a refresh cadence — but the system must tolerate "what I just saw is already wrong".</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--yellow)">🤝 Politeness</h3>
+      <p>If 1,000 fetcher threads all pile onto <code>blog.example.com</code> at once, we just DDoS'd that site. They'll firewall our IP range within minutes and we lose access permanently. We must <strong>throttle per host</strong> — no more than 1 connection at a time to any one site, with a delay between requests.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--purple)">🪤 Crawler traps</h3>
+      <p>Some sites generate infinite pages — a calendar that lets you click "next month" forever, search results with infinite pagination, dynamically-generated session-id URLs that all return the same content. A naive crawler will sit in <code>example.com/calendar?date=...</code> for the rest of its life and never reach the rest of the web.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--blue)">🔁 Deduplication</h3>
+      <p>The same page is reachable via dozens of URLs (<code>?utm_source=...</code>, mobile redirects, mirror sites). And many distinct URLs serve identical content (CDN replicas, syndicated articles). Without dedupe we'd index the same article 50 times and waste 95% of our storage.</p>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--green)">🐢 DNS bottleneck</h3>
+      <p>Every fetch starts with "what's the IP for this hostname?". The OS DNS resolver does this synchronously and one query at a time per process — at 6,200 pages/sec hitting different hosts, DNS alone becomes the bottleneck. We need our own caching async resolver.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: HIGH LEVEL DESIGN — THE STAR        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-orange">Step 7 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it falls apart, and the production shape where every box justifies itself. The numbers from §4 and the difficulties from §6 drive every decision.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Sketch the simplest possible crawler: one process, one thread, one URL queue in memory. Pop a URL → fetch → parse → push new links → repeat. The whole thing fits on one laptop.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  SEED["Seed URLs"] --> Q["In-memory queue"]
+  Q --> F["Fetch HTTP"]
+  F --> P["Parse HTML"]
+  P --> Q
+  P --> S["Store on disk"]
+    </div>
+  </div>
+
+  <p>Four concrete failures emerge the moment we try to scale:</p>
+  <div class="g2">
+    <div class="card">
+      <h3>💥 Single-thread fetch — decades, not weeks</h3>
+      <p>One HTTP request takes ~500ms (DNS + TCP + TLS + download). At one fetch at a time, that's <strong>2 pages per second</strong>. To crawl 15B pages serially: <code>15B / 2 ≈ 240 years</code>. We need parallelism by a factor of <strong>3,000×</strong> just to hit the target.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Politeness violation — instant ban</h3>
+      <p>If we naively parallelize by spawning 3,000 threads on one queue, the queue's BFS order means ~50 threads will be hitting <code>nytimes.com</code> simultaneously. NYT's edge firewall sees that as a DoS and blocks our entire IP range. Our crawler is now blind to a major chunk of the web.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Crawler trap — infinite loop</h3>
+      <p>The thread enters <code>example.com/cal?d=2024-01-01</code>, finds links to <code>?d=2024-01-02</code>, <code>?d=2024-01-03</code>, ... It will stay in that calendar forever, growing the queue with URLs nobody will ever click, while <em>real</em> content gets starved out.</p>
+    </div>
+    <div class="card">
+      <h3>💥 DNS dominates — and crashes</h3>
+      <p>The OS resolver gets ~3,000 lookups/sec funneled through a single socket. It either melts or rate-limits us. Worse, if the queue is in-memory and the process crashes 12 days into a 28-day crawl, we lose everything and start from zero.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: A pipeline of independently scaling stages</h3>
+  <p>The single most important insight in crawler design is that <strong>crawling is not one job — it's a pipeline of stages with completely different bottlenecks</strong>. Network-bound fetching, CPU-bound parsing, disk-bound storage, memory-bound dedupe — each stage scales on its own axis, and conflating them in one process means everyone waits for the slowest.</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">🧭 Frontier Plane</h3>
+      <p>Where URLs live before they're fetched. Sharded by <strong>hostname</strong> — every URL for <code>nytimes.com</code> goes to the same queue, served by the same worker. That's how we enforce politeness: at most one fetcher per host means no host can ever be overwhelmed by us. The frontier is <strong>disk-backed</strong> because hundreds of millions of pending URLs won't fit in RAM.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">⚡ Fetch &amp; Parse Plane</h3>
+      <p>Where bytes get pulled from the web and turned into structured data. <strong>Network-bound</strong> — we want hundreds of concurrent fetches per worker to saturate bandwidth. Parsing is CPU-bound and runs on the same workers, but in a separate thread pool so a slow parse doesn't block a fetch and vice versa. Both feed a <strong>document input stream (DIS)</strong> — a buffer that lets multiple processors (link extractor, content checksum, language detector) all read the same downloaded page without re-fetching.</p>
+    </div>
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">💾 Storage Plane</h3>
+      <p>Where deduped pages and their metadata land permanently. <strong>Disk-bound</strong>. Raw HTML goes to a blob store (HDFS or S3) — petabyte-scale, sequential writes. Metadata (URL, fetch time, status, checksum) goes to a sharded DB. The dedupe sets — what we've already seen — also live here, sharded by URL hash.</p>
+    </div>
+  </div>
+
+  <p>This three-plane split is what makes the crawler scale. Want more pages/sec? Add fetch workers — they don't touch the frontier's queue logic or the storage layer. Want to handle a flood of small sites? Shard the frontier finer — fetchers don't care. Each plane has its own knob.</p>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered — find its matching card below to see what it does and crucially what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  SEED["① Seed URLs"]
+
+  subgraph FRONTIER["Frontier Plane"]
+    UF["② URL Frontier — sharded by hostname"]
+    UD["③ URL Dedupe Set"]
+  end
+
+  subgraph FETCH["Fetch &amp; Parse Plane"]
+    DNS["④ DNS Resolver — async, cached"]
+    FW["⑤ Fetcher Workers"]
+    DIS["⑥ Document Input Stream"]
+    PAR["⑦ HTML Parser / Link Extractor"]
+    DD["⑧ Document Dedupe — content checksum"]
+    UF2["⑨ URL Filter — robots.txt, blacklist"]
+  end
+
+  subgraph STORE["Storage Plane"]
+    BS["⑩ Blob Store — HDFS / S3"]
+    MDB["⑪ Metadata DB"]
+    CKP["⑫ Checkpointing Service"]
+  end
+
+  SEED --> UF
+  UF --> DNS
+  DNS --> FW
+  FW --> DIS
+  DIS --> PAR
+  DIS --> DD
+  PAR --> UF2
+  UF2 -.new URL.-> UD
+  UD -.unseen.-> UF
+  DD -.unique.-> BS
+  PAR --> MDB
+  CKP -.snapshots.-> UF
+  CKP -.snapshots.-> UD
+  CKP -.snapshots.-> DD
+
+  style SEED fill:#e8743b,stroke:#e8743b,color:#fff
+  style UF fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style UD fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style DNS fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style FW fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style DIS fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style PAR fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style DD fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style UF2 fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style BS fill:#171d27,stroke:#38b265,color:#d4dae5
+  style MDB fill:#171d27,stroke:#38b265,color:#d4dae5
+  style CKP fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Seed URLs</h3>
+      <p>The starting set — typically the front pages of major news sites, popular blogs, and curated directories. A few thousand URLs is enough; the link graph fans out exponentially from there. Engineers update the seed list quarterly to bias the crawl toward known-fresh content.</p>
+      <p><strong>Solves:</strong> the cold-start problem. Without seeds the crawler has no entry point — it would sit forever waiting for a URL to appear. Seeds are the initial energy injected into the graph traversal.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">②</span> URL Frontier</h3>
+      <p>The crawler's TODO list — a priority queue of URLs waiting to be fetched, sharded by hostname so all of <code>nytimes.com</code>'s pending URLs live in one shard, served by one worker. Each shard has a per-host FIFO sub-queue plus a global priority key based on PageRank, freshness, and depth. Disk-backed (Kafka or RocksDB) because hundreds of millions of pending URLs won't fit in RAM.</p>
+      <p><strong>Solves:</strong> politeness <em>and</em> ordering at the same time. Sharding by hostname means one host can never be hit by two fetchers at once — that's our DDoS-prevention invariant. Priority means we crawl high-value pages first when bandwidth is scarce.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num orange">③</span> URL Dedupe Set</h3>
+      <p>"Have we already seen this URL?" — a sharded set of URL checksums (4-byte CRC32 each). At 15B URLs × 4 bytes = ~60 GB, sharded across nodes by URL hash. Lookups are O(1) hash-set probes; disk fallback for cold shards. Every newly-extracted link goes through here before being enqueued.</p>
+      <p><strong>Solves:</strong> infinite re-crawl. Without URL dedupe, every page that links back to the homepage would re-enqueue the homepage, and we'd loop forever. Some teams use a Bloom filter here — faster but with false positives that <em>drop</em> URLs we've never seen, which is unacceptable for a crawler that promises web coverage. We pay the extra memory for an exact set.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num cyan">④</span> DNS Resolver</h3>
+      <p>An <strong>asynchronous, in-process</strong> DNS client with a massive LRU cache. The OS resolver is synchronous and serializes through a single socket — at 6,200 pages/sec it would melt. Our resolver caches each hostname → IP for the TTL the authoritative server returns (typically 1-24 hours), and overlaps thousands of pending lookups.</p>
+      <p><strong>Solves:</strong> the DNS-bottleneck failure from §6. Real measurement on production crawlers: switching from glibc's <code>getaddrinfo</code> to an async caching resolver dropped DNS time from 40% of total fetch latency to under 2%. Without this, the entire pipeline is DNS-bound.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑤</span> Fetcher Workers</h3>
+      <p>Stateless services that take a URL + IP from the frontier and execute the HTTP fetch. Each worker runs hundreds of concurrent fetches via async I/O (Netty / Tokio / asyncio). Reuses TCP connections per host (HTTP keep-alive) to amortize TLS handshake. Honors the <strong>crawl-delay</strong> from <code>robots.txt</code> — if a host says "wait 5 seconds between hits", the worker enforces that on its sub-queue.</p>
+      <p><strong>Solves:</strong> the throughput target. With 50 workers × 200 concurrent fetches × ~8 fetches/sec each = ~80K fetches/sec headroom for a 6,200/sec target — comfortable margin for the 10× variance in real-world fetch latency.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num blue">⑥</span> Document Input Stream (DIS)</h3>
+      <p>An in-memory buffer that holds the bytes of a freshly-downloaded page so multiple processors can read it without re-fetching. The link extractor reads it. The content checksum reads it. The language detector reads it. The size-and-type metadata extractor reads it. All from the same buffer, in parallel.</p>
+      <p><strong>Solves:</strong> redundant downloads. Without a DIS, each downstream consumer would either re-fetch the URL (catastrophic — 4× the bandwidth) or queue serially through the parser (catastrophic — 4× the latency). The DIS is the moral equivalent of a tee — one fetch, many readers.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑦</span> HTML Parser / Link Extractor</h3>
+      <p>CPU-bound stage that reads from the DIS, parses the HTML into a DOM, and extracts every <code>href</code>, <code>src</code>, and canonical tag. Normalizes URLs (resolves relative paths, lowercases hostnames, strips fragments and tracking params) so <code>News.com/Article?utm=foo#top</code> and <code>news.com/article</code> hash to the same key. Outputs the list of new URLs and the structured metadata for the page.</p>
+      <p><strong>Solves:</strong> the graph-traversal step itself. Without link extraction, the crawler has no way to discover new URLs and would only ever fetch the seeds. Robust normalization is what keeps the URL dedupe set from exploding into a hundred variations of the same article.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑧</span> Document Dedupe</h3>
+      <p>"Have we already seen this <em>content</em>?" — even if the URL is new. Compute SHA-256 (or MD5 for speed) of the normalized page body and check against a set of seen checksums. Mirror sites, syndicated articles, and CDN replicas all collapse to the same hash and only get stored once. At 15B docs × 16-byte MD5 = ~240 GB checksum set, sharded by checksum.</p>
+      <p><strong>Solves:</strong> wasted storage and wasted indexing work. Real-world web data is reportedly 20-30% duplicate. Without doc dedupe we'd store 1.95 PB instead of 1.5 PB and index every duplicate to no benefit. Same Bloom-filter caveat as URL dedupe — we pay the memory for an exact set.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">⑨</span> URL Filter</h3>
+      <p>Decides whether a freshly-extracted URL is even <em>eligible</em> to be enqueued. Three checks, in order: (1) URL scheme is <code>http</code> or <code>https</code>; (2) host's <code>robots.txt</code> permits the path (cached per-host with TTL); (3) URL doesn't match our blacklist of known traps (<code>?sessionid=...</code>, calendar URLs deeper than N levels, etc).</p>
+      <p><strong>Solves:</strong> politeness compliance and trap avoidance. Without the filter, the crawler would happily fetch <code>/admin/</code> and <code>/api/v1/private/</code> in violation of robots.txt — and would dive infinitely into <code>example.com/calendar?d=...</code>. The filter is the gatekeeper that keeps us a good citizen of the web.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑩</span> Blob Store (HDFS / S3)</h3>
+      <p>Where the raw bytes of every successfully-fetched, deduped page get written. Append-only, immutable, optimized for sequential writes — exactly the access pattern of a crawl. At 1.5 PB per crawl, this has to be a distributed file system. S3 for cloud-native, HDFS for on-prem. Pages are batched into ~128 MB files with an offset index so downstream consumers can <code>mmap</code> a chunk without listing millions of tiny files.</p>
+      <p><strong>Solves:</strong> durable, petabyte-scale storage that the indexer can later replay. A relational DB would collapse under 1.5 PB and the workload doesn't need transactions. A blob store is the right shape for "write once, read many, sequential, huge".</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑪</span> Metadata DB</h3>
+      <p>A sharded database (Cassandra or DynamoDB) holding one row per crawled URL: <code>{url, fetch_time, status_code, content_length, content_checksum, blob_offset, last_modified, host}</code>. Lets us answer "when did we last crawl X?", "which pages 404'd this week?", and "show me every page in news.com fetched yesterday". Sharded by hostname to colocate per-host queries.</p>
+      <p><strong>Solves:</strong> the operational visibility gap. Without a metadata DB you have a blob store full of pages and no way to query it. Want to re-crawl only pages older than 7 days? Without metadata you can't even ask the question.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑫</span> Checkpointing Service</h3>
+      <p>Every N minutes, snapshots the in-memory state of all the volatile components — the URL frontier's heads, the URL/doc dedupe sets' deltas, each fetcher's progress — to S3. On a worker crash, recovery rolls back to the last snapshot and resumes; we lose at most N minutes of work. Snapshots are incremental (deltas only) so a 60GB URL set isn't rewritten every 5 minutes.</p>
+      <p><strong>Solves:</strong> the multi-week-crawl problem. With 1,000 workers running for 28 days, the probability of <em>zero</em> crashes is essentially nil — multiple workers will die. Without checkpointing, every crash means restart-from-zero, and we never finish a crawl. Checkpointing is the difference between "this works in a demo" and "this works in production".</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthrough — Crawling Hacker News at 14:00</h3>
+  <p>Two flows, mapped to the numbered components. The first is a happy-path fetch; the second is a recovery from a worker crash.</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h3>📥 Happy path — <code>https://news.ycombinator.com</code> at 14:00</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>The URL was added to <strong>Seed URLs</strong> ① yesterday and is now sitting in the <strong>URL Frontier</strong> ② shard owned by Worker 17 (chosen because <code>hash("news.ycombinator.com") mod 50 = 17</code>).</li>
+        <li>Worker 17 pops the URL. It hits <strong>DNS Resolver</strong> ④ — cache hit returns <code>209.216.230.240</code> in 0.1ms.</li>
+        <li>Before fetching, Worker 17 consults its cached <code>robots.txt</code> for ycombinator.com: "<code>Disallow: /api/</code>, <code>Crawl-delay: 1</code>". The homepage is allowed. The worker waits at most 1 second since its previous fetch to news.ycombinator.com.</li>
+        <li><strong>Fetcher Worker</strong> ⑤ does the HTTPS GET, downloads 47 KB of HTML, hands the bytes to a <strong>DIS</strong> ⑥ buffer.</li>
+        <li>Two consumers read from the DIS in parallel. <strong>Document Dedupe</strong> ⑧ computes MD5(<code>html</code>) → <code>9b3a...</code>. Lookup against the seen-set: miss. We've never seen this exact content. Mark as seen.</li>
+        <li><strong>HTML Parser</strong> ⑦ extracts 30 outbound links — 28 to other ycombinator.com pages, 2 to external sites. Each is normalized: lowercased host, stripped <code>?utm_source</code>, resolved relative paths.</li>
+        <li>Each of the 30 links runs through <strong>URL Filter</strong> ⑨. 3 are blacklisted (link to a known calendar trap), 2 are blocked by robots.txt, 25 pass.</li>
+        <li>The 25 surviving URLs hit the <strong>URL Dedupe Set</strong> ③. 20 are already known (we've crawled HN before). 5 are genuinely new — they get enqueued back to the appropriate frontier shards.</li>
+        <li>Raw HTML lands in <strong>Blob Store</strong> ⑩ at offset <code>seg_2024_42.dat:0x4ab1900</code>. Metadata row inserted into <strong>Metadata DB</strong> ⑪. Total elapsed: <strong>520 ms</strong>.</li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--yellow)">
+      <h3>🔧 Recovery — Worker 23 crashes at hour 280 of a 672-hour crawl</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Worker 23 dies (OOM, hardware failure, k8s eviction — doesn't matter why). Its 4 million in-flight pending URLs and the per-worker checksums it accumulated since the last checkpoint are gone from RAM.</li>
+        <li>The orchestrator (k8s, Nomad) detects the missing heartbeat within 30 seconds and schedules a replacement worker on a fresh node.</li>
+        <li>The new Worker 23 boots and asks <strong>Checkpointing Service</strong> ⑫ for the latest snapshot of its frontier shard and dedupe deltas. Snapshot was taken 4 minutes ago; restoration takes ~90 seconds (loading 60 GB of CRC32 set from S3).</li>
+        <li>The worker resumes from the snapshot. Pages fetched in the 4-minute gap will be re-fetched — wasted bandwidth, but acceptable. Crucially, the dedupe state means the re-fetched pages won't be <em>re-stored</em>: <strong>Document Dedupe</strong> ⑧ still has their checksums from the earlier fetch.</li>
+        <li>Consistent hashing on the frontier shards means no other worker had to redistribute its load. Worker 23 picks up exactly where it left off.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around three insights — (1) <strong>crawling is a pipeline of stages with different bottlenecks</strong> so each stage scales on its own knob; (2) <strong>politeness is enforced by sharding the frontier on hostname</strong> so no host can ever see more than one of our connections; (3) <strong>multi-week crawls assume crashes will happen</strong> so checkpointing is mandatory, not optional. Every box in the diagram earns its place by removing one of the failure modes from Pass 1.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: URL FRONTIER                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-orange">Step 8</span>
+  <h2>URL Frontier — the crawler's TODO list</h2>
+  <p>The frontier is the most architecturally important component in the system. Every politeness, priority, and load-balancing concern lives or dies here.</p>
+
+  <h3 class="subh">Two-level queue structure</h3>
+  <p>The frontier is <strong>not</strong> a single FIFO. It's a two-level structure:</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  subgraph FRONT["URL Frontier — Worker 17 shard"]
+    subgraph PRI["Priority queue — selects next host to crawl"]
+      P1["news.ycombinator.com — score 0.92"]
+      P2["github.com — score 0.81"]
+      P3["medium.com — score 0.74"]
+    end
+    subgraph SUB["Per-host FIFO sub-queues"]
+      S1["news.ycombinator.com → 4,200 URLs"]
+      S2["github.com → 18,000 URLs"]
+      S3["medium.com → 950 URLs"]
+    end
+    PRI --> SUB
+  end
+
+  style P1 fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style P2 fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style P3 fill:#171d27,stroke:#9b72cf,color:#d4dae5
+    </div>
+  </div>
+
+  <p>The <strong>top-level priority queue</strong> picks <em>which host</em> to crawl next, ranked by PageRank, freshness signals, and depth. The <strong>per-host FIFO</strong> picks <em>which URL of that host</em> to crawl next — usually breadth-first within the host. This separation lets us respect "no two threads on one host" while still parallelizing across hosts.</p>
+
+  <h3 class="subh">Sharding</h3>
+  <p>Across the cluster, the frontier is <strong>sharded by hostname</strong> using consistent hashing. <code>worker_id = consistent_hash("news.ycombinator.com") mod N</code>. This guarantees: (a) one worker owns one host's queue, so politeness is automatic; (b) adding/removing workers reshuffles only <code>1/N</code> of hosts instead of the whole cluster.</p>
+
+  <h3 class="subh">Disk-backing</h3>
+  <p>At 6,200 pages/sec for 4 weeks, the frontier holds hundreds of millions of pending URLs at peak. That doesn't fit in RAM. Implementation: <strong>Kafka per shard</strong> as the durable queue, with a small in-memory ring buffer of the next ~10K URLs per host for hot access. Enqueue/dequeue happen on the in-memory buffer; periodic flushes sync to Kafka.</p>
+
+  <div class="highlight hl-orange"><strong>Analogy:</strong> the frontier is like a busy restaurant kitchen with one fryer per chef. The expediter (priority queue) decides whose ticket to call next based on prep time and importance; once called, that one chef works through their ticket from top to bottom (per-host FIFO). Two chefs never share a fryer — that's the politeness invariant. And the ticket spike at lunch rush is absorbed by the order printer (Kafka) instead of trying to keep every ticket on the expediter's clipboard (RAM).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: FETCHER MODULE                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-blue">Step 9</span>
+  <h2>Fetcher Module</h2>
+  <p>The fetcher is where bytes actually leave the website and arrive in our data center. Three operational concerns dominate.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🤖 robots.txt cache</h3>
+      <p>Before fetching <code>example.com/anything</code>, we must check <code>example.com/robots.txt</code>. Re-fetching it on every page would multiply our request count by 2× and re-parse it would waste CPU. We cache the parsed robots ruleset per host with a 24-hour TTL. First page on a new host pays the lookup cost; subsequent pages reuse the cached ruleset.</p>
+    </div>
+    <div class="card">
+      <h3>🔌 HTTP keep-alive</h3>
+      <p>TCP + TLS handshake costs ~150 ms. If we open a fresh connection for every page on the same host, that's 30% of fetch time wasted on handshake. Keep-alive holds the TCP connection open for ~60 seconds and reuses it for the next page — typically the same host, since per-host queues are drained DFS-style.</p>
+    </div>
+    <div class="card">
+      <h3>⏱️ Crawl-delay enforcement</h3>
+      <p>Some <code>robots.txt</code> files include <code>Crawl-delay: 5</code> — wait 5 seconds between requests. The fetcher tracks <code>last_request_time</code> per host and sleeps if needed. Without this we'd fire 8 requests/sec at a host that asked for 0.2 — getting rate-limited or banned.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concurrency model</h3>
+  <p>Each fetcher worker runs a <strong>fixed-size thread pool</strong> (say 200 threads) with non-blocking I/O underneath. The thread pool is logically partitioned: each thread is sticky to a small group of hosts so per-host state (last-fetch-time, robots cache) doesn't need cross-thread locking. New URLs land on the thread that owns their host.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: DOCUMENT DEDUPE                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-purple">Step 10</span>
+  <h2>Document Deduplication</h2>
+  <p>Many distinct URLs serve identical content — CDN mirrors, syndicated news, blogs that copy each other's articles. Without deduplication we'd store the same content many times and the search index would surface near-duplicate results.</p>
+
+  <h3 class="subh">Algorithm</h3>
+  <p>For each downloaded page: (1) <strong>normalize</strong> — strip whitespace, scripts, tracking pixels, and dynamic ad content; (2) compute a content checksum (<strong>MD5</strong> or <strong>SHA-1</strong> — both are fast and 128/160 bits is plenty for collision avoidance); (3) check against the global "seen content" set; (4) if seen, skip storage and just record the URL → existing-blob mapping in metadata.</p>
+
+  <h3 class="subh">Sizing</h3>
+  <p>15B unique pages × 16 bytes (MD5) = <strong>240 GB</strong> of checksums. Shard by checksum across nodes. Each node holds a fast in-memory hash set for hot checksums (recently-seen) plus a disk-backed RocksDB for cold ones. LRU pushes cold entries to disk.</p>
+
+  <div class="highlight hl-purple"><strong>Why not a Bloom filter?</strong> A Bloom filter is much smaller (8 GB at 1% false-positive rate) but its errors go the <em>wrong way</em>: it can report "I've seen this" when we actually haven't, which means we'd silently drop genuinely-new content. For a crawler whose entire promise is "we cover the web", a 1% false-positive rate is catastrophic — we'd lose 150 million pages. We pay the 30× memory cost for an exact set.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: URL DEDUPE                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-cyan">Step 11</span>
+  <h2>URL Deduplication</h2>
+  <p>Different from doc dedupe — this is "have we already <em>enqueued</em> this URL?", checked at link-extraction time, before the fetcher even sees it.</p>
+
+  <h3 class="subh">Algorithm</h3>
+  <p>(1) Normalize the URL: lowercase host, strip <code>#fragment</code>, remove <code>?utm_*</code> tracking params, sort query string keys, resolve relative paths. (2) Compute a 4-byte CRC32 or 8-byte xxHash. (3) Check against the URL-seen set, sharded by checksum.</p>
+
+  <h3 class="subh">Sizing</h3>
+  <p>15B URLs × 4 bytes (CRC32) = <strong>60 GB</strong> across the cluster. Same hot/cold split as doc dedupe. Same Bloom-filter caveat: false positives drop URLs we've never crawled, so we use an exact set.</p>
+
+  <div class="highlight hl-cyan"><strong>The normalization step is where 90% of the engineering effort goes.</strong> Every site has its own URL quirks: trailing slashes, capitalized paths, session IDs in the path, fragment-based SPA routes. A poor normalizer means we crawl the same page 50 times under 50 different keys; an aggressive normalizer collapses different pages into the same key and we miss them. The normalizer is iteratively tuned by examining duplicates in the metadata DB and adding rules.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: CHECKPOINTING                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-yellow">Step 12</span>
+  <h2>Checkpointing — surviving a 4-week crawl</h2>
+  <p>With 1,000 fetcher workers running for 28 days, the expected number of worker failures is in the hundreds. We cannot restart a 4-week crawl from zero on every crash.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📸 Snapshot cadence</h3>
+      <p>Every <strong>5 minutes</strong> per worker. Each snapshot captures: (a) the URL frontier shard heads (which URLs are next to fetch), (b) deltas to the URL/doc dedupe sets since the previous snapshot, (c) per-host last-fetch-time and robots cache TTLs. Snapshots are written to S3 with a monotonically-increasing version number.</p>
+    </div>
+    <div class="card">
+      <h3>🔁 Recovery</h3>
+      <p>Orchestrator detects worker death in ~30 seconds. New worker boots, fetches the latest snapshot for its assigned shards from S3, restores in-memory state (~90 seconds for 60 GB of dedupe set), resumes from the snapshot's frontier head. Worst-case data loss: 5 minutes of progress. Re-fetched pages are deduped at storage time so we don't double-write.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Incremental snapshots</h3>
+  <p>A 60 GB URL set rewritten every 5 minutes would saturate our network — 200 MB/sec just for snapshots. Instead we use <strong>incremental snapshots</strong>: each snapshot only contains the deltas added since the previous one. Recovery replays the chain of deltas on top of the latest base snapshot. Bases get rewritten daily during low-traffic hours.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: FAULT TOLERANCE                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-red">Step 13</span>
+  <h2>Fault Tolerance</h2>
+  <p>Workers will crash. Networks will partition. Disks will fail. The architecture must shrug those off automatically.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🪪 Consistent hashing for shard assignment</h3>
+      <p>Hostnames are mapped to workers via consistent hashing on a ring of virtual nodes. When a worker dies, only its virtual nodes are reassigned to neighbors — about <code>1/N</code> of the hostname space rebalances, not the whole cluster. The replacement worker takes over those neighbors' overflow once it boots.</p>
+    </div>
+    <div class="card">
+      <h3>📋 Orphan queue redistribution</h3>
+      <p>When Worker 17 dies, its frontier shard sits in Kafka untouched — Kafka durably stores the queue. The replacement Worker 17 reads from the same Kafka partition. No URL is lost; pending fetches just pause for ~2 minutes during failover.</p>
+    </div>
+    <div class="card">
+      <h3>🔄 Idempotent storage</h3>
+      <p>Blob writes use the URL as part of the object key. If a fetch is retried after a crash, the second write either overwrites the first (S3) or is dropped (HDFS create-if-not-exists). Either way we never corrupt the dataset with a half-written page.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: PARTITIONING                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-green">Step 14</span>
+  <h2>Data Partitioning</h2>
+  <p>Where does each piece of data physically live? The partitioning strategy directly determines politeness and recoverability.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🌐 Frontier — partitioned by hostname</h3>
+      <p>All URLs for one hostname live on one worker. This is what enforces "one connection per host". Implementation: <code>worker = consistent_hash(host) mod N</code>, with virtual nodes for smooth rebalancing.</p>
+    </div>
+    <div class="card">
+      <h3>🔢 Dedupe sets — partitioned by checksum</h3>
+      <p>URL checksums and document checksums are sharded across nodes by <code>shard = checksum mod N</code>. Distribution is uniform by construction. Lookups during crawl are RPC to the right shard; sub-millisecond.</p>
+    </div>
+    <div class="card">
+      <h3>💾 Blob store — partitioned by storage system</h3>
+      <p>S3 / HDFS handles partitioning internally. We just pick a key naming convention: <code>crawl-YYYY-WW/seg-NNNNN.dat</code> with offsets into each segment. The blob store's own consistent hashing distributes segments across nodes.</p>
+    </div>
+    <div class="card">
+      <h3>📒 Metadata DB — partitioned by hostname</h3>
+      <p>Metadata for all <code>nytimes.com</code> pages lives on the same Cassandra shard as the frontier owner of that host. Colocates write traffic and lets per-host queries (re-crawl all of news.com) run on one node without scatter/gather.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 15: CRAWLER TRAPS                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s15">
+  <span class="sec-tag tag-red">Step 15</span>
+  <h2>Crawler Traps</h2>
+  <p>Some sites generate infinite URLs. A crawler that walks into one and doesn't recognize it spends the rest of its life there.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🪤 Common traps</h3>
+      <ul>
+        <li><strong>Calendar pages</strong> — <code>/cal?d=2024-01-01</code> links to <code>/cal?d=2024-01-02</code>, ad infinitum</li>
+        <li><strong>Search-result pagination</strong> — <code>/search?q=foo&amp;page=N</code> with N unbounded</li>
+        <li><strong>Session-id URLs</strong> — every visit gets a new <code>?sid=abc123</code> so URL dedupe never triggers</li>
+        <li><strong>Faceted-search combinatorics</strong> — e-commerce filters generate millions of URLs for the same products</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🛡️ Mitigations</h3>
+      <ul>
+        <li><strong>Max URL depth</strong> per host — cap at 20-50 levels from the homepage</li>
+        <li><strong>Max pages per host</strong> — cap at 1M (or whatever the host's importance justifies)</li>
+        <li><strong>Content-similarity detection</strong> — if 100 consecutive pages from the same host all hash to near-identical content (via SimHash), blacklist that path prefix</li>
+        <li><strong>Aggressive query-param stripping</strong> in URL normalization (drop <code>sid</code>, <code>session</code>, <code>utm_*</code> by rule)</li>
+        <li><strong>Operator blacklist</strong> — manually flagged trap patterns updated weekly from observed crawl data</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The hardest traps are the ones that look legitimate.</strong> An e-commerce site with 10K products × 5 facet dimensions × 4 sort orders = 1.6M valid URLs that all show roughly the same products. None of them is "wrong" — they're all real pages — but indexing all of them is a waste. SimHash-based content similarity is the only general defense; manual rules cover the rest.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 16: INTERVIEW Q&A                      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s16">
+  <span class="sec-tag tag-blue">Step 16</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">When would you use BFS vs DFS for crawling?</div>
+  <div class="ans"><strong>BFS as the global discipline, DFS within a host.</strong> BFS spreads load uniformly across the web — we crawl the homepage and one level deep on a million sites before going deeper on any one of them, which keeps freshness uniform. DFS within a single host lets us reuse the open TCP/TLS connection (HTTP keep-alive) across many fetches before tearing it down — saving ~150ms of handshake per fetch. The two-level frontier (priority across hosts, FIFO within a host) is exactly this hybrid encoded in data structures.</div>
+
+  <div class="iq">How do you respect robots.txt without parsing it on every request?</div>
+  <div class="ans"><strong>Per-host cache with TTL.</strong> Before the first fetch on a new host, the worker downloads <code>/robots.txt</code>, parses it once, and stores the ruleset (allowed paths, disallowed paths, crawl-delay) in an in-memory map keyed by hostname. Cache TTL is 24 hours or whatever the response's <code>Cache-Control</code> says. Subsequent fetches do an O(1) ruleset lookup. Net cost: 1 extra fetch per host per day, regardless of how many pages we pull from that host.</div>
+
+  <div class="iq">How do you avoid DDoS-ing a website?</div>
+  <div class="ans"><strong>Sharding the frontier by hostname is the structural answer.</strong> Every URL for <code>nytimes.com</code> goes to one worker, which has one thread (or a small pool) draining that host's queue serially with crawl-delay enforced between fetches. There is no path in the architecture by which two of our threads ever talk to one host simultaneously. Layer two is honoring <code>Crawl-delay</code> from robots.txt; layer three is exponential backoff on 429/503 responses.</div>
+
+  <div class="iq">How do you handle a crawler trap?</div>
+  <div class="ans"><strong>Three layers of defense.</strong> (1) <strong>URL normalization</strong> strips known trap-inducing query params (<code>sid</code>, <code>sessionid</code>, <code>utm_*</code>). (2) <strong>Per-host caps</strong> — max depth (~30) and max pages (~1M) per hostname. (3) <strong>Content-similarity detection</strong> — SimHash of the last N pages from a host; if they're all near-duplicates, blacklist the path prefix and stop following links into it. The first two are cheap and catch ~80%; the third catches sophisticated traps like faceted search.</div>
+
+  <div class="iq">What if a page changes while you're indexing it?</div>
+  <div class="ans"><strong>Accept staleness as a property of the system.</strong> Crawls are batch operations on a snapshot of the web; by the time the search index is built, parts of the snapshot are already obsolete. Mitigation is a <em>refresh policy</em> — important pages (high PageRank, news sites) are re-crawled every few hours; medium pages every few days; long-tail pages monthly. The metadata DB tracks last-fetched timestamps so the priority scorer can promote stale pages back to the frontier.</div>
+
+  <div class="iq">Why is a Bloom filter risky for URL/document dedup?</div>
+  <div class="ans"><strong>Bloom filters have false positives, not false negatives.</strong> A "yes I've seen this" reply might be wrong; a "no" is always correct. For dedupe, that means we'd occasionally drop a genuinely-new URL because the filter mistakenly says we've seen it — and that page is then never crawled. At a 1% false-positive rate over 15B URLs, that's 150 million missed pages — pages our search results will never include. For a crawler whose entire promise is web coverage, this is unacceptable. We pay 30× the memory for an exact hash set.</div>
+
+  <div class="iq">How do you scale to crawl the entire web instead of 15 billion pages?</div>
+  <div class="ans"><strong>Linear scale on every plane.</strong> Doubling the page target means: (a) double the fetcher workers to maintain pages/sec; (b) double the frontier shards; (c) double the dedupe-set shards. None of these touches the others — the three planes are independent. The non-linear cost is bandwidth out of the data center, which scales with pages × page-size; that's where physical limits (peering, ISP contracts) eventually bite. The practical ceiling is set by money and politeness, not architecture.</div>
+
+  <div class="iq">How do you prioritize which URLs to crawl first when bandwidth is scarce?</div>
+  <div class="ans"><strong>The frontier's top-level priority queue ranks hosts by a composite score.</strong> Inputs: PageRank of the host, time-since-last-crawl (freshness), HTTP response codes from the previous crawl (penalize sites that 5xx'd a lot), and seed-anchor proximity. Per-host, we also score within the queue by depth-from-homepage (shallower wins) and last-modified header (newer wins). The scorer is a small ML model in production, but simple linear weights are usually within 10% of optimal.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "It's a pipeline of independently scaling stages — a hostname-sharded URL frontier in Kafka, a pool of async fetchers honoring robots.txt and crawl-delay per host, content/URL dedupe via exact hash sets sharded by checksum, raw HTML to S3, metadata to a sharded DB, and incremental checkpoints every 5 minutes so a 4-week crawl survives the inevitable worker failures."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

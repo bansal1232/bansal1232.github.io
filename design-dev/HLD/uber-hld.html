@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Uber Backend — HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.9rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.78}
+.ans strong{color:var(--heading)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── COMPONENT NUMBER BADGE ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+/* ── METRIC PILL ── */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Uber <span>Backend</span></h1>
+  <p class="sub">Matching a rider to the best of 8 nearby drivers in 30 seconds — while every driver in the city updates location every 3 seconds. The architecture that decouples the firehose from the spatial index.</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What is Uber?</a></li>
+      <li><a href="#s2">Requirements &amp; Goals</a></li>
+      <li><a href="#s3">Capacity Estimation</a></li>
+      <li><a href="#s4">The Core Problem</a></li>
+      <li><a href="#s5">High-Level Architecture</a></li>
+      <li><a href="#s6">Driver Location HashTable</a></li>
+      <li><a href="#s7">Notification Service / Pub-Sub</a></li>
+      <li><a href="#s8">Push vs Pull for Customers</a></li>
+      <li><a href="#s9">QuadTree Lazy Updates</a></li>
+      <li><a href="#s10">Ride Matching Flow</a></li>
+      <li><a href="#s11">Fault Tolerance &amp; Replication</a></li>
+      <li><a href="#s12">Ranking Drivers</a></li>
+      <li><a href="#s13">Advanced Issues</a></li>
+      <li><a href="#s14">Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: WHAT IS UBER?                       -->
+<!-- ══════════════════════════════════════════════ -->
+<!-- HelloInterview-style framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">Read this with the framework in mind</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">This deep-dive applies the 4-step HLD interview framework. As you read, map each section to <strong>Requirements &rarr; Entities &rarr; APIs &rarr; High-Level Design &rarr; Deep Dives</strong>, and notice which of the 8 common patterns and key technologies are at play.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="common-patterns.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">8 Patterns &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>What is Uber?</h2>
+  <p>It is 14:02 on a Tuesday afternoon. Raj is standing at Times Square with a suitcase, late for a meeting. He opens the Uber app and taps "Request UberX". Within 30 seconds, his phone vibrates: "Sandeep, Toyota Camry, 4 minutes away" — and on the map he sees a tiny car icon crawling toward him in real time. None of this looks complicated to Raj. But behind that one tap, an entire system has just done something impressive: it identified the eight nearest free drivers out of roughly 60,000 on the road in NYC, ranked them, offered the ride to the top three in parallel, locked the winner, and started streaming both Raj's and Sandeep's GPS positions to each other's phones.</p>
+
+  <p>Uber's backend is fundamentally a real-time matching engine: every driver reports their location every 3 seconds, every customer wants to see "drivers near me" updating live, and when a ride is requested the system must quickly find, rank, and dispatch the right driver. The hard part isn't any one of these — it's doing all three together at the scale of <strong>1 million active drivers</strong> sending <strong>167,000 location updates per second</strong>, while also serving <strong>1 million ride requests per day</strong>.</p>
+
+  <div class="highlight hl-orange"><strong>The two questions that drive every design decision below:</strong> (1) How do we absorb 167K driver-location updates per second without melting our spatial index? (2) When Raj taps "Request Ride", how do we find the best 8 drivers near him in under a second, when the data describing where those drivers are is changing literally as we read it?</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: REQUIREMENTS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Requirements &amp; Goals</h2>
+  <p>Pin down what the system must do before drawing a single box. Uber adapts the proximity-search problem from Yelp, but with one brutal twist: <strong>the things we are searching for move every 3 seconds</strong>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Drivers report their current location to the server <strong>every 3 seconds</strong> while online</li>
+        <li>Customers see <strong>nearby drivers</strong> on a map in near real-time</li>
+        <li>Customer requests a ride; nearby free drivers are notified of the request</li>
+        <li>Once a driver accepts, the ride is <strong>locked</strong> — both customer and driver see each other's live location until trip ends</li>
+        <li>Customer and driver can communicate (call/chat) during the ride</li>
+        <li>Trip data — fare, route, timestamps — is persisted for receipts and history</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚙️ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Real-time matching</strong> — find &amp; assign a driver in under 30 seconds</li>
+        <li><strong>Massive scale</strong> — 300M customers, 1M drivers (500K daily active), 1M rides/day</li>
+        <li><strong>Highly available</strong> — outage = no rides booked = direct revenue loss</li>
+        <li><strong>Strongly consistent on dispatch</strong> — no two riders can lock the same driver</li>
+        <li><strong>Eventual consistency on display</strong> — a driver's blue dot can lag a couple seconds; that's fine</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The tension to keep in mind:</strong> the read side (customers watching the map) wants the freshest possible driver locations. The spatial index (used for "find drivers near me") wants stable data so it can be queried fast. These two needs pull in opposite directions, and the entire architecture of Uber is the answer to that tension.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: CAPACITY                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Capacity Estimation &amp; Constraints</h2>
+  <p>Numbers are not optional in HLD — they are how we justify each architectural choice. Let's count drivers, updates, memory, bandwidth.</p>
+
+  <h3 class="subh">Population &amp; activity</h3>
+  <p>Assume <strong>300 million customers</strong> and <strong>1 million drivers</strong> on the platform. On any given day, about <strong>500K drivers are online</strong> (driving and accepting rides) and <strong>1 million rides are completed</strong>.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Active drivers</h3><p><span class="metric">500K online</span></p><p>50% of 1M total fleet</p></div>
+    <div class="card"><h3>Location updates</h3><p><span class="metric">~167K/sec</span></p><p>500K × (1 update / 3s)</p></div>
+    <div class="card"><h3>Rides per day</h3><p><span class="metric">1M rides</span></p><p>~12 rides/sec average</p></div>
+    <div class="card"><h3>Subscribed customers</h3><p><span class="metric">~2.5M</span></p><p>5 subscribers per driver</p></div>
+  </div>
+
+  <h3 class="subh">Memory for the driver location hash table</h3>
+  <p>Each driver record holds: <code>driver_id</code> (3B) + <code>current_lat</code> (8B) + <code>current_long</code> (8B) + <code>prev_lat</code> (8B) + <code>prev_long</code> (8B) ≈ <strong>35 bytes</strong>. For 500K active drivers: <code>500,000 × 35 ≈</code> <span class="metric">~17.5 MB</span>. That fits in L3 cache on a modern CPU. Memory is not the bottleneck — write throughput is.</p>
+
+  <h3 class="subh">Bandwidth for driver updates</h3>
+  <p>Each update is roughly 19 bytes on the wire (driver_id + lat + lng). With 500K drivers updating every 3s: <code>500,000 × 19 bytes / 3s ≈</code> <span class="metric">~3.2 MB/sec inbound</span> (Grokking quotes 19MB / 3s = ~6 MB/sec including overheads). Outbound to subscribed customers: <code>2.5M × 19 bytes/sec ≈</code> <span class="metric">~47.5 MB/sec</span> — an order of magnitude bigger than inbound, because each driver update fans out to multiple watching customers.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Metric</th><th>Value</th><th>Why it matters</th></tr></thead>
+      <tbody>
+        <tr><td>Driver updates/sec</td><td><code>167K/s</code></td><td>Drives the size of the Driver Location Server cluster</td></tr>
+        <tr><td>HashTable memory</td><td><code>17.5 MB</code></td><td>Tiny — fits per-shard in RAM, no disk on the hot path</td></tr>
+        <tr><td>Inbound bandwidth</td><td><code>~6 MB/s</code></td><td>Trivial; one server can absorb it (problem is CPU, not network)</td></tr>
+        <tr><td>Outbound to customers</td><td><code>~47.5 MB/s</code></td><td>10× the inbound — fanout dominates network planning</td></tr>
+        <tr><td>Concurrent rides</td><td><code>~50K</code></td><td>1M/day spread over peaks; drives state-DB throughput</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: THE CORE PROBLEM                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-red">Step 4</span>
+  <h2>The Core Problem — Uber is Yelp on Fire</h2>
+  <p>If you have already designed Yelp, you know the trick: a <strong>QuadTree</strong>, a tree of geographic cells where each leaf holds the businesses within a small bounded area. To find "restaurants near Times Square", you walk down the tree to the leaf for that location and read its 500 businesses. Fast, elegant, log-N lookups.</p>
+
+  <p>Uber's problem looks superficially identical — find drivers near a customer — so the natural impulse is to plug a QuadTree in and call it done. <strong>This is wrong.</strong> The reason is the one word that separates Yelp from Uber: <em>movement</em>. Yelp's businesses sit at fixed addresses. Uber's drivers do not.</p>
+
+  <div class="highlight hl-red"><strong>The Yelp QuadTree assumes its data is roughly stationary.</strong> Inserts and deletes are rare — a new restaurant opens once a year. In Uber, every driver crosses cell boundaries constantly: a Camry doing 30 mph through Manhattan changes QuadTree leaves multiple times per minute. Multiply by 500K drivers and the tree is being mutated <strong>167,000 times per second</strong> — each mutation requiring a remove from one leaf, an insert into another, a possible leaf split if it overflows, and a tree rebalance. The tree spends all its time being reorganized and almost none of its time answering queries.</div>
+
+  <p>So: <strong>we cannot put driver locations directly into the QuadTree</strong>. We need a different design — one that lets locations change rapidly without disturbing the spatial index. That's what the next section builds.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: HIGH-LEVEL ARCHITECTURE              -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-orange">Step 5 · CORE</span>
+  <h2>High-Level Architecture — From Naive to Production</h2>
+  <p>The make-or-break section. We will build the architecture in three passes: a naive port of Yelp's design, the central insight that fixes it, and the production shape where every box earns its place.</p>
+
+  <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
+  <p>Start with the obvious thing. Take Yelp's QuadTree, point the driver app at it, and have every driver write their new location into the tree every 3 seconds.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  D["Driver App"] -->|"location every 3s"| API["API Server"]
+  API -->|"insert / delete / move"| QT["QuadTree Cluster"]
+  C["Customer App"] -->|"find drivers near me"| API2["API Server"]
+  API2 -->|"range query"| QT
+    </div>
+  </div>
+
+  <p>Three concrete failures emerge the moment a real city's worth of drivers turn on the app:</p>
+  <div class="g3">
+    <div class="card">
+      <h3>💥 167K tree mutations per second</h3>
+      <p>Each driver update is not a benign read — it is a <code>remove(old_cell, driver)</code> followed by an <code>insert(new_cell, driver)</code>. That's two structural mutations on the tree, both requiring write locks on the affected leaves. Across 500K drivers, the QuadTree spends almost every CPU cycle holding write locks and almost none answering queries from customers.</p>
+    </div>
+    <div class="card">
+      <h3>💥 5× the cost of a Yelp insert</h3>
+      <p>In Yelp, an insert is a one-shot operation. In Uber, every driver move involves: locating the driver in their old leaf, removing them, locating the destination leaf, inserting them, possibly splitting the destination leaf if it now overflows, possibly rebalancing the parent. A simple "drove one block" can cascade into multiple structural changes.</p>
+    </div>
+    <div class="card">
+      <h3>💥 Leaf-overflow rebalancing storms</h3>
+      <p>When everyone leaves the airport at 5pm, a single airport leaf cell suddenly receives hundreds of driver inserts in a few seconds — overflowing, splitting, and triggering parent-level rebalancing. During the rebalance, customer queries against that subtree block. Right when ride demand peaks, the index goes unresponsive.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Pass 2 — The mental model: decouple the firehose from the spatial index</h3>
+  <p>The single most important insight in Uber's design: <strong>do not update the QuadTree on every driver location report</strong>. Instead, split the system into two layers that scale independently.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">📡 The Live Layer — DriverLocationHT</h3>
+      <p>A simple, sharded, in-memory <strong>hash table</strong> keyed by <code>driver_id</code>. The value is the driver's current and previous location. Every 3-second update from a driver is a single hash-table write — O(1), no tree traversal, no locks held across siblings. This is where the "fresh truth" lives.</p>
+      <p>Think of it as a giant live GPS dashboard: 500K rows, one per driver, each row constantly being overwritten with the latest GPS ping. Because it is just a hash table, 167K writes/sec is well within reach — Redis alone can do that on a couple of nodes, and we will shard it across many.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">🗺️ The Spatial Layer — QuadTree (lazy)</h3>
+      <p>The QuadTree we already know from Yelp, but updated <strong>lazily, every 15 seconds</strong>, by sweeping the latest snapshot of the DriverLocationHT into it. It tells us "which drivers are roughly in this neighborhood?" — and "roughly" is fine, because nearby is approximate by definition.</p>
+      <p>Think of it as a neighborhood map that gets reprinted every 15 seconds. By the time you read it, some drivers have moved a block — but for "find me drivers near Times Square", a 15-second-stale list is still a perfectly good candidate set. We will then look up each candidate's <em>real</em> location in the DriverLocationHT before showing them to the customer.</p>
+    </div>
+  </div>
+
+  <p>This two-layer split is the heart of Uber's design. Writes go to the cheap live layer. Reads look up candidates in the cheap-to-update spatial layer, then hydrate the actual positions from the live layer. Each layer scales on its own bottleneck.</p>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Now the full picture. Every node is numbered — find its matching card below to see what it does and crucially what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  DR["① Driver App"]
+  CU["② Customer App"]
+
+  subgraph EDGE["Edge"]
+    LB["③ Load Balancer"]
+  end
+
+  subgraph LIVE["Driver Location Plane"]
+    DLS["④ Driver Location Server cluster"]
+    HT[("⑤ DriverLocationHT — sharded by driver_id")]
+  end
+
+  subgraph SPATIAL["Spatial Index Plane"]
+    QT["⑥ QuadTree Server cluster — lazy 15s updates"]
+  end
+
+  subgraph NOTIF["Notification Plane"]
+    NS["⑦ Notification Service — pub/sub"]
+    SM["⑧ Subscription Manager"]
+  end
+
+  subgraph MATCH["Matching Plane"]
+    RM["⑨ Ride Matching Service"]
+    DB[("⑩ Ride State DB")]
+    EP["⑪ ETA / Pricing Service"]
+  end
+
+  DR -->|"location every 3s"| LB
+  CU -->|"request ride / watch map"| LB
+
+  LB -->|"driver updates"| DLS
+  LB -->|"customer requests"| RM
+  LB -->|"map view"| NS
+
+  DLS --> HT
+  DLS -.every 15s.-> QT
+  DLS -->|"new location"| NS
+
+  RM -->|"find nearby"| QT
+  RM -->|"hydrate positions"| HT
+  RM --> DB
+  RM --> EP
+
+  NS --> SM
+  NS -->|"push to subscribed customers"| CU
+
+  style DR fill:#e8743b,stroke:#e8743b,color:#fff
+  style CU fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style LB fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style DLS fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style HT fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style QT fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style NS fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style SM fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style RM fill:#171d27,stroke:#38b265,color:#d4dae5
+  style DB fill:#171d27,stroke:#38b265,color:#d4dae5
+  style EP fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Driver App</h3>
+      <p>The Uber Driver app running on Sandeep's phone. While he is online, it samples GPS every 3 seconds and posts the new <code>(lat, long)</code> to our backend over a persistent WebSocket. It also receives push notifications: ride offers, navigation cues, "trip cancelled" events. From the system's perspective, the driver app is the sensor that produces the firehose — 167K events/sec across the whole fleet.</p>
+      <p><strong>Solves:</strong> the data acquisition problem. Without a steady stream of locations, the system literally has no idea where any driver is, and the entire matching premise collapses. The 3-second cadence is a deliberate trade-off: any faster wastes battery and bandwidth; any slower and the customer sees a stale-looking map.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num blue">②</span> Customer App</h3>
+      <p>The Uber Rider app running on Raj's phone. It does two things: (a) shows a live map with nearby driver dots when Raj is browsing pre-ride, and (b) opens a real-time channel to a specific driver's position once a ride is booked. Both happen over the same WebSocket the customer holds open with the backend.</p>
+      <p><strong>Solves:</strong> the user-facing experience. Without it, Raj has no way to see "is a driver actually nearby?" before committing to request, and no way to watch his driver approach. The two modes — pre-ride map vs. in-ride tracking — also drive the push-vs-pull design choice we will discuss in §8.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num purple">③</span> Load Balancer</h3>
+      <p>A standard L4/L7 load balancer (AWS NLB/ALB or HAProxy) that fronts the entire backend. It routes driver location updates to the Driver Location Server cluster, ride requests to the Ride Matching Service, and map-view subscriptions to the Notification Service. Health checks every few seconds; unhealthy nodes are pulled from rotation.</p>
+      <p><strong>Solves:</strong> single-instance bottlenecks and single-instance failure. Without an LB, one crashed Driver Location Server takes down location ingest for thousands of drivers. With it, we lose 1/N capacity for a few seconds until the failed node is evicted — and the surviving nodes absorb the slack.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num orange">④</span> Driver Location Server cluster</h3>
+      <p>The first stop for every driver location update. Stateless workers that receive the WebSocket frame, parse out <code>(driver_id, lat, long)</code>, and write it to the DriverLocationHT shard owned by that driver. Sized for the firehose: with 167K updates/sec and a single server comfortably handling ~10K writes/sec into Redis, we run roughly 20 of these behind the LB. They also publish each update to the Notification Service and, every 15 seconds, batch-flush the latest snapshot to the QuadTree cluster.</p>
+      <p><strong>Solves:</strong> isolating the highest-throughput workload (location ingest) from the lower-throughput, latency-sensitive matching workload. If we let ride matching run on the same boxes that absorb 167K writes/sec, every dispatch would be slowed by GC pauses and lock contention from the firehose.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num orange">⑤</span> DriverLocationHT</h3>
+      <p>The live ground truth: a sharded in-memory hash table (Redis Cluster, or in-process if we are willing to manage it ourselves) keyed by <code>driver_id</code>. Each value is a tiny record: <code>{current_lat, current_long, prev_lat, prev_long}</code> ≈ 35 bytes. Sharded by <code>driver_id</code> across many nodes so the 167K writes/sec are spread; replicated 2× so a node failure does not lose live positions; persisted to SSD periodically for crash recovery.</p>
+      <p><strong>Solves:</strong> the "where is driver X right now?" query at constant time. Without it, the only place that knows the freshest position is the QuadTree — which we already established cannot be updated every 3 seconds. The HashTable is what lets the QuadTree be lazy.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num blue">⑥</span> QuadTree Server cluster</h3>
+      <p>Same data structure as in the Yelp design: a tree of geographic cells, each leaf holding the IDs of drivers within that cell. Used exclusively for the <em>spatial</em> query "give me driver IDs near (lat, long) within R meters". Crucially, this tree is not updated by the driver firehose — it is rebuilt or incrementally refreshed every <strong>15 seconds</strong> by sweeping the DriverLocationHT and reassigning drivers to leaves.</p>
+      <p><strong>Solves:</strong> efficient proximity search at city scale. Without the QuadTree, every "find drivers near me" query becomes a brute-force scan over the whole HashTable — 500K row scans per ride request, computing distance for each. With the tree, the same query touches just one leaf containing maybe 50 candidates.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num cyan">⑦</span> Notification Service</h3>
+      <p>The publisher half of a pub/sub system. When a driver's location is updated in the DriverLocationHT, the Driver Location Server publishes the new <code>(driver_id, lat, long)</code> to a topic; the Notification Service then pushes it down WebSockets to every customer currently subscribed to that driver. Push delivery uses long-poll or persistent WebSocket — no polling. Average fanout: ~5 subscribers per driver (a customer browsing the map might be watching the 5 closest drivers; in-ride only 1 subscriber).</p>
+      <p><strong>Solves:</strong> the live-update fanout problem. Without push, every customer would have to poll for "where are my nearby drivers now?" every couple of seconds — burning battery, wasting bandwidth, and putting an unnecessary read load on the system. Push delivers updates only when there is something new to deliver.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num cyan">⑧</span> Subscription Manager</h3>
+      <p>The state behind the Notification Service. It is a lookup of <code>driver_id → [customer_ids subscribed to this driver]</code>. When Raj's app opens the map and shows the 5 nearest drivers, his customer_id is added to the subscription list of those 5 drivers. When he closes the app or moves out of view, the subscription is dropped. With ~2.5M total subscriptions in flight at any time (500K drivers × 5 subscribers avg), this is a few hundred MB of state — sharded by driver_id alongside the DriverLocationHT.</p>
+      <p><strong>Solves:</strong> "who do I push this update to?" without scanning all customers. Without the Subscription Manager, the Notification Service would either have to broadcast every driver update to every customer (catastrophic fanout) or maintain the subscription list inline in a way that does not scale. Separating it into its own service gives us a clean place to put TTLs, fairness limits, and abuse controls.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num green">⑨</span> Ride Matching Service</h3>
+      <p>The orchestrator that runs every time a customer hits "Request UberX". It does the dance: <strong>(a)</strong> ask the QuadTree for the candidate set of nearby drivers, <strong>(b)</strong> hydrate their <em>current</em> positions from the DriverLocationHT, <strong>(c)</strong> rank them by ETA / rating / surge eligibility, <strong>(d)</strong> notify the top-3 in parallel with a 15-second offer, <strong>(e)</strong> the first to accept wins; the others get a "ride taken" cancel, <strong>(f)</strong> if all decline or time out, expand the search radius and repeat. The ride is then locked in the Ride State DB.</p>
+      <p><strong>Solves:</strong> the matching atomicity problem — no two riders may be matched to the same driver, and no driver should sit on three competing offers. Without a dedicated orchestrator, the locking semantics would have to be smeared across the apps and the location services, where they do not belong.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num green">⑩</span> Ride State DB</h3>
+      <p>A durable database (typically a sharded relational store like MySQL/Postgres, or Cassandra) that records each ride's lifecycle: <code>REQUESTED → MATCHED → ENROUTE → IN_TRIP → COMPLETED</code>, the fare, the route polyline, timestamps, and ratings. This is the source of truth for receipts, driver payouts, customer history, and disputes. Sharded by <code>ride_id</code> or <code>customer_id</code>; replicated for durability.</p>
+      <p><strong>Solves:</strong> persistence for everything that must survive a restart of the matching plane. Driver locations can be lost on a crash (we will get fresh ones in 3 seconds), but a ride that has been booked and is mid-trip cannot vanish — Sandeep would not get paid and Raj would not get a receipt.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num yellow">⑪</span> ETA / Pricing Service</h3>
+      <p>Two related responsibilities. <strong>ETA:</strong> given (driver_lat, driver_long) and (customer_lat, customer_long), call out to a routing engine (OSRM, Google Directions API, or in-house) to estimate "how many minutes to pickup?" — used by the Matching Service when ranking candidates. <strong>Pricing:</strong> compute the dynamic fare in real time, factoring base rate, distance, time-of-day, and the local surge multiplier (which itself is recomputed periodically per region from the demand-vs-supply ratio).</p>
+      <p><strong>Solves:</strong> two costly computations that the Ride Matching Service does not want to do inline. Routing is CPU-heavy and benefits from its own cache; surge pricing needs aggregated per-region stats and changes on its own schedule. Splitting them out lets matching stay fast.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">Concrete walkthroughs — Sandeep drives, Raj books</h3>
+  <p>Two real flows, mapped to the numbered components above:</p>
+
+  <div class="g2">
+    <div class="card" style="border-left:3px solid var(--orange)">
+      <h3>📡 Flow A — Driver Sandeep reports location, every 3s</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Sandeep's <strong>Driver App</strong> ① samples GPS, sends <code>{driver_id: 7821, lat: 40.7589, long: -73.9851}</code> over its open WebSocket to the <strong>Load Balancer</strong> ③.</li>
+        <li>LB forwards to a <strong>Driver Location Server</strong> ④ in the cluster — the one responsible for the shard containing driver 7821.</li>
+        <li>Driver Location Server overwrites the row in <strong>DriverLocationHT</strong> ⑤. Old position becomes <code>prev</code>; new becomes <code>current</code>. <em>~1ms.</em></li>
+        <li>Driver Location Server publishes the update to the <strong>Notification Service</strong> ⑦.</li>
+        <li>Notification Service asks the <strong>Subscription Manager</strong> ⑧: "who's subscribed to driver 7821?" → gets back 5 customer IDs (Raj is one of them — he's currently looking at the map).</li>
+        <li>Notification Service pushes Sandeep's new position to all 5 customers' open WebSockets. Raj's app smoothly slides Sandeep's car icon along Broadway. <em>End-to-end ~80ms from GPS sample to pixel update.</em></li>
+        <li>Every 15 seconds, the Driver Location Server also batch-flushes its shard's snapshot to the <strong>QuadTree Server</strong> ⑥, which reassigns drivers to their (possibly new) leaf cells.</li>
+      </ol>
+    </div>
+    <div class="card" style="border-left:3px solid var(--blue)">
+      <h3>🚗 Flow B — Raj requests a ride at Times Square, 14:02:06</h3>
+      <ol style="padding-left:1.5rem;list-style:decimal">
+        <li>Raj taps "Request UberX" in the <strong>Customer App</strong> ②. The app POSTs <code>{customer_id: 1234, lat: 40.7580, long: -73.9855, product: UberX}</code>.</li>
+        <li><strong>Load Balancer</strong> ③ routes to the <strong>Ride Matching Service</strong> ⑨.</li>
+        <li>Matching Service queries the <strong>QuadTree</strong> ⑥: "give me UberX drivers within 3km of Times Square" → gets back 24 candidate driver IDs.</li>
+        <li>Matching Service hydrates each candidate's <em>real</em> position from <strong>DriverLocationHT</strong> ⑤ — some have moved a block since the QuadTree's last 15s flush, that's fine.</li>
+        <li>Matching Service calls <strong>ETA / Pricing</strong> ⑪ to compute pickup ETA for each candidate. Ranks them by (ETA × 0.5 + (5 − rating) × 0.3 + accept_rate × 0.2).</li>
+        <li>Top 3 drivers (Sandeep, Aisha, Carlos) are sent ride offers in parallel via <strong>Notification Service</strong> ⑦. Each has 15 seconds to accept.</li>
+        <li>Sandeep taps Accept first. Matching Service writes the ride to <strong>Ride State DB</strong> ⑩ as <code>MATCHED</code> with driver=7821. Aisha and Carlos's offers are auto-cancelled.</li>
+        <li>Both Raj and Sandeep are now subscribed to each other's locations via the <strong>Subscription Manager</strong> ⑧, and both apps watch the other approach in real time. <em>Total elapsed from tap to "Sandeep is on his way": 11 seconds.</em></li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around three insights — (1) <strong>location updates and spatial queries have wildly different shapes</strong>, so they get separate planes (DriverLocationHT vs QuadTree); (2) <strong>"nearby" is approximate by definition</strong>, so the spatial index is allowed to be 15 seconds stale, which is what makes scale possible; (3) <strong>the customer-facing live view uses pub/sub</strong> straight off the firehose, so customers see fresh data even while the QuadTree lags. Every box in the diagram exists to remove one of the failure modes from Pass 1.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: DRIVER LOCATION HASHTABLE            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Step 6</span>
+  <h2>Driver Location HashTable (DriverLocationHT)</h2>
+  <p>The single most important data structure in the system. Everything we do hangs off the assumption that this hash table can absorb 167K writes/sec and answer point lookups in microseconds. Let's design it concretely.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📐 Schema</h3>
+      <p>One row per driver:</p>
+      <pre style="margin-top:.5rem"><span class="kw">driver_id</span>      <span class="cmt">// 3 bytes</span>
+<span class="kw">current_lat</span>    <span class="cmt">// 8 bytes (double)</span>
+<span class="kw">current_long</span>   <span class="cmt">// 8 bytes (double)</span>
+<span class="kw">prev_lat</span>       <span class="cmt">// 8 bytes</span>
+<span class="kw">prev_long</span>      <span class="cmt">// 8 bytes</span></pre>
+      <p>Total ~35 bytes/row. For 500K active drivers: <strong>17.5 MB</strong>. Tiny.</p>
+    </div>
+    <div class="card">
+      <h3>✂️ Sharding</h3>
+      <p>Sharded by <strong>driver_id</strong> across the Driver Location Server cluster. Each server owns a slice of the keyspace and holds its slice's hash-table partition in memory. With 20 servers, each owns ~25K drivers and absorbs ~8K writes/sec — well within Redis's single-thread limits.</p>
+      <p>Sharding by driver_id (not by location) is deliberate: a driver's shard never changes as they move. If we sharded by location, every cross-cell movement would be a cross-shard migration — the very problem we are trying to avoid.</p>
+    </div>
+    <div class="card">
+      <h3>💾 Persistence &amp; Recovery</h3>
+      <p>Replicated <strong>2×</strong> (primary + secondary in another AZ) so a node death does not lose live positions. Snapshot to local SSD every few seconds — on a crash, we lose at most a few seconds of updates, and drivers will overwrite them within the next 3-second cycle anyway.</p>
+      <p>Important property: this data is <em>recoverable from the source</em> — every driver's app will resend its current position on reconnect. So we treat persistence as a fast-restart optimization, not a durability requirement.</p>
+    </div>
+    <div class="card">
+      <h3>🔁 Why "current + previous" both?</h3>
+      <p>Storing both the current and previous location lets us derive driver heading and speed without an extra round trip — useful for the ETA service and for showing a smoothed-out trajectory in the customer's map (the icon glides between prev and current rather than teleporting).</p>
+      <p>It also helps reconcile out-of-order updates: if we receive a "stale" update with a timestamp older than current but newer than prev, we slot it into prev rather than discarding it.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>Analogy:</strong> the DriverLocationHT is like a giant live-flight tracker dashboard. Every plane has one row that is being constantly overwritten with its latest GPS ping. You can look up any plane in O(1), and you do not care about historical positions — only "where is it right now?"</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: NOTIFICATION SERVICE                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-cyan">Step 7</span>
+  <h2>Notification Service / Pub-Sub</h2>
+  <p>Once a driver's position changes in DriverLocationHT, how does the change reach the (up to 5) customers watching that driver? The answer is a <strong>publisher/subscriber</strong> system — and getting it right is what makes the customer's map feel "alive".</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor Driver
+  participant DLS as Driver Location Server
+  participant HT as DriverLocationHT
+  participant NS as Notification Service
+  participant SM as Subscription Manager
+  actor Customer
+
+  Driver->>DLS: location every 3s
+  DLS->>HT: write current + prev
+  DLS->>NS: publish driver_id, new_lat, new_long
+  NS->>SM: who subscribes to driver_id?
+  SM-->>NS: list of customer_ids
+  loop for each subscribed customer
+    NS->>Customer: push new location over WebSocket
+  end
+    </div>
+  </div>
+
+  <h3 class="subh">Push delivery, not poll</h3>
+  <p>The customer app does <strong>not</strong> poll the server for "where are nearby drivers now?". Instead, when the customer opens the map, their app sends a one-time "I want to subscribe to drivers in this area" request. The Subscription Manager registers the customer's interest in the 5 closest driver_ids. From then on, updates are pushed as they happen, over the customer's persistent WebSocket connection.</p>
+
+  <h3 class="subh">Bandwidth math</h3>
+  <p>Average 5 subscribers per driver × 500K drivers × 19 bytes/update / 3s ≈ <span class="metric">~16 MB/sec base outbound</span>, with peaks during commute hours pushing toward <span class="metric">~47 MB/sec</span>. Spread across 10 Notification Service instances, each handles ~5 MB/sec — trivial for a server with a 1 Gbps NIC.</p>
+
+  <h3 class="subh">Subscription lifecycle</h3>
+  <div class="g3">
+    <div class="card">
+      <h3>📍 Subscribe</h3>
+      <p>Customer opens map → app picks 5 nearest driver_ids from the initial Matching Service response → sends "subscribe" frame → Subscription Manager stores <code>customer_id → [driver_ids]</code> and reverse <code>driver_id → [customer_ids]</code>.</p>
+    </div>
+    <div class="card">
+      <h3>🔄 Resubscribe</h3>
+      <p>As the customer pans the map or as drivers move out of range, the app periodically sends a refreshed subscribe list. Stale subscriptions naturally TTL out.</p>
+    </div>
+    <div class="card">
+      <h3>❌ Unsubscribe</h3>
+      <p>App backgrounded, network dropped, or trip ended → Notification Service sees the WebSocket close and clears the customer's subscriptions across all driver_ids.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: PUSH vs PULL                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-purple">Step 8</span>
+  <h2>Push vs Pull for Customers — When to Use Each</h2>
+  <p>One of the highest-leverage trade-offs in the design. Should the customer app pull "where are the nearby drivers?" every few seconds, or should the server push updates as they happen?</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(56,178,101,.4)">
+      <h3 style="color:var(--green)">⬆️ Push (server-initiated)</h3>
+      <p><strong>Pros:</strong></p>
+      <ul>
+        <li>Lowest latency — update arrives as soon as the driver moves</li>
+        <li>No wasted requests when nothing has changed</li>
+        <li>Smooth, "live" feel on the customer's map</li>
+      </ul>
+      <p><strong>Cons:</strong></p>
+      <ul>
+        <li>Server has to maintain subscription state (Subscription Manager)</li>
+        <li>Persistent WebSocket per customer — connection-state cost on the server</li>
+        <li>Fanout amplifies bandwidth (5× the inbound)</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">⬇️ Pull (client polling)</h3>
+      <p><strong>Pros:</strong></p>
+      <ul>
+        <li>Stateless server — much simpler ops</li>
+        <li>No long-lived connections; works fine over plain HTTP</li>
+        <li>Client controls cadence based on its own UI state</li>
+      </ul>
+      <p><strong>Cons:</strong></p>
+      <ul>
+        <li>Up to <code>polling_interval</code> seconds of staleness — a 5s poll feels jerky</li>
+        <li>Wasted requests when nothing changed (most polls)</li>
+        <li>Fixed read load even when a customer's screen is off</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="subh">The production answer: hybrid by mode</h3>
+  <p>Uber-style systems split the customer experience into two modes and pick the right tool for each:</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🗺️ Pre-ride (browsing the map)</h3>
+      <p><strong>Pull with debounced polling.</strong> The customer is just window-shopping — a 5-second-stale list of nearby drivers is fine. Polling avoids opening 300M persistent WebSockets to people who may never request a ride. The poll is debounced: paused while the app is backgrounded, throttled when the screen has not moved for a while.</p>
+    </div>
+    <div class="card">
+      <h3>🚖 In-ride (driver assigned)</h3>
+      <p><strong>Push over WebSocket.</strong> Once Sandeep accepts Raj's ride, both apps open a persistent connection and the server pushes every location update for the duration of the trip. The user-experience bar here is high — "where is my driver?" needs to feel real-time. Connection cost is bounded: only riders/drivers in active trips have a socket open (~50K concurrent at peak, vs. 300M total customers).</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>So what:</strong> the same system uses both push and pull, picked by the cost-of-staleness in each scenario. Browsing customers tolerate 5s lag and number in the millions → pull. In-ride customers demand real-time and number in the tens of thousands → push.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: QUADTREE LAZY UPDATES                -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-blue">Step 9</span>
+  <h2>QuadTree Lazy Updates — Why 15s Is Fine</h2>
+  <p>The QuadTree is deliberately allowed to be stale by up to 15 seconds. This is not a bug; it is the central trade-off that makes the system possible. Let's defend it.</p>
+
+  <h3 class="subh">How the lazy update works</h3>
+  <p>Every 15 seconds, each Driver Location Server takes a snapshot of its DriverLocationHT shard and ships it to the QuadTree Server cluster. The QuadTree then reassigns each driver to its (possibly new) leaf cell. Drivers who haven't moved beyond their current cell don't need any structural change. Drivers who crossed a cell boundary are moved between leaves in a single batched operation — far cheaper than 5 individual moves over the same 15 seconds.</p>
+
+  <h3 class="subh">Why customers don't notice</h3>
+  <p>When the Ride Matching Service queries "drivers near (lat, long)" at time T, the QuadTree returns driver_ids based on the snapshot from up to T-15s. But: matching then <em>hydrates</em> those driver_ids from the live DriverLocationHT, so the actual lat/long shown to the customer is current to within the last 3 seconds. The 15-second staleness only affects "is this driver still in this cell?" — and a driver who has driven a block in 15s is still well within "nearby" radius, so it doesn't change the answer.</p>
+
+  <div class="highlight hl-blue"><strong>Numerical sanity check:</strong> a driver going 30 mph travels ~200 meters in 15 seconds. The smallest QuadTree leaf cells are typically sized at 500m+ (set by the leaf-overflow threshold). So even the worst-case staleness rarely moves a driver into a different cell — and when it does, the customer-facing impact is "this driver who was a candidate is now slightly farther than reported", which the matching service handles by re-querying after each round of declines.</div>
+
+  <h3 class="subh">Before vs after</h3>
+  <p><strong>Before (Pass 1, eager updates):</strong> 167K tree mutations/sec, locks held constantly, leaf-overflow rebalancing storms during airport rush. <strong>After (lazy 15s flush):</strong> ~33K batched moves every 15s = ~2.2K mutations/sec amortized, no lock contention with reads, leaf splits happen during the calm batch window — not in the middle of a query.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: RIDE MATCHING FLOW                  -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-green">Step 10</span>
+  <h2>Ride Matching Flow — From Tap to Locked Driver</h2>
+  <p>When Raj taps "Request UberX", the Matching Service runs a tight orchestration. The goal: assign a driver in under 30 seconds with the right balance of speed (close drivers) and quality (high-rated drivers).</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor Rider
+  participant RM as Ride Matching Service
+  participant QT as QuadTree
+  participant HT as DriverLocationHT
+  participant EP as ETA / Pricing
+  participant NS as Notification Service
+  actor TopDriver as Top-3 Drivers
+
+  Rider->>RM: request ride at lat, long
+  RM->>QT: drivers within 3km
+  QT-->>RM: 24 candidate driver_ids
+  RM->>HT: hydrate current positions
+  HT-->>RM: positions
+  RM->>EP: ETA + price for each candidate
+  EP-->>RM: ranked list
+
+  RM->>NS: send offer to top-3 in parallel
+  NS->>TopDriver: ride offer, 15s timeout
+
+  alt First driver accepts
+    TopDriver-->>NS: ACCEPT from driver 7821
+    NS-->>RM: driver 7821 accepted
+    RM->>NS: cancel offers to others
+    RM-->>Rider: matched with Sandeep, ETA 4 min
+  else All decline or timeout
+    RM->>QT: expand radius to 6km, retry
+  end
+    </div>
+  </div>
+
+  <h3 class="subh">Atomicity — only one rider gets each driver</h3>
+  <p>Two riders can hit "Request" within milliseconds of each other and both see the same nearby driver. The lock must be atomic. The Matching Service uses a row in the Ride State DB as the locking primitive — when a driver accepts, the service runs a conditional update <code>SET ride_id = X WHERE driver_id = 7821 AND ride_id IS NULL</code>. If two acceptances race, only one update succeeds; the loser gets "ride taken" and the rider is rolled back to the next-best candidate.</p>
+
+  <h3 class="subh">Cascade on decline</h3>
+  <p>If the top-3 all decline within their 15s window, Matching expands the radius (3km → 6km → 10km) and retries. After three expansions it tells the rider "no drivers available" — rare in dense markets, common at 3am in suburbs.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: FAULT TOLERANCE                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-yellow">Step 11</span>
+  <h2>Fault Tolerance &amp; Replication</h2>
+  <p>Every component on the hot path is replicated. When something dies — and it will — the system must keep matching rides without a customer-visible blip.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>📡 Driver Location Servers</h3>
+      <p>Stateless workers behind the LB. If one dies, the LB evicts it on the next health check; surviving servers absorb the slack. The DriverLocationHT shard owned by the dead server fails over to its secondary replica — drivers may briefly see "reconnecting" but resume sending updates within seconds.</p>
+    </div>
+    <div class="card">
+      <h3>💾 DriverLocationHT replication</h3>
+      <p>Each shard has a primary + 1 secondary in a different AZ. Writes go to primary; secondary is kept in sync via async replication (sub-100ms lag). On primary failure, secondary is promoted; up to 100ms of writes may be lost — recovered automatically by the next driver heartbeat.</p>
+    </div>
+    <div class="card">
+      <h3>🗺️ QuadTree replication</h3>
+      <p>QuadTree is rebuildable — its source of truth is the DriverLocationHT. We keep 2 hot replicas for read scaling and fast failover; if both die, a fresh tree can be rebuilt from the HashTable in 30-60s.</p>
+    </div>
+    <div class="card">
+      <h3>📣 Notification Service</h3>
+      <p>Stateless instances behind the LB. When one dies, customer WebSockets reconnect to a survivor; the Subscription Manager (sharded, replicated) tells the new instance which drivers each customer was watching, so the push stream resumes within ~2 seconds.</p>
+    </div>
+    <div class="card">
+      <h3>🚗 Ride Matching Service</h3>
+      <p>Stateless orchestrator. Each request is independent — failure of one instance just means the rider hits another. In-flight ride locks live in the Ride State DB, not in service memory, so a service crash mid-match recovers cleanly: the driver's offer simply expires.</p>
+    </div>
+    <div class="card">
+      <h3>🗄️ Ride State DB</h3>
+      <p>Sharded relational store with synchronous replication across 3 AZs. Writes acknowledge only after the quorum confirms. A complete primary failure triggers a managed failover (30-60s) — during that window, new ride creation pauses but in-flight rides continue using cached state.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: RANKING                             -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-purple">Step 12</span>
+  <h2>Ranking Drivers — Picking the "Best" Match</h2>
+  <p>The QuadTree gives the Matching Service a candidate set. Which one should we offer the ride to first? "Closest" is the obvious answer but it's not the right one — the driver who is closest by physical distance might be stuck on the wrong side of a one-way street, have a low rating, or have declined their last 5 rides.</p>
+
+  <h3 class="subh">A composite scoring function</h3>
+  <p>Each candidate gets a score:</p>
+  <pre style="margin-top:.5rem">score(driver) =
+    w<span class="num">1</span> × <span class="kw">eta_minutes</span>          <span class="cmt">// real driving time, not crow-flies distance</span>
+  + w<span class="num">2</span> × (<span class="num">5</span> − <span class="kw">rating</span>)         <span class="cmt">// higher rating = lower penalty</span>
+  + w<span class="num">3</span> × (<span class="num">1</span> − <span class="kw">accept_rate</span>)    <span class="cmt">// drivers who decline a lot get pushed down</span>
+  + w<span class="num">4</span> × <span class="kw">prior_trip_count</span>      <span class="cmt">// experienced drivers slightly preferred</span>
+
+<span class="cmt">// Lower score = better. Top-3 by score get parallel offers.</span></pre>
+
+  <p>Weights are tuned per market and per product (UberX vs Black vs Pool may weight rating differently). The scoring runs in the Matching Service after hydration; with 24 candidates and 4 features, it's microseconds.</p>
+
+  <h3 class="subh">Why not just closest?</h3>
+  <p>Pure-closest leads to two pathologies. <strong>(1) Driver gaming:</strong> a driver could park 50m from a busy spot and refuse rides going elsewhere. <strong>(2) Bad customer experience:</strong> the closest driver is 0.5km away but rated 3.8 with a 40% acceptance rate — Raj would rather wait an extra 90 seconds for the 4.9-rated driver who is 1km away.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: ADVANCED ISSUES                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-red">Step 13</span>
+  <h2>Advanced Issues</h2>
+  <p>The features that bring Uber from "works" to "production-grade".</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>📈 Surge Pricing</h3>
+      <p>Compute demand-vs-supply ratio per region (hex cell or QuadTree leaf) every minute. If <code>open_requests / available_drivers &gt; threshold</code>, the multiplier rises (1.5×, 2×, 3×). Multiplier is published to the Pricing Service, which factors it into the fare estimate when the rider taps the request button. Surge is regional and time-bounded — during a Knicks game finishing at MSG, the surge pulses up for 20 minutes then decays.</p>
+    </div>
+    <div class="card">
+      <h3>🛣️ ETA Calculation</h3>
+      <p>"How many minutes for Sandeep to reach Raj?" is not the straight-line distance — it's an actual driving-route ETA factoring traffic, one-ways, and turn restrictions. Computed by a routing engine (OSRM / Google Directions / in-house Graphhopper) that reads pre-built road graphs. Cached per (origin-cell, destination-cell, time-of-day) to avoid per-request routing calls.</p>
+    </div>
+    <div class="card">
+      <h3>🛑 Multi-stop trips</h3>
+      <p>Rider adds 2-3 stops before requesting. Matching considers the full route's ETA, not just pickup-to-first-drop. Surge applies to the whole trip's expected duration. The driver gets the multi-stop hint in the offer so they can accept knowingly.</p>
+    </div>
+    <div class="card">
+      <h3>🤝 Pool / shared rides</h3>
+      <p>Two riders going in roughly the same direction share a car. Matching becomes harder: the system has to predict which rider requests will arrive in the next few minutes and proactively defer matching to bundle compatible riders. Often run as a separate matching pipeline that opportunistically merges adjacent solo requests.</p>
+    </div>
+    <div class="card">
+      <h3>🛡️ Fraud detection</h3>
+      <p>GPS spoofing (driver fakes a location to claim a fare without actually driving), fake accounts farming sign-up bonuses, collusion between rider and driver. Detected by ML models reading event streams: implausible velocity (200 mph), repeated rider-driver pairs, disabled accelerometer/gyroscope sensors. Flagged trips trigger manual review.</p>
+    </div>
+    <div class="card">
+      <h3>🌍 Multi-region operation</h3>
+      <p>Riders and drivers are matched within their city only — there is no point matching a Mumbai rider with a Delhi driver. The whole stack (DriverLocationHT, QuadTree, Matching) is partitioned per-region. Cross-region functions (account, payments, history) live in a separate global plane.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: INTERVIEW Q&A                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-blue">Step 14</span>
+  <h2>Interview Q&amp;A</h2>
+
+  <div class="iq">Why not update the QuadTree on every driver location report?</div>
+  <div class="ans"><strong>Because it would melt under 167K mutations/sec.</strong> Each driver update is a remove + insert in the tree, both requiring write locks, and busy areas cause leaf-overflow rebalancing storms. The tree spends all its time being reorganized and almost none answering queries. Decoupling the live updates (HashTable) from the spatial index (QuadTree, refreshed every 15s) lets each scale on its own bottleneck — writes hit a cheap O(1) hash table; reads hit a stable tree.</div>
+
+  <div class="iq">How do you handle 167K driver updates per second?</div>
+  <div class="ans"><strong>Shard the DriverLocationHT by driver_id across the Driver Location Server cluster.</strong> Each shard owns ~25K drivers and absorbs ~8K writes/sec — well within Redis or in-process hash-table limits. The work per update is O(1): overwrite the row, publish to Notification Service, done. Sharding by driver_id (not by location) means a driver's shard never changes as they move, so cross-shard migrations are zero. CPU, not network or memory, is the limit — and 20 modest servers comfortably absorb the firehose.</div>
+
+  <div class="iq">Push vs pull for showing nearby drivers — when do you use each?</div>
+  <div class="ans"><strong>Hybrid by mode.</strong> Pre-ride (customer browsing the map) → <strong>pull with debounced polling</strong>. Customer is just window-shopping; a 5s-stale view is fine, and polling avoids opening 300M persistent WebSockets. In-ride (driver assigned) → <strong>push over WebSocket</strong>. The "where is my driver?" bar is real-time, and the population in active trips (~50K concurrent) is small enough that connection cost is bounded. Same system, two modes, picked by cost-of-staleness.</div>
+
+  <div class="iq">How do you match a rider to the best driver in 30 seconds?</div>
+  <div class="ans"><strong>Three-stage pipeline.</strong> (1) <em>Candidate set</em> from the QuadTree — drivers within 3km, ~24 results. (2) <em>Hydrate</em> live positions from DriverLocationHT and rank by composite score (ETA + rating + accept_rate). (3) <em>Notify top-3 in parallel</em> with a 15-second offer; first to accept wins, others get cancelled. If all decline, expand radius and retry. Total wall time: typically 10-15s, well under the 30s SLA. The parallel offer is the key — sequential offers would burn 45s before getting a yes from the third option.</div>
+
+  <div class="iq">What if two riders try to book the same driver at the same time?</div>
+  <div class="ans"><strong>Atomic conditional update on the ride state row.</strong> When a driver accepts, the Matching Service runs <code>SET driver_id = X WHERE driver_id IS NULL</code> (or equivalent compare-and-swap in the DB). Only one update succeeds — the loser's rider gets a "driver no longer available" signal and is rolled back to the next-best candidate. The DB is the locking primitive because it is already on the hot path; introducing a separate distributed lock would add latency and a new failure mode without solving anything.</div>
+
+  <div class="iq">How is this different from Yelp's design?</div>
+  <div class="ans"><strong>Yelp's data is roughly stationary; Uber's data moves every 3 seconds.</strong> Yelp can put businesses directly into the QuadTree because inserts are rare. Uber cannot — 167K mutations/sec would destroy the tree. So Uber introduces a second layer: the DriverLocationHT absorbs the firehose at O(1), and the QuadTree is updated lazily every 15 seconds from snapshots. Reads hit both: the QuadTree gives candidate IDs, the HashTable hydrates their actual positions. Yelp's design has no such split because it doesn't need one.</div>
+
+  <div class="iq">What happens if a Driver Location Server dies?</div>
+  <div class="ans"><strong>Three layers of recovery.</strong> (1) The shard's secondary replica is promoted to primary in seconds. (2) Drivers' apps reconnect to the LB and are routed to the new primary — their next 3-second heartbeat re-establishes the live position. (3) Up to 100ms of writes may be lost during failover, but they are immediately overwritten by the next heartbeat. The QuadTree survives untouched since it reads from the DriverLocationHT on its own 15s cadence. Net effect: a Driver Location Server crash is invisible to riders and drivers beyond a brief reconnect.</div>
+
+  <div class="iq">How do you scale to a new city?</div>
+  <div class="ans"><strong>The whole stack is regionally partitioned.</strong> When Uber launches in a new city, we provision a new Driver Location Server cluster, a new QuadTree, a new Notification Service slice, and route those drivers and riders to the new region. Cross-region services (payments, account, support) stay global. This means we can scale linearly with cities — adding Lagos doesn't make matching slower for São Paulo. The only global coordination is when a driver crosses a regional boundary (rare), at which point their session is migrated.</div>
+
+  <div class="highlight hl-orange"><strong>The one-line summary the interviewer remembers:</strong> "Uber is Yelp plus a firehose, so we split the firehose from the spatial index — driver location updates land in a sharded in-memory hash table at O(1), the QuadTree is rebuilt from snapshots every 15 seconds, and customers either pull (when browsing) or get pushed updates (when matched). Two layers, two cadences, each scaling on its own bottleneck."</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

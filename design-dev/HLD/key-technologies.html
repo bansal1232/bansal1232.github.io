@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Key Technologies Cheat Sheet — HLD Interview Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* HERO */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:680px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* LAYOUT */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* SIDEBAR */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:760px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+/* TECH CARD — fielded layout for consistency across cards */
+.tech-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem 1.75rem;margin-bottom:1rem;transition:border-color .2s}
+.tech-card:hover{border-color:rgba(232,116,59,.3)}
+.tech-card h3{font-family:'Playfair Display',serif;font-weight:700;font-size:1.3rem;color:var(--heading);margin-bottom:.85rem;display:flex;align-items:center;gap:.55rem}
+.tech-card h3 .badge{font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.22rem .55rem;border-radius:5px}
+.tech-card .field{margin:.55rem 0;font-size:.9rem;line-height:1.78;color:var(--text)}
+.tech-card .field .lbl{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--orange);margin-right:.5rem;min-width:90px}
+.tech-card .field.tip .lbl{color:var(--green)}
+.tech-card .field.trade .lbl{color:var(--red)}
+.tech-card .field.feat .lbl{color:var(--blue)}
+.tech-card .field.when .lbl{color:var(--cyan)}
+.tech-card code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+
+/* CODE */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* DIAGRAM */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* HIGHLIGHT */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem;line-height:1.75}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.75rem .9rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* METRIC */
+.metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+
+/* BAD vs GOOD blocks */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:.85rem;margin-bottom:1rem}
+@media(max-width:700px){.compare{grid-template-columns:1fr}}
+.bad,.good{padding:1.2rem 1.4rem;border-radius:var(--r);font-size:.88rem;line-height:1.75}
+.bad{background:var(--red-d);border-left:3px solid var(--red)}
+.good{background:var(--green-d);border-left:3px solid var(--green)}
+.bad .lbl,.good .lbl{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:.4rem}
+.bad .lbl{color:var(--red)}
+.good .lbl{color:var(--green)}
+.bad code,.good code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">HLD Reference</div>
+  <h1>Key Technologies <span>Cheat Sheet</span></h1>
+  <p class="sub">The vocabulary that turns "I'll add a cache" into "I'll store user_id → session_blob in a Redis HASH with 24h TTL, sharded across 4 nodes via consistent hashing"</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Why Specificity Wins</a></li>
+      <li><a href="#s2">Databases</a></li>
+      <li><a href="#s3">Search &amp; Analytics</a></li>
+      <li><a href="#s4">Caching</a></li>
+      <li><a href="#s5">Messaging &amp; Streaming</a></li>
+      <li><a href="#s6">Routing &amp; Edge</a></li>
+      <li><a href="#s7">Storage</a></li>
+      <li><a href="#s8">Coordination &amp; State</a></li>
+      <li><a href="#s9">Time Series</a></li>
+      <li><a href="#s10">Vector Databases</a></li>
+      <li><a href="#s11">Distributed Locks</a></li>
+      <li><a href="#s12">Spec Examples — Before / After</a></li>
+      <li><a href="#s13">Choosing Between Tech</a></li>
+      <li><a href="#s14">Real-System Combinations</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- SECTION 1 -->
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>Why Specificity Wins</h2>
+  <p>Two candidates sit through the same 45-minute system design loop. Both reach the part of the interview where caching comes up. Candidate A says "I'll add a cache in front of the database to speed up reads." Candidate B says "I'll cache the top 10K trending video metadata as <code>video:{id}</code> Redis HASHes, keep them in a 6-node Redis Cluster sharded by <code>video_id</code>, set LRU eviction at 64GB per node, give each entry a 30-minute TTL with explicit invalidation on transcode-complete events." Both candidates are correct. Only one gets the offer.</p>
+
+  <p>The interviewer is not testing whether you know the word "cache". They are testing whether you have <strong>operated</strong> one — whether you've stared at a Grafana dashboard at 3am wondering why your hit rate dropped, whether you've picked a sharding key that turned out to be hot, whether you've explained to a PM why "just clear the cache" deletes a billion-dollar revenue stream. That experience shows up as <strong>specificity</strong>: the data structure, the eviction policy, the sharding scheme, the replication topology, the failure mode, the metric you'd watch.</p>
+
+  <div class="highlight hl-orange"><strong>The signal you are sending:</strong> "I have built this before. I know the verbs, the limits, and the trade-offs. I will not be surprised by the production version of what we just sketched on the whiteboard." This page gives you that vocabulary for every technology your interviewer expects you to know.</div>
+
+  <h3 class="subh">How to read each card</h3>
+  <p>Every technology below uses the same five fields so you can scan and compare.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>The five fields</h3>
+      <ul>
+        <li><strong>When</strong> — the workload shape that points at this tech</li>
+        <li><strong>Features</strong> — the capabilities you should namedrop</li>
+        <li><strong>Patterns</strong> — common usage shapes and idioms</li>
+        <li><strong>Trade-offs</strong> — what you give up vs alternatives</li>
+        <li><strong>Interview tip</strong> — the exact phrase that signals seniority</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>The seniority ladder for any tech</h3>
+      <ul>
+        <li><strong>Junior</strong> — names the tech ("use Redis")</li>
+        <li><strong>Mid</strong> — names the tech and a pattern ("use Redis as a write-through cache")</li>
+        <li><strong>Senior</strong> — picks the data structure, eviction, TTL, sharding, replication, and failure mode in one breath</li>
+        <li><strong>Staff</strong> — also names the metric they'd watch and the alert threshold</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 2 — DATABASES -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>Databases</h2>
+  <p>The first decision in almost every HLD: what's the source of truth? Pick the wrong DB family and every other choice gets harder. The four below cover ~90% of interview answers.</p>
+
+  <div class="tech-card">
+    <h3>PostgreSQL / MySQL — Classic RDBMS <span class="badge tag-green">SQL</span></h3>
+    <p class="field when"><span class="lbl">When</span>You need ACID transactions, multi-table joins, foreign-key constraints, or strong consistency. Default choice for any system that touches money, identity, inventory, or anything where "lost write = lawsuit".</p>
+    <p class="field feat"><span class="lbl">Features</span>B-tree and hash indexes, MVCC for concurrent reads without blocking, FK constraints, partial indexes (<code>WHERE status='active'</code>), expression indexes, materialized views, JSONB column type (Postgres), GIN/GiST indexes for full-text and geo, logical replication for streaming changes to read replicas.</p>
+    <p class="field"><span class="lbl">Patterns</span>Master + read replicas (read-heavy workloads). Connection pooling via PgBouncer. <code>SELECT FOR UPDATE</code> for row-level pessimistic locks. Logical replication into Kafka via Debezium for change-data-capture. Vertical partitioning (separate tables for hot vs cold columns).</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Vertical scaling ceiling — a single Postgres box maxes out around 5K-10K complex writes/sec on commodity hardware. Sharding is hard (no native multi-shard transactions). Schema migrations on huge tables can lock for hours without careful tooling.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>Drop these terms: <strong>isolation levels</strong> ("READ COMMITTED is the default; bump to SERIALIZABLE for the inventory check"), <strong>SELECT FOR UPDATE</strong> for pessimistic row locks, <strong>partial index</strong> on <code>WHERE deleted_at IS NULL</code>, <strong>GIN index</strong> for full-text or JSONB, <strong>logical replication</strong> for read replicas without blocking the master.</p>
+  </div>
+
+  <div class="tech-card">
+    <h3>Cassandra — Wide-Column NoSQL <span class="badge tag-blue">NoSQL</span></h3>
+    <p class="field when"><span class="lbl">When</span>Write-heavy workloads where the access pattern is "give me all the rows for this partition key". Time-series data (sensor readings, event logs), user activity feeds, message inboxes, anything that's append-mostly and queried by a known key.</p>
+    <p class="field feat"><span class="lbl">Features</span>Tunable consistency per query (<code>R + W &gt; N</code> for strong reads, <code>R=1, W=1</code> for fastest), wide columns (a row can have millions of columns), partition key + clustering key data model, LSM-tree storage (write-optimized), peer-to-peer architecture (no master), multi-datacenter replication out of the box.</p>
+    <p class="field"><span class="lbl">Patterns</span>Design table per query. Partition key = the thing you'll always filter by (<code>user_id</code>). Clustering key = how rows within a partition are ordered (<code>created_at DESC</code>). For "give me Sarah's last 50 messages": <code>PRIMARY KEY ((user_id), created_at)</code>. Replication factor of 3 across 3 AZs is standard.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>No joins, ever. Eventually consistent by default (you ask for stronger consistency per query). Query patterns must be designed up front — if you don't know how you'll query the data, Cassandra will hurt you. Compaction is operationally expensive at scale.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"Design partition key around the access pattern; never query without the partition key — otherwise it's a scatter-gather across every node and that's a query you cancel before it finishes." Mention <strong>R + W &gt; N quorum</strong> for strong consistency, <strong>hinted handoff</strong> for transient node failures, <strong>SSTable compaction</strong> as the ops headache.</p>
+  </div>
+
+  <div class="tech-card">
+    <h3>DynamoDB — Managed Key-Value / Wide-Column <span class="badge tag-yellow">Managed</span></h3>
+    <p class="field when"><span class="lbl">When</span>You're on AWS, want predictable single-digit-ms latency at any scale, and don't want to operate a database. Session stores, shopping carts, IoT device state, anything with a known access pattern that scales horizontally.</p>
+    <p class="field feat"><span class="lbl">Features</span>Managed sharding (you never touch it), Global Secondary Indexes (GSIs) for querying on alternative keys, DynamoDB Streams for change-data-capture, Global Tables for multi-region active-active, on-demand vs provisioned capacity modes, point-in-time recovery, single-digit-ms p99 reads.</p>
+    <p class="field"><span class="lbl">Patterns</span>Single-table design — pack multiple entity types into one table, distinguished by a generic <code>PK</code> + <code>SK</code> with composed keys like <code>USER#42</code> + <code>ORDER#2024-01-15</code>. GSIs duplicate data with different keys to support secondary access patterns. Streams + Lambda for derived views.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Query flexibility limited by your GSI design — every access pattern you didn't plan for becomes a full table scan or a new GSI. Hot partition cost (single PK getting all the traffic = throttled). Expensive at scale vs self-managed Cassandra. AWS lock-in.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>Always say "I'll model the access patterns first, then derive the partition key + sort key + GSIs." For each access pattern, write the exact <code>PK</code> / <code>SK</code> combo. Example: "GetUserPosts" → <code>PK=USER#{id}, SK=POST#{created_at}</code>; "BrowseByCategory" → GSI with <code>PK=CATEGORY#{cat}, SK=created_at</code>.</p>
+  </div>
+
+  <div class="tech-card">
+    <h3>MongoDB — Document Store <span class="badge tag-cyan">NoSQL</span></h3>
+    <p class="field when"><span class="lbl">When</span>Schema is flexible and changing rapidly (early-stage product, content management), data is naturally hierarchical (a blog post with embedded comments), or the team is more comfortable with JSON than SQL. Increasingly rare as a default in 2026 — Postgres JSONB has eaten most of its niche.</p>
+    <p class="field feat"><span class="lbl">Features</span>BSON document model (binary JSON), aggregation pipeline (<code>$match → $group → $sort</code>), secondary indexes including compound and text, change streams, sharded clusters with config servers, transactions across documents (since v4.0).</p>
+    <p class="field"><span class="lbl">Patterns</span>Embed related data (a user with their addresses) when always read together. Reference (foreign key style) when the related data is large or changes independently. Aggregation pipelines for analytics-style queries.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Was eventually consistent for years (now stronger by default). Hot documents have write conflicts. Index size grows fast. Operationally heavier than Postgres for the same workload in most cases.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>Be ready to defend why you'd pick Mongo over Postgres in 2026 — usually the answer is "I wouldn't, unless the team already has Mongo expertise or the document hierarchy is deep enough that Postgres JSONB queries get awkward". Naming it without justification is a junior signal.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 3 — SEARCH -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-blue">Step 3</span>
+  <h2>Search &amp; Analytics</h2>
+  <p>The moment a user types into a search box that does anything fancier than <code>WHERE name LIKE '%foo%'</code>, you need a real search engine. Same goes for log analytics, observability, and full-text scoring.</p>
+
+  <div class="tech-card">
+    <h3>Elasticsearch / OpenSearch <span class="badge tag-blue">Search</span></h3>
+    <p class="field when"><span class="lbl">When</span>Full-text search with relevance scoring, fuzzy/typo-tolerant queries, log aggregation and observability (the "E" in ELK stack), faceted search, geo queries. Anything where Postgres' <code>ILIKE '%foo%'</code> stops being good enough.</p>
+    <p class="field feat"><span class="lbl">Features</span>Inverted index (the magic that makes full-text fast), tokenization + stemming + stopword removal, fuzzy matching with edit distance, BM25 relevance scoring, geo_point and geo_shape queries, aggregations (terms, date histograms, percentiles), index aliases for zero-downtime reindex.</p>
+    <p class="field"><span class="lbl">Patterns</span>Pair with Kafka for the indexing pipeline — app writes to source-of-truth DB, change-stream emits to Kafka, indexer consumes and updates Elasticsearch. Time-based indices for log data: one index per day (<code>logs-2026-05-07</code>) so you can drop old indices in O(1) and shard hot recent data more aggressively.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Schema rigidity via mappings (changing a field type requires a reindex). Eventually consistent — there's a 1-second refresh interval before new docs are searchable. Operationally heavy: shard sizing, JVM tuning, hot/warm/cold tier design. Memory hungry.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>Say "Elasticsearch is a derived index, not the source of truth — Postgres / Cassandra holds the canonical data, ES gets it via a CDC pipeline through Kafka." For logs: "indices sharded by time, hot tier on SSDs for last 7 days, warm tier on cheaper storage for 30 days, then deleted." Mention <strong>refresh_interval</strong>, <strong>force_merge</strong>, and <strong>index aliases</strong> for zero-downtime reindex.</p>
+  </div>
+
+  <div class="tech-card">
+    <h3>Postgres GIN / GiST — Search Without Separate Infra <span class="badge tag-green">SQL</span></h3>
+    <p class="field when"><span class="lbl">When</span>You already have Postgres, and your search needs are real but modest — under 100M documents, basic relevance, no advanced fuzziness. Avoiding a second piece of infrastructure is worth a lot.</p>
+    <p class="field feat"><span class="lbl">Features</span><code>tsvector</code> column + GIN index for full-text. <code>pg_trgm</code> extension for trigram fuzzy matching. PostGIS + GiST for geo. JSONB + GIN for "find me docs where the JSON has key X = value Y".</p>
+    <p class="field"><span class="lbl">Patterns</span>Add a generated <code>tsvector</code> column that concatenates searchable fields, GIN-index it, then <code>WHERE search_vec @@ to_tsquery('foo &amp; bar')</code>. For typo tolerance, add a <code>pg_trgm</code> index and use <code>%</code> similarity.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Relevance scoring is weaker than Elasticsearch's BM25. Doesn't scale past one Postgres node. No native distributed search across shards.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"For under 100M docs and basic search, I'd start with a Postgres GIN index on a tsvector column — one fewer system to operate. I'd graduate to Elasticsearch when relevance tuning, fuzzy search, or sub-100ms p99 across hundreds of millions of docs become hard requirements."</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 4 — CACHING -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-cyan">Step 4</span>
+  <h2>Caching</h2>
+  <p>The single biggest performance lever in any read-heavy system. A cache that holds the hot 20% of your data absorbs 80% of read traffic — your database tier shrinks 5x. Two players dominate this layer.</p>
+
+  <div class="tech-card">
+    <h3>Redis — The Swiss Army Cache <span class="badge tag-red">In-memory</span></h3>
+    <p class="field when"><span class="lbl">When</span>Low-latency reads (sub-millisecond), distributed locks, pub/sub, leaderboards, session storage, rate limiting, real-time counters, geo-proximity queries. The default cache choice for ~95% of interview answers.</p>
+    <p class="field feat"><span class="lbl">Features</span>Eight rich data structures (see diagram below), single-threaded command execution (no race conditions inside one command), Redis Cluster for sharding, Sentinel for HA without sharding, RDB snapshots + AOF append-only log for persistence, Pub/Sub, Streams, Lua scripting for multi-command atomicity, RedLock algorithm for distributed locks.</p>
+    <p class="field"><span class="lbl">Patterns</span>Cache-aside (read through app code), write-through (app writes to cache and DB synchronously), write-behind (cache async-flushes to DB). Eviction: <code>allkeys-lru</code> for general cache, <code>volatile-ttl</code> when only TTL'd keys should evict. Sharding via Redis Cluster (16384 hash slots, consistent-hash style).</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>RAM-bounded — a single node maxes out at the box's RAM. Persistence is best-effort (AOF every-second loses 1s on crash). Slower than Memcached for the simplest pure key-value workload due to richer features.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>Never just say "Redis". Say <strong>"Redis ZSET for top-K leaderboard"</strong>, <strong>"Redis HASH keyed by user_id with 24h TTL for sessions"</strong>, <strong>"Redis Cluster sharded across 6 nodes, each replicated 1× with Sentinel for failover"</strong>, <strong>"RedLock for distributed lock with 10s timeout"</strong>. Mention <strong>Redis Streams</strong> as a Kafka-lite when the use case is small.</p>
+  </div>
+
+  <h3 class="subh">Redis data structures — pick the right one</h3>
+  <p>Naming the data structure is the single biggest specificity win in an interview. The diagram below maps each Redis structure to the use case it owns.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  R(["Redis"])
+  R --> S["STRING — counters · JSON blobs · session tokens"]
+  R --> H["HASH — user profiles · structured records · field updates"]
+  R --> L["LIST — FIFO queues · recent activity · LPUSH/RPOP"]
+  R --> SET["SET — uniqueness · tag membership · SADD/SISMEMBER"]
+  R --> Z["ZSET — leaderboards · top-K · time-ordered feeds"]
+  R --> ST["STREAM — event log · Kafka-lite · consumer groups"]
+  R --> HLL["HyperLogLog — cardinality · unique visitors · fixed memory"]
+  R --> G["GEO — proximity search · nearby drivers · radius queries"]
+
+  style R fill:#e8743b,stroke:#e8743b,color:#fff
+  style S fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style H fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style L fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style SET fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style Z fill:#171d27,stroke:#38b265,color:#d4dae5
+  style ST fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style HLL fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style G fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Structure</th><th>Common use</th><th>Hot commands</th></tr></thead>
+      <tbody>
+        <tr><td><code>STRING</code></td><td>Counters, JSON blobs, session tokens, simple K/V</td><td><code>SET</code> · <code>GET</code> · <code>INCR</code> · <code>SETEX</code></td></tr>
+        <tr><td><code>HASH</code></td><td>User profiles, any record with multiple fields</td><td><code>HSET</code> · <code>HGET</code> · <code>HGETALL</code> · <code>HINCRBY</code></td></tr>
+        <tr><td><code>LIST</code></td><td>FIFO queues, recent items, activity logs</td><td><code>LPUSH</code> · <code>RPOP</code> · <code>LRANGE</code></td></tr>
+        <tr><td><code>SET</code></td><td>Uniqueness checks, tag membership, deduping</td><td><code>SADD</code> · <code>SISMEMBER</code> · <code>SINTER</code></td></tr>
+        <tr><td><code>ZSET</code></td><td>Leaderboards, top-K, time-ordered feeds, priority queues</td><td><code>ZADD</code> · <code>ZRANGE</code> · <code>ZINCRBY</code></td></tr>
+        <tr><td><code>STREAM</code></td><td>Event log, Kafka-lite with consumer groups</td><td><code>XADD</code> · <code>XREAD</code> · <code>XGROUP</code></td></tr>
+        <tr><td><code>HyperLogLog</code></td><td>Cardinality estimation in fixed memory (12KB)</td><td><code>PFADD</code> · <code>PFCOUNT</code></td></tr>
+        <tr><td><code>GEO</code></td><td>Proximity search, "nearby" queries</td><td><code>GEOADD</code> · <code>GEOSEARCH</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tech-card">
+    <h3>Memcached — The Simplest Possible Cache <span class="badge tag-purple">In-memory</span></h3>
+    <p class="field when"><span class="lbl">When</span>You need a pure dumb key-value cache, multi-threaded for max single-node throughput, and don't care about persistence or rich data types. Big at companies running it at massive scale (Facebook famously runs petabytes of Memcached).</p>
+    <p class="field feat"><span class="lbl">Features</span>Multi-threaded (uses all CPU cores by default, where Redis is single-threaded), smaller memory footprint per key, slab allocator avoids fragmentation, simple text protocol.</p>
+    <p class="field"><span class="lbl">Patterns</span>Client-side consistent hashing (the client decides which node to hit, no cluster coordinator). LRU eviction is the only policy. Set a TTL on every key.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>No persistence — restart loses everything. No data structures beyond strings. No pub/sub, no scripting, no transactions. Cache is the entire feature set.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"I'd pick Memcached over Redis only when the only feature I need is the simplest possible K/V cache, and the multi-threaded throughput per node matters." For most systems, Redis is the safer default — more features, similar perf.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 5 — MESSAGING -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-yellow">Step 5</span>
+  <h2>Messaging &amp; Streaming</h2>
+  <p>The async backbone of every modern system. Get the message broker right and your services decouple cleanly; get it wrong and a single slow consumer takes down a whole product.</p>
+
+  <div class="tech-card">
+    <h3>Kafka — The Distributed Event Log <span class="badge tag-yellow">Streaming</span></h3>
+    <p class="field when"><span class="lbl">When</span>High-throughput pub/sub, event sourcing, replayable streams, change-data-capture pipelines, log aggregation, multi-consumer fan-out where each consumer wants its own copy of the stream.</p>
+    <p class="field feat"><span class="lbl">Features</span>Topics partitioned for parallelism, consumer groups for load-balanced processing within a group + fan-out across groups, retention by time (7 days) or size (100GB), idempotent producers + transactional writes for exactly-once semantics, log compaction (keep only the latest value per key) for state-snapshot topics, replication factor (typically 3) across brokers.</p>
+    <p class="field"><span class="lbl">Patterns</span>Partition key = the thing whose ordering matters (<code>user_id</code> if events for one user must be processed in order). Consumer group per logical service — adding a consumer to the group rebalances partitions across consumers. Compacted topics for "current state" snapshots (user profile updates, config). Outbox pattern: app writes to DB + Kafka in a transaction via Debezium CDC.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Operationally complex — ZooKeeper or KRaft, broker tuning, partition rebalancing storms. Latency typically 5-50ms per message, not microseconds. Reordering across partitions (only ordered within a partition).</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>Specify all three: <strong>"Topic <code>orders.events</code> with 32 partitions keyed by <code>user_id</code>, 7-day retention, replication factor 3, consumer group <code>fulfillment-svc</code> with 16 workers"</strong>. Mention <strong>compaction</strong> for state-snapshot topics, <strong>idempotent producer + transactional writes</strong> for exactly-once, and <strong>consumer offsets</strong> stored in Kafka itself.</p>
+  </div>
+
+  <div class="tech-card">
+    <h3>RabbitMQ — Smart Broker for Task Queues <span class="badge tag-orange">Queue</span></h3>
+    <p class="field when"><span class="lbl">When</span>Lower-volume task queues (under ~50K msg/sec), complex routing rules (exchanges/bindings), per-message delivery guarantees, dead-letter queues, priority queues. Classic background-job workloads.</p>
+    <p class="field feat"><span class="lbl">Features</span>AMQP 0-9-1 protocol, exchanges (direct, topic, fanout, headers) + bindings for flexible routing, dead-letter exchanges, priority queues, message TTL, per-message ack/nack, mirrored queues for HA.</p>
+    <p class="field"><span class="lbl">Patterns</span>Topic exchange + routing keys for selective fan-out (<code>orders.eu.priority</code> matches binding <code>orders.*.priority</code>). DLQ on every queue for poison messages. Manual ack so failed processing requeues.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Lower throughput than Kafka — 10K-50K msg/sec per node vs Kafka's millions. No replay (once consumed and acked, gone). Smart broker = more failure modes than Kafka's dumb broker.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"RabbitMQ for task queues with complex routing or low volume; Kafka when I need replay, multi-consumer fan-out, or throughput above 100K msg/sec."</p>
+  </div>
+
+  <div class="tech-card">
+    <h3>AWS SQS / Google Pub-Sub — Managed Queues <span class="badge tag-cyan">Managed</span></h3>
+    <p class="field when"><span class="lbl">When</span>You want a queue with zero ops. Decoupling microservices, fan-out to Lambda, simple async tasks. The right answer for ~80% of "I need a queue" situations on AWS / GCP.</p>
+    <p class="field feat"><span class="lbl">Features</span>SQS: standard queue (at-least-once, best-effort ordering) and FIFO queue (strict ordering, exactly-once with dedup). Visibility timeout, dead-letter queues, long polling. Pub/Sub: pull or push subscriptions, exactly-once delivery, message ordering by key.</p>
+    <p class="field"><span class="lbl">Patterns</span>SQS + Lambda for serverless event processing. SNS → SQS fan-out (one event, multiple consumers). DLQ after N redelivery attempts.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Less control than self-hosted. No replay (once acked, gone). Per-message cost adds up at scale. AWS / GCP lock-in.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"SQS for simple async tasks where I want zero ops; Kafka when I need replayability, multi-consumer fan-out, or want events to be the source of truth."</p>
+  </div>
+
+  <div class="tech-card">
+    <h3>Apache Flink — Stateful Stream Processing <span class="badge tag-purple">Streaming</span></h3>
+    <p class="field when"><span class="lbl">When</span>Real-time stream processing with stateful aggregations — windowed counts, sessionization, joining two streams, complex event processing. The "do something smart with a Kafka stream" engine.</p>
+    <p class="field feat"><span class="lbl">Features</span>Exactly-once state semantics via checkpoints, event-time processing with watermarks (correctly handles late/out-of-order events), tumbling / sliding / session windows, keyed state, state backends (RocksDB on disk for huge state).</p>
+    <p class="field"><span class="lbl">Patterns</span>Read from Kafka → windowed aggregation by key → write to a sink (Elasticsearch, Postgres, another Kafka topic). Keyed state for per-user counters. Watermarks tuned for your data's typical lateness.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Heavy infrastructure. For simple aggregations, Kafka Streams (a library, not a cluster) is enough. Operational complexity is real — checkpoint tuning, savepoints for upgrades.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"For simple per-event transforms, Kafka Streams (just a library on top of Kafka) is enough. Reach for Flink when you need stateful windowed aggregations across millions of keys with exactly-once guarantees."</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 6 — ROUTING -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-purple">Step 6</span>
+  <h2>Routing &amp; Edge</h2>
+  <p>Everything between a user's browser and your application servers. Routing the right request to the right backend, terminating TLS, caching at the edge — these tiers exist to take pressure off your app code.</p>
+
+  <div class="tech-card">
+    <h3>API Gateway — The Microservices Front Door <span class="badge tag-blue">Edge</span></h3>
+    <p class="field when"><span class="lbl">When</span>You have multiple backend services and want one public surface in front of them. Adds cross-cutting concerns (auth, rate limiting, request transformation) without putting them in every service.</p>
+    <p class="field feat"><span class="lbl">Features</span>Path-based and host-based routing, JWT/OAuth verification, per-key rate limiting, request/response transformation, observability (logging, tracing, metrics), API versioning, request validation.</p>
+    <p class="field"><span class="lbl">Patterns</span>Options: AWS API Gateway (managed, Lambda-friendly), Kong (self-hosted, plugin-based), nginx (lightweight reverse proxy + Lua), Envoy (gRPC-native, used by Istio).</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Adds a network hop. Hot-path latency-sensitive services sometimes skip the gateway and go straight to the LB.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>Don't deep-dive — abstract it. "API Gateway terminates TLS, validates the JWT, applies the per-tenant rate limit, and routes to the right backend service." That's the level of detail expected.</p>
+  </div>
+
+  <div class="tech-card">
+    <h3>Load Balancer — L4 vs L7 <span class="badge tag-purple">Edge</span></h3>
+    <p class="field when"><span class="lbl">When</span>Always — every multi-instance service needs an LB in front of it. The interesting choice is L4 (transport-level, TCP/UDP) vs L7 (application-level, HTTP).</p>
+    <p class="field feat"><span class="lbl">Features</span><strong>L4:</strong> persistent connections like WebSockets and gRPC streams, lower latency (no HTTP parse), source-IP hash for sticky sessions. <strong>L7:</strong> path-based routing (<code>/api/* → svc-A, /static/* → CDN</code>), header-based decisions (<code>X-Customer-Tier</code>), TLS termination, request rewriting, weighted canary deploys.</p>
+    <p class="field"><span class="lbl">Patterns</span>Algorithms: round robin (default), least connections (when request times vary), consistent hash on IP or session-ID (when stickiness matters). Health checks every 5s, evict unhealthy backends. Active-passive HA pair via virtual IP failover.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>L7 has more features but slightly higher latency (a few hundred microseconds). L4 is simpler and faster but can't make HTTP-aware routing decisions.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"<strong>WebSockets, gRPC streams, raw TCP → L4</strong> (NLB, HAProxy in TCP mode). <strong>HTTP REST APIs with path-based routing → L7</strong> (ALB, nginx, Envoy). I'd put an L7 in front of the app tier and an L4 in front of any persistent-connection service."</p>
+  </div>
+
+  <div class="tech-card">
+    <h3>CDN — Content Delivery Network <span class="badge tag-cyan">Edge</span></h3>
+    <p class="field when"><span class="lbl">When</span>You serve static assets (images, JS, CSS, video segments) or cacheable API responses to a globally distributed user base. Latency-sensitive reads from far-away users.</p>
+    <p class="field feat"><span class="lbl">Features</span>Edge POPs in 200+ cities, TTL-based caching with explicit purge, signed URLs for private content, image optimization (resize/convert at edge), WAF integration, DDoS absorption, gzip/brotli compression. Options: CloudFront, Akamai, Cloudflare, Fastly.</p>
+    <p class="field"><span class="lbl">Patterns</span>Static assets get long TTLs (1 year) with versioned filenames (<code>app.v123.js</code>) so cache-busting is automatic. API responses get short TTLs (60s for "trending feeds") with <code>Cache-Control</code> headers. Signed URLs for time-bounded private downloads (presigned S3-style).</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Cache invalidation is expensive — purges propagate over minutes. TTL math: longer TTL = better hit rate but staler data. Cost can spike on miss-heavy workloads.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"CDNs cache JSON API responses too, not just images — for a news site's <code>/api/trending</code> endpoint, a 60-second TTL at the CDN edge takes 99% of read traffic off the origin." Mention <strong>signed URLs</strong> for private content and <strong>versioned filenames</strong> for cache busting.</p>
+  </div>
+
+  <div class="tech-card">
+    <h3>Reverse Proxy — nginx / HAProxy / Envoy <span class="badge tag-orange">Edge</span></h3>
+    <p class="field when"><span class="lbl">When</span>Sits between LB and app servers. Often combined with API Gateway. Used for TLS termination, request buffering, static file serving, header manipulation.</p>
+    <p class="field feat"><span class="lbl">Features</span>nginx: workhorse, high throughput, Lua scripting. HAProxy: pure load balancing, fastest L4. Envoy: cloud-native, hot-reload config, deep observability, gRPC-native.</p>
+    <p class="field"><span class="lbl">Patterns</span>nginx as the public-facing TLS terminator + L7 router. HAProxy when you need pure L4 throughput. Envoy as the sidecar in service mesh deployments (Istio, Linkerd).</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Yet another tier to operate. nginx config can become a tangled mess; Envoy's YAML is verbose but well-defined.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>Just name one: "nginx terminates TLS and reverse-proxies to the app pods." Don't deep-dive unless asked.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 7 — STORAGE -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-orange">Step 7</span>
+  <h2>Storage</h2>
+  <p>Where the bytes that don't belong in a database live. Photos, videos, model checkpoints, log archives — anything large, unstructured, and rarely searched.</p>
+
+  <div class="tech-card">
+    <h3>S3 / Blob Storage — Object Store <span class="badge tag-orange">Storage</span></h3>
+    <p class="field when"><span class="lbl">When</span>Large unstructured files: images, videos, PDFs, ML model artifacts, log archives, backups. Anything &gt;1MB that's accessed by full key. The default for "where do I store the file?" on AWS / GCP / Azure.</p>
+    <p class="field feat"><span class="lbl">Features</span>11 nines of durability (lose a file once every 100 million years), 4 nines of availability, presigned URLs (time-bounded direct upload/download tokens), multipart upload (resumable for large files), lifecycle policies (auto-tier to Glacier after 30 days), event notifications (S3 → Lambda / SQS on object creation), versioning, cross-region replication.</p>
+    <p class="field"><span class="lbl">Patterns</span><strong>Presigned URLs</strong> — the single most important pattern. Client requests an upload URL from your API, your API returns a presigned S3 URL, client uploads bytes directly to S3. Your app servers never touch the bytes. Same for download.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Never use as primary DB — eventual consistency for some operations, no joins, no transactions. Per-request pricing matters at huge scale. List operations are slow.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"Use presigned URLs to keep large blob bytes off your app servers — the upload goes browser → S3 directly, app server only signs the URL." Mention <strong>lifecycle policies</strong> for cost optimization (Standard → IA after 30 days → Glacier after 90 days), <strong>event notifications</strong> for derived processing pipelines (image resize, video transcode).</p>
+    <p class="field"><span class="lbl">Cost</span><code>$0.023/GB/mo</code> for S3 Standard, <code>$0.004/GB/mo</code> for S3 Glacier. Egress dominates at scale — putting CloudFront in front cuts egress cost by ~50%.</p>
+  </div>
+
+  <div class="tech-card">
+    <h3>HDFS — Hadoop Distributed File System <span class="badge tag-yellow">Storage</span></h3>
+    <p class="field when"><span class="lbl">When</span>Big-data batch analytics with Hadoop / Spark, particularly on-prem. Increasingly rare for greenfield systems — most new deployments use S3 + Spark / Trino instead.</p>
+    <p class="field feat"><span class="lbl">Features</span>Block-based storage (default 128MB blocks) replicated 3× across nodes, NameNode for metadata + DataNodes for blocks, designed for sequential scans of huge files.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>NameNode is a SPOF (until HDFS HA). Operationally heavy. Declining vs S3 for new systems — S3 + EMR / Spark gives you the same compute model without operating a filesystem cluster.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"For new systems on cloud, I'd default to S3 + Spark/Trino over HDFS. HDFS still makes sense for on-prem big-data lakes already running Hadoop."</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 8 — COORDINATION -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-red">Step 8</span>
+  <h2>Coordination &amp; State</h2>
+  <p>The boring infrastructure that keeps distributed systems honest. Leader election, distributed config, service discovery, distributed locks at strong consistency.</p>
+
+  <div class="tech-card">
+    <h3>ZooKeeper — Strong-Consistency Coordinator <span class="badge tag-red">Consensus</span></h3>
+    <p class="field when"><span class="lbl">When</span>Distributed configuration, leader election, distributed locks where correctness matters more than latency, service discovery. The classic answer for "we need a coordinator" — Kafka used it for years (now KRaft), HBase still does.</p>
+    <p class="field feat"><span class="lbl">Features</span>ZAB consensus protocol (similar to Raft), strong consistency for writes, ephemeral nodes (auto-delete on session end — perfect for "is this node alive?"), watches (notify on znode change), sequential nodes for fair locking.</p>
+    <p class="field"><span class="lbl">Patterns</span>Leader election: each candidate creates an ephemeral sequential znode under <code>/election</code>; lowest sequence wins. Distributed lock: same pattern, lowest sequence holds the lock. Service discovery: services register ephemeral znodes under <code>/services/{name}</code>.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Heavy ops — needs an odd-number ensemble (3 or 5 nodes), JVM tuning, snapshot management. Reach for it only when Redis Redlock isn't strong enough.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"For short-duration locks where some weakness is OK, Redis Redlock is fine. For leader election or locks where correctness is sacred — only one process can run the migration job — ZooKeeper or etcd."</p>
+  </div>
+
+  <div class="tech-card">
+    <h3>etcd — Kubernetes' Coordination Choice <span class="badge tag-red">Consensus</span></h3>
+    <p class="field when"><span class="lbl">When</span>Same use cases as ZooKeeper but with a simpler API and modern operational story. Used as the source of truth for Kubernetes cluster state.</p>
+    <p class="field feat"><span class="lbl">Features</span>Raft consensus, gRPC API, watch streams, lease-based ephemeral keys, transactions over multiple keys, MVCC for historical reads.</p>
+    <p class="field"><span class="lbl">Patterns</span>Same as ZooKeeper — leader election, distributed config, service registry. K8s controllers watch etcd for desired-state changes.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Still requires an odd-number cluster (3 or 5 nodes). Disk I/O sensitive — slow disk = slow consensus = cluster instability.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"For greenfield coordination needs, I'd pick etcd over ZooKeeper — simpler API, better tooling, and if I'm already on Kubernetes I can leverage its etcd indirectly via the K8s API."</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 9 — TIME SERIES -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-cyan">Step 9</span>
+  <h2>Time Series</h2>
+  <p>Metrics, monitoring, IoT sensor data — workloads where every row is <code>(timestamp, key, value)</code> and queries are dominated by "give me X over the last Y time bucketed by Z".</p>
+
+  <div class="tech-card">
+    <h3>InfluxDB / TimescaleDB / Prometheus <span class="badge tag-cyan">Time Series</span></h3>
+    <p class="field when"><span class="lbl">When</span>Application metrics, infrastructure monitoring, IoT sensor telemetry, financial tick data. Anything where the X-axis is time and aggregations / downsampling matter.</p>
+    <p class="field feat"><span class="lbl">Features</span>Time-bucketed compression (10-100× smaller than row storage), automatic downsampling (keep 1s resolution for 1 hour, 1m for 1 day, 1h for 1 year), retention policies, time-bucket-aware query languages (Flux, PromQL, SQL hypertables in TimescaleDB).</p>
+    <p class="field"><span class="lbl">Patterns</span><strong>Prometheus</strong> = pull-based, owned by the metrics ecosystem (Kubernetes, Grafana). <strong>InfluxDB</strong> = push-based, popular for IoT. <strong>TimescaleDB</strong> = Postgres extension, best when you also need SQL joins to non-time-series data.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Each is opinionated — Prometheus is metrics-only (no logs/traces), InfluxDB has had storage-engine churn, TimescaleDB inherits Postgres' vertical-scaling ceiling.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"Don't store metrics in Postgres at scale — a 1B-row metrics table is painful, and you give up 10-100× compression. Reach for a time-series DB the moment your metrics workload is real. Prometheus for K8s-native infra, TimescaleDB if you also need SQL joins, InfluxDB for IoT."</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 10 — VECTOR DBS -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-purple">Step 10</span>
+  <h2>Vector Databases</h2>
+  <p>The category that exploded with the LLM era. If your system has anything to do with semantic search, retrieval-augmented generation (RAG), recommendations from embeddings, or "find me documents similar to this one" — you need a vector DB.</p>
+
+  <div class="tech-card">
+    <h3>Pinecone / Weaviate / Milvus / pgvector <span class="badge tag-purple">Vector</span></h3>
+    <p class="field when"><span class="lbl">When</span>Semantic search, RAG (retrieval-augmented generation for LLMs), recommendation embeddings, image / audio similarity, anomaly detection. Anything where "give me the K nearest neighbors to this 1536-dim vector" is the core query.</p>
+    <p class="field feat"><span class="lbl">Features</span>Approximate nearest neighbor (ANN) search via HNSW (graph-based, fastest) or IVF (inverted file, memory-efficient) indexes, hybrid queries combining vector similarity + keyword filters (<code>category=tech AND vector ~ X</code>), metadata filtering, vector dimension up to 2K+, cosine / dot product / L2 similarity.</p>
+    <p class="field"><span class="lbl">Patterns</span><strong>Pinecone</strong> = managed, easy. <strong>Weaviate</strong> = self-hosted, hybrid search built-in. <strong>Milvus</strong> = open-source at scale. <strong>pgvector</strong> = Postgres extension, perfect when you don't want a separate system and have under ~10M vectors.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>ANN trades recall for speed — tune the trade-off via the index parameters (HNSW's <code>ef</code>, IVF's <code>nprobe</code>). Index build is expensive on huge corpora. Recall typically 0.95-0.99, not 1.0.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"For RAG: chunk documents → embed each chunk via an embedding model → store <code>(vector, chunk_text, source_doc_id)</code> in a vector DB → at query time, embed the user's question and find the top-K nearest chunks → feed those chunks as context to the LLM." For under 10M vectors with existing Postgres, <strong>pgvector</strong> avoids a new system; for &gt;100M, <strong>Pinecone</strong> or <strong>Milvus</strong>.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 11 — DISTRIBUTED LOCKS -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-yellow">Step 11</span>
+  <h2>Distributed Locks</h2>
+  <p>"Only one worker should run the cleanup job." "Only one process should hold the lease on this resource." "Two API requests must not double-charge the customer." These are distributed lock problems. Two main answers, with very different correctness guarantees.</p>
+
+  <div class="tech-card">
+    <h3>Redis Redlock — Fast, Best-Effort Locks <span class="badge tag-red">Lock</span></h3>
+    <p class="field when"><span class="lbl">When</span>Short-duration locks (seconds to minutes) where occasional weakness is acceptable. Rate limiting, idempotency keys, "don't let two pods process the same job", soft mutual exclusion.</p>
+    <p class="field feat"><span class="lbl">Features</span><code>SET key value NX EX 10</code> — atomic "set if not exists" with TTL. The TTL is the safety net: even if the holder dies without releasing, the lock auto-expires. Redlock algorithm extends this to multiple Redis instances for higher availability.</p>
+    <p class="field"><span class="lbl">Patterns</span>Acquire: <code>SET lock:{resource} {random_id} NX EX 10</code>. Release: Lua script that checks the value matches before deleting (so you don't release someone else's lock). Renewal: extend TTL while still holding work.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Famous Martin Kleppmann critique: Redlock is not safe under all failure models. Clock skew + GC pauses can cause two holders to think they own the lock simultaneously. Acceptable for "shouldn't" but not "must not".</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"For short locks where occasional double-execution is recoverable (idempotent work, rate limiting), Redis Redlock with TTL is the right call — fast and simple. For locks where two holders would corrupt data, ZooKeeper or etcd."</p>
+  </div>
+
+  <div class="tech-card">
+    <h3>ZooKeeper / etcd — Strong Locks <span class="badge tag-red">Lock</span></h3>
+    <p class="field when"><span class="lbl">When</span>Critical sections where two simultaneous holders would corrupt data. Leader election for a cluster, exclusive job execution (only one node runs the migration), config rollouts.</p>
+    <p class="field feat"><span class="lbl">Features</span>Ephemeral sequential znodes (ZK) or leases (etcd). Built on top of consensus (ZAB / Raft) so the lock is provably held by exactly one client at a time, modulo network partitions which fail closed.</p>
+    <p class="field"><span class="lbl">Patterns</span>ZK leader election: each candidate creates an ephemeral sequential znode; the lowest sequence number wins. When the leader's session ends (crash, network drop), its znode disappears, the next-lowest takes over.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Slower than Redis (consensus round-trips). Operationally heavy. Overkill for soft locks.</p>
+    <p class="field tip"><span class="lbl">Interview Tip</span>"Two holders holding the lock simultaneously would corrupt data → ZK/etcd. Two holders is just inefficient → Redis."</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 12 — BEFORE / AFTER -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-green">Step 12</span>
+  <h2>Spec Examples — Before / After</h2>
+  <p>The exact phrases. Read these out loud until they feel natural — then it'll come out automatically in an interview.</p>
+
+  <div class="compare">
+    <div class="bad">
+      <span class="lbl">❌ Junior — vague</span>
+      "I'll use a cache to speed up reads."
+    </div>
+    <div class="good">
+      <span class="lbl">✅ Senior — specific</span>
+      "I'll cache the top 10K trending videos as <code>video:{id}</code> Redis HASHes in a 6-node Redis Cluster, sharded on <code>video_id</code> via the cluster's hash slots, LRU eviction at 64GB per node, 30-min TTL, with explicit invalidation on the <code>transcode-complete</code> Kafka event."
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="bad">
+      <span class="lbl">❌ Junior — vague</span>
+      "Use a queue for async processing."
+    </div>
+    <div class="good">
+      <span class="lbl">✅ Senior — specific</span>
+      "Kafka topic <code>notifications.email</code> with 32 partitions keyed by <code>user_id</code> for ordering per user, 7-day retention, replication factor 3 across 3 AZs, with consumer group <code>email-worker</code> of 50 pods. Failed messages route to a DLQ topic after 3 retries."
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="bad">
+      <span class="lbl">❌ Junior — vague</span>
+      "Use NoSQL for the user posts."
+    </div>
+    <div class="good">
+      <span class="lbl">✅ Senior — specific</span>
+      "DynamoDB with <code>PK = user_id</code> and <code>SK = created_at DESC</code> for the GetUserPosts access pattern (one query, sorted, no scan), with a GSI on <code>post_type</code> for the BrowseByCategory pattern. Provisioned at 5K WCU / 25K RCU with on-demand for spikes."
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="bad">
+      <span class="lbl">❌ Junior — vague</span>
+      "Add a load balancer."
+    </div>
+    <div class="good">
+      <span class="lbl">✅ Senior — specific</span>
+      "AWS ALB (L7) terminates TLS, does path-based routing — <code>/api/*</code> to the API service group, <code>/ws/*</code> to a separate NLB for WebSocket connections (L4 because L7 doesn't handle persistent upgrades cleanly). Health checks every 5s on <code>/healthz</code>, evict after 2 failures."
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="bad">
+      <span class="lbl">❌ Junior — vague</span>
+      "Search uses Elasticsearch."
+    </div>
+    <div class="good">
+      <span class="lbl">✅ Senior — specific</span>
+      "Elasticsearch as a derived index — Postgres is the source of truth, change events flow via Debezium → Kafka → an indexer service that updates ES. Time-based indices for logs (<code>logs-2026-05-07</code>), 6 primary shards each, 1 replica, hot tier on SSDs for 7 days, warm on cheaper storage for 30 days, then deleted via ILM."
+    </div>
+  </div>
+
+  <div class="compare">
+    <div class="bad">
+      <span class="lbl">❌ Junior — vague</span>
+      "Store videos in cloud storage."
+    </div>
+    <div class="good">
+      <span class="lbl">✅ Senior — specific</span>
+      "S3 Standard for the originals — uploads via presigned multipart URLs so bytes never touch our app servers. Lifecycle policy: Standard for 30 days, then Standard-IA for 60 days, then Glacier. CloudFront in front for delivery, signed URLs for paid content. Object-created event triggers a Lambda that enqueues a transcode job."
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 13 — DECISION TREES -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-blue">Step 13</span>
+  <h2>Choosing Between Tech — Decision Trees</h2>
+  <p>The handful of decisions that come up in almost every interview. When the interviewer asks "why this and not that?", these trees are the structured answer.</p>
+
+  <h3 class="subh">SQL vs NoSQL</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  Q1{"Need ACID transactions or multi-table joins?"}
+  Q1 -- "Yes" --> SQL["PostgreSQL or MySQL"]
+  Q1 -- "No" --> Q2{"Massive write scale? Over 10K writes/sec"}
+  Q2 -- "No" --> SQL2["Postgres still wins — simpler ops, more flexible"]
+  Q2 -- "Yes" --> Q3{"Access pattern is known and key-based?"}
+  Q3 -- "Yes, key-value reads" --> KV["DynamoDB or Cassandra"]
+  Q3 -- "Yes, document hierarchy" --> DOC["MongoDB"]
+  Q3 -- "No, ad-hoc queries" --> SQL3["Postgres with read replicas or analytics warehouse"]
+
+  style SQL fill:#171d27,stroke:#38b265,color:#d4dae5
+  style SQL2 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style SQL3 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style KV fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style DOC fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">L4 vs L7 Load Balancer</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  Q1{"Protocol on the wire?"}
+  Q1 -- "WebSocket / gRPC stream / TCP / UDP" --> L4["L4 LB — NLB · HAProxy TCP · persistent connections · low latency"]
+  Q1 -- "HTTP / HTTPS" --> Q2{"Need path-based or header-based routing?"}
+  Q2 -- "Yes" --> L7["L7 LB — ALB · nginx · Envoy · TLS termination"]
+  Q2 -- "No, just balance traffic" --> Q3{"Latency-critical? Sub-millisecond required"}
+  Q3 -- "Yes" --> L4B["L4 LB — skip the HTTP parse"]
+  Q3 -- "No" --> L7B["L7 LB — more features, marginal cost"]
+
+  style L4 fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style L4B fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style L7 fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style L7B fill:#171d27,stroke:#4a90d9,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Kafka vs SQS vs Redis Streams</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  Q1{"Need to replay events or have multiple independent consumers?"}
+  Q1 -- "Yes" --> KAFKA["Kafka — retention · consumer groups · replay"]
+  Q1 -- "No" --> Q2{"Throughput needed?"}
+  Q2 -- "Under 10K msg/sec — simple async tasks" --> Q3{"On AWS or GCP and want zero ops?"}
+  Q3 -- "Yes" --> SQS["SQS or Pub-Sub — managed · pay per message"]
+  Q3 -- "No" --> RABBIT["RabbitMQ — self-hosted · rich routing"]
+  Q2 -- "Already running Redis and volume is small" --> RSTREAM["Redis Streams — Kafka-lite for small workloads"]
+  Q2 -- "Over 100K msg/sec" --> KAFKA2["Kafka — only one that scales here"]
+
+  style KAFKA fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style KAFKA2 fill:#171d27,stroke:#d4a838,color:#d4dae5
+  style SQS fill:#171d27,stroke:#3cbfbf,color:#d4dae5
+  style RABBIT fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style RSTREAM fill:#171d27,stroke:#e05252,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Redis vs Memcached</h3>
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  Q1{"Need data structures beyond plain strings?"}
+  Q1 -- "Yes — HASH, ZSET, GEO, etc." --> REDIS["Redis"]
+  Q1 -- "No, pure key-value" --> Q2{"Need pub-sub, persistence, or distributed locks?"}
+  Q2 -- "Yes" --> REDIS2["Redis"]
+  Q2 -- "No, just a dumb cache at huge throughput per node" --> MC["Memcached — multi-threaded · lighter footprint"]
+
+  style REDIS fill:#171d27,stroke:#e05252,color:#d4dae5
+  style REDIS2 fill:#171d27,stroke:#e05252,color:#d4dae5
+  style MC fill:#171d27,stroke:#9b72cf,color:#d4dae5
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>The pattern these trees encode:</strong> never start with "what tech?" — start with "what's the workload shape, and what consistency / scale / latency does it need?" The technology falls out of the workload, not the other way around. If you can describe the workload shape in one sentence, the right tech is usually obvious.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 14 — REAL SYSTEM COMBINATIONS -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-orange">Step 14</span>
+  <h2>Tech Combinations Used by Real Systems</h2>
+  <p>The technologies above don't live alone — they're combined into stacks that have proven themselves at scale. Here's how the canonical HLD problems compose them.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>System</th>
+          <th>Source of truth</th>
+          <th>Cache</th>
+          <th>Search / Index</th>
+          <th>Async / Stream</th>
+          <th>Storage / Edge</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>URL Shortener</strong></td>
+          <td><code>Cassandra</code><br/><span style="color:var(--muted);font-size:.8rem">(hash → URL)</span></td>
+          <td><code>Memcached</code><br/><span style="color:var(--muted);font-size:.8rem">hot 20%</span></td>
+          <td>—</td>
+          <td><code>Kafka</code><br/><span style="color:var(--muted);font-size:.8rem">click telemetry</span></td>
+          <td><code>CDN</code><br/><span style="color:var(--muted);font-size:.8rem">edge-cache 302s</span></td>
+        </tr>
+        <tr>
+          <td><strong>Twitter</strong></td>
+          <td><code>Cassandra</code><br/><span style="color:var(--muted);font-size:.8rem">tweets</span></td>
+          <td><code>Redis</code><br/><span style="color:var(--muted);font-size:.8rem">user timelines (LISTs)</span></td>
+          <td><code>Elasticsearch</code><br/><span style="color:var(--muted);font-size:.8rem">tweet search</span></td>
+          <td><code>Kafka</code><br/><span style="color:var(--muted);font-size:.8rem">fan-out service</span></td>
+          <td><code>S3</code> + <code>CDN</code><br/><span style="color:var(--muted);font-size:.8rem">media</span></td>
+        </tr>
+        <tr>
+          <td><strong>YouTube</strong></td>
+          <td><code>Cassandra</code><br/><span style="color:var(--muted);font-size:.8rem">video metadata</span></td>
+          <td><code>Memcached</code><br/><span style="color:var(--muted);font-size:.8rem">trending feed</span></td>
+          <td><code>Elasticsearch</code><br/><span style="color:var(--muted);font-size:.8rem">video search</span></td>
+          <td><code>Kafka</code><br/><span style="color:var(--muted);font-size:.8rem">transcode pipeline</span></td>
+          <td><code>S3</code> + <code>CDN</code><br/><span style="color:var(--muted);font-size:.8rem">video segments</span></td>
+        </tr>
+        <tr>
+          <td><strong>Uber</strong></td>
+          <td><code>Postgres</code><br/><span style="color:var(--muted);font-size:.8rem">rides, payments</span></td>
+          <td><code>Redis GEO</code> + in-mem QuadTree<br/><span style="color:var(--muted);font-size:.8rem">driver locations</span></td>
+          <td><code>Elasticsearch</code><br/><span style="color:var(--muted);font-size:.8rem">trip history</span></td>
+          <td><code>Kafka</code><br/><span style="color:var(--muted);font-size:.8rem">location updates</span></td>
+          <td>—</td>
+        </tr>
+        <tr>
+          <td><strong>Instagram</strong></td>
+          <td><code>Postgres</code><br/><span style="color:var(--muted);font-size:.8rem">users, posts metadata</span></td>
+          <td><code>Memcached</code><br/><span style="color:var(--muted);font-size:.8rem">feed timelines</span></td>
+          <td><code>Elasticsearch</code><br/><span style="color:var(--muted);font-size:.8rem">hashtag search</span></td>
+          <td><code>Kafka</code><br/><span style="color:var(--muted);font-size:.8rem">notifications</span></td>
+          <td><code>S3</code> + <code>CDN</code><br/><span style="color:var(--muted);font-size:.8rem">photos</span></td>
+        </tr>
+        <tr>
+          <td><strong>Dropbox</strong></td>
+          <td><code>MySQL</code><br/><span style="color:var(--muted);font-size:.8rem">file metadata</span></td>
+          <td><code>Memcached</code><br/><span style="color:var(--muted);font-size:.8rem">folder listings</span></td>
+          <td>—</td>
+          <td><code>Kafka</code><br/><span style="color:var(--muted);font-size:.8rem">sync notifications</span></td>
+          <td><code>Block Store</code> on <code>S3</code><br/><span style="color:var(--muted);font-size:.8rem">file chunks</span></td>
+        </tr>
+        <tr>
+          <td><strong>Slack / Chat</strong></td>
+          <td><code>Cassandra</code> or <code>Postgres</code><br/><span style="color:var(--muted);font-size:.8rem">messages</span></td>
+          <td><code>Redis</code><br/><span style="color:var(--muted);font-size:.8rem">presence, channel members</span></td>
+          <td><code>Elasticsearch</code><br/><span style="color:var(--muted);font-size:.8rem">message search</span></td>
+          <td><code>Kafka</code><br/><span style="color:var(--muted);font-size:.8rem">delivery fan-out</span></td>
+          <td>WebSocket via <code>L4 LB</code></td>
+        </tr>
+        <tr>
+          <td><strong>Netflix-style streaming</strong></td>
+          <td><code>Cassandra</code><br/><span style="color:var(--muted);font-size:.8rem">user profile, watch state</span></td>
+          <td><code>EVCache</code> (Memcached fork)<br/><span style="color:var(--muted);font-size:.8rem">hot metadata</span></td>
+          <td><code>Elasticsearch</code><br/><span style="color:var(--muted);font-size:.8rem">title search</span></td>
+          <td><code>Kafka</code><br/><span style="color:var(--muted);font-size:.8rem">events, recs pipeline</span></td>
+          <td><code>S3</code> + custom CDN<br/><span style="color:var(--muted);font-size:.8rem">video segments</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The pattern across every row:</strong> a relational or wide-column DB for the source of truth, a Memcached/Redis cache for the hot-path reads, Elasticsearch as a derived search index, Kafka for async fan-out and pipelines, and S3 + CDN for any large-blob workload. Master those six and you can sketch ~80% of HLD systems on the whiteboard.</div>
+
+  <div class="highlight hl-green"><strong>The "so what" line:</strong> system design isn't about inventing new tech. It's about combining a small number of well-understood building blocks in the right shape for the workload — and the senior signal is that you specify each block at the level of data structure, eviction policy, partition key, retention, and replication factor in one breath.</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

@@ -473,6 +473,16 @@
           </div>
         </a>
 
+        <a class="dd-card" href="design-dev/LLD/notification-service-lld.html" target="_blank" data-tags="lld case-study notification messaging">
+          <span class="dd-tag">LLD · Case Study</span>
+          <h3 class="dd-card-title">Notification Service — LLD Design</h3>
+          <p class="dd-card-desc">Multi-channel sender (Email/SMS/Push/WhatsApp) with the API-vs-worker split that keeps Order Service unblocked when SendGrid is slow — Strategy + Factory + Decorator + retries with backoff, idempotency at two layers, and rate limits per user &amp; provider.</p>
+          <div class="dd-card-footer">
+            <span class="dd-card-cta">Read the deep dive →</span>
+            <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+          </div>
+        </a>
+
         <a class="dd-card" href="design-dev/LLD/makemytrip-lld.html" target="_blank" data-tags="lld case-study interview">
           <span class="dd-tag">LLD · Case Study</span>
           <h3 class="dd-card-title">MakeMyTrip — LLD Interview Design</h3>
@@ -493,6 +503,177 @@
           </div>
         </a>
 
+        <a class="dd-card" href="design-dev/HLD/hld-interview-framework.html" target="_blank" data-tags="hld system-design framework interview-prep methodology delivery">
+          <span class="dd-tag">HLD · Framework</span>
+          <h3 class="dd-card-title">HLD Interview Framework — The 4-Step Delivery</h3>
+          <p class="dd-card-desc">A 45-minute playbook for any HLD interview — Requirements → Core Entities → APIs → High-Level Design → Deep Dives. The four evaluation pillars interviewers actually score, common mistakes to avoid, and the specificity test that separates senior from junior.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the playbook →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/common-patterns.html" target="_blank" data-tags="hld system-design patterns reference cheatsheet">
+          <span class="dd-tag">HLD · Reference</span>
+          <h3 class="dd-card-title">8 Common HLD Patterns — Reference Catalog</h3>
+          <p class="dd-card-desc">Real-time updates, long-running tasks, contention, scaling reads, scaling writes, large blobs, multi-step sagas, proximity-based services — each with when-to-use, decision tree, trade-offs, and 2–3 cross-links to live HLDs on this site.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Browse patterns →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/key-technologies.html" target="_blank" data-tags="hld system-design technologies redis kafka cassandra elasticsearch cheatsheet">
+          <span class="dd-tag">HLD · Reference</span>
+          <h3 class="dd-card-title">Key Technologies Cheat Sheet — Redis, Kafka, ES, Cassandra…</h3>
+          <p class="dd-card-desc">Move from "I'll use Redis" to "Redis HASH per user_id, LRU at 64GB/node, sharded across 6 nodes via consistent hashing" — the specificity that lands offers. Decision trees for SQL vs NoSQL, L4 vs L7, Kafka vs SQS, Redis vs Memcached.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the cheat sheet →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/whatsapp-hld.html" target="_blank" data-tags="hld system-design backend whatsapp messaging encryption signal-protocol">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">WhatsApp — HLD Design</h3>
+          <p class="dd-card-desc">End-to-end encrypted messaging at 2B-user scale — Signal Protocol's X3DH + Double Ratchet, multi-device fan-out (server can't read your messages), group sender keys, WebRTC for voice/video with TURN fallback, and the connection-server cluster holding 50K WebSockets each.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/top-k-service-hld.html" target="_blank" data-tags="hld system-design backend topk streaming flink count-min-sketch trending">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Top-K Service — HLD Design</h3>
+          <p class="dd-card-desc">Trending Now from 100K events/sec — Count-Min Sketch + Min-Heap for approximate top-K in fixed memory regardless of cardinality, sliding windows via per-minute sketch buckets, Flink-driven aggregation, and the trade-off vs exact counting.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/ad-click-aggregator-hld.html" target="_blank" data-tags="hld system-design backend ads analytics flink exactly-once kafka idempotency">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Ad Click Aggregator — HLD Design</h3>
+          <p class="dd-card-desc">1M clicks/sec where every click is billed — exactly-once aggregation via Kafka + Flink with idempotency keys, hot-ad sub-sharding, real-time Redis dashboards alongside daily Spark reconciliation against payment networks, fraud detection, and PCI-style audit.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/google-docs-hld.html" target="_blank" data-tags="hld system-design backend google-docs collaborative-editing ot crdt websocket">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Google Docs — HLD Design</h3>
+          <p class="dd-card-desc">Real-time collaborative editing with sub-200ms keystroke latency — Operational Transformation for conflict resolution, Doc Session Server holding the canonical op log per document, offline merge on reconnect, op-log + snapshot persistence, and revision history reconstruction.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/payment-system-hld.html" target="_blank" data-tags="hld system-design backend payments stripe ledger saga idempotency pci">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Payment System — HLD Design</h3>
+          <p class="dd-card-desc">Move money without losing or duplicating a cent — idempotency-key + DB UNIQUE for safe retries, double-entry ledger with sum-to-zero invariants, Temporal saga with compensating actions for multi-step rollback, fraud scoring, and PCI tokenization to keep raw card numbers out of your servers.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/distributed-cache-hld.html" target="_blank" data-tags="hld system-design backend cache redis memcached consistent-hashing">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Distributed Cache — HLD Design</h3>
+          <p class="dd-card-desc">Build Redis Cluster from first principles — consistent-hashing ring with virtual nodes, sync vs async replication, LRU/LFU/TTL eviction trade-offs, write-through vs write-around vs write-back, hot-key splitting, cache-stampede protection via request coalescing, and Sentinel-driven failover.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/job-scheduler-hld.html" target="_blank" data-tags="hld system-design backend scheduler cron leader-election zookeeper temporal">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Job Scheduler — HLD Design</h3>
+          <p class="dd-card-desc">"Send reminder in 3 days" at billions-of-jobs scale — time-bucketed storage so finding due jobs is O(1), two-tier cold-DynamoDB + hot-Redis-ZSET split, leased execution for crash safety, ZooKeeper-driven partition assignment, and exactly-once-effective via idempotency keys.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/pastebin-hld.html" target="_blank" data-tags="hld system-design backend pastebin object-storage s3 metadata">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Pastebin — HLD Design</h3>
+          <p class="dd-card-desc">The metadata-vs-blob plane split that makes a paste service scale — KGS-backed unique keys, S3 for content, MySQL/Cassandra for metadata, multi-tier cache, and the 5:1 read:write ratio that drives every choice.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/instagram-hld.html" target="_blank" data-tags="hld system-design backend instagram photos feed cdn social">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Instagram — HLD Design</h3>
+          <p class="dd-card-desc">Three planes — Upload, Serve, Feed — with photo sharding by photo_id, fan-out vs fan-in for news feed, and the celebrity-user hybrid that makes 100M followers tractable. 1425TB of blobs over 10 years, plus the exact ER diagram + capacity math.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/facebook-messenger-hld.html" target="_blank" data-tags="hld system-design backend messenger chat websocket realtime">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Facebook Messenger — HLD Design</h3>
+          <p class="dd-card-desc">From polling to WebSockets — chat servers each holding 50K open connections, HBase for time-sorted message storage, Kafka for cross-server fan-out, presence service that scales to 500M users without broadcast storms.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/twitter-hld.html" target="_blank" data-tags="hld system-design backend twitter timeline fanout social">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Twitter — HLD Design</h3>
+          <p class="dd-card-desc">325K reads/sec timeline assembly via the push/pull hybrid — fan-out-on-write for normal users, pull for celebrities like Elon, merge on read. 64-bit time-sortable tweet IDs, Cassandra sharded by tweet_id, plus trending topics &amp; who-to-follow.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/youtube-hld.html" target="_blank" data-tags="hld system-design backend youtube video streaming cdn transcoding">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Youtube / Netflix — HLD Design</h3>
+          <p class="dd-card-desc">Why CDN is non-negotiable for video — three-plane architecture (Upload, Transcode, Serve) with adaptive bitrate streaming, perceptual-hash dedup, and the 1TB/sec egress problem solved by edge POPs. 25GB/sec ingest math + transcode pipeline.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/typeahead-hld.html" target="_blank" data-tags="hld system-design backend typeahead autocomplete trie search">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Typeahead Suggestion — HLD Design</h3>
+          <p class="dd-card-desc">In-memory trie with offline frequency updates — why SQL LIKE can't do 60K QPS in under 200ms, how partition-by-hash + aggregator merge handles "give me top 10 for prefix sy", and the EMA-based ranking that makes trends bubble up.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/rate-limiter-hld.html" target="_blank" data-tags="hld system-design backend rate-limiter throttling redis">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">API Rate Limiter — HLD Design</h3>
+          <p class="dd-card-desc">Five algorithms compared (fixed window, sliding window, sliding-with-counters, token bucket, leaky bucket), the atomic-INCR race condition solved with Redis Lua, and the IP-vs-user-vs-API-key hybrid that protects /login without locking real users out.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/twitter-search-hld.html" target="_blank" data-tags="hld system-design backend twitter search inverted-index elasticsearch">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Twitter Search — HLD Design</h3>
+          <p class="dd-card-desc">Inverted index over 730 billion tweets in under 200ms — shard-by-tweet_id with aggregator fan-in, per-shard local indexes, the reverse-index trick that makes crash recovery fast, and the ranking pipeline that scores recency + popularity + engagement.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/web-crawler-hld.html" target="_blank" data-tags="hld system-design backend crawler bfs dns frontier">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Web Crawler — HLD Design</h3>
+          <p class="dd-card-desc">15B pages in 4 weeks at 6200 pages/sec — sharded URL frontier with per-host politeness queues, robots.txt cache, document &amp; URL dedupe via SHA checksums (no bloom filters!), checkpointing for week-long crawl resilience, and crawler-trap defenses.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/facebook-newsfeed-hld.html" target="_blank" data-tags="hld system-design backend facebook newsfeed feed ranking ml">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Facebook Newsfeed — HLD Design</h3>
+          <p class="dd-card-desc">Pre-computed personalized feeds for 300M DAU — the push/pull/hybrid trade-off, ML ranking by relevance + recency + engagement, multi-tier cache (in-process → Redis → DB), and how new posts hit followers' feeds within 5 seconds.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/yelp-hld.html" target="_blank" data-tags="hld system-design backend yelp geo proximity quadtree spatial">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Yelp / Nearby Friends — HLD Design</h3>
+          <p class="dd-card-desc">QuadTree spatial index for "find me ramen within 1 mile" across 500M places — why fixed grids fail in Manhattan, how dynamic 4-way splits keep leaf density uniform, doubly-linked leaves for fast neighbor traversal, and the QuadTree-Index reverse map for crash recovery.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/uber-hld.html" target="_blank" data-tags="hld system-design backend uber geo realtime quadtree pubsub">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Uber Backend — HLD Design</h3>
+          <p class="dd-card-desc">167K driver location updates/sec without melting the QuadTree — the DriverLocationHT in-memory hash table that absorbs the firehose, lazy 15-second QuadTree refresh, and the Notification Service pub/sub that pushes live driver positions to subscribed riders.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/ticketmaster-hld.html" target="_blank" data-tags="hld system-design backend ticketmaster booking concurrency mysql acid">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">Ticketmaster / BookMyShow — HLD Design</h3>
+          <p class="dd-card-desc">50K fans hitting "buy" on the same 200 seats at 09:00:00.001 — SERIALIZABLE isolation + SELECT FOR UPDATE to prevent double-bookings, ActiveReservationsService with 5-min holds, and the WaitingUsersService FIFO queue that wakes the next buyer when a hold expires.</p>
+          <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+        </a>
+
+        <a class="dd-card" href="design-dev/HLD/url-shortener-hld.html" target="_blank" data-tags="hld system-design backend tinyurl bitly key-generation cache cdn">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">TinyURL / Short URL Service — HLD Design</h3>
+          <p class="dd-card-desc">Three-pass story arc from "one MySQL box" to a sharded NoSQL store fronted by a CDN, Memcached, and a Key Generation Service that pre-generates 6-char keys offline so the write path never collides — write/read/key-gen split, 20K redirects/sec, full capacity math.</p>
+          <div class="dd-card-footer">
+            <span class="dd-card-cta">Read the deep dive →</span>
+            <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+          </div>
+        </a>
+
         <a class="dd-card" href="design-dev/HLD/dropbox-hld.html" target="_blank" data-tags="hld system-design backend storage distributed">
           <span class="dd-tag">HLD · Case Study</span>
           <h3 class="dd-card-title">Dropbox / Google Drive — HLD Design</h3>
@@ -503,10 +684,30 @@
           </div>
         </a>
 
+        <a class="dd-card" href="design-dev/HLD/leetcode-hld.html" target="_blank" data-tags="hld system-design backend sandbox queue contest">
+          <span class="dd-tag">HLD · Case Study</span>
+          <h3 class="dd-card-title">LeetCode / Online Judge — HLD Design</h3>
+          <p class="dd-card-desc">Running strangers' code without setting the host on fire: gVisor/Firecracker sandboxes, async submission queue, WebSocket verdict push, Redis ZSET leaderboards, and the web-tier vs. judge-tier split that makes 5K hostile submissions/sec routine.</p>
+          <div class="dd-card-footer">
+            <span class="dd-card-cta">Read the deep dive →</span>
+            <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+          </div>
+        </a>
+
         <a class="dd-card" href="design-dev/Tech/distributed-id-generation-hld.html" target="_blank" data-tags="tech system-design backend distributed">
           <span class="dd-tag">Tech · Distributed Systems</span>
           <h3 class="dd-card-title">Distributed Unique ID Generation — Deep Dive</h3>
           <p class="dd-card-desc">How big systems generate unique IDs across many servers — explained simply. UUIDs (v4 &amp; v7), Snowflake's 64-bit layout, the boot-only coordinator pattern, common mistakes, and a decision guide for when to use which.</p>
+          <div class="dd-card-footer">
+            <span class="dd-card-cta">Read the deep dive →</span>
+            <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+          </div>
+        </a>
+
+        <a class="dd-card" href="design-dev/Tech/median-of-billions.html" target="_blank" data-tags="tech algorithms big-data interview">
+          <span class="dd-tag">Tech · Algorithm Deep Dive</span>
+          <h3 class="dd-card-title">Median of 10 Billion Integers — Bucket Counting</h3>
+          <p class="dd-card-desc">50 files, 40 GB of data, 16 GB of RAM. Why sorting is the wrong instinct, and how two passes of bucket counting find the exact median in ~1 MB of memory. Worked example, edge cases, and when this idea breaks.</p>
           <div class="dd-card-footer">
             <span class="dd-card-cta">Read the deep dive →</span>
             <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
