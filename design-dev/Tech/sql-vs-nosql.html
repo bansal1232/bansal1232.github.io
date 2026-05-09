@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SQL vs NoSQL — A Storytelling Guide With Examples</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../../css/likes.css"/>
+<script src="../../js/likes.js" defer></script>
+<style>
+  :root {
+    --bg: #0e1117; --surface: #161b22; --surface-hover: #1c2230; --border: #30363d;
+    --text: #e6edf3; --text-muted: #8b949e;
+    --accent: #ea580c; --accent-dim: rgba(234,88,12,0.14);
+    --green: #3fb950; --green-dim: rgba(63,185,80,0.12);
+    --red: #f85149; --red-dim: rgba(248,81,73,0.12);
+    --blue: #58a6ff; --blue-dim: rgba(88,166,255,0.12);
+    --purple: #bc8cff; --purple-dim: rgba(188,140,255,0.12);
+    --yellow: #e3b341; --yellow-dim: rgba(227,179,65,0.12);
+    --orange: #f0883e; --orange-dim: rgba(240,136,62,0.12);
+    --code-bg: #0d1117; --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); line-height: 1.75; }
+  .layout { max-width: 1920px; margin: 0 auto; padding: 3rem 4rem 5rem; display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 4.5rem; align-items: start; }
+  @media (max-width: 1200px) { .layout { padding: 3rem 2rem 5rem; gap: 3rem; } }
+  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; gap: 1.5rem; padding: 2rem 1.2rem 4rem; } }
+  .sidebar { position: sticky; top: 2rem; font-size: 0.88rem; }
+  @media (max-width: 960px) { .sidebar { position: static; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem 1.4rem; } }
+  .sidebar h4 { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); margin-bottom: 0.85rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+  .sidebar ol { list-style: none; padding: 0; counter-reset: toc2; }
+  .sidebar ol li { counter-increment: toc2; margin-bottom: 0.35rem; }
+  .sidebar ol li::before { content: counter(toc2, decimal-leading-zero); display: inline-block; width: 1.8rem; color: var(--accent); font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
+  .sidebar a { color: var(--text-muted); text-decoration: none; transition: color 0.15s; font-size: 0.9rem; }
+  .sidebar a:hover { color: var(--accent); }
+  @media (max-width: 960px) { .sidebar ol { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem 1rem; } }
+  @media (max-width: 560px) { .sidebar ol { grid-template-columns: 1fr; } }
+  .content { min-width: 0; }
+  header { text-align: center; padding: 3rem 0 2.5rem; border-bottom: 1px solid var(--border); margin-bottom: 3rem; }
+  header .badge { display: inline-block; background: var(--accent-dim); color: var(--accent); font-weight: 700; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.35rem 1rem; border-radius: 100px; margin-bottom: 1rem; }
+  header h1 { font-family: 'Fraunces', serif; font-weight: 900; font-size: 2.6rem; letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 0.5rem; }
+  header p { color: var(--text-muted); font-size: 1.05rem; }
+  .feature { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; margin-bottom: 1.75rem; transition: border-color 0.2s; scroll-margin-top: 1.5rem; }
+  .feature:hover { border-color: var(--accent); }
+  .feature-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+  .feature-num { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600; color: var(--accent); background: var(--accent-dim); padding: 0.2rem 0.6rem; border-radius: 6px; letter-spacing: 0.05em; }
+  .feature h2 { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.45rem; line-height: 1.3; }
+  .feature h3 { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.05rem; margin: 1.5rem 0 0.5rem; color: var(--text); }
+  .feature p { color: var(--text); font-size: 0.95rem; margin-bottom: 0.85rem; }
+  .feature p.lead { color: var(--text); font-size: 1rem; margin-bottom: 1.2rem; }
+  .scene { background: linear-gradient(135deg, rgba(234,88,12,0.08), rgba(188,140,255,0.04)); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 1rem 1.2rem; margin: 0 0 1.4rem; font-size: 0.95rem; color: var(--text); font-style: italic; }
+  .scene::before { content: "🎬 Scene · "; font-style: normal; font-weight: 700; color: var(--accent); letter-spacing: 0.04em; font-size: 0.78rem; text-transform: uppercase; }
+  .interview-q { background: var(--blue-dim); border-left: 3px solid var(--blue); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; margin: 1.2rem 0 0.85rem; font-size: 0.92rem; color: var(--blue); font-weight: 600; }
+  .interview-q::before { content: "Q: "; font-weight: 800; }
+  .answer { color: var(--text); font-size: 0.95rem; margin-bottom: 0.85rem; }
+  .answer ul, .feature ul, .feature ol { margin: 0.5rem 0 0.9rem 1.3rem; color: var(--text); }
+  .answer li, .feature li { margin-bottom: 0.4rem; font-size: 0.93rem; }
+  .answer strong, .feature strong { color: var(--text); }
+  code, pre { font-family: 'JetBrains Mono', monospace; }
+  p code, li code, .answer code { background: var(--code-bg); border: 1px solid var(--border); padding: 0.05rem 0.4rem; border-radius: 4px; font-size: 0.82rem; color: var(--accent); }
+  .code-block { position: relative; margin: 0.6rem 0 1rem; }
+  .code-label { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.35rem 0.8rem; border-radius: 8px 8px 0 0; display: inline-block; font-weight: 600; }
+  .code-label.example { background: var(--purple-dim); color: var(--purple); }
+  .code-label.bad     { background: var(--red-dim);    color: var(--red); }
+  .code-label.good    { background: var(--green-dim);  color: var(--green); }
+  .code-label.demo    { background: var(--blue-dim);   color: var(--blue); }
+  .code-label.note    { background: var(--yellow-dim); color: var(--yellow); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 0 8px 8px 8px; padding: 1.1rem 1.25rem; overflow-x: auto; font-size: 0.82rem; line-height: 1.7; color: var(--text); }
+  pre .kw { color: #ff7b72; } pre .str { color: #a5d6ff; } pre .cmt { color: #8b949e; font-style: italic; } pre .fn { color: #d2a8ff; } pre .type { color: #79c0ff; } pre .num { color: #f0883e; } pre .ann { color: #ffa657; }
+  .tip { background: var(--green-dim); border-left: 3px solid var(--green); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.88rem; color: var(--green); margin-top: 0.5rem; }
+  .tip::before { content: "💡 Interview Tip · "; font-weight: 700; }
+  .analogy { background: var(--purple-dim); border-left: 3px solid var(--purple); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.92rem; color: var(--text); margin: 0.5rem 0 1rem; }
+  .analogy::before { content: "🔗 Analogy · "; font-weight: 700; color: var(--purple); }
+  .gotcha { background: var(--red-dim); border-left: 3px solid var(--red); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 1rem; }
+  .gotcha::before { content: "⚠️ Gotcha · "; font-weight: 700; color: var(--red); }
+  .so-what { background: var(--accent-dim); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 0.85rem 1rem; font-size: 0.95rem; color: var(--text); margin: 1.4rem 0 0.5rem; font-weight: 500; }
+  .so-what::before { content: "🎯 So in short · "; font-weight: 700; color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin: 0.8rem 0 1rem; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 0.6rem 0.85rem; border: 1px solid var(--border); color: var(--text); }
+  th { background: var(--surface-hover); font-weight: 700; color: var(--accent); }
+  .versus { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  .versus .vs-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.1rem; }
+  .versus .vs-card h4 { font-family: 'Fraunces', serif; font-size: 1rem; margin-bottom: 0.5rem; }
+  .versus .vs-card.sql h4 { color: var(--blue); }
+  .versus .vs-card.nosql h4 { color: var(--green); }
+  .versus .vs-card ul { margin-left: 1.1rem; font-size: 0.88rem; }
+  .versus .vs-card li { margin-bottom: 0.3rem; }
+  @media (max-width: 750px) { .versus { grid-template-columns: 1fr; } header h1 { font-size: 1.8rem; } .feature { padding: 1.5rem; } }
+</style>
+</head>
+<body>
+
+<header style="padding: 3rem 1.5rem 2.5rem;position:relative;">
+  <a href="../../design-development.html" style="position:absolute;top:1.2rem;left:1.5rem;display:inline-flex;align-items:center;gap:.4rem;color:var(--accent);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid rgba(255,255,255,.12);border-radius:100px;background:rgba(17,22,30,.5);backdrop-filter:blur(6px);transition:transform .2s;">← Back to Design &amp; Development</a>
+  <div class="badge">Databases · SQL vs NoSQL</div>
+  <h1>SQL vs NoSQL — With Real Examples</h1>
+  <p>Tables &amp; Joins · Documents &amp; Keys · ACID &amp; BASE · Sharding · CAP — explained the way you'd teach a friend over chai</p>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">The Core Mental Model</a></li>
+      <li><a href="#s2">Schema — Rigid vs Flexible</a></li>
+      <li><a href="#s3">The 4 Flavors of NoSQL</a></li>
+      <li><a href="#s4">Document Store — MongoDB</a></li>
+      <li><a href="#s5">Key-Value — Redis &amp; DynamoDB</a></li>
+      <li><a href="#s6">Wide-Column — Cassandra</a></li>
+      <li><a href="#s7">Graph — Neo4j</a></li>
+      <li><a href="#s8">ACID vs BASE</a></li>
+      <li><a href="#s9">Joins vs Denormalization</a></li>
+      <li><a href="#s10">Indexes — Same Idea, Different Cost</a></li>
+      <li><a href="#s11">Vertical vs Horizontal Scaling</a></li>
+      <li><a href="#s12">Sharding &amp; Replication</a></li>
+      <li><a href="#s13">CAP Theorem in Practice</a></li>
+      <li><a href="#s14">Same Problem, Two Designs</a></li>
+      <li><a href="#s15">When SQL Wins</a></li>
+      <li><a href="#s16">When NoSQL Wins</a></li>
+      <li><a href="#s17">Polyglot Persistence</a></li>
+      <li><a href="#s18">Real-World Stacks</a></li>
+      <li><a href="#s19">Migration Pitfalls</a></li>
+      <li><a href="#s20">Rapid-Fire Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <main class="content">
+
+<!-- ===== 1 ===== -->
+<div class="feature" id="s1">
+  <div class="feature-header"><span class="feature-num">01</span><h2>The Core Mental Model — Tables vs Documents vs Keys</h2></div>
+  <p class="lead">Almost every SQL-vs-NoSQL interview opens with "what's the difference?" and almost every candidate answers "SQL has schemas, NoSQL doesn't" — which is half-true and completely misses the point. The real difference is <em>how the data is shaped on disk</em>, and everything else (scaling, joins, transactions) flows from that.</p>
+
+  <div class="scene">Riya is asked to design storage for a new product. She instinctively says "Postgres, of course — it's what we always use." Her tech-lead asks: "If a single product has 50 variants, 200 reviews, and a price history of 3 years, how many tables do you have? How many joins to load one product page?" Riya counts six joins and pauses. "What if all of that lived in one document, fetched in one read?" — that's the moment NoSQL stops being a buzzword and starts making sense.</div>
+
+  <div class="interview-q">In one sentence, what is the actual difference between SQL and NoSQL?</div>
+
+  <div class="answer">
+    <p><strong>SQL stores normalized rows in tables with a fixed schema, queried with a declarative language (SQL) that joins those tables on demand. NoSQL stores denormalized records (documents, key-value pairs, wide rows, or graphs) optimized for the access pattern, queried with APIs specific to that shape.</strong></p>
+    <p>Notice what that sentence doesn't say: "NoSQL has no schema." NoSQL absolutely has a schema — it just lives in your application code, not in the database's <code>CREATE TABLE</code> statement. The schema didn't disappear; the responsibility for enforcing it moved.</p>
+  </div>
+
+  <table>
+    <tr><th>Property</th><th>SQL (Postgres, MySQL)</th><th>NoSQL (MongoDB, Cassandra, Redis)</th></tr>
+    <tr><td>Data shape</td><td>Tables of rows &amp; columns</td><td>Documents, KV pairs, wide rows, graph nodes</td></tr>
+    <tr><td>Schema</td><td>Enforced by DB at write time</td><td>Often enforced by app at read time</td></tr>
+    <tr><td>Query language</td><td>SQL — declarative, joins, set ops</td><td>Per-DB API — usually no joins</td></tr>
+    <tr><td>Transactions</td><td>Multi-row, multi-table ACID</td><td>Usually single-document atomic, eventual consistency across docs</td></tr>
+    <tr><td>Scaling</td><td>Vertical first; horizontal is hard</td><td>Horizontal-first by design</td></tr>
+    <tr><td>Best at</td><td>Relationships, ad-hoc queries, integrity</td><td>Massive scale, flexible shape, single-record reads</td></tr>
+  </table>
+
+  <div class="analogy">SQL is a <em>library</em> — every book lives on a numbered shelf, the catalog tells you exactly where it is, and to find "all books by author X mentioning topic Y" the librarian walks five aisles and joins the indexes. NoSQL is a <em>self-storage unit</em> — each tenant gets one big locker labeled with their name, and everything they own (clothes, photos, papers) is stuffed inside that one locker. Fetch by name = one trip. "Find everyone who owns a guitar" = open every locker.</div>
+
+  <div class="tip">If the interviewer asks "SQL or NoSQL for X?", never answer in absolutes. Ask: <em>what's the access pattern? what's the read/write ratio? do relationships matter? what's the consistency requirement?</em> Those four questions decide it.</div>
+
+  <div class="so-what">SQL = normalized tables + joins + ACID + vertical scale. NoSQL = denormalized records + per-record reads + horizontal scale. The schema didn't disappear in NoSQL — it just moved into your app code.</div>
+</div>
+
+<!-- ===== 2 ===== -->
+<div class="feature" id="s2">
+  <div class="feature-header"><span class="feature-num">02</span><h2>Schema — Rigid Contract vs Schema-on-Read</h2></div>
+  <p class="lead">"Schemaless" is one of the most misleading marketing words in databases. Every NoSQL store has a schema; the question is <em>who validates it</em> and <em>when</em>.</p>
+
+  <div class="interview-q">What does "schemaless" actually mean? Is it a feature or a footgun?</div>
+
+  <div class="answer">
+    <p>In SQL, the database refuses bad data at write time. <code>INSERT INTO users (age) VALUES ('twenty')</code> errors out because <code>age</code> is declared <code>INT</code>. That's <strong>schema-on-write</strong>.</p>
+    <p>In MongoDB, the same insert succeeds — the database stores whatever JSON you give it. The error surfaces six weeks later when an analytics job runs <code>avg(age)</code> and chokes on the string. That's <strong>schema-on-read</strong>: the schema exists, but it's enforced by the consumer of the data, not the producer.</p>
+  </div>
+
+  <div class="versus">
+    <div class="vs-card sql">
+      <h4>SQL — schema enforced by DB</h4>
+      <ul>
+        <li>DDL: <code>CREATE TABLE</code>, <code>ALTER TABLE</code></li>
+        <li>Bad writes are rejected immediately</li>
+        <li>Migrations are explicit, atomic, and reviewed</li>
+        <li>Schema doubles as documentation</li>
+        <li>Painful when the shape changes weekly</li>
+      </ul>
+    </div>
+    <div class="vs-card nosql">
+      <h4>NoSQL — schema enforced by app</h4>
+      <ul>
+        <li>Each document carries its own structure</li>
+        <li>Adding a new field = just write it next time</li>
+        <li>Mixed-shape data lives side-by-side during a migration</li>
+        <li>Application code must defensively handle missing/old fields</li>
+        <li>Bugs surface late, often in production</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <span class="code-label example">Same data — two schemas</span>
+<pre><span class="cmt">-- SQL (Postgres) — rigid, declared once</span>
+<span class="kw">CREATE TABLE</span> users (
+  id        <span class="type">BIGSERIAL</span> <span class="kw">PRIMARY KEY</span>,
+  email     <span class="type">VARCHAR</span>(255) <span class="kw">UNIQUE NOT NULL</span>,
+  age       <span class="type">INT</span> <span class="kw">CHECK</span> (age &gt;= 0),
+  created_at <span class="type">TIMESTAMPTZ</span> <span class="kw">DEFAULT NOW</span>()
+);
+
+<span class="cmt">// MongoDB — flexible, per-document</span>
+db.users.insertOne({
+  email: <span class="str">"riya@example.com"</span>,
+  age: <span class="num">28</span>,
+  preferences: { theme: <span class="str">"dark"</span>, lang: <span class="str">"en"</span> }   <span class="cmt">// new field, no migration</span>
+});
+db.users.insertOne({
+  email: <span class="str">"aman@example.com"</span>,
+  age: <span class="str">"twenty-eight"</span>      <span class="cmt">// stored happily — bug ships to prod</span>
+});</pre>
+  </div>
+
+  <div class="gotcha">"Schemaless" doesn't mean "no validation" — it means <em>you</em> are now the validator. Modern teams use Mongoose (Node), Pydantic (Python), or JSON Schema validation in MongoDB itself to put the contract back at write time. The freedom of "no schema" wears off about three months into a project.</div>
+
+  <div class="so-what">SQL validates at write — bad data fails fast. NoSQL validates at read — bad data fails late. Either model needs a schema; only the location of enforcement changes.</div>
+</div>
+
+<!-- ===== 3 ===== -->
+<div class="feature" id="s3">
+  <div class="feature-header"><span class="feature-num">03</span><h2>The 4 Flavors of NoSQL — Document, Key-Value, Wide-Column, Graph</h2></div>
+  <p class="lead">"NoSQL" is a marketing umbrella that hides four genuinely different storage shapes. Treating MongoDB, Redis, Cassandra, and Neo4j as the same kind of thing is like treating a notebook, a sticky-note pad, a spreadsheet, and a mind-map as "all paper".</p>
+
+  <table>
+    <tr><th>Family</th><th>Shape of one record</th><th>Best at</th><th>Examples</th></tr>
+    <tr><td><strong>Document</strong></td><td>JSON-like nested object keyed by ID</td><td>Flexible product/content data, single-doc reads</td><td>MongoDB, CouchDB, Firestore</td></tr>
+    <tr><td><strong>Key-Value</strong></td><td>Opaque value blob behind a single key</td><td>Caching, sessions, leaderboards, counters</td><td>Redis, DynamoDB, Memcached, Riak</td></tr>
+    <tr><td><strong>Wide-Column</strong></td><td>Row keyed by ID + sparse columns grouped into families</td><td>Time-series, event logs, write-heavy at petabyte scale</td><td>Cassandra, HBase, ScyllaDB, Bigtable</td></tr>
+    <tr><td><strong>Graph</strong></td><td>Nodes + edges with properties</td><td>Social networks, fraud rings, recommendations</td><td>Neo4j, Amazon Neptune, ArangoDB</td></tr>
+  </table>
+
+  <div class="analogy">Document = <em>a folder per customer with all their forms inside</em>. Key-Value = <em>a coat-check ticket and a numbered hook</em>. Wide-Column = <em>a giant spreadsheet where most cells are empty but the rows that exist are huge</em>. Graph = <em>a corkboard with pins and red string between them</em>.</div>
+
+  <div class="tip">When asked "which NoSQL?" never just say "MongoDB". Match the shape: nested object? Document. Single-key lookup? KV. Time-series at scale? Wide-column. Relationships are the data? Graph. Picking the right family beats tuning the wrong one.</div>
+
+  <div class="so-what">"NoSQL" is four families, not one. Each family is optimized for a different access pattern. The question isn't SQL vs NoSQL — it's "which of the five shapes (incl. relational) fits my access pattern?"</div>
+</div>
+
+<!-- ===== 4 ===== -->
+<div class="feature" id="s4">
+  <div class="feature-header"><span class="feature-num">04</span><h2>Document Store — MongoDB With a Real Example</h2></div>
+  <p class="lead">A document store treats one record as a self-contained JSON tree. The unit of read, write, and atomicity is the document — and that's exactly the design choice that makes it fast for some things and miserable for others.</p>
+
+  <div class="scene">Karthik is building an e-commerce product catalog. Each product has a name, price, multiple variants (size, color, stock), images, and 200 reviews. In Postgres he draws four tables: <code>products</code>, <code>variants</code>, <code>images</code>, <code>reviews</code> — and a "load product page" query joins all four. In MongoDB he writes <em>one</em> document per product. One read, no joins. The product page renders in 8ms instead of 80.</div>
+
+  <div class="code-block">
+    <span class="code-label good">Same product — SQL (5 rows across 4 tables) vs MongoDB (1 document)</span>
+<pre><span class="cmt">-- Postgres: 4 tables, joined at query time</span>
+<span class="kw">SELECT</span> p.*, v.size, v.color, v.stock, i.url, r.rating, r.text
+<span class="kw">FROM</span> products p
+  <span class="kw">JOIN</span> variants v <span class="kw">ON</span> v.product_id = p.id
+  <span class="kw">JOIN</span> images   i <span class="kw">ON</span> i.product_id = p.id
+  <span class="kw">LEFT JOIN</span> reviews r <span class="kw">ON</span> r.product_id = p.id
+<span class="kw">WHERE</span> p.id = <span class="num">42</span>;
+
+<span class="cmt">// MongoDB: 1 document, 1 read</span>
+{
+  _id: <span class="str">"prod-42"</span>,
+  name: <span class="str">"Mechanical Keyboard"</span>,
+  price: <span class="num">8999</span>,
+  variants: [
+    { sku: <span class="str">"k-red-tkl"</span>, color: <span class="str">"red"</span>,  size: <span class="str">"TKL"</span>, stock: <span class="num">12</span> },
+    { sku: <span class="str">"k-blk-100"</span>, color: <span class="str">"black"</span>, size: <span class="str">"100%"</span>, stock: <span class="num">7</span> }
+  ],
+  images: [<span class="str">"cdn/k1.jpg"</span>, <span class="str">"cdn/k2.jpg"</span>],
+  reviews: [
+    { user: <span class="str">"riya"</span>, rating: <span class="num">5</span>, text: <span class="str">"Crispy switches"</span> },
+    { user: <span class="str">"aman"</span>, rating: <span class="num">4</span>, text: <span class="str">"Loud but lovely"</span> }
+  ]
+}
+db.products.findOne({ _id: <span class="str">"prod-42"</span> })  <span class="cmt">// done.</span></pre>
+  </div>
+
+  <div class="interview-q">When does the "embed everything in one document" pattern fall apart?</div>
+
+  <div class="answer">
+    <ul>
+      <li><strong>The 16 MB doc limit.</strong> A product with 50,000 reviews? You'll hit MongoDB's per-document size cap. Reviews now need their own collection, and you're back to two reads.</li>
+      <li><strong>Highly shared sub-data.</strong> If a "tag" appears on 10,000 products, embedding it 10,000 times means one tag rename = 10,000 writes. Reference it instead.</li>
+      <li><strong>Frequent partial updates on a hot field.</strong> If every product has a <code>views</code> counter that increments 100/sec, the whole document gets rewritten on every bump. Move that counter to its own collection or to Redis.</li>
+      <li><strong>Cross-document transactions.</strong> Mongo added multi-doc transactions in 4.0, but they're slower and more limited than Postgres's native ACID. If your invariant spans documents, that's a sign you wanted a relational model.</li>
+    </ul>
+  </div>
+
+  <div class="gotcha">"Embed vs reference" is the central design decision in MongoDB. Rule of thumb: embed when the child is owned by exactly one parent and read together; reference when the child is shared, unbounded, or updated independently.</div>
+
+  <div class="so-what">Document stores trade joins for denormalization. One document = one read = one write = one atomic unit. Brilliant when the access pattern matches; painful when relationships matter or sub-data grows unbounded.</div>
+</div>
+
+<!-- ===== 5 ===== -->
+<div class="feature" id="s5">
+  <div class="feature-header"><span class="feature-num">05</span><h2>Key-Value — Redis &amp; DynamoDB With a Real Example</h2></div>
+  <p class="lead">Key-value is the simplest possible database: <code>get(key)</code>, <code>put(key, value)</code>, <code>delete(key)</code>. No queries, no joins, no scans (or at least, none you should run). What it gives up in expressiveness it returns in microsecond latency and effortless horizontal scale.</p>
+
+  <div class="scene">Maya's login service used to hit Postgres on every request: "is this session token valid?" — 12ms per check, 50K logins/sec on Black Friday melted the DB. She moved sessions to Redis: <code>SET session:abc123 user:42 EX 3600</code>. Lookup is now 0.3ms, the database is bored, and she goes home for Diwali.</div>
+
+  <div class="code-block">
+    <span class="code-label demo">Redis — five real patterns in five lines</span>
+<pre><span class="cmt"># 1. Session cache (with TTL)</span>
+<span class="kw">SET</span> session:abc123 <span class="str">'{"userId":42,"role":"admin"}'</span> <span class="kw">EX</span> <span class="num">3600</span>
+
+<span class="cmt"># 2. Rate limiter — atomic increment with expiry</span>
+<span class="kw">INCR</span> ratelimit:user:42:minute
+<span class="kw">EXPIRE</span> ratelimit:user:42:minute <span class="num">60</span>
+
+<span class="cmt"># 3. Leaderboard — sorted set, O(log N) writes, O(log N + M) range read</span>
+<span class="kw">ZADD</span> leaderboard:global <span class="num">9800</span> <span class="str">"riya"</span>
+<span class="kw">ZREVRANGE</span> leaderboard:global <span class="num">0</span> <span class="num">9</span> WITHSCORES   <span class="cmt"># top 10</span>
+
+<span class="cmt"># 4. Distributed lock — SET with NX (only if absent) + TTL</span>
+<span class="kw">SET</span> lock:order:42 <span class="str">"worker-7"</span> <span class="kw">NX EX</span> <span class="num">30</span>
+
+<span class="cmt"># 5. Pub/Sub for real-time fan-out</span>
+<span class="kw">PUBLISH</span> chat:room:5 <span class="str">'{"from":"aman","text":"hi"}'</span></pre>
+  </div>
+
+  <div class="interview-q">DynamoDB is also key-value — when do you reach for it instead of Redis?</div>
+
+  <div class="answer">
+    <ul>
+      <li><strong>Redis</strong> is in-memory, sub-millisecond, and great for ephemeral data (cache, session, rate-limit, queue). Persistence exists (RDB/AOF) but it's not the primary use case.</li>
+      <li><strong>DynamoDB</strong> is durable, distributed, and managed by AWS. Single-digit millisecond reads at any scale, with secondary indexes and conditional writes. It's the "production database" version of KV.</li>
+      <li>If the data must survive a reboot and your scale is large, DynamoDB. If it's hot data needing extreme speed, Redis. Many real systems use both — DynamoDB as the system of record, Redis as the read-through cache.</li>
+    </ul>
+  </div>
+
+  <div class="analogy">Redis is the <em>kitchen counter</em> — fastest reach, smallest space, things on it disappear when you wipe it down. DynamoDB is the <em>warehouse with named bins</em> — slower than the counter but infinite capacity, and nothing falls off the shelf when the lights go out.</div>
+
+  <div class="gotcha">Never run <code>KEYS *</code> in production Redis. It blocks the entire server while it scans every key. Use <code>SCAN</code> with a cursor for any range operation. (This question is a Redis-interview classic.)</div>
+
+  <div class="so-what">KV gives up queries to gain speed. Use it where the access pattern is "give me the value for this key" — sessions, caches, counters, leaderboards. Don't use it as a primary store for relational data.</div>
+</div>
+
+<!-- ===== 6 ===== -->
+<div class="feature" id="s6">
+  <div class="feature-header"><span class="feature-num">06</span><h2>Wide-Column — Cassandra With a Real Example</h2></div>
+  <p class="lead">Wide-column stores look like SQL tables on the surface but behave nothing like them underneath. Each row is keyed by a <em>partition key</em>, the partition decides which physical machine owns the data, and inside the partition you can have millions of "columns" sorted by a clustering key. They're optimized for one thing: <strong>writing massive amounts of time-ordered data and reading slices of it back, fast.</strong></p>
+
+  <div class="scene">Aman's IoT startup ingests 2 million sensor readings per second across 500K devices. Postgres tipped over at 50K writes/sec. He moves to Cassandra, partitions by <code>device_id</code> and clusters by <code>timestamp DESC</code> — now "give me the last 24 hours for device X" is a single sequential disk read on a single machine. 2M writes/sec, no sweat.</div>
+
+  <div class="code-block">
+    <span class="code-label example">Cassandra schema — partition + clustering keys are the design</span>
+<pre><span class="kw">CREATE TABLE</span> sensor_readings (
+  device_id  <span class="type">UUID</span>,
+  ts         <span class="type">TIMESTAMP</span>,
+  temp       <span class="type">DOUBLE</span>,
+  humidity   <span class="type">DOUBLE</span>,
+  <span class="kw">PRIMARY KEY</span> ((device_id), ts)        <span class="cmt">-- partition key, clustering key</span>
+) <span class="kw">WITH CLUSTERING ORDER BY</span> (ts <span class="kw">DESC</span>);
+
+<span class="cmt">-- This is BLAZING fast — single partition, sequential scan, sorted</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> sensor_readings
+<span class="kw">WHERE</span> device_id = ? <span class="kw">AND</span> ts &gt; now() - <span class="num">1</span>d;
+
+<span class="cmt">-- This will FAIL or scan every node — no partition key in WHERE</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> sensor_readings <span class="kw">WHERE</span> temp &gt; <span class="num">40</span>;</pre>
+  </div>
+
+  <div class="interview-q">Why does Cassandra force you to query by the partition key?</div>
+
+  <div class="answer">
+    <p>Because in Cassandra <em>the partition key tells the cluster which node to ask</em>. <code>device_id = X</code> hashes to one of the 256 virtual nodes, the coordinator routes the read to that one machine, and the rows come back in clustering-key order from a single sequential file (SSTable).</p>
+    <p>Without a partition key, Cassandra has no idea which node has your data, so it has to ask <em>all of them</em> — a "full cluster scan", which is the worst thing you can do. SQL databases hide this from you because they're (usually) one box; Cassandra forces you to confront it.</p>
+  </div>
+
+  <div class="gotcha">In Cassandra you <strong>design tables per query</strong>, not per entity. Need to look up sensors by location too? Make a second table <code>sensors_by_location</code> and dual-write to both. Denormalization isn't a smell here — it's the design.</div>
+
+  <div class="analogy">Cassandra is a <em>filing cabinet farm</em>. Each cabinet (node) holds a fixed range of customer IDs. To find anything you must give the customer ID — the foreman points you to one cabinet. Ask "find all red folders" and the foreman has to open every cabinet in every warehouse. The schema's job is to make sure every real query already knows which cabinet to open.</div>
+
+  <div class="so-what">Wide-column = table-shaped on the outside, distributed-by-partition-key on the inside. Best for time-series and event-log workloads at petabyte scale. Disastrous if you don't model your queries first.</div>
+</div>
+
+<!-- ===== 7 ===== -->
+<div class="feature" id="s7">
+  <div class="feature-header"><span class="feature-num">07</span><h2>Graph — Neo4j With a Real Example</h2></div>
+  <p class="lead">Graph databases are built for the one thing SQL is genuinely bad at: <strong>following relationships, deeply, fast</strong>. "Friends-of-friends-of-friends-who-bought-this" is one query in Cypher and a screaming fan-out of self-joins in SQL.</p>
+
+  <div class="scene">A fraud team at a bank suspects a ring of linked accounts. In SQL: "find all accounts that share an IP, device, or phone with account A, then accounts that share with those, three hops deep" becomes a 200-line query with 5 self-joins and runs for 40 minutes. In Neo4j: <code>MATCH (a)-[:LINKED*1..3]-(b) RETURN b</code> — runs in 80ms.</div>
+
+  <div class="code-block">
+    <span class="code-label demo">Cypher — relationships are first-class citizens</span>
+<pre><span class="cmt">// Find all friends-of-friends of Riya, who like the same band</span>
+<span class="kw">MATCH</span> (riya:Person {name:<span class="str">"Riya"</span>})-[:FRIEND*<span class="num">2</span>]-(fof:Person),
+      (fof)-[:LIKES]-&gt;(b:Band)&lt;-[:LIKES]-(riya)
+<span class="kw">RETURN DISTINCT</span> fof.name, b.name;
+
+<span class="cmt">// Shortest path between two people</span>
+<span class="kw">MATCH</span> p = shortestPath(
+  (a:Person {name:<span class="str">"Riya"</span>})-[:KNOWS*]-(b:Person {name:<span class="str">"Karthik"</span>})
+)
+<span class="kw">RETURN</span> p;</pre>
+  </div>
+
+  <div class="interview-q">Why is SQL bad at deep relationship queries when joins are its core feature?</div>
+
+  <div class="answer">
+    <p>A SQL join is an O(N×M) set operation by default; even with indexes, every additional hop multiplies the work. A 5-hop friend lookup is 5 nested joins on the same table — the query planner does its best, but each level reads more rows.</p>
+    <p>A graph database stores each node with <em>direct pointers</em> to its neighbors. Traversing one edge is O(1) — follow the pointer. Five hops = 5 pointer dereferences, not 5 set scans. This is called <strong>index-free adjacency</strong> and it's the architectural reason graph DBs win at this workload.</p>
+  </div>
+
+  <div class="analogy">SQL relationships are like a <em>phone book</em> — to find a friend you look up name → number, then number → person, repeatedly. Graph DBs are like a <em>group chat</em> — every person is already directly connected to everyone they know; you just hop along the conversations.</div>
+
+  <div class="so-what">Graphs win when the relationship <em>is</em> the data — social, fraud, knowledge graphs, recommendation engines. For everything else they're overkill; a relational DB with foreign keys is fine.</div>
+</div>
+
+<!-- ===== 8 ===== -->
+<div class="feature" id="s8">
+  <div class="feature-header"><span class="feature-num">08</span><h2>ACID vs BASE — The Consistency Trade-off</h2></div>
+  <p class="lead">ACID and BASE aren't opposites; they're two ends of a sliding bar. SQL traditionally lives at the ACID end (correctness first, scale later); NoSQL traditionally lives at the BASE end (scale first, eventual correctness). Both are valid. Picking wrong is a career-defining bug.</p>
+
+  <div class="versus">
+    <div class="vs-card sql">
+      <h4>ACID — Strong Guarantees</h4>
+      <ul>
+        <li><strong>A</strong>tomic: all-or-nothing per transaction</li>
+        <li><strong>C</strong>onsistent: invariants hold after each commit</li>
+        <li><strong>I</strong>solated: concurrent txns don't see each other's middle state</li>
+        <li><strong>D</strong>urable: committed data survives a crash</li>
+        <li>Postgres, MySQL InnoDB, SQL Server, Oracle</li>
+      </ul>
+    </div>
+    <div class="vs-card nosql">
+      <h4>BASE — Practical at Scale</h4>
+      <ul>
+        <li><strong>B</strong>asically <strong>A</strong>vailable: every request gets some response</li>
+        <li><strong>S</strong>oft state: state can change without input over time</li>
+        <li><strong>E</strong>ventually consistent: replicas converge, given time</li>
+        <li>Cassandra, DynamoDB (default), Riak, classic Mongo replica set reads</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="scene">Riya transfers ₹10,000 from her savings to her current account. ACID says: either both rows update or neither does — no in-between state where the money is gone from one and not in the other. BASE says: maybe the savings account shows ₹10K less for 200ms before the current account catches up — and if she refreshes both screens fast enough, she sees a moment where her total is wrong. For banking, that 200ms is a regulatory disaster. For "Aman just liked your photo" showing up 200ms late on someone's feed, it's invisible.</div>
+
+  <div class="interview-q">If NoSQL is "BASE", how does MongoDB advertise ACID transactions?</div>
+
+  <div class="answer">
+    <p>The line has blurred a lot since 2018. <strong>MongoDB 4.0+</strong> supports multi-document ACID. <strong>DynamoDB</strong> supports transactions on up to 100 items. <strong>CockroachDB</strong> and <strong>Spanner</strong> are distributed-but-strongly-consistent SQL. <strong>FoundationDB</strong> is ACID at scale.</p>
+    <p>The honest framing today is: pick your consistency level <em>per query</em>, not per database. Both Postgres (with read replicas) and Mongo/Cassandra let you tune <code>READ COMMITTED</code> vs <code>SERIALIZABLE</code>, or quorum vs single-node reads. The real question is: <em>which invariants does my business actually require</em>, and <em>am I willing to pay the latency cost to enforce them</em>?</p>
+  </div>
+
+  <div class="tip">When the interviewer asks "ACID or BASE?" the right answer is "depends on the invariant". Money: ACID. Likes/views/clicks: BASE is fine. A senior engineer can name <em>which queries</em> need which level inside the same system.</div>
+
+  <div class="so-what">ACID = correctness up front, scale is harder. BASE = scale up front, correctness is your problem. Modern systems mix both — strong consistency for money paths, eventual for everything else.</div>
+</div>
+
+<!-- ===== 9 ===== -->
+<div class="feature" id="s9">
+  <div class="feature-header"><span class="feature-num">09</span><h2>Joins vs Denormalization — Where the Work Lives</h2></div>
+  <p class="lead">"NoSQL doesn't do joins" is correct — and that's a feature, not a flaw, once you understand <em>where</em> the work moved.</p>
+
+  <div class="answer">
+    <p>In SQL you write data <em>once</em>, normalized into many tables, and the join cost is paid every time you read. In NoSQL you pay the cost upfront — you <em>denormalize</em>: the same data is duplicated across multiple records so reads are single-record fetches.</p>
+    <p>Trade-off: SQL has cheap writes and expensive reads at scale; NoSQL has cheap reads but every write must update many places.</p>
+  </div>
+
+  <div class="code-block">
+    <span class="code-label example">Same use-case — author + posts</span>
+<pre><span class="cmt">-- SQL: write once, join on every read</span>
+<span class="kw">SELECT</span> a.name, p.title, p.body
+<span class="kw">FROM</span> authors a <span class="kw">JOIN</span> posts p <span class="kw">ON</span> p.author_id = a.id
+<span class="kw">WHERE</span> a.id = <span class="num">7</span>;
+
+<span class="cmt">// MongoDB pattern A: embed (author owns posts, posts &lt; 100)</span>
+{ _id: <span class="num">7</span>, name: <span class="str">"Riya"</span>, posts: [{title:<span class="str">"..."</span>}, {title:<span class="str">"..."</span>}] }
+
+<span class="cmt">// MongoDB pattern B: reference (posts unbounded)</span>
+{ _id: <span class="num">7</span>, name: <span class="str">"Riya"</span> }
+{ _id: <span class="str">"p1"</span>, authorId: <span class="num">7</span>, authorName: <span class="str">"Riya"</span>, title: <span class="str">"..."</span> }   <span class="cmt">// duplicated</span>
+
+<span class="cmt">// Now: rename Riya → Riyaa</span>
+<span class="cmt">// SQL: 1 UPDATE on authors, done.</span>
+<span class="cmt">// Mongo: 1 UPDATE on author, plus updateMany on posts to fix authorName.</span></pre>
+  </div>
+
+  <div class="gotcha">Denormalization without a write-fanout strategy is how dashboards end up showing the old name three weeks after a rename. CDC (change-data-capture), Kafka, or app-level dual writes are the usual fix.</div>
+
+  <div class="so-what">SQL pays at read time (joins). NoSQL pays at write time (fan-out). Choose based on read:write ratio and how often the duplicated fields actually change.</div>
+</div>
+
+<!-- ===== 10 ===== -->
+<div class="feature" id="s10">
+  <div class="feature-header"><span class="feature-num">10</span><h2>Indexes — Same Idea, Different Cost</h2></div>
+  <p class="lead">Both SQL and NoSQL use indexes (usually B-trees, sometimes LSM-trees in NoSQL). The mental model is the same — <em>maintain a sorted lookup structure for fast finds</em> — but the cost profile is very different.</p>
+
+  <div class="answer">
+    <ul>
+      <li><strong>SQL (B-tree, mutable):</strong> reads are fast (O(log N)), writes update the tree in place. Random writes hurt as the table grows.</li>
+      <li><strong>NoSQL (LSM-tree, append-only):</strong> writes are blazing fast (O(1) into a memtable), but reads may have to merge several SSTables on disk. Background "compaction" rewrites files to keep reads fast.</li>
+      <li>Cassandra, RocksDB, Bigtable, LevelDB, ScyllaDB — all LSM. That's why NoSQL ingests are usually faster, and why a bursty write workload doesn't tip them over.</li>
+    </ul>
+  </div>
+
+  <div class="analogy">B-tree is a <em>well-maintained library</em> — every new book is shelved in its exact alphabetical place immediately. LSM is a <em>hostel kitchen</em> — dishes pile up in the sink (memtable), get washed in batches (flush), and a roommate (compaction) periodically reorganizes the cupboards. Faster intake, occasional chaos.</div>
+
+  <div class="gotcha">In MongoDB and DynamoDB, secondary indexes look like a free lunch but they cost write amplification — every write to the main collection updates every index. A document with 6 indexes = 7 writes. Don't index everything "just in case".</div>
+
+  <div class="so-what">Same idea (sorted lookup), different physics. SQL favors balanced reads/writes; LSM-based NoSQL favors heavy writes with read-time compaction overhead.</div>
+</div>
+
+<!-- ===== 11 ===== -->
+<div class="feature" id="s11">
+  <div class="feature-header"><span class="feature-num">11</span><h2>Vertical vs Horizontal Scaling — The Real Reason NoSQL Won</h2></div>
+  <p class="lead">If you only remember one thing about why NoSQL exists: <strong>SQL was designed for one machine; NoSQL was designed for a thousand.</strong> Everything else is consequence.</p>
+
+  <div class="answer">
+    <ul>
+      <li><strong>Vertical scaling</strong> = bigger box. More CPU, more RAM, more disk. Postgres on a 96-core machine with 1 TB RAM goes <em>very far</em> — most companies never outgrow it.</li>
+      <li><strong>Horizontal scaling</strong> = more boxes. Cassandra or Mongo on 100 commodity nodes routes data by partition key. No single machine sees all the data.</li>
+      <li>SQL <em>can</em> scale horizontally (Citus, Vitess, Postgres-XL), but joins across shards are painful and transactions become two-phase commits — slow and brittle.</li>
+      <li>NoSQL is shard-aware from day one. The schema demands it.</li>
+    </ul>
+  </div>
+
+  <div class="scene">A fintech grew from 1 to 50 million users in 18 months. Their Postgres primary maxed out at 64 cores. They tried read replicas (helped reads, did nothing for writes), then sharding by user_id (broke every multi-user query). Migrating the order ledger to DynamoDB took a quarter; once done, scaling was "raise the RCU/WCU number and wait 5 minutes". The lesson wasn't "Postgres is bad" — it was "we picked a single-node store for a multi-node problem".</div>
+
+  <div class="tip">When asked "when does Postgres run out?" — the honest answer is "for most apps, never". Modern Postgres on a single beefy machine handles 10K–100K writes/sec. Don't introduce NoSQL just because you saw a HackerNews post; introduce it when you have evidence.</div>
+
+  <div class="so-what">SQL = vertical-first. NoSQL = horizontal-first. The "right" choice depends on whether your scale needs more than one machine — and most apps don't.</div>
+</div>
+
+<!-- ===== 12 ===== -->
+<div class="feature" id="s12">
+  <div class="feature-header"><span class="feature-num">12</span><h2>Sharding &amp; Replication — How Data Spreads</h2></div>
+  <p class="lead">Two orthogonal techniques, often confused. <strong>Sharding</strong> splits data across machines so each holds a slice. <strong>Replication</strong> copies data across machines so each replica holds the same slice. Real systems do both.</p>
+
+  <table>
+    <tr><th>Technique</th><th>Goal</th><th>What you gain</th><th>What you lose</th></tr>
+    <tr><td><strong>Replication</strong></td><td>Many copies of all data</td><td>Read scale, fault tolerance</td><td>Write throughput stays the same; replication lag</td></tr>
+    <tr><td><strong>Sharding (partitioning)</strong></td><td>Each machine holds 1/N of data</td><td>Write scale, storage scale</td><td>Cross-shard queries hurt; rebalancing is painful</td></tr>
+    <tr><td><strong>Both (real systems)</strong></td><td>N shards × 3 replicas each</td><td>Read+write scale + durability</td><td>Operational complexity</td></tr>
+  </table>
+
+  <div class="code-block">
+    <span class="code-label note">Three ways to choose a shard key</span>
+<pre><span class="cmt"># 1. Hash sharding — uniform, but no range scans</span>
+shard = murmur3(user_id) % numShards
+
+<span class="cmt"># 2. Range sharding — fast range scans, but hot spots if keys cluster</span>
+shard = (user_id &lt; <span class="num">1M</span>) ? S0 : (user_id &lt; <span class="num">2M</span>) ? S1 : S2
+
+<span class="cmt"># 3. Geographic / tenant sharding — data locality</span>
+shard = (region == <span class="str">"IN"</span>) ? mumbai : (region == <span class="str">"US"</span>) ? virginia : ...</pre>
+  </div>
+
+  <div class="gotcha">Pick the shard key wrong and the entire system tilts. <em>tenant_id</em> for a multi-tenant SaaS where one tenant is 80% of traffic = one shard on fire while the rest yawn. <em>timestamp</em> as a range key = every new write goes to the latest shard (the "hot tail" problem). Always model traffic <em>before</em> picking a key.</div>
+
+  <div class="so-what">Replication = redundancy + read scale. Sharding = write + storage scale. The shard key is the most important schema decision in any distributed DB — far more important than which DB you picked.</div>
+</div>
+
+<!-- ===== 13 ===== -->
+<div class="feature" id="s13">
+  <div class="feature-header"><span class="feature-num">13</span><h2>CAP Theorem in Practice — Pick Two, But Honestly Pick One</h2></div>
+  <p class="lead">The CAP theorem says: in a distributed system, when a network partition (P) happens, you must choose between Consistency (C) and Availability (A). Since partitions <em>will</em> happen at some point, real systems are either CP or AP.</p>
+
+  <table>
+    <tr><th>Mode</th><th>Behavior on partition</th><th>Examples</th></tr>
+    <tr><td><strong>CP</strong> (consistent)</td><td>Refuse the request rather than serve stale data</td><td>HBase, MongoDB (with majority writes), Spanner, Zookeeper</td></tr>
+    <tr><td><strong>AP</strong> (available)</td><td>Serve a possibly-stale answer; reconcile later</td><td>Cassandra, DynamoDB (default), Riak, CouchDB</td></tr>
+    <tr><td><strong>CA</strong> (no partition)</td><td>Only true on a single node — Postgres, MySQL standalone</td><td>Single-node SQL</td></tr>
+  </table>
+
+  <div class="scene">Karthik's app is CP. During a 30-second network blip between AZs, half his users see "service unavailable, please retry" — but no one sees a wrong balance. Across town, Maya's app is AP. Same blip, no errors — every user gets a response — but two users see slightly different "follower counts" until replication catches up. Both teams are doing the right thing for their domain.</div>
+
+  <div class="tip">"Pick CP for money, pick AP for likes" is the cheat-sheet version of CAP. Senior engineers can articulate <em>which queries</em> need CP and which can be AP <em>in the same database</em>.</div>
+
+  <div class="so-what">CAP forces a choice during partitions: refuse the request (CP) or risk stale data (AP). Modern systems often let you tune this per-query — strong reads vs eventual reads — rather than per-database.</div>
+</div>
+
+<!-- ===== 14 ===== -->
+<div class="feature" id="s14">
+  <div class="feature-header"><span class="feature-num">14</span><h2>Same Problem, Two Designs — E-Commerce Order System</h2></div>
+  <p class="lead">Theory's nice; let's design the same feature both ways. A user places an order with multiple items, payment, shipping, and order history. Compare on the same page.</p>
+
+  <div class="versus">
+    <div class="vs-card sql">
+      <h4>SQL Design (Postgres)</h4>
+      <pre style="font-size:.78rem;background:transparent;border:0;padding:0;">
+<span class="kw">CREATE TABLE</span> orders (
+  id <span class="type">BIGSERIAL PK</span>,
+  user_id <span class="type">BIGINT</span>,
+  status <span class="type">TEXT</span>,
+  total <span class="type">NUMERIC</span>,
+  created_at <span class="type">TIMESTAMPTZ</span>
+);
+<span class="kw">CREATE TABLE</span> order_items (
+  id <span class="type">BIGSERIAL PK</span>,
+  order_id <span class="type">BIGINT FK</span>,
+  product_id <span class="type">BIGINT</span>,
+  qty <span class="type">INT</span>, price <span class="type">NUMERIC</span>
+);
+<span class="kw">CREATE TABLE</span> payments (...);
+<span class="kw">CREATE TABLE</span> shipments (...);
+
+<span class="cmt">-- one ACID transaction</span>
+<span class="kw">BEGIN</span>;
+  <span class="kw">INSERT INTO</span> orders ...;
+  <span class="kw">INSERT INTO</span> order_items ...;
+  <span class="kw">INSERT INTO</span> payments ...;
+  <span class="kw">UPDATE</span> inventory <span class="kw">SET</span> qty=qty-?;
+<span class="kw">COMMIT</span>;
+      </pre>
+      <p style="font-size:.85rem;margin-top:.5rem;"><strong>Wins at:</strong> integrity (no orphan items, payment + order atomic), ad-hoc reporting ("revenue by category last month" is one query).</p>
+    </div>
+    <div class="vs-card nosql">
+      <h4>NoSQL Design (MongoDB)</h4>
+      <pre style="font-size:.78rem;background:transparent;border:0;padding:0;">
+{
+  _id: <span class="str">"ord_42"</span>,
+  userId: <span class="num">7</span>,
+  status: <span class="str">"PAID"</span>,
+  items: [
+    {productId:<span class="num">1</span>, name:<span class="str">"Keyboard"</span>,
+     qty:<span class="num">1</span>, price:<span class="num">8999</span>},
+    {productId:<span class="num">2</span>, name:<span class="str">"Mouse"</span>,
+     qty:<span class="num">1</span>, price:<span class="num">1499</span>}
+  ],
+  payment: {method:<span class="str">"UPI"</span>, txn:<span class="str">"abc"</span>},
+  shipment: {addr:<span class="str">"..."</span>, eta:<span class="str">"..."</span>},
+  total: <span class="num">10498</span>,
+  createdAt: <span class="str">"2026-05-08"</span>
+}
+db.orders.insertOne(...)   <span class="cmt">// 1 op, 1 doc</span>
+      </pre>
+      <p style="font-size:.85rem;margin-top:.5rem;"><strong>Wins at:</strong> single-doc reads (order detail page in 1 round-trip), easy horizontal scale by <code>userId</code>, schema-evolution (add <code>discount</code> field tomorrow without migration).</p>
+    </div>
+  </div>
+
+  <div class="answer">
+    <p><strong>Which is right?</strong> Depends on the next question your business asks.</p>
+    <ul>
+      <li>Need "monthly revenue by category, by region, by promo code" reports? SQL — denormalized JSON makes this miserable.</li>
+      <li>Serving 10M order detail pages a second on Black Friday? Mongo — one read, no joins.</li>
+      <li>Want both? Use SQL as the system of record and pipe it to Elasticsearch / a warehouse for analytics. (See section 17.)</li>
+    </ul>
+  </div>
+
+  <div class="so-what">There's no objectively-better design — the right choice depends on what queries dominate. SQL wins reporting; document NoSQL wins single-doc scale; most real shops do both.</div>
+</div>
+
+<!-- ===== 15 ===== -->
+<div class="feature" id="s15">
+  <div class="feature-header"><span class="feature-num">15</span><h2>When SQL Wins — A Checklist</h2></div>
+  <p class="lead">Reach for SQL (Postgres is the safe default in 2026) when any of these are true:</p>
+
+  <ul>
+    <li><strong>The data has rich relationships</strong> that you'll query in many ways. Foreign keys are friends.</li>
+    <li><strong>Strong consistency is non-negotiable</strong> — money, inventory, bookings, anything regulated.</li>
+    <li><strong>Ad-hoc analytical queries</strong> are a thing — finance, BI, internal dashboards.</li>
+    <li><strong>The schema is stable</strong> — domain is well understood, fields rarely change.</li>
+    <li><strong>Your scale fits one machine</strong> (this is most apps — modern Postgres comfortably does 50K+ TPS).</li>
+    <li><strong>You need referential integrity</strong> at the DB level (no orphan rows, cascades on delete).</li>
+    <li><strong>The team is small</strong> and you want fewer moving parts. One Postgres beats five "right-tool" databases.</li>
+  </ul>
+
+  <div class="tip">Postgres in 2026 has JSONB columns, full-text search, vector search (pgvector), partitioning, logical replication, and listen/notify pub-sub. For 80% of products, "Postgres + Redis cache" is the entire backend. Resist the urge to over-architect.</div>
+
+  <div class="so-what">SQL is the boring, correct, well-understood default. Pick it unless you have a specific reason not to.</div>
+</div>
+
+<!-- ===== 16 ===== -->
+<div class="feature" id="s16">
+  <div class="feature-header"><span class="feature-num">16</span><h2>When NoSQL Wins — A Checklist</h2></div>
+  <p class="lead">Reach for NoSQL when any of these are true — and ideally <em>more than one</em>:</p>
+
+  <ul>
+    <li><strong>Massive write throughput</strong> — IoT, telemetry, clickstream (&gt;100K writes/sec sustained).</li>
+    <li><strong>Single-key access pattern dominates</strong> — sessions, user profiles, product detail by ID.</li>
+    <li><strong>Schema is genuinely flexible</strong> — different records have different fields (CMS, multi-tenant SaaS).</li>
+    <li><strong>Data scale exceeds a single machine</strong> — petabytes, hundreds of millions of users.</li>
+    <li><strong>Geographic distribution</strong> — multi-region writes, low-latency edge serving.</li>
+    <li><strong>The data shape <em>is</em> the workload</strong> — graph for relationships, KV for cache, time-series for metrics.</li>
+    <li><strong>You're already paying the operational cost</strong> — a team that knows how to run Cassandra is a serious investment.</li>
+  </ul>
+
+  <div class="gotcha">"Our schema might change" is the worst reason to pick NoSQL. Postgres handles schema change just fine via migrations. Pick NoSQL for scale, access patterns, or shape — not because you're afraid of <code>ALTER TABLE</code>.</div>
+
+  <div class="so-what">NoSQL earns its place when scale, shape, or access pattern actively demand it. "Maybe we'll need it later" is not a reason — premature NoSQL is its own form of tech debt.</div>
+</div>
+
+<!-- ===== 17 ===== -->
+<div class="feature" id="s17">
+  <div class="feature-header"><span class="feature-num">17</span><h2>Polyglot Persistence — Use Both, Without Apology</h2></div>
+  <p class="lead">Real production systems rarely pick "one database". They pick the right database <em>per workload</em> and stitch them together. This is called <strong>polyglot persistence</strong>, and it's the modern norm — not an anti-pattern.</p>
+
+  <div class="code-block">
+    <span class="code-label demo">A typical e-commerce stack in 2026</span>
+<pre>┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│  Postgres    │  │   MongoDB    │  │    Redis     │
+│  (system of  │  │  (catalog +  │  │  (sessions,  │
+│  record:     │  │   reviews)   │  │   cart,      │
+│  orders,     │  │              │  │   rate-      │
+│  payments,   │  │              │  │   limits)    │
+│  users)      │  │              │  │              │
+└──────┬───────┘  └──────┬───────┘  └──────────────┘
+       │ CDC             │ search-sync
+       ▼                 ▼
+┌──────────────┐  ┌──────────────┐
+│ Elasticsearch│  │  ClickHouse  │
+│ (full-text   │  │  (analytics  │
+│  search)     │  │   + BI)      │
+└──────────────┘  └──────────────┘</pre>
+  </div>
+
+  <div class="answer">
+    <ul>
+      <li><strong>Postgres</strong> — system of record. ACID. Anything financial.</li>
+      <li><strong>MongoDB</strong> — flexible product catalog with reviews and variants embedded.</li>
+      <li><strong>Redis</strong> — sessions, cart contents, rate-limiters, leaderboards.</li>
+      <li><strong>Elasticsearch</strong> — full-text product search. Fed by Postgres via CDC.</li>
+      <li><strong>ClickHouse / BigQuery</strong> — analytics. Fed nightly or via streaming.</li>
+      <li><strong>Kafka</strong> — the glue. Every "interesting" event ends up on a topic; everyone subscribes who needs it.</li>
+    </ul>
+  </div>
+
+  <div class="tip">If asked "why not just one database?" — say: every database optimizes for some access patterns at the cost of others. A single store that does <em>all</em> patterns equally well is either ClickHouse-with-asterisks or a marketing slide. Polyglot is the realist's answer.</div>
+
+  <div class="so-what">Modern systems are polyglot by default. SQL for system-of-record, KV for hot data, search engine for text, OLAP store for analytics, message bus to keep them in sync.</div>
+</div>
+
+<!-- ===== 18 ===== -->
+<div class="feature" id="s18">
+  <div class="feature-header"><span class="feature-num">18</span><h2>Real-World Stacks — How the Big Ones Mix &amp; Match</h2></div>
+  <p class="lead">Learning from how scaled companies actually combine SQL and NoSQL is more useful than any flowchart.</p>
+
+  <table>
+    <tr><th>Company</th><th>Primary stores</th><th>Why</th></tr>
+    <tr><td><strong>Uber</strong></td><td>MySQL (Schemaless layer), Cassandra, Redis, MyRocks</td><td>Schemaless hides MySQL behind a KV API, scaled horizontally with sharding. Cassandra for trip events &amp; geo data.</td></tr>
+    <tr><td><strong>Netflix</strong></td><td>Cassandra (most), DynamoDB, EVCache (Memcached), Elasticsearch</td><td>Global multi-region writes for viewing history; AP over CP because "the screen showing one episode behind" is fine.</td></tr>
+    <tr><td><strong>Discord</strong></td><td>Cassandra → ScyllaDB for messages, Postgres for users/guilds</td><td>Trillions of messages → wide-column. Relational metadata stays in Postgres.</td></tr>
+    <tr><td><strong>Instagram</strong></td><td>Postgres (sharded with Pgbouncer), Cassandra, Redis, RocksDB</td><td>Postgres is still the system of record, sharded by user_id. Cassandra for the activity feed.</td></tr>
+    <tr><td><strong>Stripe</strong></td><td>MongoDB (primary!), Redis, Kafka</td><td>Yes — financial data on Mongo. With careful invariants, multi-doc transactions, and audit trails. Proves "SQL for money" isn't absolute, just default.</td></tr>
+    <tr><td><strong>Airbnb</strong></td><td>MySQL (Vitess sharded), HBase, Druid, Redis</td><td>MySQL for bookings, HBase for the "search the world" inventory, Druid for analytics.</td></tr>
+  </table>
+
+  <div class="so-what">Even at the largest scale, SQL is rarely thrown away. It's the trunk; NoSQL stores are branches grown to handle specific workloads it couldn't.</div>
+</div>
+
+<!-- ===== 19 ===== -->
+<div class="feature" id="s19">
+  <div class="feature-header"><span class="feature-num">19</span><h2>Migration Pitfalls — Going SQL ↔ NoSQL Hurts</h2></div>
+  <p class="lead">Every team eventually considers "moving from SQL to NoSQL" (or back). The migration is rarely the database's fault — it's the access patterns and the application code.</p>
+
+  <ul>
+    <li><strong>Pitfall 1 — Lift-and-shift fails.</strong> Copying a normalized SQL schema into MongoDB collections gives you the worst of both worlds: no joins, no schema enforcement, same write amplification. Redesign for the access pattern.</li>
+    <li><strong>Pitfall 2 — Ignoring the shard key.</strong> The shard/partition key is the most important schema decision. Pick wrong and the second migration follows a year later.</li>
+    <li><strong>Pitfall 3 — Lost ACID invariants.</strong> Foreign keys, CHECK constraints, and triggers in Postgres encode business rules. If you move off SQL, those rules now live in app code — every service, every consumer.</li>
+    <li><strong>Pitfall 4 — Reporting goes dark.</strong> "Run a quick SQL query for the CFO" becomes a Spark job. Always plan an analytics path (CDC → warehouse) <em>before</em> you migrate.</li>
+    <li><strong>Pitfall 5 — Operational maturity.</strong> Running Postgres is well-understood by every DBA on the planet. Running a 30-node Cassandra ring at 99.99% is a specialized skill. Hire or train before you migrate, not after.</li>
+  </ul>
+
+  <div class="gotcha">If your migration plan is "we'll fix the schema design once we're on Mongo" — stop. The migration <em>is</em> the schema redesign. Do that first, then move data.</div>
+
+  <div class="so-what">Migrations fail when the schema is copied instead of redesigned. Model the access pattern, pick the shard key, plan the analytics pipe, train the team — then migrate.</div>
+</div>
+
+<!-- ===== 20 ===== -->
+<div class="feature" id="s20">
+  <div class="feature-header"><span class="feature-num">20</span><h2>Rapid-Fire Q&amp;A — The Quick Hits</h2></div>
+  <p class="lead">Short, sharp answers to the questions that come right before "do you have any questions for us?".</p>
+
+  <div class="interview-q">Is Postgres a NoSQL database now?</div>
+  <p>Functionally close, yes. JSONB columns + GIN indexes + pgvector + full-text + partitioning let it do most NoSQL tricks. It's still <em>relational at heart</em>, but "Postgres for everything" is a defensible architecture in 2026.</p>
+
+  <div class="interview-q">Why not just use MongoDB everywhere?</div>
+  <p>Multi-document transactions are slower; cross-collection joins (<code>$lookup</code>) are awkward; ad-hoc reporting is harder; and "schemaless" becomes "schema-everywhere-in-app-code". For relational data with strong invariants, Postgres is simpler.</p>
+
+  <div class="interview-q">What's the difference between MongoDB and DynamoDB?</div>
+  <p>MongoDB is a document store with rich querying (<code>find</code>, aggregation pipeline) and you run the cluster. DynamoDB is a managed KV / wide-column hybrid with rigid access by partition+sort key — less flexible queries, but zero operational overhead and predictable latency at any scale.</p>
+
+  <div class="interview-q">When should I pick Cassandra over MongoDB?</div>
+  <p>Massive, sustained write throughput; multi-datacenter writes with tunable consistency; time-series or event-log workloads; queries always known in advance. Cassandra punishes you for ad-hoc queries; rewards you for write-heavy known-pattern workloads.</p>
+
+  <div class="interview-q">Is Redis a database or a cache?</div>
+  <p>Both. With AOF persistence enabled it's a durable store. In practice, most teams use it as a cache + ephemeral data store and back the data with Postgres or DynamoDB for the system of record.</p>
+
+  <div class="interview-q">"NewSQL" — what is it?</div>
+  <p>Distributed databases that offer SQL + ACID at horizontal scale. Spanner, CockroachDB, YugabyteDB, TiDB. They use Paxos/Raft + SQL planners to give you the relational model without the single-machine ceiling — at the cost of higher write latency than a single-node Postgres.</p>
+
+  <div class="interview-q">When does eventual consistency bite you in production?</div>
+  <p>Read-after-write surprises. User updates their profile, refreshes the page, sees the old value because the read hit a stale replica. Fix by routing post-write reads to the primary, or by using a "read-your-writes" session token.</p>
+
+  <div class="interview-q">CAP — pick two?</div>
+  <p>Trick question. Partitions happen, so you always pay P. The real choice is C-or-A <em>during</em> a partition. CP refuses requests; AP serves stale ones.</p>
+
+  <div class="interview-q">Best single piece of advice for choosing a database?</div>
+  <p>Write down your top 5 queries before you write any DDL. The database that makes those queries cheap is the right one. Everything else — schema, indexes, scaling — flows from that.</p>
+
+  <div class="so-what">If you remember nothing else: <strong>access pattern picks the database, not the other way round</strong>. SQL is the safe default. NoSQL earns its seat with concrete evidence. Polyglot is normal. Postgres can do more than you think.</div>
+</div>
+
+  </main>
+</div>
+
+<div class="likes-row"><div id="likes"></div></div>
+
+</body>
+</html>

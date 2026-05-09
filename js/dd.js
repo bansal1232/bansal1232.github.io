@@ -150,15 +150,15 @@
     }
   }
 
-  // --- search + category filter ---
+  // --- search filter (chips removed; sections + sub-stacks hide when empty) ---
   var searchInput = document.getElementById('ddSearch');
-  var chips = document.querySelectorAll('#ddChips .dd-chip');
   var grid = document.getElementById('ddGrid');
+  var emptyEl = document.getElementById('ddEmpty');
+  var stacks = Array.from(document.querySelectorAll('.dd-stack'));
+  var sections = Array.from(document.querySelectorAll('.sec'));
   var statShown = document.getElementById('statShown');
   var statTotal = document.getElementById('statTotal');
   var statTopics = document.getElementById('statTopics');
-  var activeTag = 'all';
-  var emptyEl = null;
 
   if (statTotal) statTotal.textContent = cards.length;
   if (statTopics) {
@@ -175,43 +175,42 @@
     cards.forEach(function (c) {
       var tags = (c.getAttribute('data-tags') || '').toLowerCase();
       var text = c.textContent.toLowerCase();
-      var tagMatch = activeTag === 'all' || tags.indexOf(activeTag) !== -1;
-      var searchMatch = !q || text.indexOf(q) !== -1 || tags.indexOf(q) !== -1;
-      var match = tagMatch && searchMatch;
+      var match = !q || text.indexOf(q) !== -1 || tags.indexOf(q) !== -1;
       c.classList.toggle('is-hidden', !match);
       if (match) shown++;
     });
+
+    // Hide sub-stack heading + grid if all its cards are hidden
+    stacks.forEach(function (s) {
+      var anyVisible = Array.from(s.querySelectorAll('.dd-card')).some(function (c) {
+        return !c.classList.contains('is-hidden');
+      });
+      s.classList.toggle('is-hidden', !anyVisible);
+    });
+
+    // Hide entire section if all its sub-stacks are hidden
+    sections.forEach(function (sec) {
+      var anyStackVisible = Array.from(sec.querySelectorAll('.dd-stack')).some(function (s) {
+        return !s.classList.contains('is-hidden');
+      });
+      sec.classList.toggle('is-hidden', !anyStackVisible);
+    });
+
     if (statShown) statShown.textContent = shown;
-    if (!shown) {
-      if (!emptyEl) {
-        emptyEl = document.createElement('div');
-        emptyEl.className = 'dd-empty';
-        grid.appendChild(emptyEl);
-      }
-      emptyEl.innerHTML = 'No articles match <b>“' + (q || activeTag) + '”</b> — try a different search or <button class="dd-chip" id="ddReset" style="margin-left:6px">clear filters</button>';
+
+    if (!shown && emptyEl) {
+      emptyEl.classList.remove('is-hidden');
+      emptyEl.innerHTML = 'No articles match <b>“' + q + '”</b> — try a different search. <button id="ddReset" style="margin-left:8px;background:transparent;border:1px solid #232b38;color:#4dfeee;padding:4px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:12px">Clear search</button>';
       var reset = document.getElementById('ddReset');
       if (reset) reset.addEventListener('click', function () {
         searchInput.value = '';
-        setActiveChip('all');
         applyFilter();
       });
     } else if (emptyEl) {
-      emptyEl.remove();
-      emptyEl = null;
+      emptyEl.classList.add('is-hidden');
     }
   }
 
-  function setActiveChip(tag) {
-    activeTag = tag;
-    chips.forEach(function (c) { c.classList.toggle('is-active', c.getAttribute('data-tag') === tag); });
-  }
-
-  chips.forEach(function (chip) {
-    chip.addEventListener('click', function () {
-      setActiveChip(chip.getAttribute('data-tag'));
-      applyFilter();
-    });
-  });
   if (searchInput) {
     searchInput.addEventListener('input', applyFilter);
     searchInput.addEventListener('keydown', function (e) {
@@ -259,15 +258,22 @@
     };
   });
 
+  function jumpTo(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' });
+  }
+
   var paletteActions = articleActions.concat([
     { icon: '🏠', label: 'Back to home', hint: 'Navigate', keys: 'home back resume portfolio', run: function () { window.location.href = 'index.html'; } },
     { icon: '🔍', label: 'Focus search', hint: 'Action', keys: 'search find filter', run: function () { if (searchInput) searchInput.focus(); } },
-    { icon: '🏷️', label: 'Filter: Java only', hint: 'Filter', keys: 'java filter', run: function () { setActiveChip('java'); applyFilter(); } },
-    { icon: '🏷️', label: 'Filter: Kafka only', hint: 'Filter', keys: 'kafka filter', run: function () { setActiveChip('kafka'); applyFilter(); } },
-    { icon: '🏷️', label: 'Filter: LLD only', hint: 'Filter', keys: 'lld low-level-design filter', run: function () { setActiveChip('lld'); applyFilter(); } },
-    { icon: '🏷️', label: 'Filter: Docker only', hint: 'Filter', keys: 'docker filter', run: function () { setActiveChip('docker'); applyFilter(); } },
-    { icon: '🏷️', label: 'Filter: Networking only', hint: 'Filter', keys: 'networking filter', run: function () { setActiveChip('networking'); applyFilter(); } },
-    { icon: '✖️', label: 'Clear filters', hint: 'Action', keys: 'reset clear all filter', run: function () { setActiveChip('all'); if (searchInput) searchInput.value = ''; applyFilter(); } },
+    { icon: '📚', label: 'Jump to: Languages', hint: 'Section', keys: 'languages java javascript node section jump', run: function () { jumpTo('s1'); } },
+    { icon: '🛠️', label: 'Jump to: Backend & Tech Stack', hint: 'Section', keys: 'backend tech stack spring kafka docker database section jump', run: function () { jumpTo('s2'); } },
+    { icon: '🌐', label: 'Jump to: Networking', hint: 'Section', keys: 'networking osi section jump', run: function () { jumpTo('s3'); } },
+    { icon: '🧩', label: 'Jump to: Low-Level Design (LLD)', hint: 'Section', keys: 'lld low-level-design class diagram section jump', run: function () { jumpTo('s4'); } },
+    { icon: '🏗️', label: 'Jump to: High-Level Design (HLD)', hint: 'Section', keys: 'hld high-level-design architecture section jump', run: function () { jumpTo('s5'); } },
+    { icon: '🔍', label: 'Jump to: Google Interview', hint: 'Section', keys: 'google interview distributed algorithms scale section jump', run: function () { jumpTo('s6'); } },
+    { icon: '✖️', label: 'Clear search', hint: 'Action', keys: 'reset clear all filter', run: function () { if (searchInput) searchInput.value = ''; applyFilter(); } },
     { icon: '🗑️', label: 'Reset "visited" marks', hint: 'Action', keys: 'reset visited clear localstorage', run: function () { saveVisited([]); cards.forEach(function (c) { c.classList.remove('is-visited'); }); var sv = document.getElementById('statVisited'); if (sv) sv.textContent = '0'; showToast('Visited history cleared', 'success'); } },
     { icon: '⬆️', label: 'Scroll to top', hint: 'Action', keys: 'top up scroll home', run: function () { window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' }); } },
     { icon: '🎉', label: 'Launch confetti', hint: 'Fun', keys: 'confetti celebrate party fun', run: function () { burstConfetti(window.innerWidth / 2, window.innerHeight / 2, 80); } },
@@ -287,7 +293,7 @@
     if (!paletteVisible.length) {
       var empty = document.createElement('li');
       empty.className = 'cmd-palette__empty';
-      empty.textContent = 'No matches. Try "java", "kafka", "home"…';
+      empty.textContent = 'No matches. Try "kafka", "lld", "home"…';
       paletteList.appendChild(empty);
       return;
     }
