@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Java Garbage Collector — Interview Guide (G1, ZGC, Shenandoah)</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../../css/likes.css"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script src="../../js/likes.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#161b22',
+      primaryColor: '#1c2230',
+      primaryTextColor: '#e6edf3',
+      primaryBorderColor: '#f0883e',
+      lineColor: '#8b949e',
+      secondaryColor: '#161b22',
+      tertiaryColor: '#1c2230'
+    }
+  });
+</script>
+<style>
+  :root {
+    --bg: #0e1117;
+    --surface: #161b22;
+    --surface-hover: #1c2230;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #f0883e;
+    --accent-dim: rgba(240,136,62,0.12);
+    --green: #3fb950;
+    --green-dim: rgba(63,185,80,0.12);
+    --red: #f85149;
+    --red-dim: rgba(248,81,73,0.12);
+    --blue: #58a6ff;
+    --blue-dim: rgba(88,166,255,0.12);
+    --purple: #bc8cff;
+    --purple-dim: rgba(188,140,255,0.12);
+    --yellow: #e3b341;
+    --yellow-dim: rgba(227,179,65,0.12);
+    --code-bg: #0d1117;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+  }
+
+  .layout {
+    max-width: 1920px;
+    margin: 0 auto;
+    padding: 3rem 4rem 5rem;
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 4.5rem;
+    align-items: start;
+  }
+  @media (max-width: 1200px) { .layout { padding: 3rem 2rem 5rem; gap: 3rem; } }
+  @media (max-width: 960px) {
+    .layout { grid-template-columns: 1fr; gap: 1.5rem; padding: 2rem 1.2rem 4rem; }
+  }
+
+  .sidebar { position: sticky; top: 2rem; font-size: 0.88rem; }
+  @media (max-width: 960px) {
+    .sidebar {
+      position: static; top: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.2rem 1.4rem;
+    }
+  }
+  .sidebar h4 {
+    font-size: 0.72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--text-muted); margin-bottom: 0.85rem;
+    padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);
+  }
+  .sidebar ol { list-style: none; padding: 0; counter-reset: toc2; }
+  .sidebar ol li { counter-increment: toc2; margin-bottom: 0.35rem; }
+  .sidebar ol li::before {
+    content: counter(toc2, decimal-leading-zero);
+    display: inline-block; width: 1.8rem;
+    color: var(--accent); font-weight: 700;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+  }
+  .sidebar a {
+    color: var(--text-muted); text-decoration: none;
+    transition: color 0.15s; font-size: 0.9rem;
+  }
+  .sidebar a:hover { color: var(--accent); }
+  @media (max-width: 960px) {
+    .sidebar ol { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem 1rem; }
+  }
+  @media (max-width: 560px) { .sidebar ol { grid-template-columns: 1fr; } }
+
+  .content { min-width: 0; }
+
+  header {
+    text-align: center;
+    padding: 3rem 1.5rem 2.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 3rem;
+    position: relative;
+  }
+
+  header .badge {
+    display: inline-block;
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.35rem 1rem;
+    border-radius: 100px;
+    margin-bottom: 1rem;
+  }
+
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 900;
+    font-size: 2.6rem;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin-bottom: 0.5rem;
+  }
+
+  header h1 span { color: var(--accent); }
+
+  header p { color: var(--text-muted); font-size: 1.05rem; }
+
+  .back-btn {
+    position: absolute;
+    top: 1.2rem; left: 1.5rem;
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    color: var(--accent); text-decoration: none;
+    font-weight: 600; font-size: 0.82rem;
+    padding: 0.45rem 0.9rem;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 100px;
+    background: rgba(17,22,30,.5);
+    backdrop-filter: blur(6px);
+    transition: transform .2s, color .2s, border-color .2s;
+  }
+  .back-btn:hover { transform: translateX(-3px); color: #ffa675; border-color: var(--accent); }
+
+  .feature {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    margin-bottom: 1.75rem;
+    transition: border-color 0.2s;
+    scroll-margin-top: 1.5rem;
+  }
+  .feature:hover { border-color: var(--accent); }
+
+  .feature-header {
+    display: flex; align-items: center; gap: 0.75rem;
+    margin-bottom: 0.5rem; flex-wrap: wrap;
+  }
+
+  .feature-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem; font-weight: 600;
+    color: var(--accent); background: var(--accent-dim);
+    padding: 0.2rem 0.6rem; border-radius: 6px;
+    letter-spacing: 0.05em;
+  }
+
+  .feature h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 1.45rem;
+    line-height: 1.3;
+  }
+
+  .feature h3 {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin: 1.5rem 0 0.5rem;
+    color: var(--text);
+  }
+
+  .feature p { color: var(--text); font-size: 0.95rem; margin-bottom: 0.85rem; }
+  .feature p.lead { color: var(--text); font-size: 1rem; margin-bottom: 1.2rem; }
+
+  .scene {
+    background: linear-gradient(135deg, rgba(240,136,62,0.06), rgba(188,140,255,0.04));
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.2rem;
+    margin: 0 0 1.4rem;
+    font-size: 0.95rem;
+    color: var(--text);
+    font-style: italic;
+  }
+  .scene::before {
+    content: "Scene · ";
+    font-style: normal;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+  }
+
+  .answer { color: var(--text); font-size: 0.95rem; margin-bottom: 0.85rem; }
+  .answer ul, .feature ul, .feature ol { margin: 0.5rem 0 0.9rem 1.3rem; color: var(--text); }
+  .answer li, .feature li { margin-bottom: 0.4rem; font-size: 0.93rem; }
+  .answer strong, .feature strong { color: var(--text); }
+
+  code, pre { font-family: 'JetBrains Mono', monospace; }
+  p code, li code, .answer code, td code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 0.05rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    color: var(--accent);
+  }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    overflow-x: auto;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: var(--text);
+    margin: 0.6rem 0 1rem;
+  }
+
+  .tip {
+    background: var(--green-dim);
+    border-left: 3px solid var(--green);
+    border-radius: 0 8px 8px 0;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    color: var(--text);
+    margin: 0.5rem 0 1rem;
+  }
+  .tip::before { content: "Interview Tip · "; font-weight: 700; color: var(--green); }
+
+  .analogy {
+    background: var(--purple-dim);
+    border-left: 3px solid var(--purple);
+    border-radius: 0 8px 8px 0;
+    padding: 0.75rem 1rem;
+    font-size: 0.92rem;
+    color: var(--text);
+    margin: 0.5rem 0 1rem;
+  }
+  .analogy::before { content: "Analogy · "; font-weight: 700; color: var(--purple); }
+
+  .gotcha {
+    background: var(--red-dim);
+    border-left: 3px solid var(--red);
+    border-radius: 0 8px 8px 0;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    color: var(--text);
+    margin: 0.5rem 0 1rem;
+  }
+  .gotcha::before { content: "Gotcha · "; font-weight: 700; color: var(--red); }
+
+  .so-what {
+    background: var(--accent-dim);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 0.85rem 1rem;
+    font-size: 0.95rem;
+    color: var(--text);
+    margin: 1.4rem 0 0.5rem;
+    font-weight: 500;
+  }
+  .so-what::before { content: "So in short · "; font-weight: 700; color: var(--accent); }
+
+  .interview-q {
+    background: var(--blue-dim);
+    border-left: 3px solid var(--blue);
+    border-radius: 0 8px 8px 0;
+    padding: 0.75rem 1rem;
+    margin: 1.2rem 0 0.85rem;
+    font-size: 0.92rem;
+    color: var(--blue);
+    font-weight: 600;
+  }
+  .interview-q::before { content: "Q: "; font-weight: 800; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8rem 0 1rem;
+    font-size: 0.88rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.6rem 0.85rem;
+    border: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+  th {
+    background: var(--surface-hover);
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .card {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+  }
+  .card h4 { margin-top: 0; color: var(--accent); font-size: 0.95rem; margin-bottom: 0.4rem; }
+  .card p, .card li { color: var(--text); font-size: 0.9rem; }
+
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 0.8rem 0 1rem; }
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin: 0.8rem 0 1rem; }
+  @media (max-width: 800px) { .g2, .g3 { grid-template-columns: 1fr; } }
+
+  .diagram-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.6rem;
+    overflow-x: auto;
+    margin: 0.8rem 0 1.2rem;
+  }
+  .diagram-box .mermaid { display: flex; justify-content: center; min-height: 100px; }
+
+  .ascii-box {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--text);
+    white-space: pre;
+    margin: 0.8rem 0 1rem;
+  }
+
+  @media (max-width: 750px) {
+    header h1 { font-size: 1.8rem; }
+    .feature { padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="badge">JVM · Interview Prep</div>
+  <h1>Java <span>Garbage Collector</span> — The Interview Guide</h1>
+  <p>What GC actually does, how the heap is split, and how G1, ZGC &amp; Shenandoah work — explained the way you'd say it in an interview, not the way a JVM textbook would.</p>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What GC Does (in 30s)</a></li>
+      <li><a href="#s2">Heap Layout</a></li>
+      <li><a href="#s3">Minor vs Major GC</a></li>
+      <li><a href="#s4">Stop-the-World</a></li>
+      <li><a href="#s5">G1 — How It Works</a></li>
+      <li><a href="#s6">ZGC — How It Works</a></li>
+      <li><a href="#s7">Shenandoah — How It Works</a></li>
+      <li><a href="#s8">Side-by-Side Comparison</a></li>
+      <li><a href="#s9">Reference Types</a></li>
+      <li><a href="#s10">Memory Leaks in Java</a></li>
+      <li><a href="#s11">Top Interview Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <main class="content">
+
+<!-- ====================================================== -->
+<!-- 1. What GC Does in 30s                                  -->
+<!-- ====================================================== -->
+<div class="feature" id="s1">
+  <div class="feature-header">
+    <span class="feature-num">01</span>
+    <h2>What GC Does — In 30 Seconds</h2>
+  </div>
+
+  <p class="lead">In C, you allocate with <code>malloc</code> and free with <code>free</code>. Forget to free → memory leak. Free twice → crash. Java said: <em>"let the runtime do it."</em> That's the GC.</p>
+
+  <h3>The one-line definition</h3>
+  <p>An object is <strong>garbage</strong> if no live thread can reach it through any chain of references. The GC's job is simple: <em>find unreachable objects, free their memory.</em></p>
+
+  <div class="analogy">Think of the GC as the building's security guard. It walks from the official entrances (called <strong>GC Roots</strong> — thread stacks, static fields) and checks every room it can reach. Anyone in a room nobody walked into? Out they go.</div>
+
+  <h3>What are GC Roots?</h3>
+  <p>The starting points of the reachability walk. If an object is reachable from a root, it's alive:</p>
+  <ul>
+    <li>Local variables on every running thread's stack</li>
+    <li>Static fields of loaded classes</li>
+    <li>Active monitors (objects locked by <code>synchronized</code>)</li>
+    <li>JNI references (native code holding Java objects)</li>
+  </ul>
+
+  <div class="so-what">GC = "find what you can reach from the roots, delete the rest." Everything else (generations, regions, ZGC's tricks) is just <em>how</em> to do that fast without freezing your app.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 2. Heap Layout                                          -->
+<!-- ====================================================== -->
+<div class="feature" id="s2">
+  <div class="feature-header">
+    <span class="feature-num">02</span>
+    <h2>The Heap Layout — Young, Old, Metaspace</h2>
+  </div>
+
+  <p class="lead">The heap is split into regions because <strong>most objects die young</strong>. This is the famous "weak generational hypothesis" — typically 90%+ of objects become garbage within milliseconds of being created. So the JVM treats young and old objects differently.</p>
+
+  <h3>The structure</h3>
+  <div class="ascii-box">Heap
+│
+├── Young Gen
+│     ├── Eden        ← every `new` lands here (~80% of young)
+│     ├── Survivor S0 ← survivors of past Minor GCs
+│     └── Survivor S1 ← (one of S0/S1 is always empty)
+│
+└── Old Gen (Tenured) ← long-lived objects after surviving enough GCs
+
+Metaspace (off-heap)  ← class metadata, method bytecode (replaced PermGen in Java 8)</div>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  E["Eden"] -->|"survives 1st GC"| S0["Survivor 0"]
+  S0 -->|"survives next GCs"| S1["Survivor 1"]
+  S1 -->|"age threshold reached"| Old["Old Gen"]
+
+  style E fill:#e8743b,stroke:#e8743b,color:#fff
+  style S0 fill:#58a6ff,stroke:#58a6ff,color:#fff
+  style S1 fill:#58a6ff,stroke:#58a6ff,color:#fff
+  style Old fill:#bc8cff,stroke:#bc8cff,color:#fff
+    </div>
+  </div>
+
+  <h3>Why three areas in Young Gen?</h3>
+  <p>Two Survivors (S0 + S1) are used for a <strong>copying trick</strong>. At any moment, one is empty. When GC runs, it copies all live objects from Eden + the full Survivor into the empty Survivor — then wipes the source areas in one shot. Next time, they swap roles. This is why young-gen GC is so fast.</p>
+
+  <h3>How an object travels</h3>
+  <ol>
+    <li>You write <code>new Order()</code> → object lands in <strong>Eden</strong>.</li>
+    <li>Eden fills up → <strong>Minor GC</strong> runs. Live objects copied to a Survivor space, age = 1.</li>
+    <li>Object survives more GCs → keeps bouncing between S0 ↔ S1, age++ each time.</li>
+    <li>Age crosses threshold (default 15) → object is <strong>promoted</strong> to Old Gen.</li>
+    <li>Old Gen fills up → <strong>Major GC</strong> runs (much slower).</li>
+  </ol>
+
+  <div class="analogy">Eden is a hospital's maternity ward — busy, almost everyone leaves the same day. Survivor is short-stay recovery. Old Gen is long-term care — only the cases that need real care end up there.</div>
+
+  <div class="so-what">Heap is split because young and old objects have different lifecycles. Young → fast copying GC. Old → slower mark-sweep-compact GC. Treating them the same would waste enormous amounts of work.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 3. Minor vs Major GC                                    -->
+<!-- ====================================================== -->
+<div class="feature" id="s3">
+  <div class="feature-header">
+    <span class="feature-num">03</span>
+    <h2>Minor GC vs Major GC vs Full GC</h2>
+  </div>
+
+  <p class="lead">Three terms that get used loosely. Knowing the difference is interview gold.</p>
+
+  <table>
+    <tr><th>Type</th><th>What it cleans</th><th>How often</th><th>Pause</th><th>Algorithm</th></tr>
+    <tr>
+      <td><strong>Minor GC</strong></td>
+      <td>Young Gen only</td>
+      <td>Frequent (every few seconds)</td>
+      <td>Short (1–10 ms)</td>
+      <td>Copying — copy live objects to empty Survivor, wipe source</td>
+    </tr>
+    <tr>
+      <td><strong>Major GC</strong></td>
+      <td>Old Gen only</td>
+      <td>Rare</td>
+      <td>Longer (100 ms+)</td>
+      <td>Mark-Sweep-Compact</td>
+    </tr>
+    <tr>
+      <td><strong>Full GC</strong></td>
+      <td>Whole heap (Young + Old + Metaspace)</td>
+      <td>Very rare (something's wrong)</td>
+      <td>Long (seconds possible)</td>
+      <td>Mark-Sweep-Compact, all areas</td>
+    </tr>
+  </table>
+
+  <h3>The Minor GC algorithm — copying</h3>
+  <ol>
+    <li>Walk roots, mark every reachable object in Young Gen.</li>
+    <li><strong>Copy</strong> all live objects from Eden + current Survivor → empty Survivor.</li>
+    <li>Increment each survivor's age. If age &gt; 15 → promote to Old Gen.</li>
+    <li>Wipe Eden and the old Survivor in O(1) (just reset the pointer).</li>
+  </ol>
+  <p>Cost is proportional to <em>live</em> objects, not heap size. Since 90%+ of Eden is dead, you copy 10% and reclaim 90% essentially for free.</p>
+
+  <h3>The Major GC algorithm — Mark-Sweep-Compact</h3>
+  <ol>
+    <li><strong>Mark</strong> — walk roots, mark every reachable object as alive.</li>
+    <li><strong>Sweep</strong> — scan the heap; anything unmarked is freed.</li>
+    <li><strong>Compact</strong> — slide live objects together to eliminate fragmentation (so future allocations have one big contiguous free area).</li>
+  </ol>
+
+  <div class="analogy">Minor GC is like cleaning a hotel's checkout floor every hour — fast, only a few rooms matter. Major GC is like deep-cleaning the whole building — rare, slow, but necessary. Full GC is "we're closing the hotel for renovations" — you don't want this in production.</div>
+
+  <div class="so-what">Minor GC = young-only, fast, frequent. Major GC = old-only, slower, rare. Full GC = everything, painful, usually a sign of trouble (heap too small or memory leak).</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 4. Stop-the-World                                       -->
+<!-- ====================================================== -->
+<div class="feature" id="s4">
+  <div class="feature-header">
+    <span class="feature-num">04</span>
+    <h2>Stop-the-World (STW) — Why GC Pauses Exist</h2>
+  </div>
+
+  <p class="lead">Some GC work needs a consistent snapshot of the heap. To get that, the JVM <strong>pauses every application thread</strong>. This pause is called Stop-the-World.</p>
+
+  <h3>Why it's needed</h3>
+  <p>Imagine the GC walks references while your code is busy reassigning them. The GC could miss an object, or copy one that just moved. To avoid this corruption, the JVM halts all application threads at "safepoints" before doing the risky work.</p>
+
+  <div class="analogy">It's like trying to count people in a moving crowd. You can't get an accurate count while everyone's shuffling around. So you ask everyone to freeze for a second, count them, then say "you can move again."</div>
+
+  <h3>The trade-off every GC makes</h3>
+  <ul>
+    <li><strong>Old GCs (Serial, Parallel)</strong> — pause for the entire collection. Simple but pauses can be seconds.</li>
+    <li><strong>G1</strong> — does most work concurrently with the app. STW pauses are short (~200ms) and bounded by a target you set.</li>
+    <li><strong>ZGC / Shenandoah</strong> — almost everything runs concurrently. STW pauses are sub-millisecond, regardless of heap size.</li>
+  </ul>
+
+  <div class="so-what">STW = pause where every app thread stops so the GC can work safely. The whole evolution from Serial → Parallel → G1 → ZGC is the story of <em>shrinking STW pauses</em> while keeping correctness.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 5. G1                                                   -->
+<!-- ====================================================== -->
+<div class="feature" id="s5">
+  <div class="feature-header">
+    <span class="feature-num">05</span>
+    <h2>G1 GC — How It Works (Default Since Java 9)</h2>
+  </div>
+
+  <p class="lead">G1 stands for <strong>Garbage First</strong>. It's the default collector in modern JVMs and what most production servers use. Its key idea: throw out the rigid Eden/Survivor/Old layout and replace it with thousands of small <em>regions</em>.</p>
+
+  <h3>The big idea — regions</h3>
+  <p>G1 splits the heap into ~2000 equal-sized regions (1–32 MB each). Each region is dynamically labeled as Eden, Survivor, or Old — boundaries shift over time. There's no fixed "young area" — any region can play any role.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  subgraph H["G1 Heap — divided into ~2000 regions"]
+    direction LR
+    R1[E]:::e
+    R2[O]:::o
+    R3[O]:::o
+    R4[E]:::e
+    R5[S]:::s
+    R6[O]:::o
+    R7[E]:::e
+    R8[O]:::o
+    R9[E]:::e
+    R10[O]:::o
+    R11[S]:::s
+    R12[F]:::f
+  end
+
+  classDef e fill:#e8743b,stroke:#e8743b,color:#fff
+  classDef s fill:#58a6ff,stroke:#58a6ff,color:#fff
+  classDef o fill:#bc8cff,stroke:#bc8cff,color:#fff
+  classDef f fill:#1c2230,stroke:#30363d,color:#8b949e
+    </div>
+  </div>
+  <p style="font-size:0.85rem;color:var(--text-muted);text-align:center">E = Eden · S = Survivor · O = Old · F = Free</p>
+
+  <h3>Why "Garbage First"?</h3>
+  <p>Each region tracks how much of it is garbage. At collection time, G1 sorts regions by garbage density and <strong>collects the most-garbage ones first</strong>. Best ROI: clean a 95%-garbage region and you reclaim almost the whole region for the cost of evacuating the 5% that's alive.</p>
+
+  <div class="analogy">Imagine garbage cans on a city street. The cleaning truck has 30 minutes (your pause-time budget). It can't visit every can. So it has data: "this can is 95% full, this one is 20% full." It hits the 95% cans first because that's where the wins are. That's literally G1.</div>
+
+  <h3>How G1 hits a pause-time target</h3>
+  <p>You tell G1 "I want pauses under 200ms" via <code>-XX:MaxGCPauseMillis=200</code>. G1 keeps stats on how long each region took to evacuate last time. Given the budget, it picks a set of regions that fit in 200ms while reclaiming the most garbage. Whatever doesn't fit is collected next cycle.</p>
+
+  <h3>The G1 cycle (simple version)</h3>
+  <ol>
+    <li><strong>Young collection</strong> — evacuates Eden + Survivor regions. STW, but short.</li>
+    <li><strong>Concurrent marking</strong> — when Old Gen is ~45% full, G1 walks the heap concurrently with the app, computing per-region garbage counts.</li>
+    <li><strong>Mixed collection</strong> — next several "young" GCs also evacuate the highest-garbage Old regions. This avoids needing a Full GC.</li>
+    <li><strong>Full GC</strong> — last resort if mixed can't keep up. STW, slow. Bad if it happens often.</li>
+  </ol>
+
+  <div class="tip">If asked "why G1?" — say: "predictable pause times via region selection, no rigid generation boundaries, default since Java 9, sweet spot is 4–32 GB heaps." That's all you need.</div>
+
+  <div class="so-what">G1 = region-based + collect-most-garbage-first + target a pause time. You sacrifice some throughput for predictable pauses, which is what most server apps want.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 6. ZGC                                                  -->
+<!-- ====================================================== -->
+<div class="feature" id="s6">
+  <div class="feature-header">
+    <span class="feature-num">06</span>
+    <h2>ZGC — Sub-Millisecond Pauses on Huge Heaps</h2>
+  </div>
+
+  <p class="lead">ZGC is built for one job: <strong>keep pauses under 1 millisecond, no matter how big the heap is</strong>. It can handle 16 TB heaps with the same pause time as an 8 GB heap. The trick: do almost everything concurrently with the app.</p>
+
+  <div class="scene">A trading firm runs its matching engine on a 256 GB heap. They cannot tolerate a 200ms pause — that's millions of dollars of missed trades. They switch to ZGC. Pauses drop below 1ms regardless of heap size. They sleep again.</div>
+
+  <h3>The big idea — fully concurrent</h3>
+  <p>Most GCs pause the app for the bulk of their work. ZGC <strong>does almost everything while the app keeps running</strong> — including the hard part, compaction (moving live objects to defrag the heap). Only tiny coordination steps require STW.</p>
+
+  <h3>How does it move objects without freezing the app?</h3>
+  <p>This is the magic. ZGC uses two tricks (you only need the high-level idea for an interview):</p>
+  <ul>
+    <li><strong>Colored pointers</strong> — ZGC stores extra info in unused bits of object references. These bits tell the GC what state the object is in (e.g., "already moved", "needs scanning").</li>
+    <li><strong>Load barriers</strong> — every time your code <em>reads</em> a reference, the JVM checks the pointer's color bits. If the object has been moved, the JVM transparently fixes the pointer to the new location. Your code doesn't notice.</li>
+  </ul>
+
+  <div class="analogy">Imagine renovating a hotel without closing it. As guests walk down the corridor, a robot whispers "your room moved to floor 7" — and the guest just walks there. No queue, no closure. ZGC's load barrier is that whisper.</div>
+
+  <h3>What you need to know</h3>
+  <ul>
+    <li>Pause time: <strong>&lt; 1 ms</strong>, independent of heap size.</li>
+    <li>Heap range: 8 GB to <strong>16 TB</strong>.</li>
+    <li>Trade-off: ~5–15% lower throughput than Parallel GC (because of barrier overhead).</li>
+    <li>Flag: <code>-XX:+UseZGC</code>. Generational variant since JDK 21: <code>-XX:+ZGenerational</code>.</li>
+    <li>Best for: <strong>latency-critical services</strong> — trading, gaming, real-time APIs.</li>
+  </ul>
+
+  <div class="tip">If asked "what is ZGC?" — say: "concurrent collector with sub-millisecond pauses, scales to terabytes, uses colored pointers and load barriers to move objects while the app runs. Trades throughput for latency. Use it when you can't tolerate &gt;10ms pauses."</div>
+
+  <div class="so-what">ZGC's superpower is <strong>pause time independent of heap size</strong>. A 16 TB heap pauses no longer than an 8 GB one. That's the breakthrough.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 7. Shenandoah                                           -->
+<!-- ====================================================== -->
+<div class="feature" id="s7">
+  <div class="feature-header">
+    <span class="feature-num">07</span>
+    <h2>Shenandoah — The Other Low-Pause Collector</h2>
+  </div>
+
+  <p class="lead">Shenandoah was built by Red Hat with the same goal as ZGC — short pauses regardless of heap size — but a different mechanism. Both work; ZGC just won the popularity contest.</p>
+
+  <h3>The big idea — concurrent compaction with a forwarding pointer</h3>
+  <p>Like ZGC, Shenandoah does compaction <strong>concurrently with the app</strong>. Instead of colored pointers, it uses a simpler trick called the <strong>Brooks pointer</strong>: every object has an extra header field that points to itself by default. When the object is being moved, that pointer redirects to the new location.</p>
+
+  <div class="ascii-box">Object header:  [class ptr][flags][Brooks fwd ptr]──► self (or new location)
+                                          ▲
+                       Every reference read goes through this pointer.</div>
+
+  <h3>How it works in plain English</h3>
+  <ol>
+    <li>Shenandoah marks live objects concurrently (just like G1's concurrent mark).</li>
+    <li>It picks high-garbage regions to evacuate.</li>
+    <li>While the app is running, it copies live objects from those regions to fresh regions.</li>
+    <li>If the app reads an object that's been copied, the Brooks pointer redirects the read to the new location — transparently.</li>
+    <li>Old regions are freed once everything's evacuated.</li>
+  </ol>
+
+  <div class="analogy">It's like adding a "temporary mail forwarding" sticker to every mailbox. When you move, you don't tell every sender — you just leave the sticker, and mail finds its way. Shenandoah is the JVM doing this for object references.</div>
+
+  <h3>What you need to know</h3>
+  <ul>
+    <li>Pause time: <strong>&lt; 10 ms</strong> (close to ZGC, slightly higher).</li>
+    <li>Heap range: 4 GB to ~1 TB.</li>
+    <li>Trade-off: indirection on every read (Brooks pointer dereference) → similar throughput cost to ZGC.</li>
+    <li>Flag: <code>-XX:+UseShenandoahGC</code>. Available in OpenJDK builds (Red Hat-led).</li>
+    <li>Available even on smaller / 32-bit JVMs (ZGC needs 64-bit + larger heaps).</li>
+  </ul>
+
+  <div class="tip">If asked "Shenandoah vs ZGC?" — say: "both target sub-10ms pauses concurrently. ZGC uses colored pointers (needs 64-bit, 4GB+), scales bigger (up to 16 TB). Shenandoah uses Brooks forwarding pointers, works on smaller heaps too. Choose based on heap size and JDK build."</div>
+
+  <div class="so-what">Shenandoah and ZGC are siblings — both keep the app running during compaction. Different mechanisms, similar results. Pick based on your heap size and which is supported in your JDK.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 8. Comparison                                           -->
+<!-- ====================================================== -->
+<div class="feature" id="s8">
+  <div class="feature-header">
+    <span class="feature-num">08</span>
+    <h2>Side-by-Side — Which GC When?</h2>
+  </div>
+
+  <p class="lead">The cheat-sheet you should be able to recite in your sleep.</p>
+
+  <table>
+    <tr>
+      <th>GC</th>
+      <th>Pause</th>
+      <th>Throughput</th>
+      <th>Heap Size</th>
+      <th>Best For</th>
+      <th>Flag</th>
+    </tr>
+    <tr>
+      <td><strong>Serial</strong></td>
+      <td>Long (single-threaded)</td>
+      <td>Low</td>
+      <td>&lt; 100 MB</td>
+      <td>CLI tools, embedded</td>
+      <td><code>-XX:+UseSerialGC</code></td>
+    </tr>
+    <tr>
+      <td><strong>Parallel</strong></td>
+      <td>Long (multi-threaded STW)</td>
+      <td><strong>Highest</strong></td>
+      <td>1–8 GB</td>
+      <td>Batch jobs (throughput &gt; latency)</td>
+      <td><code>-XX:+UseParallelGC</code></td>
+    </tr>
+    <tr>
+      <td><strong>G1</strong> <em>(default)</em></td>
+      <td>Predictable (~200ms)</td>
+      <td>Medium-High</td>
+      <td>4–32 GB</td>
+      <td>Most server apps</td>
+      <td><code>-XX:+UseG1GC</code></td>
+    </tr>
+    <tr>
+      <td><strong>ZGC</strong></td>
+      <td><strong>&lt; 1 ms</strong></td>
+      <td>Medium</td>
+      <td>8 GB – 16 TB</td>
+      <td>Latency-critical, huge heaps</td>
+      <td><code>-XX:+UseZGC</code></td>
+    </tr>
+    <tr>
+      <td><strong>Shenandoah</strong></td>
+      <td>&lt; 10 ms</td>
+      <td>Medium</td>
+      <td>4 GB – 1 TB</td>
+      <td>Low-pause on smaller heaps</td>
+      <td><code>-XX:+UseShenandoahGC</code></td>
+    </tr>
+  </table>
+
+  <h3>The decision tree</h3>
+  <div class="ascii-box">Is throughput the only thing that matters (batch job)?
+  → Parallel GC
+
+Need predictable ~200ms pauses on 4–32 GB heap?
+  → G1 (the default — start here)
+
+Need pauses &lt; 10ms? Or huge heap (&gt; 32 GB)?
+  → ZGC (preferred) or Shenandoah
+
+Tiny app or embedded?
+  → Serial GC</div>
+
+  <div class="tip">When the interviewer asks "which GC would you pick?" — always start with <em>"depends on the workload."</em> Then run the decision tree above. Showing you think about the SLA before picking the tool is the signal they want.</div>
+
+  <div class="so-what">No "best" GC — only the best fit for your workload. Default to G1 unless you have a specific reason (huge heap → ZGC, batch job → Parallel, embedded → Serial).</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 9. Reference Types                                      -->
+<!-- ====================================================== -->
+<div class="feature" id="s9">
+  <div class="feature-header">
+    <span class="feature-num">09</span>
+    <h2>Reference Types — Strong, Soft, Weak, Phantom</h2>
+  </div>
+
+  <p class="lead">99% of references in Java are "strong" — the GC will never collect them while they exist. But sometimes you want weaker semantics. Java has three flavors for that.</p>
+
+  <table>
+    <tr><th>Type</th><th>GC behavior</th><th>Use case</th></tr>
+    <tr>
+      <td><strong>Strong</strong> (default)</td>
+      <td>Object never collected while a strong ref exists</td>
+      <td>Normal fields, locals, parameters</td>
+    </tr>
+    <tr>
+      <td><strong>Soft</strong> (<code>SoftReference</code>)</td>
+      <td>Collected only when JVM is low on memory</td>
+      <td>Memory-sensitive caches</td>
+    </tr>
+    <tr>
+      <td><strong>Weak</strong> (<code>WeakReference</code>)</td>
+      <td>Collected at next GC if no strong refs</td>
+      <td><code>WeakHashMap</code>, listener registries</td>
+    </tr>
+    <tr>
+      <td><strong>Phantom</strong> (<code>PhantomReference</code>)</td>
+      <td>Object already finalized; reference enqueued for cleanup</td>
+      <td>Resource cleanup (replaces <code>finalize()</code>)</td>
+    </tr>
+  </table>
+
+  <p>Most-asked interview example — <code>WeakHashMap</code>:</p>
+  <pre>Map&lt;Component, Metadata&gt; meta = <span style="color:#ff7b72">new</span> WeakHashMap&lt;&gt;();
+meta.put(component, metadata);
+<span style="color:#8b949e">// When `component` is GC'd from elsewhere, the map entry vanishes automatically.</span>
+<span style="color:#8b949e">// No need to manually `.remove()` — perfect for caches keyed by lifetime.</span></pre>
+
+  <div class="gotcha"><code>finalize()</code> is deprecated and unreliable — unpredictable timing, can resurrect objects, blocks the finalizer thread. Use <code>java.lang.ref.Cleaner</code> (Java 9+) or try-with-resources (<code>AutoCloseable</code>) instead.</div>
+
+  <div class="so-what">Strong refs for everything, weak refs for "auto-clean caches", phantom refs for native resource cleanup. That's 99% of what you need.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 10. Memory Leaks                                        -->
+<!-- ====================================================== -->
+<div class="feature" id="s10">
+  <div class="feature-header">
+    <span class="feature-num">10</span>
+    <h2>Memory Leaks in Java — Yes, They Exist</h2>
+  </div>
+
+  <p class="lead">"Java has GC, so it can't leak." Wrong. You can't forget to free, but you <em>can</em> forget to <strong>unreference</strong> — and the symptom is the same: heap fills up, OOM crash.</p>
+
+  <h3>The 5 most common leak patterns</h3>
+  <div class="g2">
+    <div class="card">
+      <h4>1. Unbounded static collections</h4>
+      <p>A <code>static HashMap</code> used as a cache, no eviction. Every entry stays alive forever.</p>
+      <p><strong>Fix:</strong> Caffeine or Guava cache with size + TTL limits.</p>
+    </div>
+    <div class="card">
+      <h4>2. Unremoved listeners</h4>
+      <p><code>eventBus.subscribe(this)</code> → no <code>unsubscribe</code> → bus holds a reference forever.</p>
+      <p><strong>Fix:</strong> always pair subscribe/unsubscribe.</p>
+    </div>
+    <div class="card">
+      <h4>3. ThreadLocals in pooled threads</h4>
+      <p>Servlet thread pools reuse threads. <code>ThreadLocal</code> set in request 1 persists into request 2.</p>
+      <p><strong>Fix:</strong> always <code>tl.remove()</code> in <code>finally</code>.</p>
+    </div>
+    <div class="card">
+      <h4>4. Inner classes capturing outer</h4>
+      <p>Non-static inner / anonymous class / lambda capturing <code>this</code>. If it outlives the outer (e.g., put in an executor), the outer can't be GC'd.</p>
+      <p><strong>Fix:</strong> use <code>static</code> nested classes when possible.</p>
+    </div>
+    <div class="card">
+      <h4>5. Unclosed resources</h4>
+      <p>Streams, connections, native buffers (<code>DirectByteBuffer</code>) not closed. Heap looks fine; native memory grows.</p>
+      <p><strong>Fix:</strong> try-with-resources for everything <code>AutoCloseable</code>.</p>
+    </div>
+  </div>
+
+  <h3>How to debug a leak — 4 steps</h3>
+  <ol>
+    <li><strong>Confirm it's a leak.</strong> Plot heap-after-Full-GC over time. Trending up = leak.</li>
+    <li><strong>Take a heap dump:</strong> <code>jmap -dump:live,format=b,file=heap.hprof &lt;pid&gt;</code></li>
+    <li><strong>Open in Eclipse MAT</strong> → run "Leak Suspects" — points at top retainers.</li>
+    <li><strong>"Path to GC roots"</strong> in MAT shows the chain keeping the leaked object alive. Fix that chain.</li>
+  </ol>
+
+  <div class="tip">"How would you debug a Java memory leak?" → recite the 4 steps above. Naming Eclipse MAT and "Path to GC roots" signals real production experience.</div>
+
+  <div class="so-what">Java leaks are <em>reachability bugs</em>, not memory-management bugs. Every leak boils down to: "this object is still reachable from a root I forgot to clear."</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 11. Top Interview Q&A                                   -->
+<!-- ====================================================== -->
+<div class="feature" id="s11">
+  <div class="feature-header">
+    <span class="feature-num">11</span>
+    <h2>Top Interview Q&amp;A — The 60-Second Answers</h2>
+  </div>
+
+  <p class="lead">The exact answers to give. Lead with the punchline, expand only if asked.</p>
+
+  <div class="interview-q">Explain how garbage collection works in Java.</div>
+  <p class="answer"><strong>4-beat structure:</strong> (1) An object is garbage if no live thread can reach it from any GC root. (2) The heap is split into Young + Old based on the "most objects die young" hypothesis. (3) Young uses a fast copying collector — Eden + two Survivors, objects bounce between Survivors until old enough to promote. (4) Old uses Mark-Sweep-Compact, slower but rarer. Default collector since Java 9 is G1; latency-critical apps use ZGC.</p>
+
+  <div class="interview-q">What's Stop-the-World?</div>
+  <p class="answer">A pause where every application thread halts so the GC can do work that needs a consistent heap snapshot. Length depends on heap size and collector. Old GCs (Parallel) had STW for the whole collection. G1 minimizes STW by doing most work concurrently. ZGC keeps STW under 1ms regardless of heap size.</p>
+
+  <div class="interview-q">Difference between Minor GC and Full GC?</div>
+  <p class="answer">Minor GC = Young Gen only, copying algorithm, fast (1–10ms), frequent. Full GC = whole heap (Young + Old), Mark-Sweep-Compact, slow (100ms to seconds), rare. Frequent Full GCs in production usually mean either heap is too small or there's a memory leak.</p>
+
+  <div class="interview-q">What is G1? Why is it the default?</div>
+  <p class="answer">G1 ("Garbage First") splits the heap into ~2000 small regions. It tracks how much garbage each region has and collects the most-garbage ones first. You set a target pause time (e.g., 200ms) and G1 picks how many regions fit in that budget. Default since Java 9 because it gives <em>predictable</em> pauses on multi-GB heaps without much tuning.</p>
+
+  <div class="interview-q">What's ZGC and when would you use it?</div>
+  <p class="answer">Concurrent collector that keeps pauses under 1ms regardless of heap size — works from 8 GB up to 16 TB. Uses "colored pointers" and "load barriers" to relocate objects while the app keeps running. Costs ~10% throughput. Use it when you can't tolerate &gt;10ms pauses — trading systems, real-time APIs, games.</p>
+
+  <div class="interview-q">ZGC vs Shenandoah?</div>
+  <p class="answer">Both target sub-10ms concurrent collection. ZGC uses colored pointers (needs 64-bit, 4GB+ heaps), scales bigger, ships in mainline OpenJDK. Shenandoah uses Brooks forwarding pointers, works on smaller / older JVMs, was developed by Red Hat. Pick based on your JDK build and heap size.</p>
+
+  <div class="interview-q">What are GC Roots?</div>
+  <p class="answer">The starting points for the GC's reachability walk: (1) local variables on every active thread's stack, (2) static fields of loaded classes, (3) JNI references from native code, (4) objects held by active monitors (synchronized blocks). An object is alive if any chain of references reaches it from a root.</p>
+
+  <div class="interview-q">Can you have a memory leak in Java?</div>
+  <p class="answer">Yes — they're "reachability leaks", not allocation leaks. Top patterns: unbounded static caches, unremoved listeners, ThreadLocals in pooled threads, inner-class capture, unclosed native resources. Find them with <code>jmap</code> heap dumps + Eclipse MAT's "path to GC roots".</p>
+
+  <div class="interview-q">How would you tune GC?</div>
+  <p class="answer">"I don't, until I have to." Then: (1) pick the right collector for the workload, (2) size the heap (<code>-Xms</code> = <code>-Xmx</code> in containers), (3) turn on GC logs (<code>-Xlog:gc*</code>). If pauses are bad, profile to find allocation hotspots. The single biggest lever is <em>allocation rate</em> — reducing it usually helps more than any flag.</p>
+
+  <div class="interview-q">Difference between PermGen and Metaspace?</div>
+  <p class="answer">PermGen (pre-Java 8) was inside the heap, fixed-size, held class metadata. Filled up easily — classic <code>OutOfMemoryError: PermGen space</code> in Spring apps. Metaspace (Java 8+) lives in <em>native</em> memory, grows automatically (cap with <code>-XX:MaxMetaspaceSize</code>), pairs better with class unloading.</p>
+
+  <div class="tip">Memorize 5 of these word-for-word. In interviews, fluent answers to GC questions move you from "studied Java" to "shipped Java in production."</div>
+
+  <div class="so-what">GC questions test three things at once: systems thinking, JVM knowledge, and trade-off reasoning. Master the 11 answers above and you're set for any GC question that comes up.</div>
+</div>
+
+  </main>
+</div>
+
+<div class="likes-row">
+  <p class="like-prompt">
+    <strong>Did this make GC click?</strong>
+    If you walked away knowing what to say in interviews — tap the ❤️.
+  </p>
+  <div id="likes"></div>
+</div>
+
+</body>
+</html>

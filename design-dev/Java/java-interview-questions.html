@@ -55,10 +55,27 @@
     .layout { grid-template-columns: 1fr; gap: 1.5rem; padding: 2rem 1.2rem 4rem; }
   }
 
-  .sidebar { position: sticky; top: 2rem; font-size: 0.88rem; }
+  .sidebar {
+    position: sticky;
+    top: 2rem;
+    font-size: 0.88rem;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 0.6rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .sidebar::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
   @media (max-width: 960px) {
     .sidebar {
       position: static; top: auto;
+      max-height: none;
+      overflow: visible;
+      padding-right: 0;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
@@ -375,7 +392,25 @@
       <li><a href="#s17">ClassLoaders</a></li>
       <li><a href="#s18">Streams &amp; Functional</a></li>
       <li><a href="#s19">Optional — Done Right</a></li>
-      <li><a href="#s20">Tricky Gotchas</a></li>
+      <li><a href="#s21">HashMap vs ConcurrentHashMap</a></li>
+      <li><a href="#s22">Debugging OutOfMemoryError</a></li>
+      <li><a href="#s23">Making a Class Thread-Safe</a></li>
+      <li><a href="#s24">Spring Bean Lifecycle</a></li>
+      <li><a href="#s25">Spring DI — How It Works</a></li>
+      <li><a href="#s26">@Transactional Internals</a></li>
+      <li><a href="#s27">@Component vs @Service vs @Repository</a></li>
+      <li><a href="#s28">Global Exception Handling</a></li>
+      <li><a href="#s29">JPA Lazy vs Eager Loading</a></li>
+      <li><a href="#s30">Concurrent DB Row Updates</a></li>
+      <li><a href="#s31">ACID — Banking Example</a></li>
+      <li><a href="#s32">Optimizing Slow SQL Queries</a></li>
+      <li><a href="#s33">Pagination &amp; Sorting in REST</a></li>
+      <li><a href="#s34">JWT Authentication Flow</a></li>
+      <li><a href="#s35">Diagnosing a Slow API</a></li>
+      <li><a href="#s36">REST vs Kafka — When To Use</a></li>
+      <li><a href="#s37">Dockerizing Spring Boot</a></li>
+      <li><a href="#s38">Microservice Fault Tolerance</a></li>
+      <li><a href="#s39">Tricky Gotchas</a></li>
     </ol>
   </aside>
 
@@ -1353,11 +1388,1702 @@ count.<span class="fn">compareAndSet</span>(<span class="num">5</span>, <span cl
 </div>
 
 <!-- ====================================================== -->
-<!-- 20. Tricky Gotchas                                      -->
+<!-- 21. HashMap vs ConcurrentHashMap                        -->
 <!-- ====================================================== -->
-<div class="feature" id="s20">
+<div class="feature" id="s21">
   <div class="feature-header">
-    <span class="feature-num">20</span>
+    <span class="feature-num">21</span>
+    <h2>HashMap vs ConcurrentHashMap — A Single-Threaded Notebook vs a Shared Whiteboard</h2>
+  </div>
+
+  <div class="scene">Riya is building a session cache for a payments API. She picks <code>HashMap</code> because "it's faster". Two weeks later, under load, the API starts returning random NPEs and once even hangs an entire JVM thread at 100% CPU. The bug is one line — the wrong Map.</div>
+
+  <div class="interview-q">What's the difference between HashMap and ConcurrentHashMap? When would you pick one over the other?</div>
+
+  <h3>The fundamental difference</h3>
+  <p><code>HashMap</code> is single-threaded by design. If two threads write to it at the same time, you can corrupt the internal bucket array — pre-Java 8 this could even create a circular linked list during resize, sending one thread into a 100% CPU infinite loop. <code>ConcurrentHashMap</code> is purpose-built for concurrent access — multiple threads can read and write at the same time without locks blocking each other (in most cases).</p>
+
+  <h3>How ConcurrentHashMap achieves concurrency</h3>
+  <p>It does not slap a single lock around the whole map (that's what <code>Collections.synchronizedMap()</code> does, and it's terrible for throughput). Instead:</p>
+  <ul>
+    <li><strong>Java 7 (segment-based):</strong> the map was split into 16 "segments". Each segment had its own lock. Two threads writing to different segments never blocked each other.</li>
+    <li><strong>Java 8+ (bucket-level CAS):</strong> the segments were removed. Each bucket can be updated atomically using compare-and-swap (CAS). When buckets collide on a write, only that one bucket synchronizes briefly. Reads are fully lock-free thanks to <code>volatile</code> fields on the Node.</li>
+  </ul>
+
+  <div class="analogy">HashMap is your personal notebook — you can scribble in it because nobody else is touching it. ConcurrentHashMap is a whiteboard at a startup retro: each square is independently lockable, multiple people can write at once on different squares, and reading what's already there never requires a lock.</div>
+
+  <h3>Side-by-side comparison</h3>
+  <table>
+    <tr><th>Aspect</th><th>HashMap</th><th>ConcurrentHashMap</th></tr>
+    <tr><td>Thread-safe</td><td>No</td><td>Yes</td></tr>
+    <tr><td>Null keys/values</td><td>One null key, many null values allowed</td><td>No nulls allowed (anywhere)</td></tr>
+    <tr><td>Iterator behavior</td><td>Fail-fast (throws <code>ConcurrentModificationException</code>)</td><td>Fail-safe (weakly consistent — never throws CME)</td></tr>
+    <tr><td>Performance (single-threaded)</td><td>Faster (no synchronization overhead)</td><td>Slightly slower</td></tr>
+    <tr><td>Performance (multi-threaded)</td><td>Unsafe — corruption guaranteed</td><td>Excellent — bucket-level locking</td></tr>
+    <tr><td>Internals</td><td>Plain <code>Node[]</code></td><td><code>Node[]</code> + CAS + <code>volatile</code> + synchronized blocks per bucket</td></tr>
+  </table>
+
+  <h3>Why no nulls in ConcurrentHashMap?</h3>
+  <p>With concurrent access, <code>map.get(key)</code> returning <code>null</code> would be ambiguous: did the key not exist, or did someone just <code>put(key, null)</code>? In a single-threaded HashMap you can follow up with <code>containsKey</code>, but in a concurrent map another thread might mutate between the two calls. So Doug Lea (the author) just banned nulls — disambiguation by design.</p>
+
+  <h3>The "atomic operations" superpower</h3>
+  <p>ConcurrentHashMap exposes operations like <code>putIfAbsent</code>, <code>compute</code>, <code>computeIfAbsent</code>, <code>merge</code> that are <strong>atomic</strong> — no other thread can sneak in between the read and the write. Always prefer these over a manual <code>get-then-put</code> sequence:</p>
+
+  <div class="code-block">
+    <span class="code-label bad">Race condition — broken</span>
+<pre><span class="cmt">// Two threads can both see "absent" and both put their value</span>
+<span class="kw">if</span> (!map.<span class="fn">containsKey</span>(key)) {
+    map.<span class="fn">put</span>(key, expensiveCompute());
+}</pre>
+  </div>
+
+  <div class="code-block">
+    <span class="code-label good">Atomic — correct</span>
+<pre>map.<span class="fn">computeIfAbsent</span>(key, k -&gt; expensiveCompute());</pre>
+  </div>
+
+  <div class="gotcha">Inside the lambda passed to <code>computeIfAbsent</code>, do NOT mutate the same map (e.g., put another key) — the bucket is locked and you'll either deadlock or break invariants. Keep the lambda short and side-effect-free.</div>
+
+  <h3>When to use which</h3>
+  <ul>
+    <li><strong>HashMap</strong> — local variables, single-threaded code, request-scoped data, anything that won't escape a thread.</li>
+    <li><strong>ConcurrentHashMap</strong> — caches, shared registries, counters, anything multiple threads see.</li>
+    <li><strong>Collections.synchronizedMap(new HashMap&lt;&gt;())</strong> — almost never. It's a single coarse lock; ConcurrentHashMap beats it on every benchmark.</li>
+  </ul>
+
+  <div class="so-what">HashMap is the racing bike — fast, light, useless if more than one rider. ConcurrentHashMap is the bus — slightly slower per seat, but it actually works when many people need to ride. Default to ConcurrentHashMap whenever there's any chance the map is shared.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 22. OutOfMemoryError — Production Debugging              -->
+<!-- ====================================================== -->
+<div class="feature" id="s22">
+  <div class="feature-header">
+    <span class="feature-num">22</span>
+    <h2>OutOfMemoryError — What Causes It and How to Debug It in Production</h2>
+  </div>
+
+  <div class="scene">It's 2 AM. PagerDuty wakes Karan up. The order-service has crashed three times in twenty minutes with <code>java.lang.OutOfMemoryError: Java heap space</code>. The team thinks "just bump the heap to 4GB". Karan knows that's a band-aid — something is leaking. Here's how he chases it down.</div>
+
+  <div class="interview-q">What causes OutOfMemoryError in production? Walk me through how you'd debug it.</div>
+
+  <h3>OOM is not one error — it's six</h3>
+  <p>The full message after the colon tells you which memory area ran out. They have very different causes:</p>
+
+  <table>
+    <tr><th>Variant</th><th>What it means</th><th>Likely cause</th></tr>
+    <tr><td><code>Java heap space</code></td><td>The Old Gen + Young Gen are full and GC can't reclaim enough</td><td>Memory leak (objects pinned by some root), or undersized heap for actual workload</td></tr>
+    <tr><td><code>GC overhead limit exceeded</code></td><td>JVM spent &gt;98% of recent time in GC and reclaimed &lt;2%</td><td>Heap is too small AND there's a leak — the JVM is thrashing GC trying to survive</td></tr>
+    <tr><td><code>Metaspace</code></td><td>Class metadata area is full (Java 8+ replacement for PermGen)</td><td>Loading too many classes — common in apps that hot-deploy or use code-generation libraries (CGLib, Groovy, etc.)</td></tr>
+    <tr><td><code>Direct buffer memory</code></td><td>Native memory used by NIO ByteBuffers is exhausted</td><td>Leaking <code>DirectByteBuffer</code>s — common in Netty / Kafka client misuse</td></tr>
+    <tr><td><code>unable to create new native thread</code></td><td>OS refused to create another OS thread</td><td>Thread leak — usually unbounded thread pools or leaked <code>new Thread()</code> calls</td></tr>
+    <tr><td><code>Requested array size exceeds VM limit</code></td><td>Tried to allocate an array bigger than ~Integer.MAX_VALUE</td><td>Reading a giant file/blob into a single byte[]</td></tr>
+  </table>
+
+  <h3>Common root causes for "Java heap space"</h3>
+  <ul>
+    <li><strong>Static collections that grow forever</strong> — <code>private static final Map&lt;String, User&gt; CACHE = new HashMap&lt;&gt;();</code> with no eviction. Classic.</li>
+    <li><strong>ThreadLocal leaks</strong> — values set on a thread pool thread, never removed. The thread lives forever, the value lives with it.</li>
+    <li><strong>Listeners and callbacks not deregistered</strong> — every page registers a listener; the page closes; the listener still holds the page in memory.</li>
+    <li><strong>Loading too much from the database</strong> — <code>userRepo.findAll()</code> returning 5 million rows. JPA hydrates every one into an object.</li>
+    <li><strong>Caches without bounds</strong> — Guava/Caffeine caches with no <code>maximumSize</code>.</li>
+    <li><strong>Inner classes capturing outer-class references</strong> — common in Android-style code; less common but possible in Java.</li>
+  </ul>
+
+  <h3>The debugging workflow — what Karan actually does</h3>
+  <ol style="margin-left:1.3rem;color:var(--text)">
+    <li><strong>Add JVM flags before the next crash so you have evidence:</strong>
+      <div class="code-block">
+        <span class="code-label demo">JVM flags every prod app should have</span>
+<pre>-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath=/var/log/heapdump.hprof
+-Xlog:gc*:file=/var/log/gc.log:time,uptime,level,tags
+-XX:+ExitOnOutOfMemoryError   <span class="cmt">// let k8s restart you cleanly</span></pre>
+      </div>
+    </li>
+    <li><strong>Reproduce or wait for the next crash.</strong> Now you have a heap dump (a snapshot of every object in memory at the moment of OOM).</li>
+    <li><strong>Open the heap dump in Eclipse MAT</strong> (Memory Analyzer Tool) — or VisualVM, or IntelliJ's profiler. MAT is the gold standard.</li>
+    <li><strong>Run "Leak Suspects Report".</strong> MAT will rank the biggest retained-size objects and tell you "Object X is keeping 1.4 GB alive via the path Y → Z". This single feature solves 80% of leaks.</li>
+    <li><strong>Look at the dominator tree</strong> — the chain of references that holds the suspect object alive. The first non-framework class in that chain is usually your culprit.</li>
+    <li><strong>Cross-check with GC logs.</strong> If the Old Gen graph monotonically grows and full GCs reclaim less and less — that's a leak. If it sawtooths normally and just hits the ceiling under load — your heap is just too small.</li>
+  </ol>
+
+  <h3>Live diagnostics (no heap dump needed)</h3>
+  <ul>
+    <li><code>jcmd &lt;pid&gt; GC.heap_info</code> — current heap usage by region</li>
+    <li><code>jcmd &lt;pid&gt; GC.class_histogram</code> — count and total size of every loaded class's instances. The class with 5 million instances of <code>byte[]</code> is your suspect.</li>
+    <li><code>jstat -gcutil &lt;pid&gt; 1000</code> — once-per-second GC stats; watch the Old Gen %</li>
+    <li><code>jmap -dump:live,format=b,file=heap.hprof &lt;pid&gt;</code> — manually trigger a heap dump while the app is running</li>
+  </ul>
+
+  <h3>Fixes by category</h3>
+  <ul>
+    <li><strong>Cache leak</strong> → put a bounded eviction policy on the cache (Caffeine + <code>.maximumSize()</code> + <code>.expireAfterAccess()</code>).</li>
+    <li><strong>ThreadLocal leak</strong> → always pair <code>set()</code> with <code>remove()</code> in a finally block, or use a try-with-resources wrapper.</li>
+    <li><strong>Loading too much from DB</strong> → add pagination, use streaming (JPA <code>Stream&lt;Entity&gt;</code> with <code>@QueryHints</code>), or process in chunks.</li>
+    <li><strong>Genuine workload growth</strong> → bump <code>-Xmx</code>, but only after you've ruled out a leak.</li>
+  </ul>
+
+  <div class="gotcha">Bumping <code>-Xmx</code> as a "fix" without finding the leak is the most common mistake. The leak still grows, just slower. The next OOM hits at 3 AM on the weekend instead of Tuesday afternoon.</div>
+
+  <div class="so-what">OOM debugging is a four-step ritual: (1) enable HeapDumpOnOOM in prod, (2) capture the dump on next crash, (3) open in MAT, (4) follow the dominator tree to the leak source. Memorize this — it's a near-certain interview question for senior backend roles.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 23. Making a Class Thread-Safe                          -->
+<!-- ====================================================== -->
+<div class="feature" id="s23">
+  <div class="feature-header">
+    <span class="feature-num">23</span>
+    <h2>Making a Class Thread-Safe — A Real Scenario, Not a Lecture</h2>
+  </div>
+
+  <div class="scene">Sneha is on the inventory team at an e-commerce startup. There's a class called <code>ProductInventory</code> that tracks stock per SKU. Last Black Friday, two customers managed to buy the very last unit of a phone — they both saw "1 in stock" and both checkouts succeeded. Sales is furious. Sneha's job: make this class thread-safe.</div>
+
+  <div class="interview-q">How do you make a class thread-safe? Walk me through a concrete example.</div>
+
+  <h3>What "thread-safe" really means</h3>
+  <p>A class is thread-safe if its public behavior remains correct when multiple threads use it concurrently — without callers needing to add their own synchronization. Three things can go wrong without thread-safety:</p>
+  <ul>
+    <li><strong>Race conditions</strong> — two threads see the same "before" state and both apply changes, one update is lost.</li>
+    <li><strong>Memory visibility</strong> — thread A writes a field, thread B never sees the new value because it's cached in a CPU register.</li>
+    <li><strong>Compound operations</strong> — "check then act" or "read-modify-write" sequences that are atomic individually but not as a unit.</li>
+  </ul>
+
+  <h3>The buggy starting point</h3>
+  <div class="code-block">
+    <span class="code-label bad">Not thread-safe — this is what bit Sneha</span>
+<pre><span class="kw">class</span> <span class="type">ProductInventory</span> {
+    <span class="kw">private final</span> <span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Integer</span>&gt; stock = <span class="kw">new</span> <span class="type">HashMap</span>&lt;&gt;();
+
+    <span class="kw">public boolean</span> <span class="fn">tryReserve</span>(<span class="type">String</span> sku, <span class="kw">int</span> qty) {
+        <span class="type">Integer</span> available = stock.<span class="fn">get</span>(sku);   <span class="cmt">// (1) read</span>
+        <span class="kw">if</span> (available == <span class="kw">null</span> || available &lt; qty) <span class="kw">return false</span>;
+        stock.<span class="fn">put</span>(sku, available - qty);          <span class="cmt">// (2) write — both threads do this with the same "available"</span>
+        <span class="kw">return true</span>;
+    }
+}</pre>
+  </div>
+
+  <p>Two threads can both pass step (1) seeing <code>available = 1</code>, then both execute step (2) writing <code>0</code> — and both <code>tryReserve</code> calls return <code>true</code>. Two phones sold; one phone in inventory. That's the bug.</p>
+
+  <h3>Five ways to fix it — pick by trade-off</h3>
+
+  <h3>Option 1 — <code>synchronized</code> method (simplest)</h3>
+  <div class="code-block">
+    <span class="code-label good">Coarse mutex, easy to reason about</span>
+<pre><span class="kw">public synchronized boolean</span> <span class="fn">tryReserve</span>(<span class="type">String</span> sku, <span class="kw">int</span> qty) {
+    <span class="type">Integer</span> available = stock.<span class="fn">get</span>(sku);
+    <span class="kw">if</span> (available == <span class="kw">null</span> || available &lt; qty) <span class="kw">return false</span>;
+    stock.<span class="fn">put</span>(sku, available - qty);
+    <span class="kw">return true</span>;
+}</pre>
+  </div>
+  <p>One lock for the whole object. Reservations on different SKUs serialize unnecessarily — fine for low traffic, painful at Black Friday scale.</p>
+
+  <h3>Option 2 — Per-key locking (better concurrency)</h3>
+  <div class="code-block">
+    <span class="code-label good">Lock only the SKU being modified</span>
+<pre><span class="kw">private final</span> <span class="type">ConcurrentHashMap</span>&lt;<span class="type">String</span>, <span class="type">Integer</span>&gt; stock = <span class="kw">new</span> <span class="type">ConcurrentHashMap</span>&lt;&gt;();
+
+<span class="kw">public boolean</span> <span class="fn">tryReserve</span>(<span class="type">String</span> sku, <span class="kw">int</span> qty) {
+    <span class="kw">return</span> stock.<span class="fn">computeIfPresent</span>(sku, (k, current) -&gt; {
+        <span class="kw">if</span> (current &lt; qty) <span class="kw">return</span> current;       <span class="cmt">// no change → put back same value</span>
+        <span class="kw">return</span> current - qty;
+    }) != <span class="kw">null</span>;
+    <span class="cmt">// note: the boolean we want is "did the value actually change" —</span>
+    <span class="cmt">// real code would use AtomicReference to capture that. Sketch shown for clarity.</span>
+}</pre>
+  </div>
+  <p>The lambda runs under a per-bucket lock. Two threads on different SKUs proceed in parallel.</p>
+
+  <h3>Option 3 — Atomic counters (lock-free)</h3>
+  <div class="code-block">
+    <span class="code-label good">Best for hot single counters</span>
+<pre><span class="kw">private final</span> <span class="type">ConcurrentHashMap</span>&lt;<span class="type">String</span>, <span class="type">AtomicInteger</span>&gt; stock = <span class="kw">new</span> <span class="type">ConcurrentHashMap</span>&lt;&gt;();
+
+<span class="kw">public boolean</span> <span class="fn">tryReserve</span>(<span class="type">String</span> sku, <span class="kw">int</span> qty) {
+    <span class="type">AtomicInteger</span> counter = stock.<span class="fn">get</span>(sku);
+    <span class="kw">if</span> (counter == <span class="kw">null</span>) <span class="kw">return false</span>;
+    <span class="kw">while</span> (<span class="kw">true</span>) {
+        <span class="kw">int</span> current = counter.<span class="fn">get</span>();
+        <span class="kw">if</span> (current &lt; qty) <span class="kw">return false</span>;
+        <span class="kw">if</span> (counter.<span class="fn">compareAndSet</span>(current, current - qty)) <span class="kw">return true</span>;
+        <span class="cmt">// CAS failed — another thread changed it; loop and retry</span>
+    }
+}</pre>
+  </div>
+  <p>Hardware-level CAS, no kernel locks. Beats synchronized for hot single counters under high contention.</p>
+
+  <h3>Option 4 — Immutability (no locks needed at all)</h3>
+  <p>If <code>ProductInventory</code> is read-mostly (e.g., a config snapshot), make it immutable and replace the whole reference atomically:</p>
+  <div class="code-block">
+    <span class="code-label good">Copy-on-write reference</span>
+<pre><span class="kw">private final</span> <span class="type">AtomicReference</span>&lt;<span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Integer</span>&gt;&gt; ref =
+    <span class="kw">new</span> <span class="type">AtomicReference</span>&lt;&gt;(<span class="type">Map</span>.<span class="fn">of</span>());
+
+<span class="kw">public void</span> <span class="fn">replaceAll</span>(<span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Integer</span>&gt; next) {
+    ref.<span class="fn">set</span>(<span class="type">Map</span>.<span class="fn">copyOf</span>(next));   <span class="cmt">// immutable snapshot</span>
+}</pre>
+  </div>
+
+  <h3>Option 5 — Use a thread-safe library (Caffeine, Hazelcast, Redis)</h3>
+  <p>For real e-commerce inventory, in-memory state isn't enough — you need persistence + cross-node coordination. Move state to Redis with <code>DECRBY</code> (atomic decrement) or use a distributed lock.</p>
+
+  <h3>The thread-safety checklist</h3>
+  <ul>
+    <li><strong>Identify shared mutable state</strong> — fields read/written by multiple threads.</li>
+    <li><strong>Make it immutable if possible</strong> — final fields, defensive copies, no setters.</li>
+    <li><strong>If it must be mutable</strong>, pick the right primitive: <code>synchronized</code>, <code>ReentrantLock</code>, <code>Atomic*</code>, <code>ConcurrentHashMap</code>, <code>volatile</code> (visibility only).</li>
+    <li><strong>Identify compound operations</strong> ("check-then-act", "read-modify-write") and make each one atomic.</li>
+    <li><strong>Avoid leaking <code>this</code></strong> from a constructor — partially-constructed objects can be seen by other threads.</li>
+    <li><strong>Document the policy</strong> — annotate with <code>@ThreadSafe</code> / <code>@NotThreadSafe</code> (jcip-annotations) so callers know.</li>
+  </ul>
+
+  <div class="gotcha">"Thread-safe" is not a binary you sprinkle on a class. A class can be thread-safe for some method combinations and not others. <code>StringBuffer</code> is thread-safe per method, but <code>if (sb.length() &gt; 0) sb.append(x)</code> still has a race between the two calls. Document the unit of atomicity.</div>
+
+  <div class="so-what">Sneha's fix was Option 2 — replaced <code>HashMap</code> with <code>ConcurrentHashMap</code> and used <code>computeIfPresent</code> so the check-then-decrement happens under one bucket lock. Black Friday next year: zero oversells. The pattern: shared state → atomic operation → bounded contention.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 24. Spring Bean Lifecycle                                -->
+<!-- ====================================================== -->
+<div class="feature" id="s24">
+  <div class="feature-header">
+    <span class="feature-num">24</span>
+    <h2>The Complete Lifecycle of a Spring Bean — From Definition to Destruction</h2>
+  </div>
+
+  <div class="scene">Aman starts his Spring Boot app. He's defined a <code>UserService</code> and annotated it <code>@Service</code>. By the time the first HTTP request hits, that bean is wired up, configured, validated, and ready. What happened in the milliseconds between <code>main()</code> starting and the first request arriving? That's the bean lifecycle.</div>
+
+  <div class="interview-q">Walk me through the full lifecycle of a Spring bean.</div>
+
+  <h3>The 10-step ritual</h3>
+  <p>Spring follows a strict sequence whenever it brings a bean to life. The same sequence runs for every bean — from your <code>@Service</code> to a third-party library's <code>DataSource</code>:</p>
+
+  <ol style="margin-left:1.3rem;color:var(--text)">
+    <li><strong>Bean Definition</strong> — Spring scans <code>@Component</code>/<code>@Configuration</code> and registers a <code>BeanDefinition</code> (a recipe — class name, scope, dependencies). No object exists yet.</li>
+    <li><strong>Instantiation</strong> — When something requests the bean (or eager init kicks in), Spring calls the constructor (or factory method). Now an object exists in memory.</li>
+    <li><strong>Populate Properties</strong> — Spring resolves <code>@Autowired</code> dependencies and injects them into fields/setters. (Constructor-injected deps were already supplied in step 2.)</li>
+    <li><strong>Aware interfaces</strong> — If the bean implements <code>BeanNameAware</code>, <code>BeanFactoryAware</code>, <code>ApplicationContextAware</code>, Spring calls those setters now.</li>
+    <li><strong>BeanPostProcessor.postProcessBeforeInitialization</strong> — every registered <code>BeanPostProcessor</code> gets a crack at the bean. This is where AOP proxies are wrapped, <code>@Autowired</code> validation happens, etc.</li>
+    <li><strong>InitializingBean.afterPropertiesSet()</strong> — if the bean implements this interface, Spring calls it. (Generally avoid — couples to Spring.)</li>
+    <li><strong>@PostConstruct / custom init-method</strong> — your custom initialization runs. This is the "after wiring is done, do my setup" hook.</li>
+    <li><strong>BeanPostProcessor.postProcessAfterInitialization</strong> — second pass for post-processors. <strong>This is where Spring AOP wraps the bean in a proxy</strong> (e.g., for <code>@Transactional</code>) — that's why injected versions of your bean are CGLib subclasses.</li>
+    <li><strong>Bean is in use</strong> — methods get called by the rest of the app.</li>
+    <li><strong>Destruction</strong> — On context close: <code>@PreDestroy</code> → <code>DisposableBean.destroy()</code> → custom <code>destroy-method</code>. Singleton beans only — prototype scope is never destroyed by Spring.</li>
+  </ol>
+
+  <h3>Diagram of the flow</h3>
+  <div class="code-block">
+    <span class="code-label note">Lifecycle as a pipeline</span>
+<pre>BeanDefinition
+    ↓
+new MyBean(deps)            <span class="cmt">// constructor</span>
+    ↓
+setX(...) / @Autowired      <span class="cmt">// field/setter injection</span>
+    ↓
+setBeanName / setApplicationContext   <span class="cmt">// Aware callbacks</span>
+    ↓
+postProcessBeforeInitialization (every BeanPostProcessor)
+    ↓
+afterPropertiesSet()        <span class="cmt">// InitializingBean</span>
+    ↓
+@PostConstruct method
+    ↓
+postProcessAfterInitialization   <span class="cmt">// AOP proxies happen here</span>
+    ↓
+[ READY — bean is used by the app ]
+    ↓
+@PreDestroy
+    ↓
+destroy()                   <span class="cmt">// DisposableBean</span></pre>
+  </div>
+
+  <h3>Concrete example</h3>
+  <div class="code-block">
+    <span class="code-label demo">A bean that hooks into every callback</span>
+<pre><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="type">UserService</span> <span class="kw">implements</span> <span class="type">InitializingBean</span>, <span class="type">DisposableBean</span> {
+    <span class="kw">private final</span> <span class="type">UserRepository</span> repo;
+
+    <span class="kw">public</span> <span class="type">UserService</span>(<span class="type">UserRepository</span> repo) {       <span class="cmt">// step 2 + 3: ctor + DI</span>
+        <span class="kw">this</span>.repo = repo;
+    }
+
+    <span class="ann">@PostConstruct</span>
+    <span class="kw">public void</span> <span class="fn">init</span>() {                                <span class="cmt">// step 7</span>
+        <span class="cmt">// warm cache, validate config, etc.</span>
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">afterPropertiesSet</span>() { }                 <span class="cmt">// step 6</span>
+
+    <span class="ann">@PreDestroy</span>
+    <span class="kw">public void</span> <span class="fn">cleanup</span>() {                              <span class="cmt">// step 10</span>
+        <span class="cmt">// flush queues, close clients</span>
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">destroy</span>() { }                            <span class="cmt">// also step 10</span>
+}</pre>
+  </div>
+
+  <h3>Bean scopes change the rules</h3>
+  <ul>
+    <li><strong>Singleton (default)</strong> — one instance per Spring container. Created at startup (eager) unless <code>@Lazy</code>.</li>
+    <li><strong>Prototype</strong> — new instance every time it's requested. <strong>Spring does NOT call destroy callbacks</strong> on prototypes — you own the cleanup.</li>
+    <li><strong>Request / Session</strong> — Spring MVC scopes; one instance per HTTP request or session.</li>
+  </ul>
+
+  <div class="gotcha">A singleton bean injected with a prototype bean still holds the same prototype reference forever — the prototype is only created once (at injection time) for that singleton. Use <code>@Lookup</code> or <code>ObjectProvider</code> to get a fresh prototype on each call.</div>
+
+  <h3>Why the proxy step matters</h3>
+  <p>When a bean has <code>@Transactional</code>, <code>@Async</code>, or <code>@Cacheable</code>, what gets injected elsewhere is <strong>not your class</strong> — it's a CGLib subclass (or JDK dynamic proxy if you implement an interface). The proxy intercepts every method call to add transaction/cache/async behavior, then delegates to your real instance. This is why calling <code>@Transactional</code> methods <em>from within the same class</em> (<code>this.method()</code>) bypasses the proxy and the transaction never starts.</p>
+
+  <div class="so-what">Spring's bean lifecycle is: define → instantiate → inject → aware-callbacks → post-process-before → init → post-process-after (proxies!) → use → pre-destroy → destroy. Memorize the order, and especially remember that AOP proxies are added in the post-process-after step — that's the "why" behind 90% of Spring's spookier behavior.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 25. Spring DI Internals                                  -->
+<!-- ====================================================== -->
+<div class="feature" id="s25">
+  <div class="feature-header">
+    <span class="feature-num">25</span>
+    <h2>How Dependency Injection Actually Works in Spring</h2>
+  </div>
+
+  <div class="scene">Priya writes <code>@Autowired UserRepository repo;</code> and the field magically has a working repository. There's no <code>new UserRepository()</code> anywhere in her code. She wonders — who actually builds these objects, and how do they find each other?</div>
+
+  <div class="interview-q">How does Dependency Injection work internally in Spring?</div>
+
+  <h3>The core idea — invert the dependency direction</h3>
+  <p>In hand-rolled Java, your <code>UserService</code> says "I need a UserRepository, let me <code>new</code> one up." That couples UserService to the concrete UserRepository class. Dependency injection inverts this: <strong>UserService just declares what it needs</strong> (in its constructor or a field), and someone else — Spring — supplies the dependency. UserService doesn't know or care which implementation it gets.</p>
+
+  <div class="analogy">DI is like a hotel kitchen. The chef (<code>UserService</code>) asks for "a tomato" — they don't go to the farm, the supplier does. If the supplier swaps brands (in-memory repo → JPA repo), the chef's recipe doesn't change.</div>
+
+  <h3>The mechanism — three layers</h3>
+  <p>Spring DI rests on three pieces of machinery: the <strong>BeanDefinition registry</strong> (the catalog of all known beans), the <strong>ApplicationContext</strong> (the runtime container), and <strong>BeanFactory</strong> (the lower-level interface that actually builds and wires beans).</p>
+
+  <h3>Startup walkthrough — what happens in <code>SpringApplication.run()</code></h3>
+  <ol style="margin-left:1.3rem;color:var(--text)">
+    <li><strong>Component Scan.</strong> Spring scans the packages under your main class for <code>@Component</code>/<code>@Service</code>/<code>@Repository</code>/<code>@Controller</code>/<code>@Configuration</code> — ASM-based bytecode reading, not actual class loading. For each annotated class, it creates a <code>BeanDefinition</code>: name, class, scope, autowire mode, dependencies.</li>
+    <li><strong>Configuration classes processed.</strong> Methods annotated <code>@Bean</code> inside <code>@Configuration</code> classes also produce <code>BeanDefinition</code>s — the method itself becomes the factory.</li>
+    <li><strong>BeanDefinitionRegistryPostProcessor</strong> — runs (e.g., to add more bean definitions dynamically — Spring Boot's auto-configuration uses this).</li>
+    <li><strong>BeanFactoryPostProcessor</strong> — gets a chance to modify bean definitions (e.g., resolve <code>${property}</code> placeholders).</li>
+    <li><strong>Eager singleton creation.</strong> Spring iterates all singleton bean definitions and instantiates each one. For each:
+      <ul>
+        <li>Resolve constructor — pick the one with the most-satisfiable parameters.</li>
+        <li>For each constructor parameter, recursively get-or-create that bean (this is where DI happens).</li>
+        <li>Call <code>new</code> on the constructor with those resolved dependencies.</li>
+        <li>Field/setter inject any remaining <code>@Autowired</code> deps.</li>
+        <li>Run init callbacks, post-processors, AOP wrapping (see the bean lifecycle in section 24).</li>
+      </ul>
+    </li>
+    <li><strong>Cache the singleton.</strong> Future requests for the same bean return the cached instance — that's why singletons are singletons.</li>
+  </ol>
+
+  <h3>Resolution rules — how Spring picks which bean to inject</h3>
+  <p>Given a <code>@Autowired UserRepository repo</code>, Spring looks at all beans assignable to <code>UserRepository</code>:</p>
+  <ol style="margin-left:1.3rem;color:var(--text)">
+    <li>If exactly one match → inject it.</li>
+    <li>If multiple matches → look for <code>@Primary</code>; if present, use that one.</li>
+    <li>Still ambiguous → look for <code>@Qualifier("name")</code> on the injection point.</li>
+    <li>Still ambiguous → fall back to matching by parameter/field name (e.g., <code>repo</code> tries to match a bean named <code>repo</code>).</li>
+    <li>Still nothing → throw <code>NoUniqueBeanDefinitionException</code>.</li>
+  </ol>
+
+  <h3>Three injection styles</h3>
+  <div class="code-block">
+    <span class="code-label good">Constructor injection — preferred</span>
+<pre><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="type">UserService</span> {
+    <span class="kw">private final</span> <span class="type">UserRepository</span> repo;
+    <span class="kw">public</span> <span class="type">UserService</span>(<span class="type">UserRepository</span> repo) {   <span class="cmt">// @Autowired implicit on single ctor (Spring 4.3+)</span>
+        <span class="kw">this</span>.repo = repo;
+    }
+}</pre>
+  </div>
+
+  <div class="code-block">
+    <span class="code-label note">Setter injection — for optional / circular deps</span>
+<pre><span class="ann">@Autowired
+@Setter</span>
+<span class="kw">private</span> <span class="type">EmailService</span> email;</pre>
+  </div>
+
+  <div class="code-block">
+    <span class="code-label bad">Field injection — easy but bad</span>
+<pre><span class="ann">@Autowired
+private</span> <span class="type">UserRepository</span> repo;   <span class="cmt">// hides dependencies, not final, hard to test, can't detect circular deps cleanly</span></pre>
+  </div>
+
+  <p>Constructor injection is preferred because: (1) the field can be <code>final</code>, (2) the dependency is visible in the type signature, (3) you can construct the class in tests with plain <code>new</code> (no Spring needed), (4) circular dependencies fail at startup instead of silently breaking later.</p>
+
+  <h3>How does field injection work without setters?</h3>
+  <p>Reflection. Spring uses <code>Field.setAccessible(true)</code> + <code>Field.set(bean, dependency)</code>. That's why <code>private final</code> fields cannot be field-injected — <code>final</code> can only be set in the constructor, and reflection-setting it is undefined behavior in modern JVMs.</p>
+
+  <h3>Circular dependency handling</h3>
+  <p>If <code>A</code> needs <code>B</code> via constructor and <code>B</code> needs <code>A</code> via constructor → unsolvable, startup fails. If at least one side uses setter/field injection, Spring uses a <strong>three-level cache</strong> to expose a half-constructed reference: the partially-built A is added to the "early singleton" cache so B can grab a reference to it before A's setters have run. It works, but it's a code smell — fix the circular design.</p>
+
+  <h3>What's <code>@ComponentScan</code> doing under the hood?</h3>
+  <p>It uses Spring's <code>ClassPathScanningCandidateComponentProvider</code> which:</p>
+  <ol style="margin-left:1.3rem;color:var(--text)">
+    <li>Resolves the base package to a filesystem/JAR path.</li>
+    <li>Walks all <code>.class</code> files using ASM to read the bytecode <strong>without loading the class</strong>.</li>
+    <li>Checks for stereotype annotations (<code>@Component</code>, <code>@Service</code>, etc.).</li>
+    <li>Produces <code>BeanDefinition</code>s for matches.</li>
+  </ol>
+  <p>ASM-based scanning is why component scan is fast — it never invokes the class loader for non-component classes.</p>
+
+  <div class="gotcha"><code>@Autowired</code> on a static field doesn't work. Static fields belong to the class, not the bean instance — Spring has nowhere to inject. Wrap statics in a non-static getter or refactor to instance fields.</div>
+
+  <div class="so-what">Spring DI is just: scan classes → record bean definitions → at startup, recursively instantiate each bean by resolving its constructor parameters from the registry → cache the singletons. The "magic" is reflection plus a smart resolution algorithm. Once you've seen how the BeanFactory works, the rest of Spring stops feeling mysterious.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 26. @Transactional Internals                             -->
+<!-- ====================================================== -->
+<div class="feature" id="s26">
+  <div class="feature-header">
+    <span class="feature-num">26</span>
+    <h2>What Actually Happens When You Use @Transactional</h2>
+  </div>
+
+  <div class="scene">Vikram writes <code>@Transactional public void transfer(...)</code> and assumes "Spring will roll back if anything goes wrong." It's mostly true. Then a runtime bug eats $40 of test money silently — the rollback didn't fire because someone wrapped the call in a try-catch. He learns the hard way that <code>@Transactional</code> is not magic — it's a proxy with very specific rules.</div>
+
+  <div class="interview-q">What actually happens when you put @Transactional on a method?</div>
+
+  <h3>The 10,000-foot view</h3>
+  <p>When Spring sees <code>@Transactional</code> on a bean's method, it wraps the bean in a <strong>proxy</strong> at startup (CGLib subclass, or JDK dynamic proxy if the bean implements an interface). The proxy intercepts every public method call. If the called method is annotated, the proxy:</p>
+  <ol style="margin-left:1.3rem;color:var(--text)">
+    <li>Asks the <code>PlatformTransactionManager</code> to begin a transaction (or join an existing one — see propagation).</li>
+    <li>Invokes your real method.</li>
+    <li>If the method returns normally → commit.</li>
+    <li>If the method throws an unchecked exception (RuntimeException, Error) → rollback.</li>
+    <li>If the method throws a checked exception → <strong>by default, COMMIT</strong> (yes, really — rule 5 of @Transactional gotchas).</li>
+  </ol>
+
+  <h3>The proxy in action — diagram</h3>
+  <div class="code-block">
+    <span class="code-label note">Caller's view vs reality</span>
+<pre>caller -&gt; <span class="type">UserService$$EnhancerByCGLIB</span>.transfer()        <span class="cmt">// the proxy</span>
+            ↓
+       beginTransaction()
+            ↓
+       super.transfer()        <span class="cmt">// real method</span>
+            ↓
+       commit() | rollback()
+            ↓
+       return to caller</pre>
+  </div>
+
+  <h3>The four rollback rules everyone gets wrong</h3>
+
+  <h3>Rule 1 — Default rollback is unchecked exceptions only</h3>
+  <p><code>@Transactional</code> rolls back on <code>RuntimeException</code> and <code>Error</code>. It <strong>commits</strong> on checked exceptions like <code>IOException</code>. To change this:</p>
+  <div class="code-block">
+    <span class="code-label good">Roll back on any exception</span>
+<pre><span class="ann">@Transactional</span>(rollbackFor = <span class="type">Exception</span>.<span class="kw">class</span>)
+<span class="kw">public void</span> <span class="fn">transfer</span>(...) <span class="kw">throws</span> <span class="type">IOException</span> { ... }</pre>
+  </div>
+
+  <h3>Rule 2 — Self-invocation bypasses the proxy</h3>
+  <div class="code-block">
+    <span class="code-label bad">No transaction here — proxy is never crossed</span>
+<pre><span class="kw">public void</span> <span class="fn">orderFlow</span>() {
+    <span class="kw">this</span>.<span class="fn">saveOrder</span>();   <span class="cmt">// direct call — proxy NOT involved → @Transactional ignored!</span>
+}
+
+<span class="ann">@Transactional</span>
+<span class="kw">public void</span> <span class="fn">saveOrder</span>() { ... }</pre>
+  </div>
+  <p>The proxy intercepts external calls. <code>this.foo()</code> is a direct method call on the underlying object — it never goes through the proxy. Fix: split into two beans, or use <code>AopContext.currentProxy()</code>, or self-inject.</p>
+
+  <h3>Rule 3 — Catching the exception kills the rollback</h3>
+  <div class="code-block">
+    <span class="code-label bad">Vikram's $40 lesson</span>
+<pre><span class="ann">@Transactional</span>
+<span class="kw">public void</span> <span class="fn">transfer</span>(...) {
+    <span class="kw">try</span> {
+        debit(from);
+        credit(to);
+    } <span class="kw">catch</span> (<span class="type">RuntimeException</span> e) {
+        <span class="cmt">// swallowed — proxy never sees the exception → COMMIT</span>
+        log.<span class="fn">error</span>(<span class="str">"transfer failed"</span>, e);
+    }
+}</pre>
+  </div>
+  <p>The proxy decides commit/rollback based on whether the method throws. If you catch and swallow, the method "returns normally" and gets committed.</p>
+
+  <h3>Rule 4 — Only public methods are proxied (CGLib)</h3>
+  <p><code>@Transactional</code> on private/package-private methods is silently ignored. JDK dynamic proxies require an interface; CGLib subclasses can only override non-final, non-private methods.</p>
+
+  <h3>Propagation — what happens when @Transactional calls @Transactional</h3>
+  <table>
+    <tr><th>Propagation</th><th>Behavior</th></tr>
+    <tr><td><code>REQUIRED</code> (default)</td><td>Join the caller's transaction; start one if none exists</td></tr>
+    <tr><td><code>REQUIRES_NEW</code></td><td>Suspend the caller's transaction, start a fresh independent one</td></tr>
+    <tr><td><code>NESTED</code></td><td>Use a SAVEPOINT inside the caller's transaction — partial rollback possible</td></tr>
+    <tr><td><code>SUPPORTS</code></td><td>Use the caller's transaction if there is one; otherwise run non-transactionally</td></tr>
+    <tr><td><code>MANDATORY</code></td><td>Throw if there's no caller transaction</td></tr>
+    <tr><td><code>NEVER</code></td><td>Throw if there IS a caller transaction</td></tr>
+    <tr><td><code>NOT_SUPPORTED</code></td><td>Suspend any caller transaction; run without one</td></tr>
+  </table>
+
+  <p><strong>Common use:</strong> auditing — <code>@Transactional(propagation = REQUIRES_NEW)</code> on the audit-log save so the audit row commits even if the parent business transaction rolls back.</p>
+
+  <h3>Isolation level — what reads can you trust?</h3>
+  <ul>
+    <li><code>READ_UNCOMMITTED</code> — see uncommitted changes from other tx (dirty reads). Almost never used.</li>
+    <li><code>READ_COMMITTED</code> (Postgres default) — only see committed data, but two reads in the same tx can see different values (non-repeatable read).</li>
+    <li><code>REPEATABLE_READ</code> (MySQL default) — same row returns same value within the tx. Phantoms still possible (new rows matching your WHERE).</li>
+    <li><code>SERIALIZABLE</code> — full isolation, as if transactions ran one after another. Safest, slowest.</li>
+  </ul>
+
+  <h3>How does the transaction "follow" the thread?</h3>
+  <p>Spring stores the active <code>Connection</code> + transaction state in a <strong>ThreadLocal</strong>. <code>JdbcTemplate</code> / Hibernate / JPA query methods inside the transactional method look up the thread-bound connection, so all queries share the same transaction. This is why <code>@Transactional</code> + a new thread (e.g., <code>@Async</code> or <code>CompletableFuture.runAsync</code>) is broken — the thread-local doesn't follow.</p>
+
+  <div class="gotcha">Don't put <code>@Transactional</code> on the controller layer. Transactions should match the boundary of a unit of business work — that's the service layer. Controller-level transactions hold a DB connection for the entire HTTP request including request parsing and response serialization, wasting connection-pool capacity.</div>
+
+  <div class="so-what">@Transactional is a Spring AOP proxy that calls beginTx → your method → commit (on normal return) or rollback (on unchecked exception). The four traps: checked exceptions don't roll back by default; self-invocation bypasses the proxy; catching the exception kills the rollback; non-public methods are silently ignored. Knowing these four rules saves more interviews than knowing all the propagation modes.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 27. @Component vs @Service vs @Repository                -->
+<!-- ====================================================== -->
+<div class="feature" id="s27">
+  <div class="feature-header">
+    <span class="feature-num">27</span>
+    <h2>@Component vs @Service vs @Repository — Same Engine, Different Labels</h2>
+  </div>
+
+  <div class="scene">Tanvi sees <code>@Component</code> on a class and <code>@Service</code> on another. Functionally they look identical — both make a bean. So why does Spring offer multiple annotations? It's a mix of intent-signaling and one quietly-magical exception around <code>@Repository</code>.</div>
+
+  <div class="interview-q">What's the difference between @Component, @Service, and @Repository?</div>
+
+  <h3>The short answer</h3>
+  <p><code>@Service</code> and <code>@Repository</code> are both meta-annotated with <code>@Component</code>. From Spring's perspective, all three register a bean. The differences are: <strong>(1) intent</strong> — what role this class plays in the architecture, and <strong>(2) one functional difference</strong> — <code>@Repository</code> triggers JDBC/JPA exception translation.</p>
+
+  <h3>Side-by-side</h3>
+  <table>
+    <tr><th>Annotation</th><th>Layer</th><th>Functional behavior</th></tr>
+    <tr><td><code>@Component</code></td><td>Generic — any Spring-managed bean</td><td>Just registers a bean</td></tr>
+    <tr><td><code>@Service</code></td><td>Service / business logic layer</td><td>Same as @Component (no extra behavior)</td></tr>
+    <tr><td><code>@Repository</code></td><td>Persistence / DAO layer</td><td>Same as @Component <strong>+ DataAccessException translation</strong></td></tr>
+    <tr><td><code>@Controller</code> / <code>@RestController</code></td><td>Web / MVC layer</td><td>Same as @Component + Spring MVC handler-mapping picks them up</td></tr>
+  </table>
+
+  <h3>The functional difference — exception translation</h3>
+  <p>JPA throws <code>PersistenceException</code>, JDBC throws <code>SQLException</code> with vendor-specific error codes ("23505" for Postgres unique-violation, "1062" for MySQL). If your service layer catches these directly, your business code becomes coupled to the database product.</p>
+  <p>When you mark a class <code>@Repository</code>, Spring's <code>PersistenceExceptionTranslationPostProcessor</code> wraps it in a proxy that converts these low-level exceptions into Spring's vendor-neutral <code>DataAccessException</code> hierarchy:</p>
+  <ul>
+    <li><code>DuplicateKeyException</code> — for any unique-violation, regardless of DB</li>
+    <li><code>DataIntegrityViolationException</code> — generic constraint violation</li>
+    <li><code>OptimisticLockingFailureException</code> — version mismatch on update</li>
+    <li><code>QueryTimeoutException</code> — DB query timeout</li>
+  </ul>
+  <p>Your service code can now <code>catch (DuplicateKeyException e)</code> portably across MySQL, Postgres, Oracle.</p>
+
+  <div class="code-block">
+    <span class="code-label good">Why @Repository pays off</span>
+<pre><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="type">UserService</span> {
+    <span class="kw">public void</span> <span class="fn">register</span>(<span class="type">User</span> u) {
+        <span class="kw">try</span> {
+            userRepo.<span class="fn">save</span>(u);
+        } <span class="kw">catch</span> (<span class="type">DuplicateKeyException</span> e) {     <span class="cmt">// portable Spring exception</span>
+            <span class="kw">throw new</span> <span class="type">EmailAlreadyTakenException</span>();
+        }
+    }
+}</pre>
+  </div>
+
+  <h3>Why bother with intent annotations at all?</h3>
+  <ul>
+    <li><strong>Readability</strong> — a reader sees <code>@Service</code> and immediately knows "this is business logic, not a controller, not a DAO". Self-documenting layering.</li>
+    <li><strong>Tooling</strong> — IDEs, static analyzers, and AOP pointcuts can target a layer (<code>execution(* (@Service *).*(..))</code>).</li>
+    <li><strong>Future hooks</strong> — Spring may add behavior to <code>@Service</code> in future versions. <code>@Repository</code> already has its hook; <code>@Service</code> is reserved for similar purposes.</li>
+  </ul>
+
+  <h3>What about <code>@Configuration</code>?</h3>
+  <p>Also a meta-<code>@Component</code>. The extra behavior: <code>@Bean</code> methods inside an <code>@Configuration</code> class are intercepted by a CGLib proxy so that calling another <code>@Bean</code> method returns the cached singleton instead of running the method twice. Without <code>@Configuration</code> (e.g., with the lighter <code>proxyBeanMethods=false</code>), each call would create a new instance.</p>
+
+  <div class="gotcha">Putting <code>@Service</code> on a DAO doesn't break anything functionally — but you lose the exception translation benefit. Use the right annotation for the layer.</div>
+
+  <div class="so-what">All four annotations create beans the same way. <code>@Repository</code> is the only one with a real functional bonus (exception translation). Use the others to communicate layering intent — your future self reading the code will thank you.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 28. Global Exception Handling in Spring Boot             -->
+<!-- ====================================================== -->
+<div class="feature" id="s28">
+  <div class="feature-header">
+    <span class="feature-num">28</span>
+    <h2>Global Exception Handling in Spring Boot — One Place, Every Error</h2>
+  </div>
+
+  <div class="scene">Rohan inherits an old Spring Boot service. Every controller has its own try-catch returning a different error JSON shape. The mobile team complains they have to handle 14 different error formats. He'd rather catch every exception in one place and return a single, consistent error envelope. Spring has the perfect tool: <code>@ControllerAdvice</code>.</div>
+
+  <div class="interview-q">How would you handle exceptions globally in a Spring Boot REST API?</div>
+
+  <h3>The mechanism — <code>@ControllerAdvice</code> + <code>@ExceptionHandler</code></h3>
+  <p><code>@ControllerAdvice</code> is a special <code>@Component</code> that Spring MVC consults for every controller in the application. Inside it, methods annotated <code>@ExceptionHandler(SomeException.class)</code> are called whenever a controller throws that exception type, and their return value becomes the HTTP response — same way as a normal controller method.</p>
+
+  <h3>A complete error-handling setup</h3>
+  <div class="code-block">
+    <span class="code-label good">Single source of truth for API errors</span>
+<pre><span class="ann">@RestControllerAdvice</span>
+<span class="kw">public class</span> <span class="type">GlobalExceptionHandler</span> {
+
+    <span class="ann">@ExceptionHandler</span>(<span class="type">UserNotFoundException</span>.<span class="kw">class</span>)
+    <span class="kw">public</span> <span class="type">ResponseEntity</span>&lt;<span class="type">ApiError</span>&gt; <span class="fn">handleNotFound</span>(<span class="type">UserNotFoundException</span> ex) {
+        <span class="kw">return</span> <span class="type">ResponseEntity</span>.<span class="fn">status</span>(<span class="num">404</span>)
+            .<span class="fn">body</span>(<span class="kw">new</span> <span class="type">ApiError</span>(<span class="str">"USER_NOT_FOUND"</span>, ex.<span class="fn">getMessage</span>()));
+    }
+
+    <span class="ann">@ExceptionHandler</span>(<span class="type">MethodArgumentNotValidException</span>.<span class="kw">class</span>)
+    <span class="kw">public</span> <span class="type">ResponseEntity</span>&lt;<span class="type">ApiError</span>&gt; <span class="fn">handleValidation</span>(<span class="type">MethodArgumentNotValidException</span> ex) {
+        <span class="type">List</span>&lt;<span class="type">String</span>&gt; errors = ex.<span class="fn">getBindingResult</span>().<span class="fn">getFieldErrors</span>().<span class="fn">stream</span>()
+            .<span class="fn">map</span>(f -&gt; f.<span class="fn">getField</span>() + <span class="str">": "</span> + f.<span class="fn">getDefaultMessage</span>())
+            .<span class="fn">toList</span>();
+        <span class="kw">return</span> <span class="type">ResponseEntity</span>.<span class="fn">badRequest</span>()
+            .<span class="fn">body</span>(<span class="kw">new</span> <span class="type">ApiError</span>(<span class="str">"VALIDATION_FAILED"</span>, errors));
+    }
+
+    <span class="ann">@ExceptionHandler</span>(<span class="type">DataIntegrityViolationException</span>.<span class="kw">class</span>)
+    <span class="kw">public</span> <span class="type">ResponseEntity</span>&lt;<span class="type">ApiError</span>&gt; <span class="fn">handleDuplicate</span>(<span class="type">DataIntegrityViolationException</span> ex) {
+        <span class="kw">return</span> <span class="type">ResponseEntity</span>.<span class="fn">status</span>(<span class="num">409</span>)
+            .<span class="fn">body</span>(<span class="kw">new</span> <span class="type">ApiError</span>(<span class="str">"DUPLICATE_RESOURCE"</span>, <span class="str">"Already exists"</span>));
+    }
+
+    <span class="ann">@ExceptionHandler</span>(<span class="type">Exception</span>.<span class="kw">class</span>)         <span class="cmt">// catch-all — must be last</span>
+    <span class="kw">public</span> <span class="type">ResponseEntity</span>&lt;<span class="type">ApiError</span>&gt; <span class="fn">handleAll</span>(<span class="type">Exception</span> ex) {
+        log.<span class="fn">error</span>(<span class="str">"unhandled"</span>, ex);                     <span class="cmt">// log full stack server-side</span>
+        <span class="kw">return</span> <span class="type">ResponseEntity</span>.<span class="fn">status</span>(<span class="num">500</span>)
+            .<span class="fn">body</span>(<span class="kw">new</span> <span class="type">ApiError</span>(<span class="str">"INTERNAL_ERROR"</span>, <span class="str">"Something went wrong"</span>));
+    }
+}
+
+<span class="kw">public record</span> <span class="type">ApiError</span>(<span class="type">String</span> code, <span class="type">Object</span> detail, <span class="type">Instant</span> timestamp) {
+    <span class="kw">public</span> <span class="type">ApiError</span>(<span class="type">String</span> code, <span class="type">Object</span> detail) {
+        <span class="kw">this</span>(code, detail, <span class="type">Instant</span>.<span class="fn">now</span>());
+    }
+}</pre>
+  </div>
+
+  <h3>The handler hierarchy — most specific wins</h3>
+  <p>If <code>handleNotFound</code> matches <code>UserNotFoundException</code> and a generic <code>handleAll</code> matches <code>Exception</code>, Spring picks the most specific handler — your specific one. Order doesn't matter; type specificity does.</p>
+
+  <h3>RFC 7807 — the standard "Problem Details" format</h3>
+  <p>For consistency across services, follow the IETF Problem Details standard:</p>
+  <div class="code-block">
+    <span class="code-label note">Standard error JSON</span>
+<pre>{
+  "type":     "https://api.example.com/errors/user-not-found",
+  "title":    "User not found",
+  "status":   404,
+  "detail":   "No user with id=42",
+  "instance": "/api/users/42",
+  "timestamp": "2026-05-10T09:23:14Z"
+}</pre>
+  </div>
+  <p>Spring 6 / Boot 3 has built-in support — extend <code>ResponseEntityExceptionHandler</code> and Spring will automatically produce <code>ProblemDetail</code> bodies for the standard exceptions.</p>
+
+  <h3>Validation errors — a special case</h3>
+  <p><code>@Valid</code> on controller params triggers <code>MethodArgumentNotValidException</code> when validation fails. Catch it in your advice and return field-level error messages so the frontend can highlight which fields are wrong.</p>
+
+  <h3>What to log vs what to return</h3>
+  <ul>
+    <li><strong>Log server-side</strong> — full stack trace, request ID, user ID, request body. This is for your debugging.</li>
+    <li><strong>Return to client</strong> — error code, human-readable detail, request ID (so users can quote it to support). <strong>Never return stack traces or SQL fragments</strong> — that's an info leak attack vector.</li>
+  </ul>
+
+  <h3>Errors thrown outside controllers</h3>
+  <p><code>@ControllerAdvice</code> catches exceptions thrown <strong>during request handling</strong>. Exceptions in <code>@Async</code> methods, scheduled jobs, or filters are NOT caught — handle those with their own mechanisms (<code>AsyncUncaughtExceptionHandler</code>, custom error filter chain, etc.).</p>
+
+  <div class="gotcha">Servlet filters run before <code>@ControllerAdvice</code>. If your auth filter throws, the global handler doesn't see it. Add a fallback error filter or use Spring Security's <code>AuthenticationEntryPoint</code> for those cases.</div>
+
+  <div class="so-what">One <code>@RestControllerAdvice</code> class with one <code>@ExceptionHandler</code> per error type, returning a consistent <code>ApiError</code> shape — that's all global exception handling needs. Bonus: log the full stack server-side, never leak it to the client.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 29. JPA Lazy vs Eager Loading                            -->
+<!-- ====================================================== -->
+<div class="feature" id="s29">
+  <div class="feature-header">
+    <span class="feature-num">29</span>
+    <h2>JPA Lazy vs Eager Loading — and the N+1 Bug Behind Half of All "Why Is It Slow?" Tickets</h2>
+  </div>
+
+  <div class="scene">Pooja's API is suddenly slow. The endpoint returns a list of 50 orders, each with their items. Locally it takes 80ms. In production, 4 seconds. She turns on SQL logging and sees 51 queries — one for orders, and one for items per order. That's the N+1 problem, and it's usually a story about lazy vs eager loading.</div>
+
+  <div class="interview-q">What's the difference between lazy and eager loading in JPA? When can it cause performance problems?</div>
+
+  <h3>The two strategies</h3>
+  <table>
+    <tr><th>Strategy</th><th>Behavior</th><th>Default for</th></tr>
+    <tr><td><code>FetchType.EAGER</code></td><td>Load the related entity immediately, in the same query (or an extra one) when the parent is loaded</td><td><code>@OneToOne</code>, <code>@ManyToOne</code></td></tr>
+    <tr><td><code>FetchType.LAZY</code></td><td>Don't load the related entity. Replace it with a proxy. The first method call on that proxy triggers a SQL query.</td><td><code>@OneToMany</code>, <code>@ManyToMany</code></td></tr>
+  </table>
+
+  <h3>How lazy loading actually works</h3>
+  <p>When you load an <code>Order</code> with a lazy <code>List&lt;OrderItem&gt; items</code>, Hibernate doesn't query the items table. Instead, it puts a <strong>PersistentBag proxy</strong> in the field. The proxy holds a reference to the session. On the first <code>order.getItems().size()</code> call, the proxy hits the DB to fetch the actual items.</p>
+
+  <h3>The N+1 problem — what bit Pooja</h3>
+  <div class="code-block">
+    <span class="code-label bad">Classic N+1</span>
+<pre><span class="type">List</span>&lt;<span class="type">Order</span>&gt; orders = orderRepo.<span class="fn">findAll</span>();        <span class="cmt">// 1 query: SELECT * FROM orders</span>
+<span class="kw">for</span> (<span class="type">Order</span> o : orders) {
+    <span class="type">System</span>.<span class="fn">out</span>.<span class="fn">println</span>(o.<span class="fn">getItems</span>().<span class="fn">size</span>());  <span class="cmt">// N queries: SELECT * FROM items WHERE order_id = ?</span>
+}
+<span class="cmt">// Total: 1 + N queries — devastating for N = 1000</span></pre>
+  </div>
+
+  <h3>Five ways to avoid N+1</h3>
+
+  <h3>Fix 1 — JOIN FETCH in JPQL (most common)</h3>
+  <div class="code-block">
+    <span class="code-label good">One query, joined</span>
+<pre><span class="ann">@Query</span>(<span class="str">"SELECT o FROM Order o LEFT JOIN FETCH o.items WHERE o.userId = :uid"</span>)
+<span class="type">List</span>&lt;<span class="type">Order</span>&gt; <span class="fn">findOrdersWithItems</span>(<span class="ann">@Param</span>(<span class="str">"uid"</span>) <span class="type">Long</span> uid);</pre>
+  </div>
+
+  <h3>Fix 2 — Entity Graphs</h3>
+  <div class="code-block">
+    <span class="code-label good">Declarative — pick at query time</span>
+<pre><span class="ann">@EntityGraph</span>(attributePaths = {<span class="str">"items"</span>, <span class="str">"items.product"</span>})
+<span class="type">List</span>&lt;<span class="type">Order</span>&gt; <span class="fn">findByUserId</span>(<span class="type">Long</span> userId);</pre>
+  </div>
+
+  <h3>Fix 3 — Batch Size</h3>
+  <p>Annotate the collection: <code>@BatchSize(size = 50)</code>. Now Hibernate will fetch 50 orders' items in a single <code>WHERE order_id IN (?, ?, ...)</code> instead of one query per order. Reduces N+1 to N/50 + 1 — a 50x improvement.</p>
+
+  <h3>Fix 4 — Projections / DTOs</h3>
+  <p>If you only need a few fields, skip the entity entirely. Project directly into a DTO:</p>
+  <div class="code-block">
+    <span class="code-label good">Fastest — only the columns you need</span>
+<pre><span class="ann">@Query</span>(<span class="str">"SELECT new com.foo.OrderSummary(o.id, o.total, count(i)) "</span> +
+       <span class="str">"FROM Order o LEFT JOIN o.items i GROUP BY o.id"</span>)
+<span class="type">List</span>&lt;<span class="type">OrderSummary</span>&gt; <span class="fn">summaries</span>();</pre>
+  </div>
+
+  <h3>Fix 5 — Second-level cache</h3>
+  <p>For read-heavy reference data (countries, product categories), enable Hibernate's L2 cache so subsequent loads of the same entity hit Redis/Ehcache instead of the DB.</p>
+
+  <h3>The other extreme — eager-loading horror</h3>
+  <p>Eager <code>@OneToMany</code> sounds tempting ("just load it all once"), but if the parent entity has 5 lazy collections, every parent load fires 5+ queries even when you don't need them. Worse, eager OneToMany forces a JOIN that returns a Cartesian product — loading 100 orders × 10 items each = 1000-row result set, deduped by Hibernate in memory. <strong>Default to LAZY everywhere; opt into eager fetching per query.</strong></p>
+
+  <h3>The "LazyInitializationException" trap</h3>
+  <p>Lazy loading needs an open session. If you fetch an order in the service layer (closes the transaction), then access <code>order.getItems()</code> in the controller layer (no session), Hibernate throws <code>LazyInitializationException</code>. Fixes:</p>
+  <ul>
+    <li>Initialize what you need inside the transaction (<code>order.getItems().size()</code> forces fetch).</li>
+    <li>Use JOIN FETCH in your repository so the data is loaded in one go.</li>
+    <li><strong>Avoid OSIV</strong> (Open Session In View) — Spring's default. It hides the problem by extending the session through the controller, but encourages N+1 queries during JSON serialization.</li>
+  </ul>
+
+  <h3>How to detect N+1 before production</h3>
+  <ul>
+    <li>Enable SQL logging in tests: <code>spring.jpa.show-sql=true</code> + <code>logging.level.org.hibernate.SQL=DEBUG</code>.</li>
+    <li>Use <strong>Hypersistence Utils</strong> or <strong>Datasource Proxy</strong> to count queries in tests and fail builds where count > expected.</li>
+    <li>Add a load test that exercises list endpoints with realistic dataset sizes.</li>
+  </ul>
+
+  <div class="gotcha">Hibernate's lazy proxy holds a reference to the session. Serializing a lazy entity to JSON outside the transaction either silently triggers extra queries (with OSIV on) or throws (with OSIV off). Always serialize from DTOs, not from JPA entities.</div>
+
+  <div class="so-what">Default to lazy for collections. Use JOIN FETCH or @EntityGraph when you know you need the children. Always log SQL in tests to catch N+1 early. Pooja's fix was a single <code>@EntityGraph</code> — query count dropped from 51 to 1, latency from 4s to 90ms.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 30. Concurrent DB Row Updates                           -->
+<!-- ====================================================== -->
+<div class="feature" id="s30">
+  <div class="feature-header">
+    <span class="feature-num">30</span>
+    <h2>Concurrent Updates to the Same Database Row — Optimistic vs Pessimistic Locking</h2>
+  </div>
+
+  <div class="scene">Aarti is on the wallet team. Two reads of "balance: ₹500" happen simultaneously. Both transfer ₹400. Both write back ₹100. The user lost ₹400. Classic lost update. The bug is that the team's code does <code>read → modify → write</code> without any locking guarantees.</div>
+
+  <div class="interview-q">How do you handle two requests trying to update the same database row at the same time?</div>
+
+  <h3>The lost update — what we're protecting against</h3>
+  <div class="code-block">
+    <span class="code-label bad">Lost update — two threads, one wallet</span>
+<pre>Thread A: balance = SELECT balance FROM wallet WHERE id=1;   <span class="cmt">// reads 500</span>
+Thread B: balance = SELECT balance FROM wallet WHERE id=1;   <span class="cmt">// reads 500</span>
+Thread A: UPDATE wallet SET balance = 100 WHERE id=1;        <span class="cmt">// 500-400=100</span>
+Thread B: UPDATE wallet SET balance = 100 WHERE id=1;        <span class="cmt">// 500-400=100 (B's version of "100")</span>
+<span class="cmt">// Final: 100. Should have been -300 (overdraft) or B's request rejected.</span></pre>
+  </div>
+
+  <h3>Five strategies, ordered by overhead</h3>
+
+  <h3>Strategy 1 — Atomic single-statement update (best when it fits)</h3>
+  <p>Skip the read entirely. Let the database do the math:</p>
+  <div class="code-block">
+    <span class="code-label good">No race — one statement</span>
+<pre>UPDATE wallet
+SET balance = balance - 400
+WHERE id = 1 AND balance &gt;= 400;
+<span class="cmt">-- check rowsAffected; if 0, insufficient funds</span></pre>
+  </div>
+  <p>Atomic at the DB level (most engines acquire a row lock for the duration of the UPDATE). No application-level coordination needed. Best for simple counters, balances, stock decrements.</p>
+
+  <h3>Strategy 2 — Optimistic Locking (version number)</h3>
+  <p>Add a <code>version</code> column. Every update bumps it; updates fail if the version doesn't match what you read. JPA does this automatically with <code>@Version</code>:</p>
+  <div class="code-block">
+    <span class="code-label good">JPA optimistic lock</span>
+<pre><span class="ann">@Entity</span>
+<span class="kw">class</span> <span class="type">Wallet</span> {
+    <span class="ann">@Id</span> <span class="type">Long</span> id;
+    <span class="kw">int</span> balance;
+    <span class="ann">@Version</span> <span class="type">Long</span> version;
+}
+
+<span class="cmt">// Hibernate emits:</span>
+UPDATE wallet SET balance=?, version=version+1 WHERE id=? <span class="kw">AND</span> version=?;
+<span class="cmt">// rowsAffected = 0 → throw OptimisticLockException → retry the whole transaction</span></pre>
+  </div>
+  <p><strong>Pros:</strong> no locks held; fast under low contention. <strong>Cons:</strong> you must implement retry logic (typical: retry 3 times with backoff). Good when conflicts are rare (most wallet operations don't collide).</p>
+
+  <h3>Strategy 3 — Pessimistic Locking (SELECT FOR UPDATE)</h3>
+  <p>Tell the DB "I'm going to update this row — block any other reader/writer until I'm done":</p>
+  <div class="code-block">
+    <span class="code-label good">SELECT FOR UPDATE</span>
+<pre>BEGIN;
+SELECT balance FROM wallet WHERE id=1 FOR UPDATE;   <span class="cmt">-- row-level write lock</span>
+<span class="cmt">-- now no one else can read-for-update or write this row until I COMMIT</span>
+UPDATE wallet SET balance = balance - 400 WHERE id=1;
+COMMIT;</pre>
+  </div>
+  <p>JPA equivalent: <code>@Lock(LockModeType.PESSIMISTIC_WRITE)</code> on the repository method.</p>
+  <p><strong>Pros:</strong> simple to reason about; no retry needed. <strong>Cons:</strong> serializes access; risk of deadlocks if two transactions lock different rows in different orders; holds a connection longer.</p>
+
+  <h3>Strategy 4 — Distributed Locks (Redis / ZooKeeper)</h3>
+  <p>When the lock needs to span multiple services or non-DB resources, use a distributed lock manager — Redis with <code>SET NX EX</code> (Redlock), or ZooKeeper ephemeral nodes:</p>
+  <div class="code-block">
+    <span class="code-label good">Redis lock (Redisson)</span>
+<pre><span class="type">RLock</span> lock = redisson.<span class="fn">getLock</span>(<span class="str">"wallet:1"</span>);
+<span class="kw">if</span> (lock.<span class="fn">tryLock</span>(<span class="num">5</span>, <span class="num">30</span>, <span class="type">TimeUnit</span>.SECONDS)) {
+    <span class="kw">try</span> {
+        <span class="cmt">// critical section — across services</span>
+    } <span class="kw">finally</span> {
+        lock.<span class="fn">unlock</span>();
+    }
+}</pre>
+  </div>
+
+  <h3>Strategy 5 — Idempotency keys (request-level)</h3>
+  <p>For payments / API calls: clients include an <code>Idempotency-Key</code> header. The server stores the key + result. If the same key arrives twice (retries, double-clicks), serve the cached result — never apply the operation twice. Doesn't prevent concurrent requests but prevents duplicate effects.</p>
+
+  <h3>How to choose</h3>
+  <table>
+    <tr><th>Use case</th><th>Strategy</th></tr>
+    <tr><td>Counter / balance update</td><td>Atomic single-statement (Strategy 1)</td></tr>
+    <tr><td>Conflicts are rare, retries are cheap</td><td>Optimistic locking (Strategy 2)</td></tr>
+    <tr><td>Conflicts are frequent OR retries expensive</td><td>Pessimistic locking (Strategy 3)</td></tr>
+    <tr><td>Lock spans multiple services</td><td>Distributed lock (Strategy 4)</td></tr>
+    <tr><td>Client retries with same intent</td><td>Idempotency keys (Strategy 5)</td></tr>
+  </table>
+
+  <h3>Isolation level matters</h3>
+  <p>Even with optimistic locking, <code>READ_COMMITTED</code> (Postgres default) lets the lost update happen if you don't have a version check. <code>REPEATABLE_READ</code> (MySQL InnoDB default) detects the conflict and aborts one transaction. Know your DB's default and pick a strategy that matches.</p>
+
+  <div class="gotcha">Pessimistic locking + transaction across an HTTP call (e.g., calling another microservice while holding a DB lock) is a deadlock waiting to happen. Keep the lock window as short as possible — read, modify, commit.</div>
+
+  <div class="so-what">For Aarti's wallet, the team switched to Strategy 1: a single <code>UPDATE wallet SET balance = balance - ? WHERE id = ? AND balance &gt;= ?</code>. Atomic, no race, no retry logic, no extra schema. When the math is simple, let the database do it.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 31. ACID — Banking Example                              -->
+<!-- ====================================================== -->
+<div class="feature" id="s31">
+  <div class="feature-header">
+    <span class="feature-num">31</span>
+    <h2>ACID Properties — Through a Banking Transfer</h2>
+  </div>
+
+  <div class="scene">Sahil at HDFC writes the money-transfer code. The flow is: deduct ₹1000 from Account A, add ₹1000 to Account B. Two database rows changed in two different SQL statements. What guarantees that you can't end up with one half done and the other half not? That guarantee is ACID — the contract every relational database makes.</div>
+
+  <div class="interview-q">Explain ACID properties using a banking transaction example.</div>
+
+  <h3>The four letters</h3>
+
+  <h3>A — Atomicity ("all or nothing")</h3>
+  <p>Either every statement in the transaction succeeds, or none do. A power cut between the debit and the credit must not leave the bank with vanished money.</p>
+  <div class="code-block">
+    <span class="code-label note">A's role in the transfer</span>
+<pre>BEGIN;
+UPDATE accounts SET balance = balance - 1000 WHERE id = 'A';   <span class="cmt">-- step 1</span>
+<span class="cmt">-- 💥 server crashes here</span>
+UPDATE accounts SET balance = balance + 1000 WHERE id = 'B';   <span class="cmt">-- never runs</span>
+COMMIT;
+<span class="cmt">-- After recovery: A is back to original balance. The crash rolled back step 1.</span></pre>
+  </div>
+  <p><strong>How it's achieved:</strong> the database writes every change to a <strong>write-ahead log (WAL)</strong> first. On crash recovery, transactions that didn't reach COMMIT are rolled back from the log.</p>
+
+  <h3>C — Consistency ("the rules are never broken")</h3>
+  <p>The transaction takes the database from one valid state to another. Constraints (foreign keys, check constraints, unique indexes) are never violated by a committed transaction. In our banking case: <strong>the total money in the bank before = total after</strong>.</p>
+  <div class="code-block">
+    <span class="code-label note">C's role — invariants survive</span>
+<pre>CHECK (balance &gt;= 0)         <span class="cmt">-- can't go negative</span>
+total_money = SUM(balance)   <span class="cmt">-- invariant: 1000 leaves A, 1000 enters B</span></pre>
+  </div>
+  <p><strong>How it's achieved:</strong> partly the DB (constraints, triggers) and partly your application logic. Consistency is the only ACID property that requires application cooperation.</p>
+
+  <h3>I — Isolation ("transactions don't see each other's mess")</h3>
+  <p>If Sahil's transfer is running and Anil's balance check reads Account A in the middle, Anil shouldn't see "money has left A but not yet arrived at B." From Anil's perspective, the transfer either hasn't happened or has fully happened.</p>
+  <table>
+    <tr><th>Level</th><th>Allows</th></tr>
+    <tr><td>READ_UNCOMMITTED</td><td>Dirty reads (sees uncommitted writes from other tx)</td></tr>
+    <tr><td>READ_COMMITTED (Postgres default)</td><td>Non-repeatable reads possible</td></tr>
+    <tr><td>REPEATABLE_READ (MySQL default)</td><td>Phantom reads possible</td></tr>
+    <tr><td>SERIALIZABLE</td><td>Full isolation — slowest</td></tr>
+  </table>
+  <p><strong>How it's achieved:</strong> row-level locks, multi-version concurrency control (MVCC — each transaction sees a snapshot of the DB at its start time).</p>
+
+  <h3>D — Durability ("once it's committed, it's permanent")</h3>
+  <p>Once <code>COMMIT</code> returns success, the change must survive crash, power loss, OS reboot. If Anil sees "transfer successful" then yanks the power cord, the money is still moved when the server comes back.</p>
+  <p><strong>How it's achieved:</strong> the WAL is <code>fsync()</code>'d to disk before COMMIT returns. The database may also replicate to a standby before acking the commit (synchronous replication) for stronger durability.</p>
+
+  <h3>The full transfer in code</h3>
+  <div class="code-block">
+    <span class="code-label good">All four properties in one operation</span>
+<pre><span class="ann">@Transactional</span>(isolation = <span class="type">Isolation</span>.REPEATABLE_READ)
+<span class="kw">public void</span> <span class="fn">transfer</span>(<span class="type">String</span> from, <span class="type">String</span> to, <span class="type">BigDecimal</span> amount) {
+    <span class="kw">int</span> debited = jdbc.<span class="fn">update</span>(
+        <span class="str">"UPDATE accounts SET balance = balance - ? WHERE id = ? AND balance &gt;= ?"</span>,
+        amount, from, amount);
+    <span class="kw">if</span> (debited == <span class="num">0</span>) <span class="kw">throw new</span> <span class="type">InsufficientFundsException</span>();   <span class="cmt">// C — invariant</span>
+
+    jdbc.<span class="fn">update</span>(<span class="str">"UPDATE accounts SET balance = balance + ? WHERE id = ?"</span>, amount, to);
+}
+<span class="cmt">// A — both updates atomic via the surrounding transaction
+// I — REPEATABLE_READ ensures consistent view
+// D — DB fsyncs WAL before commit returns</span></pre>
+  </div>
+
+  <h3>How ACID is implemented under the hood</h3>
+  <ul>
+    <li><strong>Write-Ahead Log (WAL).</strong> Every change is appended to a sequential log before being applied to the data files. On crash, WAL is replayed to recover.</li>
+    <li><strong>Locks + MVCC.</strong> Locks for writers; MVCC snapshot for readers — readers never block writers.</li>
+    <li><strong>Two-phase commit (2PC).</strong> For distributed transactions across multiple databases — phase 1: prepare (everyone vote yes), phase 2: commit. Slow, blocking; modern systems prefer Sagas instead.</li>
+  </ul>
+
+  <h3>The CAP / BASE counterpoint</h3>
+  <p>Not every system needs strict ACID. NoSQL stores like Cassandra or DynamoDB give up isolation/consistency for availability and horizontal scale. They offer <strong>BASE</strong> — Basically Available, Soft state, Eventual consistency. The trade-off: faster, scalable, but you must handle stale reads and conflicts in your app code.</p>
+
+  <div class="gotcha">A common mistake: assuming <code>@Transactional</code> + <code>READ_COMMITTED</code> prevents lost updates. It doesn't — see section 30 on concurrent updates. ACID isolation prevents seeing partial data, NOT all anomalies.</div>
+
+  <div class="so-what">ACID = Atomicity (all or nothing, via WAL) + Consistency (no constraint violation, your job + DB's job) + Isolation (each tx has its own view, via locks/MVCC) + Durability (committed data survives crashes, via fsync). Sahil's transfer relies on every letter — drop any one and the bank loses money.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 32. Optimizing Slow SQL Queries                          -->
+<!-- ====================================================== -->
+<div class="feature" id="s32">
+  <div class="feature-header">
+    <span class="feature-num">32</span>
+    <h2>How to Optimize a Slow SQL Query — A Step-by-Step Playbook</h2>
+  </div>
+
+  <div class="scene">A reports endpoint that used to take 200ms now takes 8 seconds. Manish gets the SQL from the logs. He could randomly add indexes and pray, or he could follow the same disciplined sequence every senior backend engineer follows. Here's that sequence.</div>
+
+  <div class="interview-q">A SQL query is slow. Walk me through how you'd optimize it.</div>
+
+  <h3>Step 1 — Run EXPLAIN (or EXPLAIN ANALYZE)</h3>
+  <p>Never optimize blind. Get the query plan first:</p>
+  <div class="code-block">
+    <span class="code-label demo">Postgres: real plan with timings</span>
+<pre>EXPLAIN (ANALYZE, BUFFERS)
+SELECT o.id, u.name
+FROM orders o JOIN users u ON o.user_id = u.id
+WHERE o.created_at &gt;= NOW() - INTERVAL '7 days'
+ORDER BY o.created_at DESC;</pre>
+  </div>
+  <p>Look for: <strong>Seq Scan</strong> on a large table (probably needs an index), <strong>Nested Loop</strong> on big sets (might want a Hash or Merge Join), high <strong>actual time</strong> on a node, <strong>rows estimated vs actual</strong> diverging by 10x+ (stale stats — run <code>ANALYZE</code>).</p>
+
+  <h3>Step 2 — Index the columns in WHERE, JOIN, and ORDER BY</h3>
+  <p>The single most common fix. Indexes turn O(N) sequential scans into O(log N) lookups.</p>
+  <div class="code-block">
+    <span class="code-label good">Index for the predicate above</span>
+<pre>CREATE INDEX idx_orders_created_at ON orders(created_at DESC);
+<span class="cmt">-- DESC matches the ORDER BY direction → no extra sort</span></pre>
+  </div>
+  <ul>
+    <li><strong>B-tree</strong> — default; great for equality, range, and prefix-match LIKE.</li>
+    <li><strong>Hash</strong> — equality only; rarely worth it.</li>
+    <li><strong>GIN</strong> — full-text search, JSONB queries, array contains.</li>
+    <li><strong>BRIN</strong> — block-range; for huge time-series tables where data is naturally ordered.</li>
+  </ul>
+
+  <h3>Step 3 — Composite indexes for multi-column filters</h3>
+  <p>If you query <code>WHERE user_id = ? AND status = 'PAID'</code>, a single composite index is far better than two separate indexes:</p>
+  <div class="code-block">
+    <span class="code-label good">Composite — leftmost prefix rule</span>
+<pre>CREATE INDEX idx_orders_user_status ON orders(user_id, status);
+<span class="cmt">-- Used for: WHERE user_id = ?
+-- Used for: WHERE user_id = ? AND status = ?
+-- NOT used for: WHERE status = ?    (left column missing)</span></pre>
+  </div>
+  <p><strong>Order matters:</strong> put the most selective column (the one with the most distinct values, used in the most queries) first.</p>
+
+  <h3>Step 4 — Avoid SELECT *</h3>
+  <p>Selecting only needed columns lets the DB use <strong>covering indexes</strong> — if all columns the query needs are in the index, it never touches the table:</p>
+  <div class="code-block">
+    <span class="code-label good">Covering index</span>
+<pre>CREATE INDEX idx_orders_covering ON orders(user_id, status) INCLUDE (total);
+<span class="cmt">-- SELECT total FROM orders WHERE user_id = ? AND status = 'PAID' — never touches the heap</span></pre>
+  </div>
+
+  <h3>Step 5 — Avoid functions on indexed columns</h3>
+  <div class="code-block">
+    <span class="code-label bad">Index unused — function disables it</span>
+<pre>WHERE LOWER(email) = 'a@b.com';
+WHERE DATE(created_at) = '2026-05-10';</pre>
+  </div>
+  <div class="code-block">
+    <span class="code-label good">Either rewrite or use a functional index</span>
+<pre>CREATE INDEX idx_email_lower ON users(LOWER(email));
+<span class="cmt">-- or rewrite predicate:</span>
+WHERE created_at &gt;= '2026-05-10' AND created_at &lt; '2026-05-11';</pre>
+  </div>
+
+  <h3>Step 6 — Pagination — keyset over offset</h3>
+  <p><code>LIMIT 20 OFFSET 100000</code> makes the DB scan and discard 100,000 rows. Switch to keyset pagination:</p>
+  <div class="code-block">
+    <span class="code-label good">Keyset pagination</span>
+<pre>SELECT * FROM orders
+WHERE created_at &lt; :lastSeenCreatedAt
+ORDER BY created_at DESC
+LIMIT 20;</pre>
+  </div>
+
+  <h3>Step 7 — Reduce JOIN cost</h3>
+  <ul>
+    <li>Filter <strong>before</strong> joining (CTE / subquery) when one side is huge.</li>
+    <li>Make sure both sides of a join are indexed on the join key.</li>
+    <li>Question the join — do you actually need data from that table, or just an EXISTS check?</li>
+  </ul>
+
+  <h3>Step 8 — Cache the result</h3>
+  <p>If the data changes rarely, cache the query result in Redis with a TTL. A 10ms Redis hit beats a 200ms DB query every time.</p>
+
+  <h3>Step 9 — Update statistics / rebuild stale indexes</h3>
+  <p>The query planner uses table statistics. If they're stale, plans get bad. Postgres: <code>ANALYZE orders;</code>. MySQL: <code>ANALYZE TABLE orders;</code>. Rebuild bloated indexes occasionally — <code>REINDEX</code> (Postgres) or <code>OPTIMIZE TABLE</code> (MySQL).</p>
+
+  <h3>Step 10 — Last resort: denormalize / materialized view / read replica</h3>
+  <ul>
+    <li><strong>Materialized view</strong> — pre-computed query result, refreshed on a schedule.</li>
+    <li><strong>Denormalized columns</strong> — store <code>order_count</code> on the user row, updated on insert/delete. Trades write speed for read speed.</li>
+    <li><strong>Read replica</strong> — offload heavy analytical queries to a follower DB.</li>
+  </ul>
+
+  <h3>The senior-engineer checklist</h3>
+  <ol style="margin-left:1.3rem;color:var(--text)">
+    <li>EXPLAIN ANALYZE first — never guess</li>
+    <li>Index the WHERE / JOIN / ORDER BY columns</li>
+    <li>Composite indexes for multi-column predicates (selective column first)</li>
+    <li>Drop SELECT *, prefer covering indexes</li>
+    <li>Avoid functions on indexed columns</li>
+    <li>Keyset pagination, not OFFSET</li>
+    <li>Rewrite N+1 query patterns</li>
+    <li>Cache for read-heavy, slow-changing data</li>
+    <li>Refresh stats; rebuild bloated indexes</li>
+    <li>Denormalize / materialize / replicate when needed</li>
+  </ol>
+
+  <div class="gotcha">Adding an index on every column "just in case" is a silent disaster. Every index slows down INSERT/UPDATE/DELETE and consumes memory. Treat each index as a deliberate decision backed by EXPLAIN.</div>
+
+  <div class="so-what">SQL optimization is a sequence: EXPLAIN → identify the slow node → add the right index OR rewrite the query → re-EXPLAIN → measure. Manish's 8-second query was a missing index on <code>orders.created_at</code>; adding it dropped runtime to 35ms. Always start with the plan, never with a guess.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 33. Pagination & Sorting in REST                         -->
+<!-- ====================================================== -->
+<div class="feature" id="s33">
+  <div class="feature-header">
+    <span class="feature-num">33</span>
+    <h2>Designing Pagination &amp; Sorting in a REST API</h2>
+  </div>
+
+  <div class="scene">Devika's frontend team asks "how do we list 10 million products?" Returning all of them is impossible — too slow, blows memory on both server and client. The answer is pagination, and there are two flavors: the easy one that breaks at scale, and the slightly harder one that doesn't.</div>
+
+  <div class="interview-q">How would you design pagination and sorting for a REST API?</div>
+
+  <h3>Two pagination styles — pick deliberately</h3>
+
+  <h3>Style 1 — Offset pagination (page + size)</h3>
+  <div class="code-block">
+    <span class="code-label note">Familiar, easy to implement</span>
+<pre>GET /api/products?page=3&amp;size=20&amp;sort=createdAt,desc
+
+<span class="cmt">// Backend translates to:</span>
+SELECT * FROM products ORDER BY created_at DESC LIMIT 20 OFFSET 60;</pre>
+  </div>
+  <p><strong>Pros:</strong> users can jump to any page; total page count is easy to compute. <strong>Cons:</strong> <code>OFFSET 100000</code> is slow (DB scans 100k rows just to skip them); pages become inconsistent under inserts (if a row is added on page 2 while you're viewing page 3, the next item shifts and you can see duplicates or skip rows).</p>
+
+  <h3>Style 2 — Keyset / Cursor pagination</h3>
+  <div class="code-block">
+    <span class="code-label good">Scales — what the big APIs use</span>
+<pre>GET /api/products?cursor=eyJjcmVhdGVkQXQiOiIyMDI2LTA1LTEwVDA5OjAwOjAwWiIsImlkIjo0Mn0&amp;size=20
+
+<span class="cmt">// Backend decodes cursor → continues from a specific point</span>
+SELECT * FROM products
+WHERE (created_at, id) &lt; ('2026-05-10T09:00:00Z', 42)
+ORDER BY created_at DESC, id DESC
+LIMIT 20;</pre>
+  </div>
+  <p><strong>Pros:</strong> always fast (uses index on <code>created_at</code>); stable under inserts. <strong>Cons:</strong> can't jump to "page 47" — only forward / backward. Cursor must be opaque (base64-encoded JSON) so clients don't depend on its structure.</p>
+  <p><strong>Why two columns in the cursor?</strong> If two rows share <code>created_at</code> (same millisecond), use <code>id</code> as a tiebreaker — otherwise you can skip or duplicate rows at the boundary.</p>
+
+  <h3>Response shape — include the metadata</h3>
+  <div class="code-block">
+    <span class="code-label good">Cursor-style response</span>
+<pre>{
+  "data": [ ... 20 products ... ],
+  "pagination": {
+    "next_cursor": "eyJ...",
+    "prev_cursor": "eyK...",
+    "has_more": true
+  }
+}</pre>
+  </div>
+  <div class="code-block">
+    <span class="code-label note">Offset-style response</span>
+<pre>{
+  "data": [ ... 20 products ... ],
+  "page": 3,
+  "size": 20,
+  "total_elements": 5421,
+  "total_pages": 272
+}</pre>
+  </div>
+
+  <h3>Sorting — keep it explicit, validate aggressively</h3>
+  <p>Accept a list of sort fields with directions. Whitelist allowed fields — never inject the user's input directly into SQL or JPQL.</p>
+  <div class="code-block">
+    <span class="code-label good">Whitelist + Spring Data</span>
+<pre><span class="kw">private static final</span> <span class="type">Set</span>&lt;<span class="type">String</span>&gt; SORTABLE = <span class="type">Set</span>.<span class="fn">of</span>(<span class="str">"createdAt"</span>, <span class="str">"price"</span>, <span class="str">"name"</span>);
+
+<span class="ann">@GetMapping</span>(<span class="str">"/products"</span>)
+<span class="kw">public</span> <span class="type">Page</span>&lt;<span class="type">Product</span>&gt; <span class="fn">list</span>(<span class="ann">@RequestParam</span> <span class="kw">int</span> page,
+                          <span class="ann">@RequestParam</span> <span class="kw">int</span> size,
+                          <span class="ann">@RequestParam</span> <span class="type">String</span> sort) {
+    <span class="cmt">// "createdAt,desc" → Sort.by(...)</span>
+    <span class="type">String</span>[] parts = sort.<span class="fn">split</span>(<span class="str">","</span>);
+    <span class="kw">if</span> (!SORTABLE.<span class="fn">contains</span>(parts[<span class="num">0</span>])) <span class="kw">throw new</span> <span class="type">BadRequestException</span>();
+    <span class="kw">return</span> repo.<span class="fn">findAll</span>(<span class="type">PageRequest</span>.<span class="fn">of</span>(page, size,
+        <span class="type">Sort</span>.<span class="fn">by</span>(<span class="type">Sort</span>.<span class="type">Direction</span>.<span class="fn">fromString</span>(parts[<span class="num">1</span>]), parts[<span class="num">0</span>])));
+}</pre>
+  </div>
+
+  <h3>Spring Data Pageable — built-in support</h3>
+  <p>Spring auto-binds a <code>Pageable</code> from query params: <code>?page=0&amp;size=20&amp;sort=price,desc&amp;sort=name,asc</code>. Your repository method just declares <code>Page&lt;Product&gt; findAll(Pageable p)</code> and you get a paginated result with total count for free.</p>
+
+  <h3>Default and max sizes</h3>
+  <p>Always cap <code>size</code>. A client requesting <code>size=100000</code> can DoS your DB. Reasonable defaults: page 0, size 20, max 100. Validate at the controller level.</p>
+
+  <h3>Filtering — make it composable</h3>
+  <p>Beyond pagination, filters need a contract. Options:</p>
+  <ul>
+    <li><strong>Per-field query params</strong> — simple but limited: <code>?status=PAID&amp;minPrice=100</code></li>
+    <li><strong>RSQL / Spring Specification</strong> — <code>?filter=status==PAID;price=ge=100</code></li>
+    <li><strong>POST with filter body</strong> — for complex queries, accept JSON in request body</li>
+  </ul>
+
+  <h3>Caching pagination responses</h3>
+  <p>Page 1 is often hit hardest. Cache the response keyed by query params + cursor. Invalidate on writes to the entity. For high-cardinality queries (every request unique), don't bother.</p>
+
+  <div class="gotcha">Sorting by a non-unique column without a tiebreaker (like <code>id</code>) makes pagination silently skip / duplicate rows at page boundaries. Always include <code>id</code> as a final sort key.</div>
+
+  <div class="so-what">For internal admin tools where users want to jump around: offset pagination is fine. For public APIs and infinite-scroll feeds: keyset/cursor pagination, with an opaque base64 cursor and stable secondary sort. Always whitelist sort fields, always cap size.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 34. JWT Authentication                                   -->
+<!-- ====================================================== -->
+<div class="feature" id="s34">
+  <div class="feature-header">
+    <span class="feature-num">34</span>
+    <h2>JWT Authentication — Step by Step, With What Each Step Protects</h2>
+  </div>
+
+  <div class="scene">Ravi is building a mobile app. Sessions stored in a server-side table mean every request hits the DB to look up the session. With 50 backend pods behind a load balancer, sticky sessions become painful. He picks JWT — stateless tokens, no server-side store needed. But he wants to understand what's happening under the hood, not just paste a library.</div>
+
+  <div class="interview-q">Walk me through how JWT authentication works, end to end.</div>
+
+  <h3>What's in a JWT</h3>
+  <p>A JWT is three base64url strings separated by dots: <code>header.payload.signature</code>.</p>
+  <div class="code-block">
+    <span class="code-label note">Anatomy</span>
+<pre>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9                <span class="cmt">// header  (base64) → {"alg":"HS256","typ":"JWT"}</span>
+.eyJzdWIiOiI0MiIsImV4cCI6MTcxNTM0NTk5OX0           <span class="cmt">// payload (base64) → {"sub":"42","exp":1715345999}</span>
+.MEUCIQDxxxxx...                                    <span class="cmt">// signature — HMAC or RSA over (header + "." + payload)</span></pre>
+  </div>
+  <ul>
+    <li><strong>Header</strong> — algorithm + token type. Don't trust this; pin the algorithm server-side.</li>
+    <li><strong>Payload (claims)</strong> — user id (<code>sub</code>), expiry (<code>exp</code>), roles, anything you want. <strong>Not encrypted</strong> — anyone can read it. Don't put secrets here.</li>
+    <li><strong>Signature</strong> — proof that the server signed it. Anyone who tampers with header or payload invalidates the signature.</li>
+  </ul>
+
+  <h3>The seven-step flow</h3>
+  <ol style="margin-left:1.3rem;color:var(--text)">
+    <li><strong>Login.</strong> Client POSTs username/password to <code>/auth/login</code>.</li>
+    <li><strong>Server verifies credentials.</strong> Looks up user, BCrypt-checks the password.</li>
+    <li><strong>Server signs two tokens.</strong>
+      <ul>
+        <li><strong>Access token</strong> — short-lived (15 min), carries user id + roles, used on every API call.</li>
+        <li><strong>Refresh token</strong> — long-lived (7-30 days), used only to get a new access token. Stored in an HttpOnly secure cookie or in a server-side allowlist.</li>
+      </ul>
+    </li>
+    <li><strong>Client stores tokens.</strong> Web: HttpOnly cookies (XSS-safe) or memory + refresh-via-cookie. Mobile: Keychain (iOS) / EncryptedSharedPreferences (Android).</li>
+    <li><strong>Client sends access token on every request.</strong>
+      <div class="code-block">
+        <span class="code-label demo">Header</span>
+<pre>GET /api/orders
+Authorization: Bearer eyJhbGc...</pre>
+      </div>
+    </li>
+    <li><strong>Server validates the token on every request.</strong>
+      <ol style="margin-left:1.3rem;color:var(--text)">
+        <li>Split into header / payload / signature.</li>
+        <li>Recompute signature using the server's secret (HS256) or public key (RS256). Compare. If mismatch → 401.</li>
+        <li>Check <code>exp</code>. If past → 401.</li>
+        <li>Check <code>iss</code>, <code>aud</code> match expected values.</li>
+        <li>Optionally check a denylist (for revocation — see below).</li>
+        <li>Extract <code>sub</code> + roles → set Spring Security <code>Authentication</code> → continue to controller.</li>
+      </ol>
+    </li>
+    <li><strong>Token expires.</strong> Client gets 401, sends refresh token to <code>/auth/refresh</code>, gets a fresh access token. If refresh token also expired → user must log in again.</li>
+  </ol>
+
+  <h3>Spring Security flow — where the code lives</h3>
+  <div class="code-block">
+    <span class="code-label good">JWT filter sketch</span>
+<pre><span class="kw">public class</span> <span class="type">JwtAuthFilter</span> <span class="kw">extends</span> <span class="type">OncePerRequestFilter</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">protected void</span> <span class="fn">doFilterInternal</span>(<span class="type">HttpServletRequest</span> req, <span class="type">HttpServletResponse</span> res, <span class="type">FilterChain</span> chain) {
+        <span class="type">String</span> header = req.<span class="fn">getHeader</span>(<span class="str">"Authorization"</span>);
+        <span class="kw">if</span> (header != <span class="kw">null</span> &amp;&amp; header.<span class="fn">startsWith</span>(<span class="str">"Bearer "</span>)) {
+            <span class="type">String</span> token = header.<span class="fn">substring</span>(<span class="num">7</span>);
+            <span class="kw">try</span> {
+                <span class="type">Claims</span> claims = jwtParser.<span class="fn">parseClaimsJws</span>(token).<span class="fn">getBody</span>();
+                <span class="type">Authentication</span> auth = <span class="kw">new</span> <span class="type">UsernamePasswordAuthenticationToken</span>(
+                    claims.<span class="fn">getSubject</span>(), <span class="kw">null</span>, rolesFrom(claims));
+                <span class="type">SecurityContextHolder</span>.<span class="fn">getContext</span>().<span class="fn">setAuthentication</span>(auth);
+            } <span class="kw">catch</span> (<span class="type">JwtException</span> e) { <span class="cmt">/* 401 */</span> }
+        }
+        chain.<span class="fn">doFilter</span>(req, res);
+    }
+}</pre>
+  </div>
+
+  <h3>Algorithm choice — HS256 vs RS256</h3>
+  <ul>
+    <li><strong>HS256 (HMAC-SHA256)</strong> — symmetric. The same secret signs and verifies. Simple if all your services share one trusted boundary.</li>
+    <li><strong>RS256 (RSA)</strong> — asymmetric. Auth server signs with private key, every API server verifies with the public key. Use this when verifiers and issuers are separate teams or services.</li>
+  </ul>
+
+  <h3>The hardest part — revocation</h3>
+  <p>JWTs are stateless, which means once issued, they're valid until <code>exp</code>. If a user logs out or you ban them, you can't really "revoke" a JWT — the signature is still valid. Three approaches:</p>
+  <ul>
+    <li><strong>Short-lived access tokens (15 min)</strong> — accept that revocation takes ≤15 min to propagate.</li>
+    <li><strong>Server-side denylist</strong> — store revoked token IDs (jti claim) in Redis with TTL = remaining token lifetime. Every request checks the list. Reintroduces the round-trip you were trying to avoid, but only for the denylist.</li>
+    <li><strong>Refresh-token rotation</strong> — every refresh issues a new refresh token AND invalidates the old one server-side. If a stolen refresh token is used, the attacker and the legitimate user race; one will get logged out, alerting you to the breach.</li>
+  </ul>
+
+  <h3>The dangerous failure modes</h3>
+  <ul>
+    <li><strong>"alg: none" attack</strong> — naive libraries trust the header's <code>alg</code> field. If it says <code>none</code>, no signature check is done. Always pin <code>alg</code> server-side.</li>
+    <li><strong>HS256 with a public-key secret</strong> — leaked, attacker can forge tokens. Rotate your secret regularly.</li>
+    <li><strong>JWT in localStorage + XSS</strong> — XSS reads the token, attacker has full session. Prefer HttpOnly cookies on web.</li>
+    <li><strong>No expiry / very long expiry</strong> — stolen token is gold forever. Always set <code>exp</code>.</li>
+    <li><strong>Sensitive data in payload</strong> — claims are base64, not encrypted. Don't put PII or PAN data in there.</li>
+  </ul>
+
+  <div class="gotcha">A JWT's signature only proves it was issued by your server. It doesn't prove it's still <em>valid</em>. Always check expiry, audience, and (if you need revocation) a denylist.</div>
+
+  <div class="so-what">JWT flow: login → server signs access (15min) + refresh (7d) → client sends access on every request → server verifies signature, exp, claims → on expiry, client uses refresh to get new access. The win: stateless servers can scale horizontally without sticky sessions. The cost: revocation is harder — handle it with short access lifetimes + refresh rotation.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 35. Slow API Bottleneck Diagnosis                       -->
+<!-- ====================================================== -->
+<div class="feature" id="s35">
+  <div class="feature-header">
+    <span class="feature-num">35</span>
+    <h2>Your API is Slow Under Load — How to Find the Bottleneck</h2>
+  </div>
+
+  <div class="scene">It's a Monday. Marketing just ran a campaign. The checkout API's p99 latency went from 200ms to 8 seconds. Customers are complaining. Renu has 30 minutes to find the culprit before her boss escalates. Where does she look?</div>
+
+  <div class="interview-q">If your API is slow under load, walk me through how you'd identify the bottleneck.</div>
+
+  <h3>The hierarchy of suspects — fastest to find first</h3>
+  <p>Latency under load is almost always one of these, in this rough order of frequency: <strong>(1) database</strong>, <strong>(2) downstream HTTP call</strong>, <strong>(3) thread pool / connection pool exhaustion</strong>, <strong>(4) GC pauses</strong>, <strong>(5) hot lock contention</strong>, <strong>(6) actual CPU-bound code</strong>.</p>
+
+  <h3>Step 1 — Look at the metrics dashboard first</h3>
+  <p>Before SSH-ing into pods, check Grafana. Within 60 seconds you should know:</p>
+  <ul>
+    <li><strong>p50, p95, p99 latency</strong> for the slow endpoint — is it tail latency or median?</li>
+    <li><strong>Throughput (RPS)</strong> — did traffic spike?</li>
+    <li><strong>Error rate</strong> — are timeouts contributing?</li>
+    <li><strong>CPU / memory / GC</strong> on the JVM pods</li>
+    <li><strong>DB connection pool</strong> active vs max — is it pegged?</li>
+    <li><strong>Downstream service latency</strong> — did a dependency get slow?</li>
+  </ul>
+
+  <h3>Step 2 — Distributed tracing tells you which span is slow</h3>
+  <p>OpenTelemetry / Jaeger / Zipkin / Datadog APM. Pick one slow request, look at the flame chart of spans:</p>
+  <ul>
+    <li>HTTP handler total: 8s</li>
+    <li>JPA query "findOrders": 7.6s ← the smoking gun</li>
+    <li>Redis "get user-cache:42": 3ms</li>
+    <li>HTTP call to "payment-service": 80ms</li>
+  </ul>
+  <p>The widest span is the bottleneck. No tracing? Add structured logs with timing around suspicious calls.</p>
+
+  <h3>Step 3 — Database investigation</h3>
+  <p>If the DB is the suspect:</p>
+  <ul>
+    <li><strong>Slow query log</strong> — most DBs log queries above a threshold. Postgres: <code>log_min_duration_statement = 500ms</code>. Find queries that recently got slow.</li>
+    <li><strong>EXPLAIN ANALYZE</strong> — see section 32 for the full playbook.</li>
+    <li><strong>Active queries</strong> — Postgres: <code>SELECT * FROM pg_stat_activity WHERE state = 'active' ORDER BY query_start;</code>. Long-running queries blocking the pool?</li>
+    <li><strong>Locks</strong> — <code>pg_locks</code> for blocked transactions; deadlocks can cascade through a whole connection pool.</li>
+    <li><strong>Connection pool saturation</strong> — HikariCP active = max means every thread is waiting. Either increase the pool, fix the slow queries holding connections, or shorten transactions.</li>
+  </ul>
+
+  <h3>Step 4 — Thread / connection pool exhaustion</h3>
+  <p>Symptoms: latency suddenly spikes from 50ms to seconds; throughput plateaus despite more load. Causes:</p>
+  <ul>
+    <li>Tomcat threads (<code>server.tomcat.threads.max</code> default 200) all stuck on a slow downstream → new requests queue.</li>
+    <li>HikariCP DB pool size too small for traffic — threads wait for a connection.</li>
+    <li>Custom executor with unbounded queue — requests pile up forever, p99 climbs to infinity.</li>
+  </ul>
+  <p>Diagnose: thread dump (<code>jstack &lt;pid&gt;</code> or <code>kill -3</code>). Look at "what are the 200 Tomcat threads doing right now?" — usually they're all parked on the same downstream call.</p>
+
+  <h3>Step 5 — GC pauses</h3>
+  <p>If p99 has periodic 1-2 second spikes, suspect Stop-The-World GC. Enable GC logs (<code>-Xlog:gc*</code>), graph pause times. Fixes:</p>
+  <ul>
+    <li>Switch to G1GC or ZGC if you're on Parallel.</li>
+    <li>Bump heap if Old Gen is constantly near full.</li>
+    <li>Look for memory leaks (section 22) — they cause Full GCs that take seconds.</li>
+  </ul>
+
+  <h3>Step 6 — Lock contention</h3>
+  <p>Symptoms: CPU isn't pegged but throughput plateaus. Cause: <code>synchronized</code> on a hot path. Diagnose with <code>async-profiler</code> in lock mode — produces a flame graph showing where threads spent time blocked. Fix: replace with <code>ConcurrentHashMap</code>, atomic, or finer-grained locks.</p>
+
+  <h3>Step 7 — CPU profiling (last resort)</h3>
+  <p>If nothing above is the cause, the code itself is slow. Run <code>async-profiler</code> on a live pod for 30s, get a CPU flame graph. The widest tower at the top = the hottest method. Common findings: regex compiled per request, unbounded loop, JSON serialization overhead, log statements in tight loops.</p>
+
+  <h3>The diagnostic toolkit — every backend engineer should have these handy</h3>
+  <table>
+    <tr><th>Tool</th><th>Use it for</th></tr>
+    <tr><td>Grafana / Prometheus dashboards</td><td>Service-level metrics, RPS, latency percentiles</td></tr>
+    <tr><td>Distributed tracing (Jaeger, Datadog APM)</td><td>Per-request span breakdown</td></tr>
+    <tr><td>Slow query log + EXPLAIN ANALYZE</td><td>DB query optimization</td></tr>
+    <tr><td><code>jstack</code> / thread dump</td><td>Thread pool exhaustion, deadlocks</td></tr>
+    <tr><td><code>jcmd ... GC.heap_info</code> + GC log</td><td>Heap usage, GC pauses</td></tr>
+    <tr><td><code>async-profiler</code></td><td>CPU and lock-contention flame graphs</td></tr>
+    <tr><td>Connection pool metrics (HikariCP MBeans)</td><td>Pool saturation</td></tr>
+  </table>
+
+  <h3>Load testing to reproduce</h3>
+  <p>If you can't reproduce in prod, run <strong>k6</strong> or <strong>JMeter</strong> against staging with realistic traffic. Ramp up RPS and watch where latency starts hockey-sticking. That's your saturation point.</p>
+
+  <div class="gotcha">"More replicas" is not a fix until you know the bottleneck. If it's the DB, scaling the app tier just sends more queries to the same DB and makes it worse. Always identify the bottleneck before scaling.</div>
+
+  <div class="so-what">Renu's playbook: dashboards (60s) → tracing (find the slow span) → if DB, slow query log + EXPLAIN; if pool, thread dump + pool metrics; if GC, gc.log; if code, async-profiler. The slowness is rarely where intuition says — let evidence guide every step.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 36. REST vs Kafka                                        -->
+<!-- ====================================================== -->
+<div class="feature" id="s36">
+  <div class="feature-header">
+    <span class="feature-num">36</span>
+    <h2>REST vs Messaging (Kafka) — When to Use Which</h2>
+  </div>
+
+  <div class="scene">Vivek is splitting a monolith. Order-service needs to tell email-service when an order is placed. Should it be a REST call, or should it publish an event to Kafka? Both work. The right answer depends on coupling, durability, and what happens when one side is slow or down.</div>
+
+  <div class="interview-q">REST vs messaging (Kafka) — when would you choose each?</div>
+
+  <h3>The fundamental difference — synchronous vs asynchronous</h3>
+  <p><strong>REST</strong> is a synchronous, point-to-point request/response between two services. Caller waits, gets a response, knows the result. Tightly coupled — caller must know the URL of the callee.</p>
+  <p><strong>Kafka</strong> is asynchronous, broker-mediated, pub/sub. Producer writes an event to a topic and moves on. Any number of consumers (now or in the future) can read it. Loosely coupled — producer doesn't know who consumes.</p>
+
+  <h3>Side-by-side</h3>
+  <table>
+    <tr><th>Aspect</th><th>REST</th><th>Kafka</th></tr>
+    <tr><td>Communication</td><td>Synchronous request-response</td><td>Asynchronous event publish/subscribe</td></tr>
+    <tr><td>Coupling</td><td>Tight — caller knows callee's URL</td><td>Loose — producer doesn't know consumers</td></tr>
+    <tr><td>Backpressure</td><td>Caller blocks; can cascade failures</td><td>Events buffer in topic; consumers process at their pace</td></tr>
+    <tr><td>Durability</td><td>None — failed call is lost (unless caller retries)</td><td>Events persisted to disk; consumed even if consumer was down</td></tr>
+    <tr><td>Replay</td><td>Not possible</td><td>Yes — rewind offset, reprocess history</td></tr>
+    <tr><td>Latency</td><td>Lowest (usually milliseconds)</td><td>Higher (tens of ms — broker adds a hop)</td></tr>
+    <tr><td>Fan-out to N consumers</td><td>N HTTP calls</td><td>Free — one publish, N subscribers</td></tr>
+    <tr><td>Ordering</td><td>Per request (irrelevant)</td><td>Per partition (within a topic)</td></tr>
+  </table>
+
+  <h3>When REST is right</h3>
+  <ul>
+    <li><strong>You need an immediate answer.</strong> "Is this user allowed to log in?" "What's the current price of SKU-42?" The caller can't proceed without the response.</li>
+    <li><strong>The operation is a query.</strong> Reading data from another service.</li>
+    <li><strong>Sync transactional flow.</strong> "Reserve seat → confirm payment → email confirmation" — and the user is waiting on the page.</li>
+    <li><strong>Simple integrations.</strong> One client, one server, low traffic — Kafka would be overkill.</li>
+  </ul>
+
+  <h3>When Kafka is right</h3>
+  <ul>
+    <li><strong>Fan-out.</strong> "Order placed" → email service, analytics, fraud detection, inventory, recommendations all need to know. With REST, the order-service makes 5 HTTP calls and is coupled to all 5. With Kafka, it publishes once and doesn't care who listens.</li>
+    <li><strong>The producer doesn't need a response.</strong> "Track this user click" — fire and forget.</li>
+    <li><strong>Decoupled scaling.</strong> The producer wants to ingest 100k events/sec; the consumer can only process 10k/sec; let the topic buffer the rest.</li>
+    <li><strong>Durability requirement.</strong> If the email service is down for 2 hours, you don't want to lose those order events — Kafka holds them safely until consumers catch up.</li>
+    <li><strong>Replay / reprocessing.</strong> A bug in the analytics consumer? Rewind the offset and re-process the last 24 hours.</li>
+    <li><strong>Audit / event-sourcing.</strong> The full history of every state change is the source of truth — Kafka topics with retention = forever.</li>
+  </ul>
+
+  <h3>Vivek's order → email decision</h3>
+  <p>Email is fan-out (other services also care about "order placed"), the user isn't waiting for the email to arrive, and email-service downtime shouldn't fail order placement. <strong>Kafka wins.</strong></p>
+  <p>But the order placement itself? "User clicks Place Order → API returns success" — the API needs an immediate response, the order must be confirmed before the page shows "Thank you". <strong>REST/synchronous DB write wins</strong> for the placement.</p>
+
+  <h3>The hybrid pattern — outbox</h3>
+  <p>The classic problem: how do you atomically (a) save the order to the DB and (b) publish to Kafka? If the publish fails after the DB commit, you've lost the event. If the DB rolls back after publishing, you've published a phantom event.</p>
+  <p>The <strong>Transactional Outbox pattern</strong>: in the same DB transaction, write the order AND write an "event row" to an <code>outbox</code> table. A separate background worker (or Debezium) reads the outbox and publishes to Kafka, then deletes/marks the row. Atomic by virtue of the DB transaction.</p>
+
+  <h3>What Kafka costs you</h3>
+  <ul>
+    <li><strong>Eventual consistency.</strong> Producer commits at T=0, consumer processes at T=200ms. The world is briefly inconsistent. Embrace this or pick REST.</li>
+    <li><strong>Operational complexity.</strong> Kafka cluster, ZooKeeper / KRaft, monitoring, partitions, consumer-group lag — vs a single HTTP call.</li>
+    <li><strong>Schema evolution headaches.</strong> If a producer changes the event format, every consumer breaks. Use Avro/Protobuf with a Schema Registry to enforce backward compatibility.</li>
+    <li><strong>Idempotency on consumers.</strong> Kafka delivers at-least-once by default. Same event might arrive twice. Consumers must be idempotent (e.g., check "already processed?" before applying).</li>
+  </ul>
+
+  <div class="gotcha">"Async because async is cool" is the most common mistake. If your user is on the checkout page waiting for confirmation, putting the payment behind Kafka turns a 300ms operation into a multi-second eventual-consistency dance. Use sync for the user-facing flow; use async for what fans out from it.</div>
+
+  <div class="so-what">REST when you need an answer right now and the integration is point-to-point. Kafka when you don't need an answer, multiple services care, durability matters, or you need to replay. Most real systems are hybrids — REST for user-facing requests, Kafka for downstream fan-out.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 37. Dockerizing Spring Boot                             -->
+<!-- ====================================================== -->
+<div class="feature" id="s37">
+  <div class="feature-header">
+    <span class="feature-num">37</span>
+    <h2>How to Dockerize a Spring Boot Application — The Right Way</h2>
+  </div>
+
+  <div class="scene">Asha's team ships their Spring Boot app as a JAR on a Linux box. The deploy is "scp the jar, kill the old one, start the new one". She wants to move to Docker so the same image runs identically on dev, staging, and prod. There are good ways to Dockerize and bad ways — and the difference shows up in image size, startup time, and security.</div>
+
+  <div class="interview-q">How would you Dockerize a Spring Boot application?</div>
+
+  <h3>The naive Dockerfile (works, but bad)</h3>
+  <div class="code-block">
+    <span class="code-label bad">700MB image, slow rebuilds, runs as root</span>
+<pre>FROM openjdk:17
+COPY target/app.jar /app.jar
+ENTRYPOINT ["java", "-jar", "/app.jar"]</pre>
+  </div>
+  <p>Problems: <strong>(1)</strong> the base image is the full OpenJDK distribution (~600MB). <strong>(2)</strong> Every code change invalidates the cache and re-uploads the entire fat JAR. <strong>(3)</strong> The container runs as root — security risk.</p>
+
+  <h3>Production Dockerfile — multi-stage, layered, non-root</h3>
+  <div class="code-block">
+    <span class="code-label good">~200MB, fast rebuilds, secure</span>
+<pre><span class="cmt"># --- Stage 1: build with full JDK ---</span>
+FROM eclipse-temurin:17-jdk-alpine AS builder
+WORKDIR /build
+COPY pom.xml .
+RUN mvn dependency:go-offline -B    <span class="cmt"># cached unless pom.xml changes</span>
+COPY src src
+RUN mvn package -DskipTests -B
+
+<span class="cmt"># Extract Spring Boot's layered jar (layers change at different rates)</span>
+RUN java -Djarmode=layertools -jar target/app.jar extract --destination extracted
+
+<span class="cmt"># --- Stage 2: runtime image — JRE only ---</span>
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+
+<span class="cmt"># Run as non-root user</span>
+RUN addgroup -S spring &amp;&amp; adduser -S spring -G spring
+USER spring:spring
+
+<span class="cmt"># Copy each layer separately — Docker caches layers individually</span>
+COPY --from=builder /build/extracted/dependencies/ ./
+COPY --from=builder /build/extracted/spring-boot-loader/ ./
+COPY --from=builder /build/extracted/snapshot-dependencies/ ./
+COPY --from=builder /build/extracted/application/ ./       <span class="cmt"># your code — changes most</span>
+
+EXPOSE 8080
+ENTRYPOINT ["java", "org.springframework.boot.loader.JarLauncher"]</pre>
+  </div>
+
+  <h3>Why multi-stage matters</h3>
+  <p>The build stage has Maven, the JDK, source code, test fixtures — gigabytes of stuff you don't need at runtime. The final runtime image only has the JRE + your compiled JAR layers. Final image: 200MB instead of 1GB+.</p>
+
+  <h3>Why layered JARs matter (Spring Boot 2.3+)</h3>
+  <p>A fat JAR rebuilt for a one-line code change re-uploads 60MB. With layered JARs, only the application layer (your <code>BOOT-INF/classes</code>) changes — typically 1MB. Pull/push of new images becomes nearly instant.</p>
+
+  <h3>Three runtime essentials</h3>
+
+  <h3>1. Run as non-root</h3>
+  <p>If your container is exploited, the attacker shouldn't have root inside it. Add <code>USER spring:spring</code>.</p>
+
+  <h3>2. Tune the JVM for containers</h3>
+  <p>Java 11+ honors container CPU/memory limits automatically (<code>UseContainerSupport</code> on by default). But explicitly set max heap as a percentage of container memory:</p>
+  <div class="code-block">
+    <span class="code-label good">JVM container flags</span>
+<pre>ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError"
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS org.springframework.boot.loader.JarLauncher"]</pre>
+  </div>
+  <p>Why 75%? Reserves 25% for direct buffers, metaspace, thread stacks — the heap is not the only memory the JVM uses.</p>
+
+  <h3>3. Health checks</h3>
+  <p>Add Spring Boot Actuator. Then in Docker / Kubernetes:</p>
+  <div class="code-block">
+    <span class="code-label demo">Kubernetes probes</span>
+<pre>livenessProbe:  { httpGet: { path: /actuator/health/liveness,  port: 8080 } }
+readinessProbe: { httpGet: { path: /actuator/health/readiness, port: 8080 } }</pre>
+  </div>
+
+  <h3>The .dockerignore — don't ship junk</h3>
+  <div class="code-block">
+    <span class="code-label note">.dockerignore</span>
+<pre>target/
+.idea/
+.git/
+*.iml
+.vscode/
+node_modules/
+.env</pre>
+  </div>
+
+  <h3>Even simpler — Buildpacks</h3>
+  <p>Spring Boot ships built-in support: <code>./mvnw spring-boot:build-image</code> uses Cloud Native Buildpacks to produce an optimized image — no Dockerfile to maintain, layered automatically, secure base image, sensible JVM defaults. Great for teams that don't want to babysit Dockerfiles.</p>
+
+  <h3>Configuration via environment variables</h3>
+  <p>Spring Boot maps env vars to properties: <code>SPRING_DATASOURCE_URL</code> → <code>spring.datasource.url</code>. Bake nothing environment-specific into the image. Same image runs in dev/staging/prod, configured by env.</p>
+
+  <h3>Image security checklist</h3>
+  <ul>
+    <li>Use a specific base-image tag (<code>eclipse-temurin:17.0.10_7-jre-alpine</code>) — never <code>latest</code>.</li>
+    <li>Scan with Trivy / Snyk in CI; fail builds on Critical CVEs.</li>
+    <li>Run as non-root.</li>
+    <li>Minimize layers — fewer surface area, smaller images.</li>
+    <li>Don't bake secrets into the image. Inject at runtime via env or a secrets manager.</li>
+  </ul>
+
+  <div class="gotcha">Putting <code>application.properties</code> with prod DB credentials inside the image is a leak waiting to happen. Anyone who pulls the image gets the secrets. Always read secrets from env vars / Vault / AWS Secrets Manager at startup.</div>
+
+  <div class="so-what">A production-grade Spring Boot Dockerfile: multi-stage build, Spring Boot layered JAR, Alpine JRE base, non-root user, JVM container flags, env-driven config, no baked-in secrets. Asha's image dropped from 1.1GB to 220MB and rebuild times from 90s to 8s.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 38. Microservice Fault Tolerance                         -->
+<!-- ====================================================== -->
+<div class="feature" id="s38">
+  <div class="feature-header">
+    <span class="feature-num">38</span>
+    <h2>When Two Microservices Fail to Talk — Fault Tolerance Patterns</h2>
+  </div>
+
+  <div class="scene">Aditya's order-service calls payment-service over HTTP. Last Friday, payment-service got slow — 8-second responses. Order-service's threads all blocked waiting; soon it ran out of Tomcat threads and started 503-ing too. One sick service took down a healthy one. The cure: a handful of resilience patterns every distributed system needs.</div>
+
+  <div class="interview-q">If two microservices fail during communication, how do you handle it?</div>
+
+  <h3>The patterns, in the order you should reach for them</h3>
+
+  <h3>1. Timeouts — the absolute baseline</h3>
+  <p>Every outbound call MUST have a timeout. The default in many HTTP clients is "infinite" — that's how you get the cascade Aditya saw.</p>
+  <div class="code-block">
+    <span class="code-label good">Spring WebClient timeout</span>
+<pre>WebClient.<span class="fn">builder</span>()
+    .<span class="fn">clientConnector</span>(<span class="kw">new</span> <span class="type">ReactorClientHttpConnector</span>(
+        <span class="type">HttpClient</span>.<span class="fn">create</span>().<span class="fn">responseTimeout</span>(<span class="type">Duration</span>.<span class="fn">ofSeconds</span>(<span class="num">2</span>))))
+    .<span class="fn">build</span>();</pre>
+  </div>
+  <p>Pick timeouts based on the dependency's p99 + headroom. Payment service p99 of 500ms? Set 1s timeout, not 30s.</p>
+
+  <h3>2. Retries — for transient failures only</h3>
+  <p>Network blips, brief 503s, momentary timeouts — retry once or twice with exponential backoff. <strong>Never retry non-idempotent calls without an idempotency key</strong> — you'll double-charge customers.</p>
+  <div class="code-block">
+    <span class="code-label good">Resilience4j retry</span>
+<pre><span class="ann">@Retry</span>(name = <span class="str">"paymentService"</span>, fallbackMethod = <span class="str">"fallback"</span>)
+<span class="kw">public</span> <span class="type">PaymentResult</span> <span class="fn">charge</span>(<span class="type">Order</span> o) { ... }
+
+<span class="cmt"># application.yml</span>
+resilience4j.retry.instances.paymentService:
+  maxAttempts: 3
+  waitDuration: 200ms
+  exponentialBackoffMultiplier: 2
+  retryExceptions: [java.io.IOException, org.springframework.web.client.HttpServerErrorException]</pre>
+  </div>
+
+  <h3>3. Circuit Breaker — stop calling a sick service</h3>
+  <p>If payment-service is failing 50% of calls in the last 30 seconds, calling it more just makes things worse. Circuit breakers track recent failure rate; once it crosses a threshold, the breaker "opens" and calls fail fast (without even trying) for a cool-down period. After cool-down, it allows a few "half-open" trial calls; if they succeed, it closes back to normal.</p>
+  <div class="code-block">
+    <span class="code-label good">Resilience4j circuit breaker</span>
+<pre><span class="ann">@CircuitBreaker</span>(name = <span class="str">"paymentService"</span>, fallbackMethod = <span class="str">"fallback"</span>)
+<span class="kw">public</span> <span class="type">PaymentResult</span> <span class="fn">charge</span>(<span class="type">Order</span> o) { ... }
+
+<span class="kw">public</span> <span class="type">PaymentResult</span> <span class="fn">fallback</span>(<span class="type">Order</span> o, <span class="type">Throwable</span> t) {
+    <span class="kw">return</span> <span class="type">PaymentResult</span>.<span class="fn">queuedForRetry</span>(o);
+}</pre>
+  </div>
+  <p><strong>Three states:</strong> CLOSED (normal) → OPEN (fail fast) → HALF_OPEN (trial) → CLOSED.</p>
+
+  <h3>4. Bulkhead — isolate resource pools</h3>
+  <p>Picture a ship: if one compartment floods, watertight bulkheads stop it from sinking the whole vessel. Same principle: dedicate a thread pool / connection pool per downstream so one slow dependency can't starve the others. Resilience4j's <code>@Bulkhead</code> caps concurrent calls per backend.</p>
+
+  <h3>5. Fallback — graceful degradation</h3>
+  <p>When the call fails, return something useful instead of an error:</p>
+  <ul>
+    <li>Cached previous response.</li>
+    <li>Default / safe value ("you have 0 unread notifications" instead of a spinner forever).</li>
+    <li>Queue the request for later processing ("we'll email you when it's done").</li>
+  </ul>
+
+  <h3>6. Idempotency — make retries safe</h3>
+  <p>If a call might be retried (by you, by the load balancer, by a queue), the receiver must handle duplicate requests safely. Pattern: client sends an <code>Idempotency-Key</code> header; receiver stores key + result; on duplicate, returns the cached result. Used by Stripe, PayPal, every serious payment API.</p>
+
+  <h3>7. Async messaging — the strongest decoupling</h3>
+  <p>If the call doesn't need an immediate response, switch from REST to Kafka. The producer publishes; the consumer processes when it can. The producer never blocks on consumer health. See section 36 for when this is the right move.</p>
+
+  <h3>The cascade-prevention checklist</h3>
+  <table>
+    <tr><th>Pattern</th><th>Prevents</th></tr>
+    <tr><td>Timeout</td><td>Threads pinned forever on unresponsive callee</td></tr>
+    <tr><td>Retry with backoff</td><td>Transient blips becoming user-visible failures</td></tr>
+    <tr><td>Circuit breaker</td><td>Hammering an already-broken dependency</td></tr>
+    <tr><td>Bulkhead</td><td>One slow callee starving threads needed for healthy ones</td></tr>
+    <tr><td>Fallback</td><td>Hard failure when graceful degradation suffices</td></tr>
+    <tr><td>Idempotency keys</td><td>Retries causing double-charges / duplicate side effects</td></tr>
+    <tr><td>Async / event-driven</td><td>Synchronous coupling where it isn't needed</td></tr>
+  </table>
+
+  <h3>Service-mesh alternatives (Istio, Linkerd)</h3>
+  <p>Modern infra moves these patterns out of code into a sidecar proxy. The mesh adds timeouts, retries, circuit breakers, mTLS at the network layer — your app stays focused on business logic. Trade-off: more infra to operate.</p>
+
+  <h3>Don't forget the outbound side too</h3>
+  <p>If you're a service being called, advertise your contract: documented SLOs, idempotency support, rate limits. Make it easy for callers to be resilient against you.</p>
+
+  <h3>Observability is non-negotiable</h3>
+  <p>None of these patterns are useful without metrics. You need to see: circuit-breaker state per dependency, retry counts, fallback invocations, downstream latencies. Wire Resilience4j to Micrometer → Prometheus → Grafana.</p>
+
+  <div class="gotcha">Retries without idempotency are a foot-gun. Retrying a "POST /charge" three times against a flaky network can charge the user three times — even if the original eventually succeeded. Always pair retries with idempotency keys for state-changing calls.</div>
+
+  <div class="so-what">Defense in depth: <strong>timeout</strong> on every call → <strong>retry with backoff</strong> for transient errors → <strong>circuit breaker</strong> to stop hammering broken services → <strong>bulkhead</strong> to isolate pools → <strong>fallback</strong> for graceful degradation → <strong>idempotency keys</strong> to make retries safe → <strong>async/Kafka</strong> when sync isn't needed. Aditya added all of these around payment-service; the next time payments got slow, order-service stayed at 200ms p99 and just degraded a feature.</div>
+</div>
+
+<!-- ====================================================== -->
+<!-- 39. Tricky Gotchas                                      -->
+<!-- ====================================================== -->
+<div class="feature" id="s39">
+  <div class="feature-header">
+    <span class="feature-num">39</span>
     <h2>The Tricky Gotchas — Questions That Separate Mid from Senior</h2>
   </div>
 
