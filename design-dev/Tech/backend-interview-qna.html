@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Backend & System Design Interview — Q&A Walkthrough</title>
+<meta name="description" content="Story-driven Q&A guide for senior backend interviews — architecture, microservices, event-driven systems, sagas, observability, databases, Node.js, and resilience patterns."/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<link rel="stylesheet" href="../../css/likes.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script src="../../js/likes.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --pink:#ec5d8a;--pink-d:rgba(236,93,138,.12);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:760px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+.tag-pink{background:var(--pink-d);color:var(--pink)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:780px}
+.sec h3{font-size:1.2rem;font-weight:700;color:var(--heading);margin:1.6rem 0 .8rem}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.88rem;color:var(--text);line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+.card code,.ans code,.sec>p code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.05rem .35rem;border-radius:3px}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:8px;padding:1.1rem 1.3rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.8;color:var(--text);margin:.6rem 0 1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3{grid-template-columns:1fr}.hero h1{font-size:2.1rem}}
+
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+.highlight{border-radius:var(--r);padding:1.05rem 1.3rem;margin-bottom:.85rem;font-size:.88rem}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--cyan)}
+.highlight strong{font-weight:700}
+.highlight code{font-family:'JetBrains Mono',monospace;font-size:.78rem;background:rgba(0,0,0,.25);padding:.05rem .35rem;border-radius:3px;color:inherit}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.8rem 1.1rem;margin:1.4rem 0 .55rem;font-size:.95rem;color:var(--blue);font-weight:700}
+.iq::before{content:'Q · ';font-weight:800;letter-spacing:.05em}
+.ans{background:var(--surface);border-radius:var(--r);padding:1.1rem 1.35rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.72}
+.ans strong{color:var(--heading)}
+.ans p+p{margin-top:.7rem}
+.ans ul{margin:.4rem 0 .25rem;padding-left:1.1rem}
+.ans ul li{margin-bottom:.25rem}
+
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.55rem .8rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">Backend Interview · Q&amp;A Deep Dive</div>
+  <h1>Backend &amp; System Design — <span>Questions, Storytold</span></h1>
+  <p class="sub">Every backend interview question that shows up in senior rounds — architecture, microservices, sagas, idempotency, observability, databases, Node.js, resilience — answered the way you'd actually say it in the room.</p>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Architecture &amp; system design</a></li>
+      <li><a href="#s2">Microservices vs monolith</a></li>
+      <li><a href="#s3">Event-driven &amp; service comms</a></li>
+      <li><a href="#s4">Distributed transactions &amp; saga</a></li>
+      <li><a href="#s5">Idempotency, ordering, failures</a></li>
+      <li><a href="#s6">Observability &amp; prod debugging</a></li>
+      <li><a href="#s7">Databases &amp; scaling</a></li>
+      <li><a href="#s8">REST APIs &amp; security</a></li>
+      <li><a href="#s9">Node.js deep dive</a></li>
+      <li><a href="#s10">Resilience patterns</a></li>
+      <li><a href="#s11">Project &amp; deep-dive follow-ups</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+    <!-- Intro callout -->
+    <div class="highlight hl-cyan" style="margin-bottom:2rem">
+      <strong>How to read this page.</strong> Each section is a cluster of related interview questions. Every question is answered in <code>Q · </code> / answer pairs. Architecture-style questions (design an ordering system, draw your project) carry a Mermaid diagram and a story-arc walkthrough. The shorter conceptual questions get tight, story-flavored answers — the kind you can deliver in 60–90 seconds when the panel asks.
+    </div>
+
+    <!-- ============================ S1 ============================ -->
+    <div class="sec" id="s1">
+      <span class="sec-tag tag-orange">01 · Architecture &amp; system design</span>
+      <h2>Walk me through your project's architecture</h2>
+      <p>This is almost always the first question after introductions. The panel doesn't actually want a tour of every microservice you own — they want to see whether you can <em>tell a story</em> about your system: what comes in, where it goes, what each box exists to solve, and what would break first under load. Drawing a clean diagram and narrating it well is roughly 30% of the round.</p>
+
+      <div class="iq">Walk me through the architecture of a project you have worked on and draw the diagram.</div>
+      <div class="ans">
+        <p>Open with <strong>the user-facing story</strong>, not the boxes. "A customer opens our checkout page on their phone. By the time the button turns from <em>Pay</em> to <em>Order Confirmed</em>, the request has touched seven services, two databases, a cache, and a message bus. Let me draw what that path looks like." Then draw — and only then label what each box is.</p>
+        <p>A clean five-tier diagram you can reproduce on any whiteboard:</p>
+        <div class="diagram-box"><div class="mermaid">
+flowchart LR
+  U([① User app<br/>web + mobile])
+  CDN[② CDN<br/>Cloudflare]
+  GW[③ API Gateway<br/>+ Auth + Rate-limit]
+  S1[④ Order service]
+  S2[④ Inventory service]
+  S3[④ Payment service]
+  CACHE[⑤ Redis cluster]
+  MQ[(⑥ Kafka)]
+  DB[(⑦ Postgres<br/>+ read replica)]
+  WK[⑧ Workers / consumers]
+
+  U --> CDN --> GW
+  GW --> S1 & S2 & S3
+  S1 --> CACHE
+  S1 --> DB
+  S1 --> MQ
+  MQ --> WK
+  WK --> DB
+  S2 --> DB
+  S3 --> DB
+
+  style U fill:#171d27,stroke:#4dfeee,color:#d4dae5
+  style CDN fill:#e8743b,stroke:#e8743b,color:#fff
+  style GW fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style S1 fill:#38b265,stroke:#38b265,color:#fff
+  style S2 fill:#38b265,stroke:#38b265,color:#fff
+  style S3 fill:#38b265,stroke:#38b265,color:#fff
+  style CACHE fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style MQ fill:#d4a838,stroke:#d4a838,color:#fff
+  style DB fill:#3cbfbf,stroke:#3cbfbf,color:#fff
+  style WK fill:#ec5d8a,stroke:#ec5d8a,color:#fff
+        </div></div>
+        <p>Now narrate left-to-right, answering "what is it, and what would break without it?" for each box:</p>
+        <ul>
+          <li><strong>① User app</strong> — issues HTTPS requests with a JWT in the header. Without it there's no traffic; with it we need to assume <em>everything</em> a client sends is untrusted.</li>
+          <li><strong>② CDN</strong> — caches static bundles and short-TTL public reads at the edge. Without it, every page load adds 150 ms of cross-continent latency.</li>
+          <li><strong>③ API Gateway</strong> — terminates TLS, validates JWT, applies per-user rate limits, and routes by path. Without it, every microservice would re-implement auth and we'd have no central rate-limit choke point.</li>
+          <li><strong>④ Microservices</strong> — Order, Inventory, Payment. Each owns its own data and its own deploy cadence. Without this split, a slow payment partner would block order placement entirely.</li>
+          <li><strong>⑤ Redis</strong> — session state, hot SKU lookups, idempotency keys. Without it, the DB sees 10× the read load and p99 latency triples.</li>
+          <li><strong>⑥ Kafka</strong> — the async backbone. <code>OrderPlaced</code>, <code>PaymentCaptured</code>, <code>InventoryReserved</code> events flow through it. Without it, services would be tightly coupled via synchronous calls and any one slow downstream would topple the chain.</li>
+          <li><strong>⑦ Postgres</strong> — system of record. One write primary per service, plus a read replica for analytics-style queries. Without replicas, heavy reports would lock up checkout.</li>
+          <li><strong>⑧ Workers</strong> — Kafka consumers that do the slow stuff: email, invoice PDF, shipping label, analytics. Without them, every order would have to wait synchronously for those side-effects.</li>
+        </ul>
+        <p><strong>Close with what breaks first.</strong> "If traffic 10×'d tomorrow, the first thing to fold would be the Postgres write primary — single-writer, single point. We've already shard-keyed the order table by <code>customer_id</code>, so the migration path is ready when we need it." This sentence — naming the next bottleneck — is the single most senior-sounding thing you can say in this question.</p>
+      </div>
+
+      <div class="iq">Explain the backend architecture of your recent project.</div>
+      <div class="ans">
+        <p>Same shape as above, but lean harder into <em>three story beats</em>: the <strong>request path</strong> (gateway → service → DB), the <strong>event path</strong> (service → Kafka → workers), and the <strong>data plane</strong> (which service owns which table, which cache). If you remember nothing else, remember that an interviewer is satisfied when you've named the boundaries — who owns what, who calls whom synchronously, and what crosses the bus.</p>
+        <p>Mention concrete numbers if you have them: "we serve ~120 RPS at p99 of 180 ms; payment is the slowest call at 600 ms p99, which is why it's async." Numbers move you from "candidate who has seen architecture diagrams" to "candidate who has run one in production."</p>
+      </div>
+
+      <div class="iq">Design a scalable backend for high-traffic systems.</div>
+      <div class="ans">
+        <p>There's no magic answer — there's a checklist you walk in the right order. Use this five-step ladder:</p>
+        <ul>
+          <li><strong>Step 1 — Stateless app tier.</strong> Push session state to Redis or JWT so any pod can handle any request. This unlocks horizontal scaling behind a load balancer.</li>
+          <li><strong>Step 2 — Cache the hot reads.</strong> Cache-aside in Redis for the top-N keys (Zipf distribution means &lt;5% of keys take 80% of traffic). Drops DB read load by 10–30×.</li>
+          <li><strong>Step 3 — Offload slow work to a queue.</strong> Email, PDF, analytics, anything that doesn't need to be in the synchronous response path goes onto Kafka / SQS. Frees up app threads for real user requests.</li>
+          <li><strong>Step 4 — Split reads from writes.</strong> Read replicas absorb dashboards and reports. Then, if a single primary is still the bottleneck, shard by tenant / user-id.</li>
+          <li><strong>Step 5 — Push to the edge.</strong> CDN for static + cacheable API responses. Regional read replicas for cross-region latency. Multi-region active-active only when you really need it (it's expensive in consistency complexity).</li>
+        </ul>
+        <p>The trick in the interview is to stop and ask: "what's the read/write ratio?" and "what's the consistency tolerance?" These two answers tell you which of the five steps actually matters for <em>this</em> system.</p>
+      </div>
+
+      <div class="iq">How would you scale a backend service handling millions of requests?</div>
+      <div class="ans">
+        <p>Same five steps as above, plus three operational realities:</p>
+        <ul>
+          <li><strong>Autoscaling</strong> on CPU + custom queue-depth metric, not just CPU — CPU lags by ~2 minutes; a backing-up queue lets you scale 60 seconds earlier.</li>
+          <li><strong>Connection pooling</strong> at the DB. A naive 1000-pod fleet with 50 connections each = 50K connections, which Postgres can't even handle. Pool via PgBouncer.</li>
+          <li><strong>Backpressure</strong> at every async boundary. If consumers can't keep up, the producer must slow down or shed load — otherwise queue lag grows unboundedly.</li>
+        </ul>
+        <p>And the unglamorous truth: <em>most</em> "millions of RPS" systems are actually "millions of requests/day with a hot 50K RPS window." Ask for the daily / peak distribution before you over-design.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S2 ============================ -->
+    <div class="sec" id="s2">
+      <span class="sec-tag tag-green">02 · Microservices vs monolith</span>
+      <h2>The split — when, why, and how to draw the lines</h2>
+      <p>Half of all "system design" interviews come down to whether you can <em>justify your split</em>. The wrong answer is "microservices because they're scalable." The right answer always starts from a constraint — team size, deploy independence, blast radius, scaling shape — and works backward to the architecture.</p>
+
+      <div class="iq">Why did you choose microservices over monolith (or vice versa)?</div>
+      <div class="ans">
+        <p>Frame this as a tradeoff, not a victory. "We picked microservices when our team grew past ~30 engineers and we kept stepping on each other in a single repo — every deploy needed sign-off from four people. The split bought us independent deploys at the cost of a Kafka cluster, a service mesh, and three new failure modes."</p>
+        <p>If you went the other way: "We're a five-engineer team. A monolith means one repo, one deploy pipeline, in-process function calls instead of network hops, and ACID transactions for free. The day we hit ten engineers or a real bi-modal scaling need, we'll start carving off services." This is a <em>strong</em> answer — it shows you understand microservices are a solution to an organizational problem first, a technical one second.</p>
+      </div>
+
+      <div class="iq">Monolith vs microservices — pros, cons, and tradeoffs.</div>
+      <div class="ans">
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Dimension</th><th>Monolith</th><th>Microservices</th></tr></thead>
+          <tbody>
+            <tr><td>Deploy</td><td>One artifact, one pipeline</td><td>Independent per service</td></tr>
+            <tr><td>Local dev</td><td>Run the whole thing</td><td>Mocks, contracts, docker-compose hell</td></tr>
+            <tr><td>Transactions</td><td>ACID in-process</td><td>Saga / 2PC / eventual consistency</td></tr>
+            <tr><td>Latency</td><td>Function call (ns)</td><td>Network hop (ms)</td></tr>
+            <tr><td>Failure modes</td><td>One process crashes</td><td>Cascade, retry storms, partial failure</td></tr>
+            <tr><td>Team scaling</td><td>Conway's law bites past ~20 engineers</td><td>Each team owns a service end-to-end</td></tr>
+            <tr><td>Cost</td><td>Cheap to run</td><td>Service mesh + ops overhead</td></tr>
+            <tr><td>Best for</td><td>Small teams, unclear domain</td><td>Large orgs, divergent scaling needs</td></tr>
+          </tbody>
+        </table></div>
+        <p>The senior take: <strong>start monolith, modularize internally, extract services only when the pain forces you</strong>. Premature microservices is the most common architectural sin of the last decade.</p>
+      </div>
+
+      <div class="iq">How do you decide what functionality goes into different microservices?</div>
+      <div class="ans">
+        <p>Three lenses, in order:</p>
+        <ul>
+          <li><strong>Bounded contexts (Domain-Driven Design).</strong> Where does a word change meaning? "Order" in checkout (a cart being paid for) is a different thing from "Order" in fulfilment (a packing slip). When the language diverges, you've found a boundary.</li>
+          <li><strong>Rate of change.</strong> Things that change together belong together. If your shipping logic changes weekly but your auth logic changes once a year, they're different services.</li>
+          <li><strong>Scaling shape.</strong> If module A handles 10K RPS and module B handles 50 RPS, you don't want them in the same pod competing for memory and CPU. Different scaling profile → different service.</li>
+        </ul>
+        <p>What people get wrong: splitting by <em>technical layer</em> (UserController, UserRepository, UserModel as three services). That's not a service boundary, that's a coupling disaster. Split by <em>business capability</em>.</p>
+      </div>
+
+      <div class="iq">What factors do you consider while grouping or splitting services?</div>
+      <div class="ans">
+        <p>Beyond the three above, watch for:</p>
+        <ul>
+          <li><strong>Data ownership.</strong> Every table should have exactly one service that writes to it. If two services need to write the same table, you've drawn the line wrong.</li>
+          <li><strong>Team ownership.</strong> One team per service is the ideal. Two teams sharing a service means slow decisions and merge conflicts.</li>
+          <li><strong>Chatty calls.</strong> If two "services" make 5 synchronous calls to each other to serve one user request, they should be one service. Network is too expensive.</li>
+          <li><strong>Consistency requirements.</strong> If two pieces of data must update atomically and you can't afford a saga, keep them in one service / one DB.</li>
+        </ul>
+      </div>
+
+      <div class="iq">How would you split a large backend into microservices?</div>
+      <div class="ans">
+        <p>The proven path is <strong>strangler fig</strong>: don't rewrite, peel. Steps:</p>
+        <ul>
+          <li><strong>1. Map your domain</strong> with event-storming. Get the team in a room with sticky notes; list every domain event ("OrderPlaced", "PaymentRefunded"). Cluster them — those clusters are candidate services.</li>
+          <li><strong>2. Pick the lowest-risk peripheral first.</strong> Notifications service. Reports service. Something with few inbound dependencies. Get the team comfortable with the new patterns (deploy, observability, error handling) before you touch the core.</li>
+          <li><strong>3. Introduce an API gateway / facade</strong> in front of the monolith. New service calls go through it; the old in-process calls still work. This is the seam.</li>
+          <li><strong>4. Extract one service at a time.</strong> Carve out the code, move the relevant tables (or expose them via an API), point the facade at the new service. Run both paths until you trust the new one. Then remove the old.</li>
+          <li><strong>5. Repeat for 12–24 months.</strong> The truth no one tells you: a monolith-to-microservices migration is measured in years, not quarters. If your CTO thinks it's a 6-month project, you have a different problem to solve first.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S3 ============================ -->
+    <div class="sec" id="s3">
+      <span class="sec-tag tag-blue">03 · Event-driven &amp; service communication</span>
+      <h2>How services actually talk</h2>
+      <p>Once you've split into services, the next question is <em>how they talk</em>. Synchronous REST is the obvious default — and the wrong default for half the calls in a typical system. Event-driven flow is what stops your checkout from failing because the recommendations service is slow.</p>
+
+      <div class="iq">What is Event-Driven Architecture?</div>
+      <div class="ans">
+        <p>An architecture where services don't call each other directly — instead they publish <strong>events</strong> ("OrderPlaced", "PaymentCaptured") to a broker (Kafka, RabbitMQ, SNS), and any service that cares subscribes. The publisher has no idea who's listening and doesn't wait for them.</p>
+        <p>The mental shift: in REST, the Order service <em>commands</em> the Email service ("send this email, please"). In events, the Order service <em>announces</em> ("an order happened, here's the data"); Email decides for itself whether to act. That inversion is what gives you loose coupling — you can add a fraud-detection consumer next month and the Order service doesn't even know.</p>
+      </div>
+
+      <div class="iq">Explain producer–consumer flow in an event-driven system.</div>
+      <div class="ans">
+        <div class="diagram-box"><div class="mermaid">
+sequenceDiagram
+  autonumber
+  participant P as Order Service<br/>(producer)
+  participant K as Kafka topic<br/>"orders"
+  participant C1 as Email consumer
+  participant C2 as Analytics consumer
+  participant C3 as Shipping consumer
+
+  P->>K: publish OrderPlaced { id:42, ... }
+  K-->>P: ack (committed to log)
+  Note over K: Event durably stored,<br/>offset assigned
+  K->>C1: deliver event (offset 7)
+  K->>C2: deliver event (offset 7)
+  K->>C3: deliver event (offset 7)
+  C1->>K: commit offset 7
+  C2->>K: commit offset 7
+  C3->>K: commit offset 7
+        </div></div>
+        <p>Key properties: <strong>(1) the producer is done once Kafka acks</strong> — it doesn't wait for consumers. <strong>(2) Each consumer has its own offset</strong>, so Email being slow doesn't slow down Analytics. <strong>(3) Events are durable</strong> — even if all consumers are down, the event survives in the log; they catch up when they come back.</p>
+      </div>
+
+      <div class="iq">How do services communicate in microservices architecture?</div>
+      <div class="ans">
+        <p>Three patterns, and a real system uses all three:</p>
+        <ul>
+          <li><strong>Synchronous REST/gRPC</strong> — request/response, blocking. Use when the caller needs an answer <em>right now</em> (auth check, price lookup, inventory availability).</li>
+          <li><strong>Asynchronous events</strong> — pub/sub over Kafka or similar. Use for "this happened, others might care" (OrderPlaced, UserSignedUp).</li>
+          <li><strong>Async commands / queues</strong> — one-to-one task queues over SQS, RabbitMQ. Use for "do this work for me but I won't wait" (send email, generate invoice).</li>
+        </ul>
+        <p>The trap is using REST for everything. Three nested REST calls = three failure modes stacked + 3× the latency. The senior instinct is to push as much as possible onto async paths and keep the synchronous path short.</p>
+      </div>
+
+      <div class="iq">Synchronous vs asynchronous communication in distributed systems.</div>
+      <div class="ans">
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th></th><th>Synchronous</th><th>Asynchronous</th></tr></thead>
+          <tbody>
+            <tr><td>Caller knows result</td><td>Yes, immediately</td><td>No — eventual or via callback</td></tr>
+            <tr><td>Coupling</td><td>Tight (caller needs callee up)</td><td>Loose (broker buffers)</td></tr>
+            <tr><td>Latency</td><td>Sum of all hops</td><td>Producer returns instantly</td></tr>
+            <tr><td>Failure</td><td>Cascades up the call chain</td><td>Isolated, retried independently</td></tr>
+            <tr><td>Best for</td><td>Reads, validations, "must answer now"</td><td>Side effects, fan-out, slow work</td></tr>
+            <tr><td>Tooling</td><td>HTTP, gRPC</td><td>Kafka, RabbitMQ, SQS, SNS</td></tr>
+          </tbody>
+        </table></div>
+        <p>Rule of thumb: <em>if the user is waiting for it, sync. If a system is waiting for it, async.</em></p>
+      </div>
+
+      <div class="iq">REST vs event-driven communication.</div>
+      <div class="ans">
+        <p>REST is a verb — "do this thing, return the result." Events are a noun — "this happened, here's the data." REST is one-to-one and coupled (the caller must know the callee's URL). Events are one-to-many and decoupled (publisher doesn't care who listens).</p>
+        <p>In practice you mix them. Public APIs and synchronous queries → REST/gRPC. Internal state changes that other services need to react to → events. A typical request flow: user hits REST endpoint → service writes DB row + publishes event → 4 downstream consumers each do their thing without blocking the user.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S4 ============================ -->
+    <div class="sec" id="s4">
+      <span class="sec-tag tag-purple">04 · Distributed transactions &amp; saga</span>
+      <h2>How do you stay consistent across services?</h2>
+      <p>The single hardest question in microservices interviews. You can't use a database transaction across service boundaries (each owns its own DB). So how do you place an order, reserve inventory, charge payment, and arrange shipping — and end up consistent even if one of them fails halfway through?</p>
+
+      <div class="iq">How would you design an online ordering / inventory system?</div>
+      <div class="ans">
+        <p>Four services, one event bus, one saga. Let me draw it and walk through what each piece earns its keep doing.</p>
+        <div class="diagram-box"><div class="mermaid">
+flowchart LR
+  U([Customer])
+  GW[API Gateway]
+  OS[① Order Service<br/>+ orders DB]
+  IS[② Inventory Service<br/>+ stock DB]
+  PS[③ Payment Service<br/>+ payments DB]
+  SS[④ Shipping Service<br/>+ shipments DB]
+  K[(Kafka)]
+
+  U --> GW --> OS
+  OS --> K
+  K --> IS
+  K --> PS
+  K --> SS
+  IS --> K
+  PS --> K
+  SS --> K
+
+  style OS fill:#e8743b,stroke:#e8743b,color:#fff
+  style IS fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style PS fill:#38b265,stroke:#38b265,color:#fff
+  style SS fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style K  fill:#d4a838,stroke:#d4a838,color:#fff
+        </div></div>
+        <ul>
+          <li><strong>① Order Service</strong> — receives <code>POST /orders</code>, creates an order in <code>PENDING</code> state, publishes <code>OrderCreated</code>. Owns the order lifecycle state machine. Without it, no single service owns "what state is this order in?"</li>
+          <li><strong>② Inventory Service</strong> — consumes <code>OrderCreated</code>, reserves stock atomically (decrement with row lock), publishes <code>InventoryReserved</code> or <code>InventoryRejected</code>. Owns the source of truth for "how many of SKU X are available right now."</li>
+          <li><strong>③ Payment Service</strong> — consumes <code>InventoryReserved</code>, calls the payment gateway, publishes <code>PaymentCaptured</code> or <code>PaymentFailed</code>. The only place that knows how to talk to Stripe/Razorpay.</li>
+          <li><strong>④ Shipping Service</strong> — consumes <code>PaymentCaptured</code>, generates a label, schedules pickup, publishes <code>OrderShipped</code>. Order Service consumes that and flips the order to <code>SHIPPED</code>.</li>
+        </ul>
+        <p>The reverse path matters more than the happy path. If payment fails: Order Service consumes <code>PaymentFailed</code>, publishes <code>OrderCancelled</code>, Inventory Service consumes it and <em>releases</em> the reservation. This compensation chain is the saga.</p>
+      </div>
+
+      <div class="iq">How would you ensure atomic transactions across multiple microservices?</div>
+      <div class="ans">
+        <p>The blunt truth: you can't, not in the ACID sense. There's no cross-service "BEGIN TRANSACTION ... COMMIT". You have three options, in roughly increasing order of practicality:</p>
+        <ul>
+          <li><strong>Two-Phase Commit (2PC).</strong> Coordinator asks every service "can you commit?", waits for all yeses, then says "commit". Theoretically atomic, but in practice it requires every participant to hold locks until the coordinator decides, and one slow participant blocks everyone. Modern microservice stacks essentially don't use it.</li>
+          <li><strong>Saga pattern.</strong> Replace one big transaction with a sequence of local transactions plus compensating actions. Each local step commits in its own DB; if a later step fails, you run the compensations in reverse. <em>Eventually</em> consistent — but practical.</li>
+          <li><strong>Outbox pattern + idempotent consumers.</strong> The implementation detail that makes sagas actually work. Write the DB row and the "to be published" event in the <em>same</em> local transaction (to an outbox table), then a separate process drains the outbox to Kafka. Guarantees you can't update the DB and forget to publish the event.</li>
+        </ul>
+        <p>In 95% of real systems the answer is "saga + outbox + idempotent consumers." Say that and be ready to draw it.</p>
+      </div>
+
+      <div class="iq">Saga pattern vs distributed transactions.</div>
+      <div class="ans">
+        <p>2PC says: "I will hold everyone's locks until I'm certain everyone can commit, then we all commit atomically." Strong consistency, terrible availability — one slow participant freezes the cluster.</p>
+        <p>Saga says: "Each step commits locally and immediately. If a later step fails, I'll run compensations to undo the earlier ones." Eventually consistent, far better availability, but you accept that for a brief window the system is in an "in-flight" state. For business workflows (place order, ship goods, refund) that's almost always the right trade. For "transfer ₹1000 from A to B" inside a single bank you might still want 2PC or a stored procedure.</p>
+      </div>
+
+      <div class="iq">Choreography vs orchestration in saga.</div>
+      <div class="ans">
+        <p>Two ways to wire the saga together:</p>
+        <ul>
+          <li><strong>Choreography</strong> — each service listens for the previous event and publishes the next. Order publishes <code>OrderCreated</code>, Inventory listens and publishes <code>InventoryReserved</code>, Payment listens and publishes <code>PaymentCaptured</code>... No central brain. <strong>Pros:</strong> loose coupling, easy to add a new step. <strong>Cons:</strong> the workflow is implicit — to understand what happens after an order is placed, you have to grep across 5 services.</li>
+          <li><strong>Orchestration</strong> — a dedicated orchestrator service holds the workflow state. It tells Inventory to reserve, waits for the reply, tells Payment to charge, waits, etc. <strong>Pros:</strong> workflow is explicit and observable in one place (Temporal, AWS Step Functions, Camunda exist for exactly this). <strong>Cons:</strong> the orchestrator becomes a coupling point and a single point of failure.</li>
+        </ul>
+        <p>Rule of thumb: 3 or fewer steps → choreography is fine. 5+ steps or strong audit/observability needs → orchestration. The fact that you'd choose differently for a 3-step vs 8-step saga is itself a senior signal.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S5 ============================ -->
+    <div class="sec" id="s5">
+      <span class="sec-tag tag-red">05 · Idempotency, ordering, failure handling</span>
+      <h2>The three things that bite every distributed system</h2>
+      <p>Networks lose packets. Consumers crash mid-process. Producers retry. Out of these three innocent facts come the three hardest correctness problems in distributed systems: <em>duplicate processing</em>, <em>out-of-order delivery</em>, and <em>partial failure</em>. Senior engineers are the ones who name these by reflex and have a pattern ready.</p>
+
+      <div class="iq">How do you handle failures in distributed systems?</div>
+      <div class="ans">
+        <p>Three layers, applied together:</p>
+        <ul>
+          <li><strong>Retry with exponential backoff + jitter.</strong> Network glitches and transient 503s usually resolve in seconds. Retry with 100ms → 200ms → 400ms → ... and add ±20% random jitter so a thundering herd of clients doesn't all retry at the same millisecond.</li>
+          <li><strong>Circuit breaker.</strong> If a downstream is failing 50%+ of the time, stop calling it for 30 seconds. Better to fast-fail than queue up doomed requests.</li>
+          <li><strong>Bulkhead + timeout + DLQ.</strong> Isolate failure domains (separate thread pools per downstream); always set a timeout (never wait forever); push permanently-failing messages to a dead-letter queue for human inspection.</li>
+        </ul>
+        <p>And the meta-rule: <strong>design for partial failure from day one</strong>. The question isn't "what if this service goes down?" — it's "what does my system do <em>while</em> this service is down?"</p>
+      </div>
+
+      <div class="iq">How do you ensure idempotency in distributed systems?</div>
+      <div class="ans">
+        <p>Idempotency = doing the same operation N times has the same effect as doing it once. The standard recipe:</p>
+        <ul>
+          <li><strong>Idempotency key</strong> — client generates a UUID (e.g. <code>Idempotency-Key: 7f3a-…</code>) and sends it with every request. Server stores <code>(key → result)</code> in a table or Redis with a TTL (24h is typical).</li>
+          <li><strong>Server-side check</strong> — on every request, look up the key. If seen, return the stored result without re-executing. If new, execute, store, return.</li>
+          <li><strong>Make the underlying operation naturally idempotent where possible</strong> — <code>SET balance = 100</code> is idempotent; <code>UPDATE balance = balance + 50</code> is not. Prefer set-style operations to delta-style when you can.</li>
+        </ul>
+        <p>Stripe's API is the canonical reference here — every <code>POST /charges</code> takes an idempotency key.</p>
+      </div>
+
+      <div class="iq">How do you prevent duplicate event processing?</div>
+      <div class="ans">
+        <p>Two strategies, used together:</p>
+        <ul>
+          <li><strong>Consumer-side dedup.</strong> Store every processed event ID (or business key like <code>order_id</code>) in a "seen" table. Before processing, check if you've seen it. After processing, insert the ID — in the <em>same transaction</em> as your business write, so either both happen or neither.</li>
+          <li><strong>Idempotent writes.</strong> Even if you do process twice, design the write so it doesn't double up: <code>INSERT ... ON CONFLICT DO NOTHING</code>, or <code>UPDATE ... WHERE status = 'PENDING'</code> (no-op if already updated).</li>
+        </ul>
+        <p>Kafka gives you "at-least-once" by default — your consumer code has to make it "effectively-once" via dedup or idempotent writes. Kafka 0.11+ also supports exactly-once-semantics for Kafka-to-Kafka pipelines, but for Kafka-to-external-DB you still need consumer-side dedup.</p>
+      </div>
+
+      <div class="iq">How do you guarantee ordering of events / messages?</div>
+      <div class="ans">
+        <p>You can't get global ordering at scale — but you don't need it. You need <em>per-key</em> ordering. In Kafka: pick a partition key (e.g. <code>user_id</code> or <code>order_id</code>) and Kafka guarantees that all events with the same key land in the same partition in the order produced. Within a partition, ordering is total. Across partitions, no ordering.</p>
+        <p>So all events for order #42 are ordered with respect to each other. Events for order #43 may interleave — and that's fine, they're independent.</p>
+        <p>The gotcha: if you ever change your partition key, old events keep going to the old partition and new ones to a new one. You can briefly see two events for the same logical entity in different partitions. Plan for that during migrations.</p>
+      </div>
+
+      <div class="iq">What happens if a consumer crashes after processing but before committing offset?</div>
+      <div class="ans">
+        <p>The classic interview gotcha. The consumer's next instance (after restart, or rebalance to a different pod) re-reads from the last committed offset — which is <em>before</em> the message you just processed. So it processes that message <em>again</em>. This is at-least-once delivery in action.</p>
+        <p>The fix isn't to commit offsets earlier (that would risk losing messages on crash <em>before</em> processing — that's at-most-once, worse for most use cases). The fix is to make your processing <strong>idempotent</strong>: track processed event IDs, use <code>ON CONFLICT DO NOTHING</code>, design so re-processing is a no-op. Then "at-least-once + idempotent" gives you "effectively-once" without the cost of full exactly-once semantics.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S6 ============================ -->
+    <div class="sec" id="s6">
+      <span class="sec-tag tag-yellow">06 · Observability &amp; production debugging</span>
+      <h2>Knowing your system is working — and finding out fast when it's not</h2>
+      <p>"Observability" is interview-shorthand for "can you debug a system you didn't write at 2 AM?" The answer always comes back to three pillars — logs, metrics, traces — plus a good story about how you actually used them.</p>
+
+      <div class="iq">How do you know your services are working correctly in production?</div>
+      <div class="ans">
+        <p>Four signals, monitored as SLIs (service-level indicators):</p>
+        <ul>
+          <li><strong>Latency</strong> — p50, p95, p99 of every endpoint. The average is a lie; p99 is where users feel pain.</li>
+          <li><strong>Error rate</strong> — 4xx/5xx as a percentage. Alert when sustained 5xx &gt; 1% for 5 minutes.</li>
+          <li><strong>Traffic</strong> — RPS. A sudden 50% drop is often a bug somewhere (load balancer, DNS, a deployed regression).</li>
+          <li><strong>Saturation</strong> — CPU, memory, queue depth. Tells you how close to a cliff you are.</li>
+        </ul>
+        <p>These four together are Google's "USE method" / "four golden signals." If you have alerts on those, your pager gets quiet.</p>
+      </div>
+
+      <div class="iq">Which observability tools do you use? (Grafana, Prometheus, ELK, Datadog, New Relic, Jaeger, Zipkin)</div>
+      <div class="ans">
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Pillar</th><th>What it captures</th><th>Common tools</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Metrics</strong></td><td>Time-series numbers (RPS, latency, CPU)</td><td>Prometheus + Grafana, Datadog, New Relic</td></tr>
+            <tr><td><strong>Logs</strong></td><td>Discrete events with context</td><td>ELK (Elasticsearch + Logstash + Kibana), Loki, Datadog Logs, Splunk</td></tr>
+            <tr><td><strong>Traces</strong></td><td>Per-request flow across services</td><td>Jaeger, Zipkin, Tempo, Datadog APM, New Relic</td></tr>
+            <tr><td><strong>Alerting</strong></td><td>Notify when SLOs breach</td><td>Alertmanager, PagerDuty, Opsgenie</td></tr>
+          </tbody>
+        </table></div>
+        <p>In an interview, name the stack you actually used and what you'd do differently. "We were on ELK; the cost grew faster than the value at our scale and we migrated to Loki — 70% cheaper, same dashboards." That single sentence shows you've actually paid the bill.</p>
+      </div>
+
+      <div class="iq">Explain logs, metrics, and distributed tracing.</div>
+      <div class="ans">
+        <ul>
+          <li><strong>Logs</strong> are discrete events with context — "User 42 logged in at 03:11, IP 10.0.4.7." Great for forensics ("what exactly happened to this one request?"). Terrible for aggregation ("how often does this happen?") because grep is slow.</li>
+          <li><strong>Metrics</strong> are time-series numbers, pre-aggregated — "http_requests_total{status=500} = 47 in the last minute." Cheap to store, fast to query, perfect for dashboards and alerts. But they can't tell you <em>which</em> request failed.</li>
+          <li><strong>Traces</strong> tie a single request across all services it touched, with timing for each hop. A single trace ID flows through Gateway → Order → Inventory → Payment → DB. When you see "checkout is slow", you open the trace and see Payment is taking 800 ms — you've pinpointed the bottleneck in 30 seconds.</li>
+        </ul>
+        <p>You need all three. Metrics tell you <em>something is wrong</em>. Traces tell you <em>where</em>. Logs tell you <em>why</em>.</p>
+      </div>
+
+      <div class="iq">How do you debug a production issue?</div>
+      <div class="ans">
+        <p>The standard funnel, in order:</p>
+        <ul>
+          <li><strong>1. Confirm it's real</strong> — check your error-rate / latency dashboards. Is it a spike or a slow drift? Region-specific?</li>
+          <li><strong>2. Narrow to a service</strong> — which service's metrics turned red first? Often the symptom (slow checkout) is downstream of the cause (slow payment).</li>
+          <li><strong>3. Pull a sample trace</strong> — pick one slow request, open its distributed trace, see which span is fat.</li>
+          <li><strong>4. Read the logs for that trace ID</strong> — your logs should be queryable by trace ID. Look at the error message, the stack trace, the DB query that timed out.</li>
+          <li><strong>5. Form a hypothesis, verify, fix</strong> — never deploy a fix on a guess; reproduce it locally or in staging if at all possible. If you can't reproduce, add more logging and wait for the next occurrence.</li>
+        </ul>
+        <p>The mistake juniors make: jumping to step 5 directly. Senior engineers always finish steps 1–4 first.</p>
+      </div>
+
+      <div class="iq">A Node.js endpoint takes 3–5 seconds in production but works fast locally. How would you debug it?</div>
+      <div class="ans">
+        <p>This is one of the most common Node.js interview scenarios. The answer is to <strong>methodically eliminate suspects</strong>. The latency budget has to come from somewhere — find which slice owns it.</p>
+        <ul>
+          <li><strong>Step 1 — APM / tracing.</strong> Open a slow trace in Datadog/New Relic/Jaeger. Look at the flame graph. One span is going to dominate — that's your bottleneck. 90% of debugging stops here.</li>
+          <li><strong>Step 2 — Network vs CPU vs I/O.</strong> If the fat span is an HTTP call to an external API → network/external. If it's a DB query → DB. If it's CPU between spans (no outbound calls but time passing) → CPU or event loop block.</li>
+          <li><strong>Step 3 — DB-specific.</strong> Run <code>EXPLAIN ANALYZE</code> on the query in prod. Local DB has 100 rows; prod has 100 million. Missing index, table scan, N+1 query.</li>
+          <li><strong>Step 4 — Event loop lag.</strong> Add <code>perf_hooks.monitorEventLoopDelay()</code> and check if the loop is blocked. A CPU-heavy synchronous loop (JSON parse of 10 MB payload, big regex) freezes everything else in the same Node process.</li>
+          <li><strong>Step 5 — Thread pool / connection pool exhaustion.</strong> Default <code>libuv</code> pool is 4 threads. If 100 concurrent requests all need DNS or crypto, requests queue behind each other. Same for DB connection pool — if pool is 10 and you have 100 in-flight requests, 90 are waiting.</li>
+          <li><strong>Step 6 — Memory pressure / GC.</strong> Long GC pauses look like generic slowness. Check heap usage trend.</li>
+        </ul>
+        <p>The reason it's fast locally: small data, no concurrency, no external network. Production multiplies all three. Always name the multiplier when you answer this.</p>
+      </div>
+
+      <div class="iq">How would you identify whether the bottleneck is database, external API, network, CPU, memory, thread pool, or event loop?</div>
+      <div class="ans">
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Suspect</th><th>Signal that points at it</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Database</strong></td><td>Trace shows DB span dominates. <code>pg_stat_activity</code> shows query running long. <code>EXPLAIN</code> reveals seq scan.</td></tr>
+            <tr><td><strong>External API</strong></td><td>Outbound HTTP span is the fat one. Check the provider's status page. Compare your timeout vs their p99.</td></tr>
+            <tr><td><strong>Network</strong></td><td>High latency + high packet loss between AZs. <code>traceroute</code>, <code>ping</code>, cloud provider's network insights.</td></tr>
+            <tr><td><strong>CPU</strong></td><td>Pod CPU pegged at 100%. Flame graph in <code>perf</code> / <code>0x</code> shows one hot function.</td></tr>
+            <tr><td><strong>Memory</strong></td><td>Heap growth + frequent / long GC pauses. <code>--inspect</code> heap snapshots, leak suspect.</td></tr>
+            <tr><td><strong>Thread pool</strong></td><td>libuv thread pool saturated (DNS / crypto / fs queueing). Symptoms: slow even for cheap requests.</td></tr>
+            <tr><td><strong>Event loop</strong></td><td><code>monitorEventLoopDelay()</code> &gt; 100 ms. Synchronous CPU work in the main thread.</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="iq">How do you trace requests across multiple microservices?</div>
+      <div class="ans">
+        <p>OpenTelemetry (the open standard) or a vendor agent (Datadog, New Relic, Elastic APM). At the API Gateway, the <strong>tracing agent</strong> — typically the OpenTelemetry SDK with auto-instrumentation, a vendor agent like <code>dd-trace</code>, or a service-mesh sidecar (Envoy/Istio) — injects a <strong>trace ID</strong> (e.g. <code>traceparent: 00-4bf92f...</code>) into the request headers. The agent monkey-patches your HTTP framework (Express, Spring, etc.), DB drivers, and message clients so every downstream service automatically propagates that header on its outbound calls. Each service emits "spans" — start time, end time, tags — tagged with the trace ID. The collector stitches them into one waterfall view.</p>
+        <p>Two practical rules: (1) always propagate the trace header on async paths too — when you publish to Kafka, include the trace ID in the message metadata; when the consumer picks it up, continue the trace. Otherwise your trace ends at the producer and you lose visibility into half the system. (2) Always include the trace ID in your log lines — that's how you bridge from "this trace is slow" to "here's the log message that explains why."</p>
+      </div>
+
+      <div class="iq">How would you monitor Node.js applications in production?</div>
+      <div class="ans">
+        <p>Beyond the four golden signals, the Node-specific ones:</p>
+        <ul>
+          <li><strong>Event loop lag</strong> — <code>monitorEventLoopDelay()</code>. Alert if p99 &gt; 100ms; that means user-facing requests are stalling.</li>
+          <li><strong>Heap usage</strong> — RSS, heap_used, external. Climbing trend = leak.</li>
+          <li><strong>Active handles / requests</strong> — <code>process._getActiveHandles().length</code>. A leak shows up as ever-growing handle count.</li>
+          <li><strong>Active timers</strong> — unclosed <code>setInterval</code>s.</li>
+          <li><strong>GC pause time</strong> — exposed via <code>perf_hooks</code> or APM.</li>
+        </ul>
+        <p>Wire all of these to Prometheus via <code>prom-client</code> or use Datadog's <code>dd-trace</code> agent which exposes them out of the box.</p>
+      </div>
+
+      <div class="iq">How do you handle alerts and incident management?</div>
+      <div class="ans">
+        <p>Four things, in order:</p>
+        <ul>
+          <li><strong>Alert on symptoms, not causes.</strong> Page on latency, error rate, and traffic drops — things the user can feel. Don't page on CPU 90% or disk 80%; those are dashboards. Alerting on causes burns out on-call within a month.</li>
+          <li><strong>Severity tiers</strong> — P0/P1 page the on-call; P2/P3 go to Slack. Not every alert is a 3 AM wake-up.</li>
+          <li><strong>Runbook per alert</strong> — linked in PagerDuty. Answers: what does this mean, what do I check, how do I mitigate (rollback, flip a flag, scale up). If an alert has no runbook, it's not ready.</li>
+          <li><strong>Incident process</strong> — declare an incident channel (<code>#inc-...</code>), assign an Incident Commander, <em>mitigate before root-causing</em> (stop the bleeding first), update the status page every 15 min, then run a blameless postmortem within a week.</li>
+        </ul>
+        <p>Tooling: Prometheus / Grafana for alerts, PagerDuty or Opsgenie for paging, Statuspage for customer comms, Notion or Confluence for runbooks and postmortems.</p>
+        <p><strong>The one-line takeaway:</strong> mitigate first, root-cause later, and never blame the human — fix the system that let the human make the mistake.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S7 ============================ -->
+    <div class="sec" id="s7">
+      <span class="sec-tag tag-cyan">07 · Databases &amp; scaling</span>
+      <h2>SQL, NoSQL, sharding, replication, indexing, caching</h2>
+      <p>Database questions are where interviews separate "I've used Postgres" from "I've operated Postgres." The fundamentals — SQL vs NoSQL, CAP, indexing, sharding, replication — are table stakes.</p>
+
+      <div class="iq">SQL vs NoSQL — when would you choose each?</div>
+      <div class="ans">
+        <p>Reach for <strong>SQL</strong> (Postgres, MySQL) when: schema is stable, you need ACID transactions, you need joins, your data is highly relational (orders, line items, payments). 90% of business apps still belong here. Modern Postgres also gives you JSONB, partial indexes, listen/notify — it's no longer "the boring choice."</p>
+        <p>Reach for <strong>NoSQL</strong> when:</p>
+        <ul>
+          <li><strong>Document store (MongoDB, DynamoDB)</strong> — schema-flexible nested docs, single-entity reads are the dominant pattern.</li>
+          <li><strong>Key-value (Redis, DynamoDB)</strong> — sub-millisecond reads, simple access by key.</li>
+          <li><strong>Wide-column (Cassandra, ScyllaDB)</strong> — massive write throughput, time-series, append-heavy.</li>
+          <li><strong>Search (Elasticsearch, OpenSearch)</strong> — full-text, faceted search, log search.</li>
+          <li><strong>Graph (Neo4j)</strong> — relationships are the data (social networks, fraud rings).</li>
+        </ul>
+        <p>The senior answer: <em>"I'd start with Postgres and only add a NoSQL store when a specific access pattern shows it's the right tool — usually search via Elasticsearch or hot key-value via Redis."</em></p>
+      </div>
+
+      <div class="iq">CAP theorem explanation.</div>
+      <div class="ans">
+        <p>In a network <strong>P</strong>artition (some nodes can't talk to others), a distributed system has to choose: serve potentially-stale data (<strong>A</strong>vailable) or refuse to serve at all (<strong>C</strong>onsistent). You can have CP or AP, never both in the moment of a partition. The "C" here is linearizability — every read sees the latest write.</p>
+        <p>The framing people miss: outside a partition, you can have <em>both</em> consistency and availability. CAP only kicks in during the failure. So the real question is "how often do you partition, and what do you want to do when it happens?" Bank transfers want CP — refuse rather than serve stale balances. Social feeds want AP — show a slightly stale timeline rather than an empty page.</p>
+        <p>Modern extension: PACELC. "If <strong>P</strong>artition, choose <strong>A</strong> or <strong>C</strong>; <strong>E</strong>lse choose <strong>L</strong>atency or <strong>C</strong>onsistency." Even without a partition, sync replication trades latency for stronger consistency.</p>
+      </div>
+
+      <div class="iq">What is partitioning / sharding?</div>
+      <div class="ans">
+        <p><strong>Partitioning</strong> splits one logical table into multiple physical pieces on the <em>same</em> machine (e.g. Postgres declarative partitioning by date — January goes in one file, February in another). Helps with query planning and archival.</p>
+        <p><strong>Sharding</strong> splits the data across <em>multiple machines</em>. Choose a shard key (<code>user_id</code> is common); a hash of the key tells you which machine owns the row. Now your one 10 TB database is ten 1 TB databases, each handling 1/10th the writes.</p>
+        <p>The pain of sharding: cross-shard joins become application-level fan-outs; cross-shard transactions need a saga; re-sharding is one of the hardest migrations in software. <strong>Consistent hashing</strong> + replication mitigates re-shard pain. Don't shard until you've exhausted vertical scaling and read replicas.</p>
+      </div>
+
+      <div class="iq">Horizontal scaling vs vertical scaling.</div>
+      <div class="ans">
+        <p><strong>Vertical</strong> = bigger box. Move from 4 vCPU / 16 GB to 32 vCPU / 256 GB. Simple, no code changes, but capped at whatever the cloud offers — and 2× more CPU never gives you 2× the performance.</p>
+        <p>Why? Four hidden ceilings:</p>
+        <ul>
+          <li><strong>Amdahl's Law</strong> — any serial part of your code (auth check, transaction commit, response serialization) caps the speedup. 20% serial = max 5× no matter how many CPUs.</li>
+          <li><strong>Memory bandwidth is shared</strong> — all cores read/write through the same RAM bus. Past 2–4 cores reading hot, they queue behind each other.</li>
+          <li><strong>Lock contention</strong> — more threads fighting for the same lock (connection pool, app cache, GC) means more time waiting than working.</li>
+          <li><strong>Single-threaded bottlenecks</strong> — Node's event loop is one thread; adding cores does nothing for it unless you cluster.</li>
+        </ul>
+        <p>Realistic factor: doubling vCPU buys ~1.3–1.7×, not 2×. That's why vertical hits diminishing returns around the 16-vCPU mark.</p>
+        <p><strong>Horizontal</strong> = more boxes. Add another pod, another replica, another shard. Linearly scalable in theory; in practice limited by coordination, shared resources (DB), and Conway's law.</p>
+        <p>Rule of thumb: <strong>scale vertically first</strong> (it's cheap effort), then add read replicas, then introduce caches, only then shard or split services.</p>
+      </div>
+
+      <div class="iq">What are compound indexes?</div>
+      <div class="ans">
+        <p>An index on more than one column, in order: <code>CREATE INDEX idx ON orders (user_id, created_at)</code>. The index is sorted first by <code>user_id</code>, then by <code>created_at</code> within each user.</p>
+        <p>It can serve queries that match a <strong>prefix</strong>: <code>WHERE user_id = 42</code> (uses index), <code>WHERE user_id = 42 AND created_at &gt; '2024-01-01'</code> (uses index). It <em>can't</em> efficiently serve <code>WHERE created_at &gt; '2024-01-01'</code> alone — the leading column isn't in the predicate.</p>
+        <p>Senior tip: order columns from most-selective to least-selective, and put equality predicates before range predicates.</p>
+      </div>
+
+      <div class="iq">Explain indexing in databases.</div>
+      <div class="ans">
+        <p>An index is a separate B-tree (mostly) that maps column-value → row-location. Without an index, the DB scans every row (O(N)). With an index, it walks the tree in O(log N) — finding 1 row in a billion takes ~30 comparisons.</p>
+        <p>Index types you'll be asked about:</p>
+        <ul>
+          <li><strong>B-tree</strong> — default, supports equality and range.</li>
+          <li><strong>Hash</strong> — only equality, no range; rarely used.</li>
+          <li><strong>GIN / GiST</strong> (Postgres) — full-text, JSONB, geographic.</li>
+          <li><strong>Covering / include</strong> — store extra columns inside the index so the DB never touches the heap.</li>
+          <li><strong>Partial</strong> — index only matching rows (<code>WHERE status = 'ACTIVE'</code>). Smaller, faster.</li>
+        </ul>
+      </div>
+
+      <div class="iq">How do indexes improve query performance, and what are the drawbacks?</div>
+      <div class="ans">
+        <p><strong>Benefit:</strong> O(log N) instead of O(N) lookups. A query that took 10 seconds on 100 M rows can drop to 5 ms.</p>
+        <p><strong>Drawbacks:</strong></p>
+        <ul>
+          <li><strong>Writes get slower</strong> — every INSERT/UPDATE/DELETE must also update every index. 5 indexes on a table = 5× the write amplification.</li>
+          <li><strong>Disk space</strong> — indexes are often 30–50% the size of the table itself.</li>
+          <li><strong>Maintenance</strong> — bloated / fragmented indexes need rebuilds.</li>
+          <li><strong>Index-not-used surprises</strong> — wrong column order, function on indexed column (<code>WHERE LOWER(email) = ...</code>), low selectivity. Always check with <code>EXPLAIN ANALYZE</code>.</li>
+        </ul>
+      </div>
+
+      <div class="iq">Explain database normalization vs denormalization.</div>
+      <div class="ans">
+        <p><strong>Normalization</strong> — split data into many tables, each fact stored once. Goes up to 3NF/BCNF. Pros: no update anomalies, smaller storage. Cons: every read needs joins, joins are expensive at scale.</p>
+        <p><strong>Denormalization</strong> — duplicate data on purpose for read speed. The <code>orders</code> table stores <code>customer_name</code> even though it's also in <code>customers</code>. Pros: fewer joins, blazing reads. Cons: when a customer renames themselves, you have to update both — and you can drift.</p>
+        <p>OLTP (transactional) tends normalized; OLAP / analytics / wide reads tend denormalized (star schema, materialized views). Realistic systems sit somewhere in between — normalize first, denormalize where reads demand it.</p>
+      </div>
+
+      <div class="iq">How would you optimize slow database queries?</div>
+      <div class="ans">
+        <p>The checklist, in order:</p>
+        <ul>
+          <li><strong>1. Run <code>EXPLAIN ANALYZE</code>.</strong> Identify seq scans on large tables, expensive joins, sort spills.</li>
+          <li><strong>2. Add or fix the index.</strong> Most slow queries are missing an index on the WHERE/JOIN/ORDER BY column.</li>
+          <li><strong>3. Reduce scanned rows.</strong> Push predicates earlier (filter before join, not after); add LIMIT.</li>
+          <li><strong>4. Fix N+1.</strong> If you're doing 100 SELECTs in a loop, batch them into one with <code>IN (...)</code> or a join.</li>
+          <li><strong>5. Cache.</strong> If the result rarely changes, cache it in Redis.</li>
+          <li><strong>6. Materialize / pre-aggregate.</strong> For repeated heavy aggregations, store the pre-computed result.</li>
+          <li><strong>7. Read replica.</strong> If the query is OK-slow but you don't want it killing the primary.</li>
+          <li><strong>8. Last resort — restructure schema or shard.</strong></li>
+        </ul>
+      </div>
+
+      <div class="iq">Explain the N+1 query problem.</div>
+      <div class="ans">
+        <p>You fetch a list of 100 orders. Then for each order you fetch its customer — 100 separate queries. That's 1 (the list) + N (one per row) = N+1 queries, when it could have been 1 (a join) or 2 (the list + one batched <code>IN (...)</code>).</p>
+        <p>ORMs love to do this silently — Hibernate, Sequelize, ActiveRecord. The fix is either eager loading (<code>JOIN FETCH</code> in JPA, <code>include</code> in Sequelize) or a batched <code>WHERE customer_id IN (...)</code> after the first query. Always look at the actual SQL the ORM emits — many "slow API" tickets are a hidden N+1.</p>
+      </div>
+
+      <div class="iq">Database replication and failover.</div>
+      <div class="ans">
+        <p><strong>Replication</strong> = keep one or more standby copies of the primary, kept up to date by streaming the WAL (write-ahead log) or change events. Modes:</p>
+        <ul>
+          <li><strong>Synchronous replication</strong> — primary waits for replica's ack before saying "committed". Strong consistency, higher write latency, the replica being down can stall writes.</li>
+          <li><strong>Asynchronous replication</strong> — primary commits locally and forwards changes in the background. Low latency, but on failover you might lose the last few committed transactions.</li>
+        </ul>
+        <p><strong>Failover</strong> = when the primary dies, promote a replica to be the new primary. Tools: Patroni for Postgres, Sentinel for Redis, managed services do it for you (RDS, Aurora). The interview gotcha: failover is rarely fully automatic and never zero-downtime — there's a 10–60s window where the new primary is being chosen and clients are reconnecting.</p>
+      </div>
+
+      <div class="iq">Read replicas vs primary database.</div>
+      <div class="ans">
+        <p>Primary handles all writes (and reads that need strong consistency). Replicas handle reads that tolerate seconds-stale data — dashboards, reports, analytics, list views. A typical web app has 80%+ reads, so adding 2–3 replicas can lift read capacity 3–4× without changing the schema.</p>
+        <p>The trap: <strong>replica lag</strong>. A user creates an order on the primary, then refreshes the page — the read goes to a replica that hasn't seen the write yet. The user sees "no orders found." Either route read-after-write to the primary, or use a session-pinned reader, or design the UI to tolerate "your order is being processed."</p>
+      </div>
+
+      <div class="iq">Caching strategies in distributed systems.</div>
+      <div class="ans">
+        <p>Six patterns, covered in depth on the <a href="caching-strategies.html" style="color:var(--orange)">Caching Strategies</a> deep-dive. The two-line summary:</p>
+        <ul>
+          <li><strong>Cache-aside (lazy load)</strong> — most common. App checks cache; on miss, queries DB and populates cache. Simple, but first request is slow.</li>
+          <li><strong>Read-through</strong> — cache library handles the DB load on miss. Same outcome as cache-aside, cleaner code.</li>
+          <li><strong>Write-through</strong> — write to cache and DB synchronously. Stronger consistency, slower writes.</li>
+          <li><strong>Write-behind / write-back</strong> — write to cache, flush to DB asynchronously. Fast writes; risk of data loss on cache failure.</li>
+          <li><strong>Refresh-ahead</strong> — proactively refresh hot keys before they expire. Good for predictable hot data.</li>
+          <li><strong>Cache-aside + TTL + jittered TTL</strong> — practical default; jitter prevents thundering herd on simultaneous expiry.</li>
+        </ul>
+      </div>
+
+      <div class="iq">Cache invalidation strategies.</div>
+      <div class="ans">
+        <p>Phil Karlton: "There are only two hard things in computer science — cache invalidation and naming things." The four patterns:</p>
+        <ul>
+          <li><strong>TTL (time-to-live)</strong> — set a 5-min expiry; accept stale data within that window. Simplest, works for most cases.</li>
+          <li><strong>Write-through</strong> — invalidate or update cache on every write. Strong consistency at the cost of write latency.</li>
+          <li><strong>Event-driven invalidation</strong> — service that writes the DB also publishes a <code>UserUpdated</code> event; cache subscribes and evicts. Good for multi-cache fleets.</li>
+          <li><strong>Versioned keys</strong> — instead of invalidating, bump the version. <code>user:42:v3</code> instead of <code>user:42</code>. Old data ages out naturally.</li>
+        </ul>
+      </div>
+
+      <div class="iq">Redis use cases in system design.</div>
+      <div class="ans">
+        <p>Way more than just "cache." The classic eight:</p>
+        <ul>
+          <li><strong>Cache</strong> — Cache-aside in front of Postgres.</li>
+          <li><strong>Session store</strong> — replace sticky sessions; any pod can serve any user.</li>
+          <li><strong>Rate limiter</strong> — <code>INCR + EXPIRE</code> or token-bucket via Lua script.</li>
+          <li><strong>Distributed lock</strong> — Redlock pattern (with caveats about clock skew).</li>
+          <li><strong>Leaderboard / counters</strong> — sorted sets (<code>ZADD</code>, <code>ZRANGE</code>).</li>
+          <li><strong>Pub/sub</strong> — lightweight messaging (Redis Streams for durability).</li>
+          <li><strong>Real-time presence</strong> — "who's online" via short-TTL keys.</li>
+          <li><strong>Idempotency keys</strong> — store request fingerprints with TTL.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S8 ============================ -->
+    <div class="sec" id="s8">
+      <span class="sec-tag tag-orange">08 · REST APIs &amp; security</span>
+      <h2>The contract between client and server</h2>
+
+      <div class="iq">Explain HTTP methods and their meanings — GET, POST, PUT, PATCH, DELETE.</div>
+      <div class="ans">
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Method</th><th>Intent</th><th>Idempotent?</th><th>Safe?</th></tr></thead>
+          <tbody>
+            <tr><td><code>GET</code></td><td>Retrieve a resource</td><td>Yes</td><td>Yes (no side effects)</td></tr>
+            <tr><td><code>POST</code></td><td>Create / submit / process</td><td>No</td><td>No</td></tr>
+            <tr><td><code>PUT</code></td><td>Full replacement of a resource</td><td>Yes</td><td>No</td></tr>
+            <tr><td><code>PATCH</code></td><td>Partial update</td><td>Usually yes (depends on semantics)</td><td>No</td></tr>
+            <tr><td><code>DELETE</code></td><td>Remove a resource</td><td>Yes</td><td>No</td></tr>
+          </tbody>
+        </table></div>
+        <p><strong>Idempotent</strong> = N identical requests = same effect as 1 request. <strong>Safe</strong> = no server state change. The reason these matter: idempotent methods are safe to retry, browsers/proxies can cache safe methods, and <code>POST</code> is the one that needs an idempotency key if you want safe retries.</p>
+      </div>
+
+      <div class="iq">RESTful API design best practices.</div>
+      <div class="ans">
+        <ul>
+          <li>Use <strong>nouns for resources</strong>, not verbs: <code>POST /orders</code>, not <code>POST /createOrder</code>.</li>
+          <li><strong>Plural collections</strong>: <code>/users</code>, <code>/orders</code>.</li>
+          <li><strong>Nested resources up to two levels</strong>: <code>/users/42/orders</code> is fine; <code>/users/42/orders/7/items/3/comments</code> is not — flatten.</li>
+          <li><strong>Use HTTP status codes correctly</strong>: 200 OK, 201 Created (with Location header), 204 No Content, 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 409 Conflict, 422 Unprocessable, 429 Too Many Requests, 5xx for server faults.</li>
+          <li><strong>Return JSON</strong>, ISO-8601 timestamps, snake_case or camelCase (pick one and be consistent).</li>
+          <li><strong>Paginate everything</strong> with <code>?limit=&amp;cursor=</code>. Don't ever return unbounded lists.</li>
+          <li><strong>Filtering &amp; sorting via query params</strong>: <code>?status=active&amp;sort=-created_at</code>.</li>
+          <li><strong>Version</strong> — see below.</li>
+        </ul>
+      </div>
+
+      <div class="iq">REST vs GraphQL.</div>
+      <div class="ans">
+        <p>REST exposes <strong>resources</strong>; GraphQL exposes a single endpoint with a <strong>query language</strong>. With REST, a complex screen often needs 4-5 round-trips and over-fetches each time. With GraphQL, the client asks for exactly the fields it needs in one request.</p>
+        <p>Pick REST when: you have many lightweight clients, you want HTTP caching to "just work", you have public APIs (REST is more discoverable for outside developers). Pick GraphQL when: you have one mobile + one web client with rich screens, the over-fetch tax is real, and you can invest in a schema + dataloader infrastructure to avoid N+1s under the hood. <strong>Don't</strong> pick GraphQL because it's trendy — operationally it's heavier (caching, rate-limiting, query-cost analysis are all new problems).</p>
+      </div>
+
+      <div class="iq">Idempotent APIs — what are they?</div>
+      <div class="ans">
+        <p>APIs where calling them N times has the same effect as calling them once. <code>GET</code>, <code>PUT</code>, <code>DELETE</code> are idempotent by HTTP spec. <code>POST</code> is not — but you can make a specific <code>POST</code> idempotent by accepting an <code>Idempotency-Key</code> header: the server stores <code>(key → result)</code>, so a retry with the same key returns the original result without re-executing.</p>
+        <p>This is essential for any operation with side effects under unreliable networks — payments, charges, signups. Stripe, PayPal, Razorpay all implement this.</p>
+      </div>
+
+      <div class="iq">How do you version APIs?</div>
+      <div class="ans">
+        <p>Three options:</p>
+        <ul>
+          <li><strong>URL versioning</strong> — <code>/v1/orders</code>, <code>/v2/orders</code>. Most explicit, easiest for clients to grep for in logs. The standard choice.</li>
+          <li><strong>Header versioning</strong> — <code>Accept: application/vnd.acme.v2+json</code>. Keeps URLs clean but harder to debug and test from a browser.</li>
+          <li><strong>Query-param versioning</strong> — <code>/orders?version=2</code>. Easy to forget; not recommended.</li>
+        </ul>
+        <p>Versioning policy matters more than the mechanism: support at least N-1, deprecate with a deprecation header and a 6-month sunset date, monitor usage of old versions so you can actually retire them.</p>
+      </div>
+
+      <div class="iq">How do you secure backend APIs?</div>
+      <div class="ans">
+        <p>Defense in depth — every one of these matters:</p>
+        <ul>
+          <li><strong>TLS everywhere</strong> — HSTS, modern cipher suites, no plain HTTP.</li>
+          <li><strong>AuthN</strong> — JWT or session cookies; never roll your own.</li>
+          <li><strong>AuthZ</strong> — check permissions on every endpoint; don't trust the client's claims.</li>
+          <li><strong>Input validation</strong> — strict schema (zod, JSON schema, Joi). Reject anything that doesn't match.</li>
+          <li><strong>SQL injection</strong> — parameterized queries always; never string-concat user input into SQL.</li>
+          <li><strong>Rate limiting</strong> — per-IP and per-user.</li>
+          <li><strong>CORS</strong> — explicit allowlist, not <code>*</code>, when credentials are involved.</li>
+          <li><strong>Secrets</strong> — Vault / AWS Secrets Manager / GCP Secret Manager. Never in code, never in env files in the repo.</li>
+          <li><strong>Audit logging</strong> — log every authN/Z decision, every admin action.</li>
+          <li><strong>OWASP Top 10</strong> — know it. The interviewer might quiz you on injection, broken auth, sensitive data exposure, SSRF, deserialization.</li>
+        </ul>
+      </div>
+
+      <div class="iq">Rate limiting implementation.</div>
+      <div class="ans">
+        <p>Four common algorithms:</p>
+        <ul>
+          <li><strong>Fixed window</strong> — count requests per minute per user; reset on minute boundary. Simple but bursty at boundaries (can take 2× the limit in the second straddling minute 0).</li>
+          <li><strong>Sliding window log</strong> — store timestamps of recent requests; count those in last 60s. Accurate but memory-heavy.</li>
+          <li><strong>Token bucket</strong> — bucket holds N tokens, refills at rate R/sec; each request consumes one. Allows bursts up to bucket size, smooth over time. The most common in production (AWS, Stripe).</li>
+          <li><strong>Leaky bucket</strong> — fixed-rate queue; overflow rejected. Smooths out traffic with no burst. Used for outgoing rate limiting / shaping.</li>
+        </ul>
+        <p>Implement in Redis with INCR + EXPIRE for fixed window, or a Lua script for token bucket. Apply at the gateway, not inside each service.</p>
+      </div>
+
+      <div class="iq">Authentication vs authorization.</div>
+      <div class="ans">
+        <p><strong>Authentication (AuthN)</strong> — "who are you?" Verifying identity via password, OTP, OAuth, SSO. Result: a verified user identity.</p>
+        <p><strong>Authorization (AuthZ)</strong> — "what can you do?" Verifying permissions for an action. Result: allow or deny.</p>
+        <p>You always do AuthN once (login), then AuthZ on every request (RBAC, ABAC, or ACL checks). Mixing them up — "this user is logged in so they can do anything" — is a privilege escalation bug waiting to happen.</p>
+      </div>
+
+      <div class="iq">JWT vs session-based authentication.</div>
+      <div class="ans">
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th></th><th>Session cookie</th><th>JWT</th></tr></thead>
+          <tbody>
+            <tr><td>Where state lives</td><td>Server (session store)</td><td>In the token, signed</td></tr>
+            <tr><td>Server lookup per request</td><td>Yes (Redis hit)</td><td>No (just verify signature)</td></tr>
+            <tr><td>Revocation</td><td>Easy — delete session</td><td>Hard — until token expires</td></tr>
+            <tr><td>Cross-domain</td><td>Cookies are limited</td><td>Easy via Authorization header</td></tr>
+            <tr><td>Size</td><td>Small (cookie = ID)</td><td>Larger (claims + signature)</td></tr>
+            <tr><td>Best for</td><td>Web app, single domain</td><td>Mobile + multiple services, stateless backends</td></tr>
+          </tbody>
+        </table></div>
+        <p>The senior nuance: JWT's "no DB lookup" benefit is real but its revocation problem is also real. Production systems usually combine: short-lived JWT (15 min) + long-lived refresh token in DB. Refresh-on-revoke gives you both stateless speed and timely revocation.</p>
+      </div>
+
+      <div class="iq">API gateway role in microservices.</div>
+      <div class="ans">
+        <p>The gateway is the single front door — every external request goes through it before reaching a service. It does:</p>
+        <ul>
+          <li><strong>Routing</strong> — path-based or host-based dispatch to the right service.</li>
+          <li><strong>TLS termination</strong> — one cert to manage, not N.</li>
+          <li><strong>AuthN</strong> — verify JWT once; downstream services trust the header.</li>
+          <li><strong>Rate limiting + throttling</strong> — protect downstreams from spikes.</li>
+          <li><strong>Request/response transformation</strong> — version translation, header injection.</li>
+          <li><strong>Observability</strong> — first place to capture metrics, logs, trace IDs.</li>
+          <li><strong>WAF</strong> — bot mitigation, OWASP-style attack signatures.</li>
+        </ul>
+        <p>Common implementations: Kong, AWS API Gateway, Envoy / Istio ingress, Nginx Plus, Apigee. Without one, every microservice has to re-implement all of the above.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S9 ============================ -->
+    <div class="sec" id="s9">
+      <span class="sec-tag tag-green">09 · Node.js deep dive</span>
+      <h2>Single-threaded? Then how does it scale?</h2>
+      <p>Node.js questions test whether you understand the event loop well enough to know <em>why</em> things go slow. "It's single-threaded" is the headline; the substance is everything that flows from it.</p>
+
+      <div class="iq">Explain Node.js architecture.</div>
+      <div class="ans">
+        <p>Three pieces wired together:</p>
+        <ul>
+          <li><strong>V8</strong> — Google's JavaScript engine. Executes JS, manages the heap, runs the garbage collector.</li>
+          <li><strong>libuv</strong> — C library that gives Node its event loop, its thread pool (default 4 threads for fs / DNS / crypto), and OS-level async I/O (epoll on Linux, kqueue on BSD).</li>
+          <li><strong>Node bindings + standard library</strong> — fs, http, net, etc. — bridges between JS and libuv's C API.</li>
+        </ul>
+        <p>The model: <strong>one thread runs your JS, and that thread never blocks on I/O</strong>. When you call <code>fs.readFile</code>, Node hands the actual disk read to libuv's thread pool (or kernel async I/O), registers a callback, and goes back to processing other events. When the read finishes, libuv pushes a "callback ready" event onto the loop; the next loop tick runs your callback.</p>
+      </div>
+
+      <div class="iq">How does the Node.js event loop work?</div>
+      <div class="ans">
+        <p>The loop has six phases, executed in order, forever:</p>
+        <ul>
+          <li><strong>Timers</strong> — <code>setTimeout</code> / <code>setInterval</code> callbacks whose time has elapsed.</li>
+          <li><strong>Pending callbacks</strong> — OS-deferred callbacks from the previous loop (e.g. TCP errors).</li>
+          <li><strong>Idle, prepare</strong> — internal.</li>
+          <li><strong>Poll</strong> — the main phase; reads new I/O events and runs their callbacks. Blocks here if there's nothing else to do.</li>
+          <li><strong>Check</strong> — <code>setImmediate</code> callbacks.</li>
+          <li><strong>Close callbacks</strong> — <code>socket.on('close', ...)</code> etc.</li>
+        </ul>
+        <p>Between every phase, Node drains the <strong>microtask queue</strong>: resolved promises (<code>.then</code>) and <code>process.nextTick</code>. <code>nextTick</code> runs before promise microtasks. That's why <code>process.nextTick</code> in a loop can starve the event loop entirely.</p>
+        <p>The single most useful sentence: <em>"The event loop processes one callback at a time on one thread. If your callback takes 500 ms of CPU, every other request is paused for 500 ms."</em></p>
+      </div>
+
+      <div class="iq">How does Node.js handle concurrency?</div>
+      <div class="ans">
+        <p>By <strong>not blocking</strong>. One thread can handle thousands of in-flight connections because none of them are holding the thread — they're all parked waiting for I/O at the OS level. When data arrives for any of them, the OS notifies libuv, libuv puts the callback on the loop, and the single JS thread runs it.</p>
+        <p>For CPU work, you need to step outside the main thread: <strong>worker_threads</strong> (multiple V8 isolates in one process, shared memory via <code>SharedArrayBuffer</code>) or <strong>cluster</strong> (multiple Node processes sharing a port).</p>
+      </div>
+
+      <div class="iq">What are common performance bottlenecks in Node.js?</div>
+      <div class="ans">
+        <ul>
+          <li><strong>CPU-heavy work on the main thread</strong> — big JSON.parse, sync regex, image processing, password hashing with <code>bcrypt.hashSync</code>.</li>
+          <li><strong>Blocking the event loop</strong> with <code>fs.readFileSync</code>, sync crypto, or a long synchronous loop.</li>
+          <li><strong>libuv thread pool exhaustion</strong> — default 4 threads, used by DNS, fs, some crypto, zlib. Saturated under high concurrency.</li>
+          <li><strong>Memory leaks</strong> — uncleared <code>setInterval</code>, growing global caches, listeners that aren't removed.</li>
+          <li><strong>Database connection pool too small</strong> — requests queue waiting for a free connection.</li>
+          <li><strong>Slow downstream APIs</strong> with no timeout — every in-flight call holds memory and a connection.</li>
+        </ul>
+      </div>
+
+      <div class="iq">How do you debug memory leaks in Node.js?</div>
+      <div class="ans">
+        <ul>
+          <li><strong>Trend the heap.</strong> Watch <code>process.memoryUsage().heapUsed</code> over time. If it climbs and never drops after GC, you have a leak.</li>
+          <li><strong>Take heap snapshots</strong> via <code>--inspect</code> in Chrome DevTools or <code>v8.writeHeapSnapshot()</code>. Take three snapshots over time; compare "Objects allocated between snapshots" — the type that keeps growing is the leak.</li>
+          <li><strong>Common culprits</strong>: forgotten event listeners (use <code>EventEmitter.setMaxListeners</code> warnings), closures pinning big objects, <code>Map</code>/global cache that never evicts, unclosed DB connections, accidental retention via <code>Promise</code>s that never settle.</li>
+          <li><strong>Tools</strong> — clinic.js (clinic doctor, heapprofiler), 0x (flame graphs), <code>--prof</code>, Datadog continuous profiler.</li>
+        </ul>
+      </div>
+
+      <div class="iq">How do you scale Node.js applications?</div>
+      <div class="ans">
+        <ul>
+          <li><strong>Cluster mode</strong> — spawn N worker processes (one per core), all listening on the same port via the OS. Linear scaling for CPU-bound work, since each worker is a separate V8 isolate.</li>
+          <li><strong>Horizontal pods</strong> behind a load balancer — same idea but at the orchestrator level (Kubernetes).</li>
+          <li><strong>Offload CPU to worker_threads</strong> — image resize, PDF generation, anything CPU-heavy that you want on the same machine as the main process.</li>
+          <li><strong>Push slow work to a queue</strong> — emails, reports, anything not in the user's wait path.</li>
+          <li><strong>Increase libuv thread pool</strong> — <code>UV_THREADPOOL_SIZE=16</code> if you're doing lots of DNS / crypto / fs.</li>
+        </ul>
+      </div>
+
+      <div class="iq">Cluster mode in Node.js.</div>
+      <div class="ans">
+        <p>Built into Node via the <code>cluster</code> module (or, more commonly today, PM2 / Kubernetes replicas). The master process forks N workers, each a full Node process with its own V8 isolate. They share a port — the OS does the load balancing across them via SO_REUSEPORT or master-routed accept.</p>
+        <p>Why bother: a single Node process uses one core. On an 8-core box, cluster mode (or 8 pods) gives you 8× the throughput for CPU-bound work. For pure I/O-bound work the speedup is smaller but still real.</p>
+      </div>
+
+      <div class="iq">Worker threads vs child processes.</div>
+      <div class="ans">
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th></th><th>worker_threads</th><th>child_process</th></tr></thead>
+          <tbody>
+            <tr><td>Memory</td><td>Shared (SharedArrayBuffer)</td><td>Separate</td></tr>
+            <tr><td>Startup cost</td><td>~10 ms (thread)</td><td>~30–100 ms (process)</td></tr>
+            <tr><td>IPC</td><td><code>postMessage</code>, structured clone</td><td>stdio / IPC channel, JSON</td></tr>
+            <tr><td>Isolation</td><td>Same process — crash takes both</td><td>Separate — isolated failure</td></tr>
+            <tr><td>Best for</td><td>CPU-heavy JS tasks</td><td>Running other binaries (ffmpeg, python)</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+
+      <div class="iq">How would you optimize a slow Node.js API?</div>
+      <div class="ans">
+        <p>The funnel:</p>
+        <ul>
+          <li><strong>Profile first.</strong> APM trace or clinic.js. Don't guess.</li>
+          <li><strong>Cache reads.</strong> Redis cache-aside for hot lookups.</li>
+          <li><strong>Batch DB calls.</strong> Find and kill N+1s.</li>
+          <li><strong>Indexes.</strong> <code>EXPLAIN ANALYZE</code> every query in the hot path.</li>
+          <li><strong>Async / parallelize.</strong> If you have 3 independent DB calls, <code>Promise.all</code> them — don't await sequentially.</li>
+          <li><strong>Push side effects to a queue</strong> — don't wait for email/PDF.</li>
+          <li><strong>Increase thread pool</strong> if libuv is the bottleneck.</li>
+          <li><strong>Move CPU work to a worker thread.</strong></li>
+        </ul>
+      </div>
+
+      <div class="iq">How do you handle CPU-intensive tasks in Node.js?</div>
+      <div class="ans">
+        <p>Three escape hatches, in order of severity:</p>
+        <ul>
+          <li><strong>Break the work into chunks</strong> and yield via <code>setImmediate</code> between chunks, so the event loop can process other requests in between.</li>
+          <li><strong>worker_threads</strong> — for in-process CPU work like PDF rendering, image processing, JSON parsing of huge payloads.</li>
+          <li><strong>Offload to a different service</strong> — push the job to a queue, let a worker fleet (in Node or in a more CPU-friendly language like Go or Rust) handle it.</li>
+        </ul>
+        <p>The cardinal sin: doing CPU work on the main thread of a Node server. One slow request poisons the well for everyone else on that pod.</p>
+      </div>
+
+      <div class="iq">Express.js middleware lifecycle.</div>
+      <div class="ans">
+        <p>Middleware is a function with signature <code>(req, res, next) =&gt; { ... }</code>. They run in the order registered (<code>app.use</code>). Each one either:</p>
+        <ul>
+          <li>Mutates <code>req</code>/<code>res</code> and calls <code>next()</code> to pass to the next middleware.</li>
+          <li>Calls <code>next(err)</code> to skip to the error-handling middleware (any function with 4 args: <code>(err, req, res, next)</code>).</li>
+          <li>Sends a response — terminates the chain.</li>
+        </ul>
+        <p>Typical stack: <code>helmet</code> → <code>cors</code> → <code>body-parser</code> → request logger → auth → rate-limit → route handlers → error handler (last). Errors thrown inside async handlers need <code>express-async-handler</code> or Express 5 to be caught — Express 4 doesn't catch async throws automatically.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S10 ============================ -->
+    <div class="sec" id="s10">
+      <span class="sec-tag tag-pink">10 · Resilience patterns</span>
+      <h2>Consistency tradeoffs, retries, queues, deployments</h2>
+
+      <div class="iq">Explain consistency vs availability tradeoff.</div>
+      <div class="ans">
+        <p>See CAP above. The practical version: when a part of your system is misbehaving (slow, unreachable, lagging), you can either <strong>fail the request</strong> (preserve consistency — the user sees an error) or <strong>serve possibly-stale data</strong> (preserve availability — the user sees something, even if outdated). Bank transfers favor consistency; social timelines, search, recommendations favor availability.</p>
+      </div>
+
+      <div class="iq">Strong consistency vs eventual consistency.</div>
+      <div class="ans">
+        <p><strong>Strong / linearizable consistency</strong> — every read sees the latest write. Required for things like balances and inventory ("don't sell the last item twice").</p>
+        <p><strong>Eventual consistency</strong> — reads might see stale data for a brief window, but if writes stop, all replicas converge. Required for global scale. Most NoSQL stores, multi-region setups, and async pipelines are eventually consistent.</p>
+        <p>The hidden third tier: <strong>read-your-writes</strong> consistency — your own writes are immediately visible to you, even if not to others. Often achieved by routing post-write reads to the primary for the next few seconds.</p>
+      </div>
+
+      <div class="iq">What is distributed locking?</div>
+      <div class="ans">
+        <p>A way for multiple processes / pods to coordinate on a shared resource. "Only one worker may process job 42 at a time." Typical implementations:</p>
+        <ul>
+          <li><strong>Redis SET NX EX</strong> — <code>SET lock:job42 worker-7 NX EX 30</code> succeeds if no one holds the lock; the EX gives an automatic timeout in case the holder crashes.</li>
+          <li><strong>Redlock</strong> — multi-instance Redis variant; controversial (clock skew issues).</li>
+          <li><strong>ZooKeeper / etcd</strong> — strongly-consistent coordination service. The "right" tool for serious distributed locking; heavier ops.</li>
+          <li><strong>DB row lock</strong> — <code>SELECT ... FOR UPDATE</code>. Simple if you already have a DB.</li>
+        </ul>
+        <p>The gotcha: a lock without an expiry is a deadlock generator. Always set a TTL. And know that any TTL-based lock can fail catastrophically if your worker hangs past the TTL — then a second worker also holds the lock and you have two writers. Truly correct distributed locking needs fencing tokens.</p>
+      </div>
+
+      <div class="iq">Circuit breaker pattern.</div>
+      <div class="ans">
+        <p>Wrap calls to a flaky downstream. The breaker has three states:</p>
+        <ul>
+          <li><strong>Closed</strong> — calls flow normally; failures are counted.</li>
+          <li><strong>Open</strong> — failure rate over threshold; calls fail-fast without even trying the downstream, for a cool-off period (~30s).</li>
+          <li><strong>Half-open</strong> — after cool-off, let a few probe calls through. If they succeed, close the breaker; if they fail, back to open.</li>
+        </ul>
+        <p>Why: a downstream stuck at 30-second timeouts means every call ties up a thread / connection for 30s. With 100 RPS and a 30s timeout, you'd have 3000 in-flight calls within 30s — your service falls over. The breaker stops that cascade.</p>
+        <p>Libraries: resilience4j (Java), Hystrix (deprecated), Polly (.NET), opossum (Node).</p>
+      </div>
+
+      <div class="iq">Retry mechanisms and exponential backoff.</div>
+      <div class="ans">
+        <p>Retry only <em>transient</em> failures — 5xx, timeouts, network errors. Never retry 4xx (the request is wrong; retrying won't fix it). Always retry with:</p>
+        <ul>
+          <li><strong>Exponential backoff</strong> — 100ms, 200ms, 400ms, 800ms... so you don't hammer the downstream.</li>
+          <li><strong>Jitter</strong> — add randomness (±20% of the delay). Otherwise 1000 clients all retry at exactly 200ms and create a synchronized thundering herd.</li>
+          <li><strong>A maximum retry count</strong> (3–5) and a maximum total time budget. Don't retry forever.</li>
+          <li><strong>Idempotency keys</strong> — if you retry a <code>POST /charge</code>, the server must not double-charge.</li>
+        </ul>
+      </div>
+
+      <div class="iq">Dead Letter Queue (DLQ).</div>
+      <div class="ans">
+        <p>A separate queue where messages that have failed processing too many times get parked. After 5 retries, instead of looping forever, the consumer puts the message on the DLQ along with the failure reason. A human (or a script) inspects the DLQ, fixes the root cause (bug, schema mismatch, malformed payload), and replays the messages.</p>
+        <p>Without a DLQ, a single poison message can block its partition forever — every retry fails, the offset never advances, and the queue lag grows unboundedly.</p>
+      </div>
+
+      <div class="iq">Bulkhead pattern.</div>
+      <div class="ans">
+        <p>Borrowed from shipbuilding — a ship's hull is divided into watertight compartments so one breach doesn't sink the ship. In software: isolate calls to different downstreams in separate thread pools / connection pools so one slow downstream can't exhaust the pool and starve calls to the others.</p>
+        <p>Example: in a service that calls Payment and Notifications, give them separate connection pools of 20 each. If Payment hangs and saturates its 20 connections, Notifications still has 20 free. Without bulkheads, a shared pool of 40 gets exhausted by Payment and Notifications calls fail too — the failure cascades.</p>
+      </div>
+
+      <div class="iq">Rate limiting algorithms — token bucket, leaky bucket.</div>
+      <div class="ans">
+        <p>Both already covered above. The one-liner difference: <strong>token bucket</strong> allows bursts (you accumulate tokens up to a cap); <strong>leaky bucket</strong> doesn't (output is at a strictly fixed rate). Token bucket is what most public APIs use; leaky bucket is more common in network gear / traffic shaping.</p>
+      </div>
+
+      <div class="iq">API timeout handling.</div>
+      <div class="ans">
+        <p>The rule: <strong>every outbound call has a timeout.</strong> Default HTTP clients in many languages have <em>no</em> timeout. A single hanging call can hold a connection forever and pin a thread.</p>
+        <p>Set timeouts at multiple layers: connect timeout (1–3s), read timeout (depends on the endpoint, but 5–30s is typical), and an overall request budget. When a timeout fires, decide whether to retry (idempotent + transient) or fail-fast. Surface the timeout as a 504 to the upstream caller, with a clear log line that you can trace later.</p>
+      </div>
+
+      <div class="iq">Message queues vs streaming systems — Kafka, RabbitMQ, SQS.</div>
+      <div class="ans">
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th></th><th>RabbitMQ / SQS</th><th>Kafka</th></tr></thead>
+          <tbody>
+            <tr><td>Model</td><td>Queue — message consumed once and gone</td><td>Log — messages persist, consumers track offsets</td></tr>
+            <tr><td>Replay</td><td>No (once consumed, lost)</td><td>Yes — rewind to any offset</td></tr>
+            <tr><td>Multiple consumers of same message</td><td>Via exchanges / fan-out</td><td>Built-in via consumer groups</td></tr>
+            <tr><td>Throughput</td><td>Tens of thousands / sec</td><td>Millions / sec</td></tr>
+            <tr><td>Ordering</td><td>Per queue (limited)</td><td>Per partition (strong)</td></tr>
+            <tr><td>Best for</td><td>Task queues, work distribution</td><td>Event streams, audit logs, replayable pipelines</td></tr>
+          </tbody>
+        </table></div>
+        <p>Quick picker: <strong>Kafka</strong> when you want event sourcing, multiple downstream consumers, or replay. <strong>RabbitMQ / SQS</strong> when you want simple work distribution to a worker fleet.</p>
+      </div>
+
+      <div class="iq">Kafka partitioning and consumer groups.</div>
+      <div class="ans">
+        <p>A Kafka topic is split into <strong>partitions</strong> — each is an append-only log on disk. Messages with the same key always land in the same partition (so per-key ordering is preserved).</p>
+        <p>A <strong>consumer group</strong> is a set of consumers cooperating to read a topic. Kafka assigns each partition to exactly one consumer in the group. If you have 6 partitions and 3 consumers, each consumer gets 2 partitions. Add a 4th consumer → Kafka rebalances. Hit 7 consumers → one sits idle because partitions cap the parallelism.</p>
+        <p>Three takeaways: (1) Partition count is your concurrency ceiling per consumer group. Plan it generously up-front — you can add partitions later, but old keys stay in old partitions. (2) Different consumer groups can read the same topic independently (each tracks its own offset). (3) During rebalance, processing pauses — keep partition reassignment infrequent.</p>
+      </div>
+
+      <div class="iq">How do you design fault-tolerant systems?</div>
+      <div class="ans">
+        <p>Compose the patterns: redundancy at every layer (multi-AZ, multi-replica), health checks + automatic failover, timeouts + retries with backoff, circuit breakers, bulkheads, idempotent operations, DLQs, graceful degradation (fall back to a cached or simpler response when a downstream is down). And the meta-rule: <strong>chaos-test it</strong>. If you've never simulated the failure, you haven't tested fault tolerance.</p>
+      </div>
+
+      <div class="iq">High availability vs fault tolerance.</div>
+      <div class="ans">
+        <p><strong>HA</strong> = the system stays available most of the time (99.9%+), usually via redundancy and quick failover. There may be a few seconds of disruption during failover.</p>
+        <p><strong>Fault tolerance</strong> = the system continues operating with no perceptible disruption when something fails. Stronger guarantee, more expensive. Active-active replication, no-downtime failover.</p>
+        <p>For most business systems, HA is enough; fault tolerance is reserved for the truly mission-critical (trading, life-safety, telecom switches).</p>
+      </div>
+
+      <div class="iq">Blue-green vs canary deployment.</div>
+      <div class="ans">
+        <p><strong>Blue-green</strong> — two identical production environments, "blue" (live) and "green" (idle). Deploy to green, smoke-test, then flip the load balancer to point at green. Rollback is one click — flip back. Cost: 2× the infrastructure during deploys.</p>
+        <p><strong>Canary</strong> — deploy the new version to a small slice of traffic (say 5%), watch metrics, gradually increase to 100%. Catches regressions before they hit everyone. Needs a feature-flag / weighted-routing system.</p>
+        <p>Most modern teams do canary (cheaper, finer-grained). Blue-green still has its place for stateful systems where you can't mix versions.</p>
+      </div>
+
+      <div class="iq">How do you perform zero-downtime deployment?</div>
+      <div class="ans">
+        <ul>
+          <li><strong>Rolling deploy</strong> — replace pods one (or a few) at a time, behind a load balancer with health checks. The LB only sends traffic to healthy pods.</li>
+          <li><strong>Graceful shutdown</strong> — when a pod gets SIGTERM, stop accepting new connections, finish in-flight ones, then exit. Otherwise mid-request connections are killed.</li>
+          <li><strong>Backwards-compatible API + schema changes</strong> — never deploy a breaking change in one shot. Use expand-and-contract: add the new column/field, deploy the new version that uses it, remove the old field later. Same for API contracts.</li>
+          <li><strong>Database migrations decoupled from app deploys</strong> — additive only, in advance.</li>
+        </ul>
+      </div>
+
+      <div class="iq">Load balancer strategies.</div>
+      <div class="ans">
+        <ul>
+          <li><strong>Round-robin</strong> — simplest, distribute evenly. Bad if backends have different capacities.</li>
+          <li><strong>Least-connections</strong> — send to the backend with fewest active connections. Good default for HTTP.</li>
+          <li><strong>Weighted</strong> — give bigger boxes more weight.</li>
+          <li><strong>IP hash / consistent hash</strong> — same client always lands on same backend (needed for some caching / stateful flows).</li>
+          <li><strong>Latency-based</strong> — DNS/L7 routes to the closest or fastest region.</li>
+        </ul>
+      </div>
+
+      <div class="iq">Sticky sessions vs stateless services.</div>
+      <div class="ans">
+        <p><strong>Sticky sessions</strong> — load balancer pins a user to the same backend pod, so the pod's in-memory session works. Easy, but breaks when that pod dies (user logged out) and prevents true horizontal scaling (one popular user can hot-spot a pod).</p>
+        <p><strong>Stateless services</strong> — session state lives in Redis or a JWT, so any pod can serve any request. Pods are interchangeable, easy to autoscale, zero-downtime deploys are simple. This is the modern default — sticky sessions are a tactic for legacy or websocket-heavy systems.</p>
+      </div>
+
+      <div class="iq">CDN usage in backend architecture.</div>
+      <div class="ans">
+        <p>A CDN is a globally-distributed cache that lives between users and your origin. It serves three jobs:</p>
+        <ul>
+          <li><strong>Static assets</strong> — JS, CSS, images, fonts cached at edges. Saves you bandwidth and lets users in Mumbai load assets from Mumbai instead of Virginia.</li>
+          <li><strong>Cacheable API responses</strong> — public data with short TTLs (catalog pages, public profiles). Set <code>Cache-Control: public, max-age=60</code> and the CDN does the rest.</li>
+          <li><strong>DDoS protection + WAF</strong> — most CDNs (Cloudflare, Akamai, CloudFront) absorb volumetric attacks before they reach your origin.</li>
+        </ul>
+      </div>
+
+      <div class="iq">Reverse proxy role.</div>
+      <div class="ans">
+        <p>An nginx / Envoy / HAProxy sitting between the public internet and your app servers. Functions:</p>
+        <ul>
+          <li><strong>TLS termination</strong> — handle HTTPS once, pass HTTP internally.</li>
+          <li><strong>Load balancing</strong> across upstream pods.</li>
+          <li><strong>Compression, caching, static file serving</strong>.</li>
+          <li><strong>Request routing</strong> — path-based, host-based.</li>
+          <li><strong>Connection pooling / keep-alive</strong> — fewer expensive TCP handshakes.</li>
+          <li><strong>Buffer slow clients</strong> so they don't tie up your app threads.</li>
+        </ul>
+        <p>API Gateway = reverse proxy + auth + rate-limit + metrics + (often) API-specific features like request transformation.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S11 ============================ -->
+    <div class="sec" id="s11">
+      <span class="sec-tag tag-purple">11 · Project &amp; deep-dive follow-ups</span>
+      <h2>The "tell me about your project" round</h2>
+      <p>After all the conceptual questions, the panel usually circles back to your real work. These last questions are the ones that distinguish a candidate who has only studied from one who has actually shipped and felt the pain.</p>
+
+      <div class="iq">Draw the complete request flow of your project.</div>
+      <div class="ans">
+        <p>Same diagram as Section 1, but narrated for <em>one specific user action</em>. "Sarah taps Place Order on the mobile app at 7:42 PM Tuesday. (1) Mobile app sends <code>POST /orders</code> with JWT and an Idempotency-Key. (2) Cloudflare edge routes to the closest region. (3) API Gateway validates JWT, applies per-user rate limit, attaches a trace ID. (4) Order Service receives the request, opens a Postgres transaction, writes the order in <code>PENDING</code> + writes <code>OrderCreated</code> to its outbox table, commits. (5) Outbox poller picks up the event, publishes to Kafka. (6) Inventory Service consumes <code>OrderCreated</code>, reserves stock, publishes <code>InventoryReserved</code>. (7) Payment Service consumes that, calls Stripe with the idempotency key, publishes <code>PaymentCaptured</code>. (8) Shipping Service consumes, books pickup, publishes <code>OrderShipped</code>. (9) Order Service consumes the terminal event and flips the order to <code>CONFIRMED</code>. (10) Mobile app polls / receives push, updates the screen. End-to-end p99 ~1.8 seconds; the payment hop dominates."</p>
+        <p>That walkthrough — naming concrete payloads, concrete latencies, concrete failure-handling — is what makes you sound like an engineer who has actually run this in production.</p>
+      </div>
+
+      <div class="iq">Explain one production issue you solved.</div>
+      <div class="ans">
+        <p>Pick one with a clean three-act structure: <strong>symptom → investigation → fix</strong>. Example: <em>"Last quarter our checkout p99 jumped from 400 ms to 4 seconds, only on weekends. Took 4 hours to root-cause. The symptom was DB CPU saturating during the spike. Tracing showed an N+1 on the cart-summary endpoint — for every cart with N items we did N+1 SELECTs to fetch product details. Locally this was 5 items per cart; in production during weekend sale traffic, carts had 40-80 items. Fix: replaced the per-item lookup with a single <code>WHERE id IN (...)</code> + added an index. P99 dropped to 280 ms. Lesson learned: load testing must use production-shaped data, not 10-row fixtures."</em></p>
+        <p>Always end with the lesson — that's what makes it senior-level storytelling.</p>
+      </div>
+
+      <div class="iq">Explain one scalability challenge you handled.</div>
+      <div class="ans">
+        <p>Same structure. The lesson should usually be about a tradeoff: <em>"we sharded by customer_id which solved write throughput but made our admin queries (which span all customers) slow — so we added a read replica feeding a denormalized analytics table to handle those."</em> Tradeoffs are the senior-engineer signal.</p>
+      </div>
+
+      <div class="iq">Explain one architecture decision you took and why.</div>
+      <div class="ans">
+        <p>Pick a decision where the obvious answer was wrong. <em>"For our refund pipeline, the obvious move was synchronous — user clicks Refund, API charges the gateway, returns success. We made it async via Kafka instead because (1) Stripe occasionally takes 30s, which would have blown our SLA, and (2) we wanted at-least-once retry semantics for free if Stripe was down. The cost was a more complex UI — the user sees 'Refund in progress' for a few seconds. We judged that worth it. Six months in, when Stripe had a 2-hour outage, the queue absorbed the load and refunds completed automatically once Stripe recovered — exactly the win the design was for."</em></p>
+      </div>
+
+      <div class="iq">What would you improve in your current architecture?</div>
+      <div class="ans">
+        <p>Two ingredients: be specific, and frame it as a tradeoff you've consciously deferred — not as a regret. <em>"Our Postgres write primary is a single point. We've designed the shard key (<code>customer_id</code>) but haven't pulled the trigger because (a) we're at 30% capacity headroom, (b) sharding triples our ops complexity, and (c) we have 18 months of runway before we need it. If I had to pick what I'd start today, it would be the outbox pattern across all services — three of our seven services still do synchronous double-writes, which means we've had two production incidents where the DB committed but the event publish failed."</em></p>
+        <p>That answer signals: you know where the seams are, you've thought about the cost, and you can make a judgment call instead of cargo-culting a "fix everything" answer.</p>
+      </div>
+
+      <div class="iq">What tradeoffs did you make in your design?</div>
+      <div class="ans">
+        <p>List them as named tradeoffs:</p>
+        <ul>
+          <li><em>"Chose eventual consistency over strong consistency for the order-fulfilment chain — we accept a 2-3 second window where the order shows PROCESSING in the UI. Bought us full async + retry semantics."</em></li>
+          <li><em>"Chose choreography over orchestration — 3 services in the chain, didn't want the orchestrator overhead. Will revisit if it grows to 6+."</em></li>
+          <li><em>"Cached aggressively, accepted 60s staleness on product pages — drops DB read load 20×, the catalog team is fine with the lag."</em></li>
+          <li><em>"Picked Postgres + Redis over DynamoDB — simpler ops for our team's skillset, paid for it with a manual sharding plan when we get there."</em></li>
+        </ul>
+      </div>
+
+      <div class="iq">If traffic suddenly becomes 100×, what breaks first?</div>
+      <div class="ans">
+        <p>The senior answer always names a <em>specific</em> bottleneck and the metric you'd watch. <em>"Our write primary on Postgres. It runs at ~3K TPS today with headroom to ~8K. At 100× traffic, even with caching absorbing reads, writes 30× because the conversion-funnel ratio is roughly fixed. So Postgres pegs first, around hour two of the spike. The signal would be IOPS saturation on the primary's EBS volume before CPU does. Mitigation already in the runbook: temporarily disable the secondary indexes on the audit table (least-critical), buy us another 2× while we throw replicas at the read load and slow the spike with rate-limiting at the gateway."</em></p>
+        <p>If you can't name a specific component and a specific metric, the panel knows you've never been on call for a real spike. The fact that you can name what breaks first is the answer — it shows you've thought about your system as a chain of capacities, not as a marketing diagram.</p>
+      </div>
+    </div>
+
+    <!-- Closing -->
+    <div class="highlight hl-cyan" style="margin-top:2.5rem">
+      <strong>How to use this page in interview prep.</strong> Don't memorize. Pick five questions from any section, close the page, and answer them out loud in 60–90 seconds each — like you would in the room. Then come back and compare. The patterns repeat across questions (idempotency, story-arc walkthroughs, "what breaks first") — once you can deliver those reflexively, the surface-level question variations stop mattering.
+    </div>
+
+    <div class="highlight hl-orange" style="margin-top:.85rem">
+      <strong>Companion deep dives.</strong> Pair this Q&amp;A with the focused walkthroughs:&nbsp;
+      <a href="caching-strategies.html" style="color:var(--orange);text-decoration:underline">Caching Strategies</a> ·
+      <a href="kafka-interview.html" style="color:var(--orange);text-decoration:underline">Kafka Interview</a> ·
+      <a href="sql-vs-nosql.html" style="color:var(--orange);text-decoration:underline">SQL vs NoSQL</a> ·
+      <a href="backend-fundamentals.html" style="color:var(--orange);text-decoration:underline">Backend Fundamentals</a> ·
+      <a href="../HLD/distributed-cache-hld.html" style="color:var(--orange);text-decoration:underline">Distributed Cache HLD</a>.
+    </div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+<div class="likes-row"><div id="likes"></div></div>
+
+</body>
+</html>

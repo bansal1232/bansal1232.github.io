@@ -190,10 +190,11 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
       <li><a href="#s10">Cache Aside Pattern</a></li>
       <li><a href="#s11">Hot Key Problem</a></li>
       <li><a href="#s12">Thundering Herd</a></li>
-      <li><a href="#s13">Persistence &amp; Recovery</a></li>
-      <li><a href="#s14">Topology Changes</a></li>
-      <li><a href="#s15">Multi-Region</a></li>
-      <li><a href="#s16">Interview Q&amp;A</a></li>
+      <li><a href="#s13">Penetration &amp; Avalanche</a></li>
+      <li><a href="#s14">Persistence &amp; Recovery</a></li>
+      <li><a href="#s15">Topology Changes</a></li>
+      <li><a href="#s16">Multi-Region</a></li>
+      <li><a href="#s17">Interview Q&amp;A</a></li>
     </ol>
   </aside>
 
@@ -202,6 +203,16 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 <!-- ══════════════════════════════════════════════ -->
 <!-- SECTION 1: WHAT IS A DISTRIBUTED CACHE?        -->
 <!-- ══════════════════════════════════════════════ -->
+
+<!-- Companion-read callout — links to the patterns-focused Tech deep-dive -->
+<div style="background:var(--cyan-d);border:1px solid var(--cyan);border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:1.25rem;display:flex;flex-wrap:wrap;align-items:center;gap:.85rem;justify-content:space-between">
+  <div style="flex:1;min-width:260px">
+    <div style="font-size:.68rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--cyan);margin-bottom:.25rem">Companion read</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.55">This page designs the <strong>system</strong> — sharding, replication, routing. For the orthogonal view focused on <strong>caching patterns</strong> (cache-aside vs read-through vs write-behind, eviction policies, the five failure modes), pair it with the Tech deep-dive on Caching Strategies.</p>
+  </div>
+  <a href="../Tech/caching-strategies.html" style="display:inline-block;background:var(--cyan);color:#0b0f14;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Caching Strategies &rarr;</a>
+</div>
+
 <!-- HelloInterview-style framework callout -->
 <div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
   <div style="flex:1;min-width:250px">
@@ -887,10 +898,110 @@ flowchart LR
 <div class="divider"></div>
 
 <!-- ══════════════════════════════════════════════ -->
-<!-- SECTION 13: PERSISTENCE                        -->
+<!-- SECTION 13: PENETRATION & AVALANCHE            -->
 <!-- ══════════════════════════════════════════════ -->
 <div class="sec" id="s13">
-  <span class="sec-tag tag-yellow">Step 13</span>
+  <span class="sec-tag tag-red">Step 13</span>
+  <h2>Cache Penetration &amp; Avalanche — The Other Two Failure Modes</h2>
+  <p>If you've ever interviewed at a company with strong systems-design rigour, you've probably heard cache failures grouped into <strong>three named scenarios</strong>: <em>Cache Penetration</em>, <em>Cache Breakdown</em>, and <em>Cache Avalanche</em>. They sound similar but the root cause, blast radius, and fix are different in each case — and confusing them is one of the fastest ways to lose points on a question about cache reliability.</p>
+
+  <p>The intuition the framework captures: caches don't fail because of bad code. They fail because of <strong>pathological traffic patterns</strong> that the database, sitting behind the cache, was never sized to handle. Each of the three names describes a different way the database ends up directly absorbing traffic the cache was supposed to absorb.</p>
+
+  <div class="g3">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">① Cache Penetration</h3>
+      <p><strong>The pattern:</strong> requests for keys that <em>do not exist anywhere</em> — not in the cache, not in the DB. Every lookup misses the cache and then misses the DB too.</p>
+      <p><strong>Example:</strong> an attacker scripts <code>GET /user/-1</code>, <code>GET /user/-2</code>, ... at 50K req/sec. The cache has no entry. The DB query runs, returns nothing, the cache stores nothing (you can't cache a row that doesn't exist), and the next request repeats the dance. The DB takes the full storm.</p>
+      <p><strong>This section covers it.</strong></p>
+    </div>
+    <div class="card" style="border-color:rgba(232,116,59,.4)">
+      <h3 style="color:var(--orange)">② Cache Breakdown</h3>
+      <p><strong>The pattern:</strong> a single <em>extremely hot</em> key — viral content, celebrity profile, today's top product — either (a) gets so much traffic that its owning shard saturates, or (b) expires at the wrong moment and a thousand concurrent reads stampede the DB to refill it.</p>
+      <p><strong>Example:</strong> celebrity tweets a link; <code>video:viral_42</code> goes from 100 to 100K req/sec and one shard melts. Or its 1-hour TTL ticks over at 3 AM and 1,000 simultaneous misses crush Postgres.</p>
+      <p><strong>Already covered in <a href="#s11" style="color:var(--orange)">§11 Hot Key</a> + <a href="#s12" style="color:var(--purple)">§12 Stampede</a>.</strong></p>
+    </div>
+    <div class="card" style="border-color:rgba(212,168,56,.4)">
+      <h3 style="color:var(--yellow)">③ Cache Avalanche</h3>
+      <p><strong>The pattern:</strong> a <em>large fraction</em> of the cache becomes unavailable at the same instant — either because many keys were created together with the same TTL (so they expire together), or because a cache node restarted and lost all its keys at once.</p>
+      <p><strong>Example:</strong> the warmup job loaded 100K product entries at 9:00 AM with a 1-hour TTL. At 10:00 AM all 100K expire in the same second. The DB sees the equivalent of a cold-start spike and falls over.</p>
+      <p><strong>This section covers it.</strong></p>
+    </div>
+  </div>
+
+  <h3 class="subh">Cache Penetration — defending against non-existent keys</h3>
+  <p>The trickiest part of penetration is that there's <em>nothing legitimate to cache</em>. <code>SELECT * FROM users WHERE id = -1</code> returns zero rows. You can't store an empty result the same way you'd store a row — but if you don't store <em>something</em>, every duplicate query goes all the way to the DB. Two standard fixes, often combined:</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">🛡️ Fix 1 — Cache the negative (null caching)</h3>
+      <p>When the DB returns no row, store a sentinel value in the cache anyway: <code>SET user:-1 "__NOTFOUND__" EX 60</code>. The next 60 seconds of identical bogus requests get served from the cache without touching the DB.</p>
+      <p><strong>Why a short TTL:</strong> if the key later becomes valid (a real user with that ID gets created), you don't want stale "not found" answers haunting your cache for an hour. 30–120 seconds is the sweet spot.</p>
+      <p><strong>Trade-off:</strong> attackers spraying truly random keys (<code>user:-3829471</code>, <code>user:-9183728</code>, ...) will still fill your cache with null sentinels — bounded by your RAM and eviction policy, but worth knowing about.</p>
+    </div>
+    <div class="card" style="border-color:rgba(74,144,217,.4)">
+      <h3 style="color:var(--blue)">🌸 Fix 2 — Bloom filter in front of the cache</h3>
+      <p>Before the cache lookup, check a <strong>Bloom filter</strong> that knows which keys could possibly exist. A Bloom filter is a compact probabilistic structure (a few MB can represent hundreds of millions of keys) that answers "could this key exist?" with two possible replies: <em>definitely no</em>, or <em>maybe yes</em>. False positives are rare (~1%) and tunable; false negatives are impossible.</p>
+      <p>If the filter says "no" → reject the request immediately, never touch cache or DB. If it says "maybe" → proceed with normal cache-aside lookup. Build/refresh the filter from the DB's primary keys periodically (e.g., every 10 minutes via a background job).</p>
+      <p><strong>Trade-off:</strong> you have to keep the filter in sync with the DB; the 1% false-positive rate means some bogus requests still slip through to the cache (which is fine — null caching handles those). The filter is shared across all app servers via Redis (<code>BF.RESERVE</code>, <code>BF.ADD</code>, <code>BF.EXISTS</code>) or held locally in-process.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The before/after:</strong> without these defenses, a script firing 50K bogus <code>GET /user/&lt;random-negative-int&gt;</code> per second sends 50K queries/sec straight to the DB — a box rated for 20K reads/sec dies in seconds. With a Bloom filter sitting in front, 99% of those requests get rejected at the app server with zero DB touch. With null caching on top, the remaining 1% that slip through hit the DB exactly once per unique bogus key. DB load: a trickle. The attacker burned a script for nothing.</div>
+
+  <h3 class="subh">Cache Avalanche — when "everything expires at once" hits the DB</h3>
+  <p>Avalanche has two distinct flavours that deserve separate fixes, even though they share the name.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(212,168,56,.4)">
+      <h3 style="color:var(--yellow)">⏱️ Flavour A — Synchronised TTL expiry</h3>
+      <p>Your warmup job, batch import, or daily refresh wrote 100K entries with the same TTL value. Sixty minutes later, they all expire in the same wall-clock second. Every reader of any of those keys misses simultaneously — and the DB gets a "synthetic cold start" spike that looks identical to losing the entire cache.</p>
+      <p><strong>Fix — TTL jitter:</strong> instead of <code>TTL = 3600</code>, use <code>TTL = 3600 + random(-300, 300)</code>. Now those 100K keys spread their expiries across a 10-minute window. The DB sees a smooth low-rate refresh load instead of a single-second spike. One line of code, problem gone.</p>
+      <p><strong>Rule of thumb:</strong> jitter ≈ 5–15% of base TTL is enough to flatten the curve without making the cache feel inconsistent.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">💥 Flavour B — Cache node restart / cluster reboot</h3>
+      <p>A whole cache node reboots after a kernel panic, deploy, or failover. Its RAM clears. The 64 GB of entries it held are gone. Every app request that hashes to that node now misses and hits the DB — for the entire shard's keyspace at once.</p>
+      <p><strong>Fix — multiple defences stacked:</strong> (1) <strong>Replication</strong> (already in <a href="#s7" style="color:var(--purple)">§7</a>) — a replica gets promoted on primary death, so the shard's contents survive. (2) <strong>Persistence</strong> (see <a href="#s14" style="color:var(--yellow)">§14</a>) — RDB/AOF lets a restarting node reload its state from disk in seconds. (3) <strong>Graceful warmup</strong> — when a freshly-rebuilt node joins the cluster, route only a small fraction of its keyspace's traffic to it initially, ramping over a minute or two so the DB feeds the new node gradually instead of in a single burst.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">The "three failure modes" cheat sheet</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Failure mode</th><th>Trigger</th><th>Blast radius</th><th>Primary fix</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong style="color:var(--red)">Penetration</strong></td>
+          <td>Requests for keys that don't exist in cache <em>or</em> DB</td>
+          <td>Sustained — keeps going as long as the attacker fires requests</td>
+          <td>Bloom filter + null caching with short TTL</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--orange)">Breakdown</strong></td>
+          <td>One ultra-hot key saturates a shard or stampedes the DB on expiry</td>
+          <td>Single key, but huge req/sec on that key</td>
+          <td>Client-side L1, replica reads, key sharding, request coalescing, XFetch (<a href="#s11" style="color:var(--orange)">§11</a> + <a href="#s12" style="color:var(--purple)">§12</a>)</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--yellow)">Avalanche</strong></td>
+          <td>Many keys expire together <em>or</em> a node loses its RAM</td>
+          <td>Wide — fraction of keyspace</td>
+          <td>TTL jitter, replication, persistence, gradual warmup</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-red"><strong>The "so what" line:</strong> caching looks like a one-line optimisation — "check cache, else fetch DB, else store" — but the moment real traffic shows up, three named failure modes wait to bring the DB down. Penetration says "the cache never helps for these keys", Breakdown says "one key gets too hot or expires at the worst moment", and Avalanche says "a slab of the cache vanished at once". Each has a different fix, and a senior engineer is expected to name all three without prompting.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: PERSISTENCE                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-yellow">Step 14</span>
   <h2>Persistence &amp; Recovery</h2>
   <p>Most caches are pure RAM. Some optionally persist to disk so a node restart doesn't mean cold-start. The two patterns and the do-nothing case:</p>
 
@@ -921,10 +1032,10 @@ flowchart LR
 <div class="divider"></div>
 
 <!-- ══════════════════════════════════════════════ -->
-<!-- SECTION 14: TOPOLOGY CHANGES                   -->
+<!-- SECTION 15: TOPOLOGY CHANGES                   -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s14">
-  <span class="sec-tag tag-cyan">Step 14</span>
+<div class="sec" id="s15">
+  <span class="sec-tag tag-cyan">Step 15</span>
   <h2>Topology Changes — Adding &amp; Removing Nodes</h2>
   <p>The cluster grew. Or it shrank. Or a node died and we replaced it. How does the cluster handle membership changes without dropping requests?</p>
 
@@ -949,10 +1060,10 @@ flowchart LR
 <div class="divider"></div>
 
 <!-- ══════════════════════════════════════════════ -->
-<!-- SECTION 15: MULTI-REGION                       -->
+<!-- SECTION 16: MULTI-REGION                       -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s15">
-  <span class="sec-tag tag-purple">Step 15</span>
+<div class="sec" id="s16">
+  <span class="sec-tag tag-purple">Step 16</span>
   <h2>Multi-Region Deployment</h2>
   <p>Users in Tokyo shouldn't pay 200ms transpacific latency to hit a US-East cache. The fix is regional clusters with cross-region replication — and the choice of replication topology is a classic CAP-theorem trade-off.</p>
 
@@ -975,10 +1086,10 @@ flowchart LR
 <div class="divider"></div>
 
 <!-- ══════════════════════════════════════════════ -->
-<!-- SECTION 16: INTERVIEW Q&A                      -->
+<!-- SECTION 17: INTERVIEW Q&A                      -->
 <!-- ══════════════════════════════════════════════ -->
-<div class="sec" id="s16">
-  <span class="sec-tag tag-blue">Step 16</span>
+<div class="sec" id="s17">
+  <span class="sec-tag tag-blue">Step 17</span>
   <h2>Interview Q&amp;A</h2>
 
   <div class="iq">Why consistent hashing over <code>hash % N</code>?</div>
@@ -995,6 +1106,9 @@ flowchart LR
 
   <div class="iq">What's the cache stampede problem and how do you fix it?</div>
   <div class="ans"><strong>When a hot key expires, hundreds of concurrent reads all miss simultaneously and hammer the DB.</strong> The DB, sized for cache-fronted load, gets crushed. Three fixes: (1) <strong>Request coalescing</strong> — only the first request fetches; the other N-1 wait on a shared <code>Future</code> and get the same result. DB load: 1, not N. (2) <strong>Probabilistic early refresh</strong> — random reads near expiry asynchronously refresh the entry, so it never actually empties. (3) <strong>Stale-while-revalidate</strong> — serve the old value while one async worker refreshes. Implementations like Caffeine and Redis Lock-and-Refresh have these built in. Pick one — production traffic will find unprotected hot keys eventually.</div>
+
+  <div class="iq">Name the three classic cache failure modes and the fix for each.</div>
+  <div class="ans"><strong>Penetration, Breakdown, Avalanche.</strong> (1) <strong>Penetration</strong> — requests for keys that exist in neither cache nor DB (often malicious <code>id=-1</code> probes). Fix: a Bloom filter rejects impossible keys at the app layer, and any genuine misses cache a short-TTL null sentinel so duplicates don't repeat the DB roundtrip. (2) <strong>Breakdown</strong> — one ultra-hot key saturates its shard or stampedes the DB at TTL expiry. Fix: client-side L1, replica reads, or key sharding for the saturation case; request coalescing, XFetch probabilistic refresh, or stale-while-revalidate for the expiry case. (3) <strong>Avalanche</strong> — many keys expire together or a node loses its RAM. Fix: TTL jitter (<code>base ± 5–15%</code>) so synchronous expiries spread out, plus replication + persistence + gradual warmup so a node restart doesn't pour the shard's full traffic onto the DB. Being able to name all three unprompted is what separates "I've used Redis" from "I've operated Redis at scale".</div>
 
   <div class="iq">Sync vs async replication for caches — when to choose each?</div>
   <div class="ans"><strong>Async by default — the data isn't unique to the cache.</strong> If a primary crashes after acking a write but before replicating, you lose ~1-100ms of writes — but the application repopulates from the DB on the next read, so users never notice. Async wins ~5× on write latency. <strong>Sync</strong> for the rare cases where the cache holds non-reconstructable data: distributed locks, rate-limit counters, session tokens. Redis offers a middle ground: <code>WAIT N timeout</code> opts a single critical write into sync replication while keeping everything else fast. Always default to async; explicitly opt-in to sync when you can't afford the data loss window.</div>
