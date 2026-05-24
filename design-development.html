@@ -265,173 +265,197 @@
       .wrap { min-width: 0; }
       .sec {
         scroll-margin-top: 1.5rem;
+        margin-bottom: 8px;
       }
       .sec.is-hidden { display: none; }
       .sec-head {
-        margin-bottom: 22px;
+        margin-bottom: 28px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+      }
+      .sec-head::after {
+        content: "";
+        position: absolute;
+        bottom: -1px; left: 0;
+        width: 56px; height: 2px;
+        background: linear-gradient(90deg, #4dfeee 0%, transparent 100%);
+        border-radius: 1px;
       }
       .sec h2 {
-        font-size: 26px;
-        font-weight: 700;
-        margin: 0 0 8px;
+        font-size: 30px;
+        font-weight: 800;
+        margin: 0 0 6px;
         color: var(--heading);
-        letter-spacing: -0.2px;
+        letter-spacing: -0.5px;
+        line-height: 1.15;
+        display: flex;
+        align-items: baseline;
+        gap: 14px;
       }
       .sec h2 .sec-num {
         color: var(--cyan);
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: 18px;
+        font-size: 14px;
         font-weight: 700;
-        margin-right: 10px;
-        letter-spacing: 0;
+        letter-spacing: 0.05em;
+        margin: 0;
+        padding: 4px 10px;
+        background: rgba(77, 254, 238, 0.08);
+        border: 1px solid rgba(77, 254, 238, 0.22);
+        border-radius: 6px;
+        flex-shrink: 0;
+        align-self: center;
       }
       .sec > p {
-        color: var(--text);
-        font-size: 15px;
-        line-height: 1.55;
-        margin: 0 0 18px;
-        max-width: 820px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+        margin: 0;
+        max-width: 760px;
       }
       .divider {
         height: 1px;
-        background: var(--border);
-        margin: 44px 0;
+        background: linear-gradient(90deg, transparent 0%, var(--border) 30%, var(--border) 70%, transparent 100%);
+        margin: 52px 0;
+        border: none;
       }
       .dd-stack {
-        margin-bottom: 26px;
+        margin-bottom: 22px;
+        background: rgba(20, 26, 34, 0.4);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px 22px 14px;
+        transition: border-color 0.2s ease;
       }
+      .dd-stack:hover { border-color: rgba(77, 254, 238, 0.18); }
       .dd-stack:last-child { margin-bottom: 0; }
       .dd-stack.is-hidden { display: none; }
       .dd-stack-title {
-        font-size: 12px;
-        font-weight: 700;
+        font-size: 11px;
+        font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 0.14em;
-        color: var(--muted);
-        margin: 0 0 14px;
+        letter-spacing: 0.16em;
+        color: var(--cyan);
+        margin: 0 0 10px;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px dashed rgba(77, 254, 238, 0.15);
+      }
+      .dd-stack-title::before {
+        content: "";
+        width: 6px; height: 6px;
+        background: var(--cyan);
+        border-radius: 50%;
+        flex-shrink: 0;
+        box-shadow: 0 0 8px rgba(77, 254, 238, 0.6);
       }
       .dd-stack-title::after {
-        content: "";
-        flex: 1;
-        height: 1px;
-        background: var(--border);
+        content: attr(data-count);
+        margin-left: auto;
+        font-size: 10px;
+        color: var(--muted);
+        letter-spacing: 0.08em;
+        font-weight: 700;
       }
+      /* List view — flat vertical list */
       .dd-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        counter-reset: ddcard;
       }
       .dd-card {
-        display: block;
-        padding: 22px 22px 20px;
-        border: 1px solid #232b38;
-        border-radius: 14px;
-        background-color: #141a22;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 11px 12px;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
         color: #d4dae5;
         text-decoration: none;
-        transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, opacity 0.3s ease;
         position: relative;
-        overflow: hidden;
-        opacity: 0;
-        transform: translateY(18px);
-      }
-      .dd-card.is-visible {
         opacity: 1;
         transform: none;
+        transition: background-color 0.18s ease, transform 0.18s ease, color 0.18s ease;
       }
-      .dd-card.is-hidden {
-        display: none !important;
-      }
-      .dd-card::before {
-        content: "";
-        position: absolute;
-        top: 0; left: 0;
-        width: 4px; height: 100%;
-        background-color: #4dfeee;
-        transform: scaleY(0);
-        transform-origin: top;
-        transition: transform 0.25s ease;
+      .dd-card + .dd-card { margin-top: 2px; }
+      .dd-card.is-visible { opacity: 1; transform: none; }
+      .dd-card.is-hidden { display: none !important; }
+      .dd-card::after {
+        content: "→";
+        margin-left: auto;
+        font-size: 14px;
+        color: var(--muted);
+        opacity: 0;
+        transform: translateX(-6px);
+        transition: opacity 0.18s ease, transform 0.18s ease, color 0.18s ease;
+        flex-shrink: 0;
       }
       .dd-card:hover {
-        transform: translateY(-4px);
-        border-color: #4dfeee;
-        box-shadow: 0 10px 28px rgba(0,0,0,0.5);
-      }
-      .dd-card:hover::before {
-        transform: scaleY(1);
-      }
-      .dd-card.is-visited {
-        border-color: rgba(77, 254, 238, 0.22);
-      }
-      .dd-card.is-visited::after {
-        content: "✓ visited";
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        font-size: 10px;
-        font-weight: 700;
-        color: #4dfeee;
-        letter-spacing: 0.5px;
-        background: rgba(77, 254, 238, 0.12);
-        border: 1px solid rgba(77, 254, 238, 0.3);
-        padding: 2px 8px;
-        border-radius: 10px;
-      }
-      .dd-tag {
-        display: inline-block;
-        font-size: 11px;
-        letter-spacing: 0.6px;
-        text-transform: uppercase;
-        color: #4dfeee;
-        font-weight: 700;
-        margin-bottom: 10px;
-      }
-      .dd-card-title {
-        font-size: 18px;
-        font-weight: 700;
-        margin: 0 0 8px;
-        line-height: 1.3;
+        background: linear-gradient(90deg, rgba(77, 254, 238, 0.08) 0%, rgba(77, 254, 238, 0.02) 100%);
+        transform: translateX(4px);
         color: #f0f2f7;
       }
-      .dd-card-desc {
-        font-size: 14px;
-        color: #aab3c0;
-        line-height: 1.55;
-        margin: 0 0 14px;
+      .dd-card:hover::after {
+        opacity: 1;
+        transform: translateX(0);
+        color: var(--cyan);
       }
-      .dd-card-footer {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 8px;
+      .dd-card:hover .dd-card-title { color: var(--cyan); }
+      .dd-card.is-visited {
+        position: relative;
       }
-      .dd-card-cta {
-        font-size: 13px;
-        font-weight: 600;
-        color: #4dfeee;
-      }
-      .dd-copy-btn {
-        opacity: 0;
-        background: transparent;
-        border: 1px solid #232b38;
-        color: #7b8599;
+      .dd-card.is-visited .dd-card-title::after {
+        content: "✓";
+        display: inline-block;
+        margin-left: 8px;
         font-size: 11px;
-        font-weight: 600;
-        padding: 4px 10px;
+        font-weight: 700;
+        color: #4dfeee;
+        background: rgba(77, 254, 238, 0.12);
+        border: 1px solid rgba(77, 254, 238, 0.3);
+        padding: 1px 7px;
         border-radius: 8px;
-        cursor: pointer;
-        font-family: inherit;
-        transition: opacity 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        vertical-align: middle;
       }
-      .dd-card:hover .dd-copy-btn {
+      .dd-tag { display: none; }
+      .dd-card::before {
+        counter-increment: ddcard;
+        content: counter(ddcard, decimal-leading-zero);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--muted);
+        opacity: 0.6;
+        flex-shrink: 0;
+        min-width: 20px;
+        text-align: right;
+        transition: color 0.18s ease, opacity 0.18s ease;
+      }
+      .dd-card:hover::before {
+        color: var(--cyan);
         opacity: 1;
       }
-      .dd-copy-btn:hover {
-        color: #4dfeee;
-        border-color: #4dfeee;
+      .dd-card-title {
+        font-size: 15px;
+        font-weight: 500;
+        margin: 0;
+        line-height: 1.4;
+        color: #d4dae5;
+        flex: 1;
+        transition: color 0.18s ease;
+      }
+      .dd-card-desc { display: none; }
+      .dd-card-footer { display: none; }
+      @media (max-width: 720px) {
+        .sec h2 { font-size: 24px; gap: 10px; }
+        .sec h2 .sec-num { font-size: 12px; padding: 3px 8px; }
+        .dd-stack { padding: 14px 16px 10px; }
+        .dd-card { padding: 10px 8px; gap: 10px; }
       }
       .dd-empty {
         text-align: center;
@@ -506,7 +530,7 @@
           <span class="dd-stat__label">Deep Dives</span>
         </div>
         <div class="dd-stat">
-          <span class="dd-stat__value">6</span>
+          <span class="dd-stat__value">5</span>
           <span class="dd-stat__label">Stack Sections</span>
         </div>
         <div class="dd-stat">
@@ -533,381 +557,19 @@
       <aside class="sidebar">
         <h4>Browse by Stack</h4>
         <ol>
-          <li><a href="#s1">Languages <span class="sb-count">3</span></a></li>
-          <li><a href="#s2">Backend &amp; Tech Stack <span class="sb-count">7</span></a></li>
-          <li><a href="#s3">Networking <span class="sb-count">1</span></a></li>
-          <li><a href="#s4">Low-Level Design (LLD) <span class="sb-count">12</span></a></li>
           <li><a href="#s5">High-Level Design (HLD) <span class="sb-count">27</span></a></li>
+          <li><a href="#s4">Low-Level Design (LLD) <span class="sb-count">12</span></a></li>
+          <li><a href="#s1">Languages <span class="sb-count">3</span></a></li>
+          <li><a href="#s2">Backend &amp; Tech Stack <span class="sb-count">8</span></a></li>
           <li><a href="#s6">Google Interview <span class="sb-count">2</span></a></li>
         </ol>
       </aside>
 
       <div class="wrap" id="ddGrid">
 
-        <div class="sec" id="s1">
-          <div class="sec-head">
-            <h2><span class="sec-num">01</span>Languages</h2>
-            <p>Story-driven interview guides for the languages you'll be writing on the whiteboard — Java fundamentals plus modern Java 25 features, and a JavaScript &amp; Node.js deep dive that covers the runtime as much as the syntax.</p>
-          </div>
-
-          <div class="dd-stack">
-            <h3 class="dd-stack-title">Java</h3>
-            <div class="dd-grid">
-              <a class="dd-card" href="design-dev/Java/java25-interview.html" target="_blank" data-tags="language java interview">
-                <span class="dd-tag">Java</span>
-                <h3 class="dd-card-title">Java 25 Interview Cheat Sheet</h3>
-                <p class="dd-card-desc">Compact source files, flexible constructor bodies, module import declarations, primitive pattern matching, scoped values, and more — everything new in Java 25 for interviews.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the cheat sheet →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/Java/java-interview-questions.html" target="_blank" data-tags="language java interview">
-                <span class="dd-tag">Java · Storytelling</span>
-                <h3 class="dd-card-title">Java Interview Guide</h3>
-                <p class="dd-card-desc">20 deep dives across OOP, Strings, Collections, HashMap internals, threads, locks, JVM memory, GC, ClassLoaders, Streams, and the tricky gotchas — every concept walked through with a real-world scene and analogies you'll actually remember.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the storytelling guide →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/Java/garbage-collector-deep-dive.html" target="_blank" data-tags="language java jvm gc interview">
-                <span class="dd-tag">Java · JVM Interview</span>
-                <h3 class="dd-card-title">Garbage Collector — The Interview Guide</h3>
-                <p class="dd-card-desc">What GC actually does, the heap layout (Eden, S0, S1, Old), Minor vs Major vs Full GC, and how G1, ZGC and Shenandoah work — explained the way you'd say it in an interview, plus the 11 most-asked Q&amp;A with 60-second answers.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the interview guide →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-            </div>
-          </div>
-
-          <div class="dd-stack">
-            <h3 class="dd-stack-title">JavaScript &amp; Node.js</h3>
-            <div class="dd-grid">
-              <a class="dd-card" href="design-dev/Javascript/js-nodejs-interview.html" target="_blank" data-tags="language javascript nodejs interview tech">
-                <span class="dd-tag">JavaScript · Node.js</span>
-                <h3 class="dd-card-title">JavaScript &amp; Node.js Interview Guide</h3>
-                <p class="dd-card-desc">Story-driven walkthrough of every JS &amp; Node question that shows up in rounds — hoisting, closures, event loop, promises, streams, clustering, debugging, security. 25 sections with code &amp; diagrams.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the deep dive →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div class="divider"></div>
-
-        <div class="sec" id="s2">
-          <div class="sec-head">
-            <h2><span class="sec-num">02</span>Backend &amp; Tech Stack</h2>
-            <p>The day-to-day toolkit of a backend engineer — frameworks, message brokers, databases, containers, browser storage. Each guide is interview-grade with the production gotchas baked in.</p>
-          </div>
-
-          <div class="dd-stack">
-            <h3 class="dd-stack-title">Spring Boot</h3>
-            <div class="dd-grid">
-              <a class="dd-card" href="design-dev/Tech/spring-boot-interview.html" target="_blank" data-tags="tech spring springboot java interview backend">
-                <span class="dd-tag">Spring Boot · Storytelling</span>
-                <h3 class="dd-card-title">Spring Boot Interview Guide</h3>
-                <p class="dd-card-desc">30 deep dives across IoC &amp; DI, beans, auto-config, MVC, Data JPA, transactions, security, JWT, caching, async, microservices, and the gotchas every Spring dev hits in production — each topic walked through with a scene, analogy, and code.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the storytelling guide →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-            </div>
-          </div>
-
-          <div class="dd-stack">
-            <h3 class="dd-stack-title">Kafka &amp; Messaging</h3>
-            <div class="dd-grid">
-              <a class="dd-card" href="design-dev/Tech/kafka-interview.html" target="_blank" data-tags="tech kafka interview backend storytelling streaming">
-                <span class="dd-tag">Kafka · Storytelling</span>
-                <h3 class="dd-card-title">Kafka Interview Guide</h3>
-                <p class="dd-card-desc">25 deep dives across topics &amp; partitions, producer internals, acks &amp; ISR, consumer groups &amp; offsets, rebalancing, idempotent + transactional EOS, log compaction, hot partitions, KRaft, and the production gotchas every senior Kafka dev hits — each told the way you'd explain it to a friend over chai.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the storytelling guide →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/Tech/kafka-payment-idempotency.html" target="_blank" data-tags="tech kafka payments backend">
-                <span class="dd-tag">Kafka · Payments</span>
-                <h3 class="dd-card-title">Kafka &amp; Payment Idempotency</h3>
-                <p class="dd-card-desc">Deep dive on exactly-once semantics, idempotent producers, transactional outbox, and safely handling payment workflows under retries and partial failures.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the deep dive →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-            </div>
-          </div>
-
-          <div class="dd-stack">
-            <h3 class="dd-stack-title">Databases — SQL vs NoSQL</h3>
-            <div class="dd-grid">
-              <a class="dd-card" href="design-dev/Tech/sql-vs-nosql.html" target="_blank" data-tags="tech database sql nosql mongodb postgres redis cassandra interview storytelling">
-                <span class="dd-tag">Databases · Storytelling</span>
-                <h3 class="dd-card-title">SQL vs NoSQL — With Real Examples</h3>
-                <p class="dd-card-desc">20 deep dives covering the four NoSQL families (Document, KV, Wide-Column, Graph), ACID vs BASE, joins vs denormalization, sharding &amp; replication, CAP in practice, and the same e-commerce design done both ways — with concrete code in Postgres, MongoDB, Redis &amp; Cassandra.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the storytelling guide →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-            </div>
-          </div>
-
-          <div class="dd-stack">
-            <h3 class="dd-stack-title">Docker &amp; Containers</h3>
-            <div class="dd-grid">
-              <a class="dd-card" href="design-dev/Tech/docker-deep-dive.html" target="_blank" data-tags="tech docker backend interview">
-                <span class="dd-tag">Docker · Interview Deep Dive</span>
-                <h3 class="dd-card-title">Docker — Complete Interview Deep Dive</h3>
-                <p class="dd-card-desc">Architecture (dockerd / containerd / runc), image layers &amp; union FS, every Dockerfile instruction, CMD vs ENTRYPOINT, networking, volumes, namespaces &amp; cgroups, Compose, and 12 Q&amp;As.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the deep dive →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-            </div>
-          </div>
-
-          <div class="dd-stack">
-            <h3 class="dd-stack-title">Browser Storage</h3>
-            <div class="dd-grid">
-              <a class="dd-card" href="design-dev/Tech/browser-storage-deep-dive.html" target="_blank" data-tags="tech storage cookies localstorage sessionstorage web security backend">
-                <span class="dd-tag">Browser Storage · Deep Dive + Live Demos</span>
-                <h3 class="dd-card-title">Browser Storage — Cookies, localStorage &amp; sessionStorage</h3>
-                <p class="dd-card-desc">The three browser storage mechanisms compared end-to-end. Cookies (Set-Cookie, Domain/Path/SameSite/Secure/HttpOnly/__Host-), the Web Storage API, real-world use cases, XSS/CSRF defenses, third-party deprecation &amp; CHIPS — plus three in-page playgrounds to set, inspect, and delete data live.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Open the playgrounds →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-            </div>
-          </div>
-
-          <div class="dd-stack">
-            <h3 class="dd-stack-title">Backend Fundamentals</h3>
-            <div class="dd-grid">
-              <a class="dd-card" href="design-dev/Tech/backend-fundamentals.html" target="_blank" data-tags="tech backend networking docker">
-                <span class="dd-tag">Backend · Quick Reference</span>
-                <h3 class="dd-card-title">Backend Fundamentals — DNS, HTTP, Docker, Circuit Breaker</h3>
-                <p class="dd-card-desc">How DNS resolves &amp; caches, the 9 HTTP methods, Dockerfile anatomy, VM vs container deployment, API Gateway vs Load Balancer, and circuit breaker interview Q&amp;A.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the quick reference →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/Tech/caching-strategies.html" target="_blank" data-tags="tech backend caching cache redis distributed-systems interview storytelling">
-                <span class="dd-tag">Distributed Systems · Deep Dive</span>
-                <h3 class="dd-card-title">Caching Strategies in Distributed Systems</h3>
-                <p class="dd-card-desc">Every cache pattern in production — Cache-Aside, Read/Write-Through, Write-Behind, Refresh-Ahead — plus eviction policies (LRU, LFU, W-TinyLFU), consistent hashing, the five famous failure modes (stampede, avalanche, penetration, hot key, big key), and a real 10-component cache architecture walked through end-to-end.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the deep dive →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/Tech/java-25-vs-go.html" target="_blank" data-tags="tech java go golang jvm virtual-threads loom languages interview 2026">
-                <span class="dd-tag">Java vs Go · Interview Perspective</span>
-                <h3 class="dd-card-title">Java vs Go — Why Java Still Wins in 2026</h3>
-                <p class="dd-card-desc">A short, interview-friendly take on why Java is still the better backend choice in 2026. Virtual threads (Java 21+) match goroutines, the ecosystem is unmatched, the JVM beats AOT at steady state — plus a clean template answer for "Java or Go?" in interviews.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the quick take →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/Tech/backend-interview-qna.html" target="_blank" data-tags="tech backend interview microservices saga kafka observability nodejs database resilience qna">
-                <span class="dd-tag">Backend Interview · Q&amp;A</span>
-                <h3 class="dd-card-title">Backend &amp; System Design — Q&amp;A Walkthrough</h3>
-                <p class="dd-card-desc">Story-driven answers to the questions that show up in senior backend rounds — architecture walkthroughs, monolith vs microservices, event-driven flow, sagas &amp; idempotency, observability, SQL/NoSQL, Node.js event loop, resilience patterns (circuit breaker, DLQ, bulkhead), and the "draw your project" follow-ups.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the Q&amp;A guide →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div class="divider"></div>
-
-        <div class="sec" id="s3">
-          <div class="sec-head">
-            <h2><span class="sec-num">03</span>Networking</h2>
-            <p>The plumbing under every system you'll design — how packets actually flow through the seven OSI layers, what each layer adds, and the protocols you'll be asked about in rounds.</p>
-          </div>
-
-          <div class="dd-stack">
-            <h3 class="dd-stack-title">Networking</h3>
-            <div class="dd-grid">
-              <a class="dd-card" href="design-dev/Networking/osi-networking.html" target="_blank" data-tags="networking interview">
-                <span class="dd-tag">Networking · OSI Model</span>
-                <h3 class="dd-card-title">Networking — The OSI 7-Layer Model</h3>
-                <p class="dd-card-desc">Every OSI layer explained in detail — PDUs, protocols, devices — plus a mnemonic to remember the order, data encapsulation flow, OSI vs TCP/IP, and 10 interview Q&amp;As.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the deep dive →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div class="divider"></div>
-
-        <div class="sec" id="s4">
-          <div class="sec-head">
-            <h2><span class="sec-num">04</span>Low-Level Design (LLD)</h2>
-            <p>Object-modeling and class-design problems — first the framework that fits any 45-minute LLD round, then eight worked case studies with full Java code, state machines, and the gotchas Grokking glosses over.</p>
-          </div>
-
-          <div class="dd-stack">
-            <h3 class="dd-stack-title">Framework &amp; Method</h3>
-            <div class="dd-grid">
-              <a class="dd-card" href="design-dev/LLD/lld-interview-roadmap.html" target="_blank" data-tags="lld system-design interview">
-                <span class="dd-tag">System Design · LLD</span>
-                <h3 class="dd-card-title">LLD Interview Roadmap</h3>
-                <p class="dd-card-desc">Structured path to master low-level design interviews — SOLID, design patterns, concurrency building blocks, and the 20 problems you actually see in rounds.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">View the roadmap →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/LLD/lld-introduction.html" target="_blank" data-tags="lld system-design interview methodology">
-                <span class="dd-tag">LLD · In a Hurry · Part 1</span>
-                <h3 class="dd-card-title">LLD Introduction — What These Interviews Actually Test</h3>
-                <p class="dd-card-desc">Story-driven intro to low-level design — LLD vs HLD, the four scoring pillars, SOLID as a spine, and the six question shapes you'll meet in the wild. Part 1 of a 3-part in-a-hurry series.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the intro →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/LLD/lld-framework.html" target="_blank" data-tags="lld system-design interview methodology framework parking-lot walkthrough">
-                <span class="dd-tag">LLD · In a Hurry · Part 2</span>
-                <h3 class="dd-card-title">The 5-Step LLD Framework — A 45-Minute Playbook</h3>
-                <p class="dd-card-desc">Minute-by-minute playbook for any LLD prompt — Requirements, Entities, Class Diagram, Patterns + Sequence, Java Code — closed by a full Parking Lot walkthrough script with timing annotations.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the playbook →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/LLD/lld-patterns.html" target="_blank" data-tags="lld system-design interview design-patterns gof strategy factory observer state decorator">
-                <span class="dd-tag">LLD · In a Hurry · Part 3</span>
-                <h3 class="dd-card-title">Common LLD Patterns — The 8 You'll Actually Use</h3>
-                <p class="dd-card-desc">The eight GoF patterns that appear in 90% of LLD interviews — Strategy, Factory, Singleton, Observer, State, Decorator, Builder, Command. When each fits, the smell that summons it, and a one-page Java sketch each.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the catalogue →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-            </div>
-          </div>
-
-          <div class="dd-stack">
-            <h3 class="dd-stack-title">Case Studies</h3>
-            <div class="dd-grid">
-              <a class="dd-card" href="design-dev/LLD/vending-machine-lld.html" target="_blank" data-tags="lld case-study">
-                <span class="dd-tag">LLD · Case Study</span>
-                <h3 class="dd-card-title">Vending Machine — LLD Design</h3>
-                <p class="dd-card-desc">End-to-end object model, state machine, and class design for the classic LLD question — from requirements to code, with trade-off discussions at each step.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">See the case study →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/LLD/parking-lot-lld.html" target="_blank" data-tags="lld case-study parking strategy state observer">
-                <span class="dd-tag">LLD · Case Study</span>
-                <h3 class="dd-card-title">Parking Lot — LLD Design</h3>
-                <p class="dd-card-desc">A multi-floor smart parking lot built from a paper-ticket booth — Singleton + Strategy + State + Observer, full Java code, lost-ticket flow, peak-hour pricing decorator, and every gap in Grokking's classic answer plugged.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the deep dive →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/LLD/atm-lld.html" target="_blank" data-tags="lld case-study atm state strategy chain">
-                <span class="dd-tag">LLD · Case Study</span>
-                <h3 class="dd-card-title">ATM System — LLD Design</h3>
-                <p class="dd-card-desc">A real ATM — 8-state machine for the device, Strategy for transactions, Chain of Responsibility for cash dispensing in mixed denominations, 2-phase debit so a jam never costs the customer, and full Java code with every Grokking gap plugged.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the deep dive →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/LLD/library-management-lld.html" target="_blank" data-tags="lld case-study library repository observer state strategy">
-                <span class="dd-tag">LLD · Case Study</span>
-                <h3 class="dd-card-title">Library Management — LLD Design</h3>
-                <p class="dd-card-desc">A real lending library — Repository search (not HashMap), FIFO ReservationQueue per book, BookItem state machine, Observer-based notifications, FineStrategy per member-type, and Grokking's classic single-slot reservation bug fixed.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the deep dive →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/LLD/movie-booking-lld.html" target="_blank" data-tags="lld case-study bookmyshow seat-locking saga concurrency strategy">
-                <span class="dd-tag">LLD · Case Study</span>
-                <h3 class="dd-card-title">Movie Ticket Booking — LLD Design</h3>
-                <p class="dd-card-desc">A real BookMyShow-style booking — atomic seat-locking with TTL, Saga payment flow with compensations, decorator pricing for peak-hour + premium-seat surcharges, and the concurrency story Grokking glosses over (three users clicking F-12 at the same instant).</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the deep dive →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/LLD/notification-service-lld.html" target="_blank" data-tags="lld case-study notification messaging">
-                <span class="dd-tag">LLD · Case Study</span>
-                <h3 class="dd-card-title">Notification Service — LLD Design</h3>
-                <p class="dd-card-desc">Multi-channel sender (Email/SMS/Push/WhatsApp) with the API-vs-worker split that keeps Order Service unblocked when SendGrid is slow — Strategy + Factory + Decorator + retries with backoff, idempotency at two layers, and rate limits per user &amp; provider.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the deep dive →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/LLD/makemytrip-lld.html" target="_blank" data-tags="lld case-study interview">
-                <span class="dd-tag">LLD · Case Study</span>
-                <h3 class="dd-card-title">MakeMyTrip — LLD Interview Design</h3>
-                <p class="dd-card-desc">Full interview-grade design: requirements, entities, 10 design patterns mapped to real variability, booking state machine, concurrency, and 15 follow-up cross-questions with model answers.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the deep dive →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-
-              <a class="dd-card" href="design-dev/LLD/hotel-management-lld.html" target="_blank" data-tags="lld case-study mysql">
-                <span class="dd-tag">LLD · Case Study</span>
-                <h3 class="dd-card-title">Hotel Management — LLD Design</h3>
-                <p class="dd-card-desc">End-to-end hotel system design: actors &amp; use cases, class/ER diagrams, full MySQL DDL with composite indexes, booking concurrency with pessimistic locks, sequence flows, and interview Q&amp;A.</p>
-                <div class="dd-card-footer">
-                  <span class="dd-card-cta">Read the deep dive →</span>
-                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
-                </div>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div class="divider"></div>
-
         <div class="sec" id="s5">
           <div class="sec-head">
-            <h2><span class="sec-num">05</span>High-Level Design (HLD)</h2>
+            <h2><span class="sec-num">01</span>High-Level Design (HLD)</h2>
             <p>Architecture-level system design — the 4-step interview framework, a reference catalog of patterns &amp; technologies, and 24 worked case studies covering every famous "design X" prompt with capacity math, trade-offs, and production-grade detail.</p>
           </div>
 
@@ -1131,10 +793,358 @@
         </div>
 
         <div class="divider"></div>
+        <div class="sec" id="s4">
+          <div class="sec-head">
+            <h2><span class="sec-num">02</span>Low-Level Design (LLD)</h2>
+            <p>Object-modeling and class-design problems — first the framework that fits any 45-minute LLD round, then eight worked case studies with full Java code, state machines, and the gotchas Grokking glosses over.</p>
+          </div>
 
+          <div class="dd-stack">
+            <h3 class="dd-stack-title">Framework &amp; Method</h3>
+            <div class="dd-grid">
+              <a class="dd-card" href="design-dev/LLD/lld-interview-roadmap.html" target="_blank" data-tags="lld system-design interview">
+                <span class="dd-tag">System Design · LLD</span>
+                <h3 class="dd-card-title">LLD Interview Roadmap</h3>
+                <p class="dd-card-desc">Structured path to master low-level design interviews — SOLID, design patterns, concurrency building blocks, and the 20 problems you actually see in rounds.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">View the roadmap →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/LLD/lld-introduction.html" target="_blank" data-tags="lld system-design interview methodology">
+                <span class="dd-tag">LLD · In a Hurry · Part 1</span>
+                <h3 class="dd-card-title">LLD Introduction — What These Interviews Actually Test</h3>
+                <p class="dd-card-desc">Story-driven intro to low-level design — LLD vs HLD, the four scoring pillars, SOLID as a spine, and the six question shapes you'll meet in the wild. Part 1 of a 3-part in-a-hurry series.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the intro →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/LLD/lld-framework.html" target="_blank" data-tags="lld system-design interview methodology framework parking-lot walkthrough">
+                <span class="dd-tag">LLD · In a Hurry · Part 2</span>
+                <h3 class="dd-card-title">The 5-Step LLD Framework — A 45-Minute Playbook</h3>
+                <p class="dd-card-desc">Minute-by-minute playbook for any LLD prompt — Requirements, Entities, Class Diagram, Patterns + Sequence, Java Code — closed by a full Parking Lot walkthrough script with timing annotations.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the playbook →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/LLD/lld-patterns.html" target="_blank" data-tags="lld system-design interview design-patterns gof strategy factory observer state decorator">
+                <span class="dd-tag">LLD · In a Hurry · Part 3</span>
+                <h3 class="dd-card-title">Common LLD Patterns — The 8 You'll Actually Use</h3>
+                <p class="dd-card-desc">The eight GoF patterns that appear in 90% of LLD interviews — Strategy, Factory, Singleton, Observer, State, Decorator, Builder, Command. When each fits, the smell that summons it, and a one-page Java sketch each.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the catalogue →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="dd-stack">
+            <h3 class="dd-stack-title">Case Studies</h3>
+            <div class="dd-grid">
+              <a class="dd-card" href="design-dev/LLD/vending-machine-lld.html" target="_blank" data-tags="lld case-study">
+                <span class="dd-tag">LLD · Case Study</span>
+                <h3 class="dd-card-title">Vending Machine — LLD Design</h3>
+                <p class="dd-card-desc">End-to-end object model, state machine, and class design for the classic LLD question — from requirements to code, with trade-off discussions at each step.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">See the case study →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/LLD/parking-lot-lld.html" target="_blank" data-tags="lld case-study parking strategy state observer">
+                <span class="dd-tag">LLD · Case Study</span>
+                <h3 class="dd-card-title">Parking Lot — LLD Design</h3>
+                <p class="dd-card-desc">A multi-floor smart parking lot built from a paper-ticket booth — Singleton + Strategy + State + Observer, full Java code, lost-ticket flow, peak-hour pricing decorator, and every gap in Grokking's classic answer plugged.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the deep dive →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/LLD/atm-lld.html" target="_blank" data-tags="lld case-study atm state strategy chain">
+                <span class="dd-tag">LLD · Case Study</span>
+                <h3 class="dd-card-title">ATM System — LLD Design</h3>
+                <p class="dd-card-desc">A real ATM — 8-state machine for the device, Strategy for transactions, Chain of Responsibility for cash dispensing in mixed denominations, 2-phase debit so a jam never costs the customer, and full Java code with every Grokking gap plugged.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the deep dive →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/LLD/library-management-lld.html" target="_blank" data-tags="lld case-study library repository observer state strategy">
+                <span class="dd-tag">LLD · Case Study</span>
+                <h3 class="dd-card-title">Library Management — LLD Design</h3>
+                <p class="dd-card-desc">A real lending library — Repository search (not HashMap), FIFO ReservationQueue per book, BookItem state machine, Observer-based notifications, FineStrategy per member-type, and Grokking's classic single-slot reservation bug fixed.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the deep dive →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/LLD/movie-booking-lld.html" target="_blank" data-tags="lld case-study bookmyshow seat-locking saga concurrency strategy">
+                <span class="dd-tag">LLD · Case Study</span>
+                <h3 class="dd-card-title">Movie Ticket Booking — LLD Design</h3>
+                <p class="dd-card-desc">A real BookMyShow-style booking — atomic seat-locking with TTL, Saga payment flow with compensations, decorator pricing for peak-hour + premium-seat surcharges, and the concurrency story Grokking glosses over (three users clicking F-12 at the same instant).</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the deep dive →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/LLD/notification-service-lld.html" target="_blank" data-tags="lld case-study notification messaging">
+                <span class="dd-tag">LLD · Case Study</span>
+                <h3 class="dd-card-title">Notification Service — LLD Design</h3>
+                <p class="dd-card-desc">Multi-channel sender (Email/SMS/Push/WhatsApp) with the API-vs-worker split that keeps Order Service unblocked when SendGrid is slow — Strategy + Factory + Decorator + retries with backoff, idempotency at two layers, and rate limits per user &amp; provider.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the deep dive →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/LLD/makemytrip-lld.html" target="_blank" data-tags="lld case-study interview">
+                <span class="dd-tag">LLD · Case Study</span>
+                <h3 class="dd-card-title">MakeMyTrip — LLD Interview Design</h3>
+                <p class="dd-card-desc">Full interview-grade design: requirements, entities, 10 design patterns mapped to real variability, booking state machine, concurrency, and 15 follow-up cross-questions with model answers.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the deep dive →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/LLD/hotel-management-lld.html" target="_blank" data-tags="lld case-study mysql">
+                <span class="dd-tag">LLD · Case Study</span>
+                <h3 class="dd-card-title">Hotel Management — LLD Design</h3>
+                <p class="dd-card-desc">End-to-end hotel system design: actors &amp; use cases, class/ER diagrams, full MySQL DDL with composite indexes, booking concurrency with pessimistic locks, sequence flows, and interview Q&amp;A.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the deep dive →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="sec" id="s1">
+          <div class="sec-head">
+            <h2><span class="sec-num">03</span>Languages</h2>
+            <p>Story-driven interview guides for the languages you'll be writing on the whiteboard — Java fundamentals plus modern Java 25 features, and a JavaScript &amp; Node.js deep dive that covers the runtime as much as the syntax.</p>
+          </div>
+
+          <div class="dd-stack">
+            <h3 class="dd-stack-title">Java</h3>
+            <div class="dd-grid">
+              <a class="dd-card" href="design-dev/Java/java25-interview.html" target="_blank" data-tags="language java interview">
+                <span class="dd-tag">Java</span>
+                <h3 class="dd-card-title">Java 25 Interview Cheat Sheet</h3>
+                <p class="dd-card-desc">Compact source files, flexible constructor bodies, module import declarations, primitive pattern matching, scoped values, and more — everything new in Java 25 for interviews.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the cheat sheet →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/Java/java-interview-questions.html" target="_blank" data-tags="language java interview">
+                <span class="dd-tag">Java · Storytelling</span>
+                <h3 class="dd-card-title">Java Interview Guide</h3>
+                <p class="dd-card-desc">20 deep dives across OOP, Strings, Collections, HashMap internals, threads, locks, JVM memory, GC, ClassLoaders, Streams, and the tricky gotchas — every concept walked through with a real-world scene and analogies you'll actually remember.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the storytelling guide →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/Java/garbage-collector-deep-dive.html" target="_blank" data-tags="language java jvm gc interview">
+                <span class="dd-tag">Java · JVM Interview</span>
+                <h3 class="dd-card-title">Garbage Collector — The Interview Guide</h3>
+                <p class="dd-card-desc">What GC actually does, the heap layout (Eden, S0, S1, Old), Minor vs Major vs Full GC, and how G1, ZGC and Shenandoah work — explained the way you'd say it in an interview, plus the 11 most-asked Q&amp;A with 60-second answers.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the interview guide →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="dd-stack">
+            <h3 class="dd-stack-title">JavaScript &amp; Node.js</h3>
+            <div class="dd-grid">
+              <a class="dd-card" href="design-dev/Javascript/js-nodejs-interview.html" target="_blank" data-tags="language javascript nodejs interview tech">
+                <span class="dd-tag">JavaScript · Node.js</span>
+                <h3 class="dd-card-title">JavaScript &amp; Node.js Interview Guide</h3>
+                <p class="dd-card-desc">Story-driven walkthrough of every JS &amp; Node question that shows up in rounds — hoisting, closures, event loop, promises, streams, clustering, debugging, security. 25 sections with code &amp; diagrams.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the deep dive →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="sec" id="s2">
+          <div class="sec-head">
+            <h2><span class="sec-num">04</span>Backend &amp; Tech Stack</h2>
+            <p>The day-to-day toolkit of a backend engineer — frameworks, message brokers, databases, containers, browser storage. Each guide is interview-grade with the production gotchas baked in.</p>
+          </div>
+
+          <div class="dd-stack">
+            <h3 class="dd-stack-title">Spring Boot</h3>
+            <div class="dd-grid">
+              <a class="dd-card" href="design-dev/Tech/spring-boot-interview.html" target="_blank" data-tags="tech spring springboot java interview backend">
+                <span class="dd-tag">Spring Boot · Storytelling</span>
+                <h3 class="dd-card-title">Spring Boot Interview Guide</h3>
+                <p class="dd-card-desc">30 deep dives across IoC &amp; DI, beans, auto-config, MVC, Data JPA, transactions, security, JWT, caching, async, microservices, and the gotchas every Spring dev hits in production — each topic walked through with a scene, analogy, and code.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the storytelling guide →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="dd-stack">
+            <h3 class="dd-stack-title">Kafka &amp; Messaging</h3>
+            <div class="dd-grid">
+              <a class="dd-card" href="design-dev/Tech/kafka-interview.html" target="_blank" data-tags="tech kafka interview backend storytelling streaming">
+                <span class="dd-tag">Kafka · Storytelling</span>
+                <h3 class="dd-card-title">Kafka Interview Guide</h3>
+                <p class="dd-card-desc">25 deep dives across topics &amp; partitions, producer internals, acks &amp; ISR, consumer groups &amp; offsets, rebalancing, idempotent + transactional EOS, log compaction, hot partitions, KRaft, and the production gotchas every senior Kafka dev hits — each told the way you'd explain it to a friend over chai.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the storytelling guide →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/Tech/kafka-payment-idempotency.html" target="_blank" data-tags="tech kafka payments backend">
+                <span class="dd-tag">Kafka · Payments</span>
+                <h3 class="dd-card-title">Kafka &amp; Payment Idempotency</h3>
+                <p class="dd-card-desc">Deep dive on exactly-once semantics, idempotent producers, transactional outbox, and safely handling payment workflows under retries and partial failures.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the deep dive →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="dd-stack">
+            <h3 class="dd-stack-title">Databases — SQL vs NoSQL</h3>
+            <div class="dd-grid">
+              <a class="dd-card" href="design-dev/Tech/sql-vs-nosql.html" target="_blank" data-tags="tech database sql nosql mongodb postgres redis cassandra interview storytelling">
+                <span class="dd-tag">Databases · Storytelling</span>
+                <h3 class="dd-card-title">SQL vs NoSQL — With Real Examples</h3>
+                <p class="dd-card-desc">20 deep dives covering the four NoSQL families (Document, KV, Wide-Column, Graph), ACID vs BASE, joins vs denormalization, sharding &amp; replication, CAP in practice, and the same e-commerce design done both ways — with concrete code in Postgres, MongoDB, Redis &amp; Cassandra.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the storytelling guide →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="dd-stack">
+            <h3 class="dd-stack-title">Docker &amp; Containers</h3>
+            <div class="dd-grid">
+              <a class="dd-card" href="design-dev/Tech/docker-deep-dive.html" target="_blank" data-tags="tech docker backend interview">
+                <span class="dd-tag">Docker · Interview Deep Dive</span>
+                <h3 class="dd-card-title">Docker — Complete Interview Deep Dive</h3>
+                <p class="dd-card-desc">Architecture (dockerd / containerd / runc), image layers &amp; union FS, every Dockerfile instruction, CMD vs ENTRYPOINT, networking, volumes, namespaces &amp; cgroups, Compose, and 12 Q&amp;As.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the deep dive →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="dd-stack">
+            <h3 class="dd-stack-title">Browser Storage</h3>
+            <div class="dd-grid">
+              <a class="dd-card" href="design-dev/Tech/browser-storage-deep-dive.html" target="_blank" data-tags="tech storage cookies localstorage sessionstorage web security backend">
+                <span class="dd-tag">Browser Storage · Deep Dive + Live Demos</span>
+                <h3 class="dd-card-title">Browser Storage — Cookies, localStorage &amp; sessionStorage</h3>
+                <p class="dd-card-desc">The three browser storage mechanisms compared end-to-end. Cookies (Set-Cookie, Domain/Path/SameSite/Secure/HttpOnly/__Host-), the Web Storage API, real-world use cases, XSS/CSRF defenses, third-party deprecation &amp; CHIPS — plus three in-page playgrounds to set, inspect, and delete data live.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Open the playgrounds →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="dd-stack">
+            <h3 class="dd-stack-title">Backend Fundamentals</h3>
+            <div class="dd-grid">
+              <a class="dd-card" href="design-dev/Tech/backend-fundamentals.html" target="_blank" data-tags="tech backend networking docker">
+                <span class="dd-tag">Backend · Quick Reference</span>
+                <h3 class="dd-card-title">Backend Fundamentals — DNS, HTTP, Docker, Circuit Breaker</h3>
+                <p class="dd-card-desc">How DNS resolves &amp; caches, the 9 HTTP methods, Dockerfile anatomy, VM vs container deployment, API Gateway vs Load Balancer, and circuit breaker interview Q&amp;A.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the quick reference →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/Tech/caching-strategies.html" target="_blank" data-tags="tech backend caching cache redis distributed-systems interview storytelling">
+                <span class="dd-tag">Distributed Systems · Deep Dive</span>
+                <h3 class="dd-card-title">Caching Strategies in Distributed Systems</h3>
+                <p class="dd-card-desc">Every cache pattern in production — Cache-Aside, Read/Write-Through, Write-Behind, Refresh-Ahead — plus eviction policies (LRU, LFU, W-TinyLFU), consistent hashing, the five famous failure modes (stampede, avalanche, penetration, hot key, big key), and a real 10-component cache architecture walked through end-to-end.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the deep dive →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/Tech/java-25-vs-go.html" target="_blank" data-tags="tech java go golang jvm virtual-threads loom languages interview 2026">
+                <span class="dd-tag">Java vs Go · Interview Perspective</span>
+                <h3 class="dd-card-title">Java vs Go — Why Java Still Wins in 2026</h3>
+                <p class="dd-card-desc">A short, interview-friendly take on why Java is still the better backend choice in 2026. Virtual threads (Java 21+) match goroutines, the ecosystem is unmatched, the JVM beats AOT at steady state — plus a clean template answer for "Java or Go?" in interviews.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the quick take →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+
+              <a class="dd-card" href="design-dev/Tech/backend-interview-qna.html" target="_blank" data-tags="tech backend interview microservices saga kafka observability nodejs database resilience qna">
+                <span class="dd-tag">Backend Interview · Q&amp;A</span>
+                <h3 class="dd-card-title">Backend &amp; System Design — Q&amp;A Walkthrough</h3>
+                <p class="dd-card-desc">Story-driven answers to the questions that show up in senior backend rounds — architecture walkthroughs, monolith vs microservices, event-driven flow, sagas &amp; idempotency, observability, SQL/NoSQL, Node.js event loop, resilience patterns (circuit breaker, DLQ, bulkhead), and the "draw your project" follow-ups.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the Q&amp;A guide →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="dd-stack">
+            <h3 class="dd-stack-title">Networking</h3>
+            <div class="dd-grid">
+              <a class="dd-card" href="design-dev/Networking/osi-networking.html" target="_blank" data-tags="networking interview">
+                <span class="dd-tag">Networking · OSI Model</span>
+                <h3 class="dd-card-title">Networking — The OSI 7-Layer Model</h3>
+                <p class="dd-card-desc">Every OSI layer explained in detail — PDUs, protocols, devices — plus a mnemonic to remember the order, data encapsulation flow, OSI vs TCP/IP, and 10 interview Q&amp;As.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the deep dive →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
         <div class="sec" id="s6">
           <div class="sec-head">
-            <h2><span class="sec-num">06</span>Google Interview</h2>
+            <h2><span class="sec-num">05</span>Google Interview</h2>
             <p>Problems in the shape Google likes — bounded constraints, brutal scale, and an obvious-once-you-see-it trick that replaces sorting or coordination with a smaller, cheaper primitive.</p>
           </div>
 
@@ -1191,5 +1201,12 @@
     <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
 
     <script src="js/dd.js"></script>
+    <script>
+      document.querySelectorAll('.dd-stack').forEach(function (stack) {
+        var title = stack.querySelector('.dd-stack-title');
+        var count = stack.querySelectorAll('.dd-card').length;
+        if (title && count) title.setAttribute('data-count', count + (count === 1 ? ' item' : ' items'));
+      });
+    </script>
   </body>
 </html>
