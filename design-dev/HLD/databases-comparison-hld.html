@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Database Families Compared — RDBMS vs Document vs Wide-Column vs Key-Value vs Search vs Graph vs Vector</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:780px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.8rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.4rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:820px;line-height:1.78}
+.sec h3.subh{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--heading);margin:1.8rem 0 .6rem}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.55rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.92rem;color:var(--text);line-height:1.78}
+.card p+p{margin-top:.55rem}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.3rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+
+.tech-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem 1.75rem;margin-bottom:1rem;transition:border-color .2s}
+.tech-card:hover{border-color:rgba(232,116,59,.3)}
+.tech-card h3{font-family:'Playfair Display',serif;font-weight:700;font-size:1.3rem;color:var(--heading);margin-bottom:.85rem;display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+.tech-card h3 .badge{font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.22rem .55rem;border-radius:5px}
+.tech-card .field{margin:.55rem 0;font-size:.9rem;line-height:1.78;color:var(--text)}
+.tech-card .field .lbl{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--orange);margin-right:.5rem;min-width:110px;vertical-align:top}
+.tech-card .field.tip .lbl{color:var(--green)}
+.tech-card .field.trade .lbl{color:var(--red)}
+.tech-card .field.feat .lbl{color:var(--blue)}
+.tech-card .field.when .lbl{color:var(--cyan)}
+.tech-card .field.story .lbl{color:var(--purple)}
+.tech-card code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:900px){.g4{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:0}}
+
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.92rem;line-height:1.78}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--text)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--text)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--text)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--text)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--text)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--text)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--text)}
+.highlight strong{font-weight:700;color:var(--heading)}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.75rem .9rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;overflow-x:auto;margin-bottom:1rem}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:.85rem;margin-bottom:1rem}
+@media(max-width:700px){.compare{grid-template-columns:1fr}}
+.bad,.good{padding:1.2rem 1.4rem;border-radius:var(--r);font-size:.88rem;line-height:1.75}
+.bad{background:var(--red-d);border-left:3px solid var(--red)}
+.good{background:var(--green-d);border-left:3px solid var(--green)}
+.bad .lbl,.good .lbl{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:.4rem}
+.bad .lbl{color:var(--red)}
+.good .lbl{color:var(--green)}
+.bad code,.good code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">HLD Reference</div>
+  <h1>Database Families <span>Compared</span></h1>
+  <p class="sub">RDBMS, Document, Wide-Column, Key-Value, Search Engine, Time-Series, Graph, Vector, Object Store, NewSQL — the storage vocabulary every system-design interview expects you to wield like a tool, not a toy.</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Why DB Choice Decides the Design</a></li>
+      <li><a href="#s2">The Mental Model — Four Axes</a></li>
+      <li><a href="#s3">The Family Landscape</a></li>
+      <li><a href="#s4">RDBMS — Relational SQL</a></li>
+      <li><a href="#s5">Document — JSON-Shaped</a></li>
+      <li><a href="#s6">Wide-Column — Big Tables</a></li>
+      <li><a href="#s7">Key-Value — The Hash Map</a></li>
+      <li><a href="#s8">Search Engine — Inverted Index</a></li>
+      <li><a href="#s9">Time-Series — Append-Only Streams</a></li>
+      <li><a href="#s10">Graph — Nodes &amp; Edges</a></li>
+      <li><a href="#s11">Vector — Similarity Search</a></li>
+      <li><a href="#s12">Object Store — Big Blobs</a></li>
+      <li><a href="#s13">NewSQL — SQL at Scale</a></li>
+      <li><a href="#s14">Decision Tree — Picking One</a></li>
+      <li><a href="#s15">Polyglot — Real Systems</a></li>
+      <li><a href="#s16">One-Line Cheat Sheet</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- SECTION 1 -->
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>Why the DB Choice Decides the Whole Design</h2>
+  <p>Imagine Raj walks into the system-design loop at a FAANG-style company. The interviewer says "design Twitter". Raj draws a load balancer, an app server, and writes "DB" in a box. The interviewer taps the box: "which DB?" Raj says "Postgres". The interviewer asks why. Raj says "it's what I know." The interview is effectively over — not because Postgres is wrong, but because Raj treated the DB as a black box. The interviewer just learned that Raj has never actually felt the consequences of that choice in production.</p>
+
+  <p>Here is the secret most candidates miss: <strong>the database family is the single most consequential decision in any HLD</strong>. Every other choice — sharding, caching, replication, indexing, the API shape, even the team's on-call rotation — falls out of that one box. Pick wrong and you spend the rest of the interview (and the rest of the system's life) papering over the mismatch. Pick right and the rest of the design almost writes itself.</p>
+
+  <div class="highlight hl-orange"><strong>The senior signal:</strong> "Before I draw the DB, let me say which family I'm picking and why. The workload is X writes/sec, Y reads/sec, the access pattern is Z, the consistency requirement is A — that points me at <em>this</em> family, not those." The interviewer just learned you've made this decision before, with consequences.</div>
+
+  <h3 class="subh">What "knowing your databases" actually means in an interview</h3>
+  <p>Knowing a database is not "I've used MongoDB". It's being able to say, in one breath, four things about it:</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>The four things to know about any DB</h3>
+      <ul>
+        <li><strong>Storage engine</strong> — B-tree, LSM-tree, inverted index, hash table, columnar? This decides reads-vs-writes performance.</li>
+        <li><strong>Query model</strong> — joins? secondary indexes? aggregations? full-text? geo? graph traversals? This decides which questions are cheap and which are catastrophic.</li>
+        <li><strong>Consistency story</strong> — single-node ACID, eventually consistent, tunable, linearizable? This decides what your app code can assume.</li>
+        <li><strong>Scale axis</strong> — vertical only, horizontally sharded, peer-to-peer, fully managed? This decides what breaks at 10x growth.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>What this page covers</h3>
+      <ul>
+        <li>The ten database families an interviewer expects you to recognize on sight.</li>
+        <li>The storage engine and query model behind each, in plain words.</li>
+        <li>The workloads each one was built to crush — and the ones each one chokes on.</li>
+        <li>A decision tree that takes "I need to store X" and lands you on a family in three questions.</li>
+        <li>Polyglot persistence — how real systems (Uber, Netflix, Twitter) glue four or five of these together.</li>
+      </ul>
+    </div>
+  </div>
+
+  <p style="margin-top:1rem">By the end of this page you should be able to look at any interview prompt — "design a chat app", "design a search service", "design a leaderboard" — and within thirty seconds name the family you'd start from and what you'd reach for next when the first one's limits show up. That is the muscle this page builds.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 2 — MENTAL MODEL -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-green">Step 2</span>
+  <h2>The Mental Model — Four Axes That Separate Every DB</h2>
+  <p>Before we look at any product names, let's build the mental framework. Every database — every single one — can be placed on four axes. Internalize these and you can <strong>derive</strong> which family fits a workload, instead of memorizing a list. This is the difference between recognizing a database and understanding it.</p>
+
+  <h3 class="subh">Axis 1 — Data shape: what does one "record" look like?</h3>
+  <p>Imagine you're storing a customer. Is the customer one fixed-shape row (id, name, email, plan)? Or a nested document with a varying number of addresses, payment methods, and metadata blobs? Or just a string blob indexed by id? Or a node with edges to other customers? The natural <em>shape</em> of your record is the strongest signal of which family fits.</p>
+
+  <div class="g4">
+    <div class="card"><h3>Tabular</h3><p>Fixed columns, typed, the same shape for every row. Joins across tables compose new shapes. → <strong>RDBMS</strong>.</p></div>
+    <div class="card"><h3>Document</h3><p>Self-contained JSON-like tree per record, varying shape allowed. → <strong>Document DB</strong>.</p></div>
+    <div class="card"><h3>Key → Blob</h3><p>Lookup by exact key, value is opaque (string, hash, list, set). → <strong>Key-Value</strong>.</p></div>
+    <div class="card"><h3>Wide row</h3><p>One partition key + millions of column-value pairs underneath. → <strong>Wide-column</strong>.</p></div>
+  </div>
+
+  <h3 class="subh">Axis 2 — Storage engine: what does it do on disk?</h3>
+  <p>The storage engine is the single biggest predictor of "is this DB fast at reads or writes?". Two engines dominate. <strong>B-tree</strong>: every write seeks into a sorted on-disk tree and updates in place — great for point reads and range scans, slower for high write volume because each write may rewrite a page. <strong>LSM-tree</strong> (Log-Structured Merge): every write goes to a sequential append-only log, then to an in-memory sorted buffer, then flushes to immutable files on disk that get compacted in the background — phenomenal write throughput, slightly slower reads because a key may live in several files. <strong>Inverted index</strong>: builds a "word → document list" map so full-text queries are a hash lookup, not a scan. <strong>Columnar</strong>: stores all values of one column together so analytical aggregations skip the columns they don't need.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  W[Write Path] --> BT["B-Tree<br/>(Postgres, MySQL InnoDB)<br/>seek + update page<br/>READ-optimized"]
+  W --> LSM["LSM-Tree<br/>(Cassandra, RocksDB, HBase)<br/>append + compact<br/>WRITE-optimized"]
+  W --> INV["Inverted Index<br/>(Elasticsearch, Lucene)<br/>token to doc list<br/>SEARCH-optimized"]
+  W --> COL["Columnar<br/>(BigQuery, Redshift, Druid)<br/>column-wise storage<br/>SCAN-optimized"]
+  W --> HASH["Hash Table<br/>(Redis, Memcached)<br/>RAM-resident<br/>LOOKUP-optimized"]
+
+  style BT fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style LSM fill:#e8743b,stroke:#e8743b,color:#fff
+  style INV fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style COL fill:#3cbfbf,stroke:#3cbfbf,color:#fff
+  style HASH fill:#38b265,stroke:#38b265,color:#fff
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>So what:</strong> if your interview workload is "1M writes/sec from IoT sensors", an LSM-tree engine is doing 90% of the work for you. If it's "search this 500GB product catalog with typo tolerance", an inverted index is the only sane answer. The engine choice is downstream of the workload, not your personal preference.</div>
+
+  <h3 class="subh">Axis 3 — Consistency &amp; the CAP shadow</h3>
+  <p>Every distributed DB makes a trade-off when the network breaks: do you reject writes to stay consistent (CP), or accept writes and resolve conflicts later (AP)? Single-node RDBMS sidesteps this entirely by being… single-node — strong consistency by default, but you scale vertically and hope you never max out the box. Cassandra picks AP — writes always succeed, reads may see stale data for a moment. Spanner picks CP with linearizable reads via atomic clocks — at the cost of bounded latency. Knowing where your DB sits on this axis is what lets you answer "what happens during a network partition?" — the question interviewers love to drop in deep-dives.</p>
+
+  <h3 class="subh">Axis 4 — Scale axis: how does it grow?</h3>
+  <p>Some databases grow by getting a bigger box (vertical scaling: Postgres, MySQL). Some shard horizontally but you manage the shards (manual sharding). Some shard automatically and you never see it (DynamoDB, Spanner, Cassandra). Some are peer-to-peer with no master at all (Cassandra, Riak). This axis decides what your on-call life looks like at 10x growth — whether you're upgrading the box at 2am or just provisioning more capacity in a console.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Family</th><th>Shape</th><th>Engine</th><th>Consistency Default</th><th>Scale Axis</th></tr></thead>
+      <tbody>
+        <tr><td>RDBMS</td><td>Tabular + joins</td><td>B-tree</td><td>Strong (ACID)</td><td>Vertical, then manual shard</td></tr>
+        <tr><td>Document</td><td>JSON tree</td><td>B-tree or LSM</td><td>Strong (single doc)</td><td>Horizontal (sharded clusters)</td></tr>
+        <tr><td>Wide-column</td><td>Partition + clustering</td><td>LSM-tree</td><td>Tunable, AP-default</td><td>Peer-to-peer horizontal</td></tr>
+        <tr><td>Key-value</td><td>Key → blob</td><td>Hash / LSM</td><td>Varies (Redis: per-node)</td><td>Shard by key hash</td></tr>
+        <tr><td>Search engine</td><td>Document + tokens</td><td>Inverted index</td><td>Eventually consistent (≈1s refresh)</td><td>Horizontal sharded indices</td></tr>
+        <tr><td>Time-series</td><td>(metric, ts, value)</td><td>LSM / columnar</td><td>Eventually consistent</td><td>Time-partitioned shards</td></tr>
+        <tr><td>Graph</td><td>Nodes + edges</td><td>Adjacency list + index</td><td>Strong (single instance)</td><td>Hard — graphs don't shard cleanly</td></tr>
+        <tr><td>Vector</td><td>Embedding + payload</td><td>HNSW / IVF index</td><td>Eventually consistent</td><td>Horizontal sharded indices</td></tr>
+        <tr><td>Object store</td><td>Path → blob</td><td>Distributed FS</td><td>Strong read-after-write</td><td>Effectively infinite (S3)</td></tr>
+        <tr><td>NewSQL</td><td>Tabular + joins</td><td>Distributed B-tree + Raft/Paxos</td><td>Linearizable (CP)</td><td>Auto-shard horizontal</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-green"><strong>So in short —</strong> the data shape narrows you to a small set of families, the storage engine tells you what's fast, the consistency story tells you what your app can assume, and the scale axis tells you what your future-self will be paged about. Every family below is a different point in this four-dimensional space.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 3 — FAMILY LANDSCAPE -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-purple">Step 3</span>
+  <h2>The Family Landscape — All Ten in One Diagram</h2>
+  <p>Before we zoom into each family, here is the whole landscape on one canvas. Read it like a periodic table: the two big buckets are <strong>SQL</strong> (left, blue) and <strong>NoSQL</strong> (right, orange), with specialized stores hanging off each (purple = search/analytics, green = blob/file, cyan = niche shapes). Numbers ①–⑩ map to the deep-dives that follow.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  ROOT([Database<br/>Families])
+
+  ROOT --> SQL[Relational / SQL world]
+  ROOT --> NSQL[NoSQL world]
+  ROOT --> SPEC[Specialized stores]
+  ROOT --> BLOB[Blob &amp; file stores]
+
+  SQL --> RDBMS["④ RDBMS<br/>Postgres · MySQL"]
+  SQL --> NEW["⑩ NewSQL<br/>Spanner · CockroachDB · TiDB"]
+
+  NSQL --> DOC["⑤ Document<br/>MongoDB · Couchbase"]
+  NSQL --> WC["⑥ Wide-Column<br/>Cassandra · HBase · ScyllaDB"]
+  NSQL --> KV["⑦ Key-Value<br/>Redis · DynamoDB · Memcached"]
+
+  SPEC --> SE["⑧ Search Engine<br/>Elasticsearch · OpenSearch · Solr"]
+  SPEC --> TS["⑨ Time-Series<br/>InfluxDB · TimescaleDB · Prometheus"]
+  SPEC --> GR["⑩-a Graph<br/>Neo4j · Neptune · JanusGraph"]
+  SPEC --> VEC["⑪ Vector<br/>Pinecone · Weaviate · pgvector · Milvus"]
+
+  BLOB --> OBJ["⑫ Object Store<br/>S3 · GCS · Azure Blob"]
+
+  style ROOT fill:#171d27,stroke:#e8743b,color:#f0f2f7,stroke-width:2px
+  style SQL fill:#1a2230,stroke:#4a90d9,color:#4a90d9
+  style NSQL fill:#1a2230,stroke:#e8743b,color:#e8743b
+  style SPEC fill:#1a2230,stroke:#9b72cf,color:#9b72cf
+  style BLOB fill:#1a2230,stroke:#38b265,color:#38b265
+
+  style RDBMS fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style NEW fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style DOC fill:#e8743b,stroke:#e8743b,color:#fff
+  style WC fill:#e8743b,stroke:#e8743b,color:#fff
+  style KV fill:#e8743b,stroke:#e8743b,color:#fff
+  style SE fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style TS fill:#3cbfbf,stroke:#3cbfbf,color:#fff
+  style GR fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style VEC fill:#d4a838,stroke:#d4a838,color:#0b0f14
+  style OBJ fill:#38b265,stroke:#38b265,color:#fff
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>Reading the map:</strong> the question isn't "which family is best?" — it's "which family does my workload sit naturally inside?". A modern system rarely uses just one. Twitter uses MySQL <em>and</em> Redis <em>and</em> Manhattan (wide-column) <em>and</em> Elasticsearch <em>and</em> Blobstore. The skill is knowing which family owns which subproblem.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 4 — RDBMS -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-blue">Family 1</span>
+  <h2>RDBMS — The Relational Workhorse</h2>
+  <p>Sarah is building an e-commerce checkout. A customer adds two items, applies a coupon, hits "buy". Three rows must change atomically — inventory drops by 1 in each item row, the order row gets inserted, the customer's loyalty points get bumped. If any one of those fails, all of them must roll back. If two customers race for the last unit of an item, exactly one of them must win and the other must see "out of stock". This is the textbook RDBMS workload — and it's why Postgres and MySQL still power roughly every business-critical system on Earth.</p>
+
+  <div class="tech-card">
+    <h3>PostgreSQL &amp; MySQL <span class="badge tag-blue">Tabular · B-tree · ACID</span></h3>
+    <p class="field story"><span class="lbl">The story</span>Born in the 1970s out of Edgar Codd's relational model. The mental model: data lives in <strong>tables</strong> (fixed columns, typed). Tables reference each other via <strong>foreign keys</strong>. The query language (<strong>SQL</strong>) lets you compose new shapes on the fly via JOINs. The killer feature is <strong>ACID transactions</strong> — Atomicity (all-or-nothing), Consistency (constraints hold), Isolation (concurrent transactions don't see each other's half-states), Durability (committed data survives a crash). When the interviewer says "money is involved", this is the default answer.</p>
+    <p class="field when"><span class="lbl">When to pick</span>Anything that touches money, inventory, identity, or correctness-critical state. Multi-table relationships where the join matters. Complex ad-hoc queries (analysts will write SQL you didn't anticipate). Strong consistency required. Schema is well-known and stable.</p>
+    <p class="field feat"><span class="lbl">Features</span>B-tree indexes (and hash, GIN, GiST, BRIN in Postgres). <strong>MVCC</strong> (Multi-Version Concurrency Control) — readers never block writers. Foreign-key constraints. CHECK constraints. Views and materialized views. Full SQL with window functions, CTEs, recursive queries. JSONB column in Postgres makes it a half-decent document store too. Logical replication for streaming changes.</p>
+    <p class="field"><span class="lbl">Patterns</span>Master + read replicas for read scaling. Connection pooling via PgBouncer (Postgres maxes out around 500-1000 simultaneous connections without it). <code>SELECT ... FOR UPDATE</code> for pessimistic row locks (the inventory case). Optimistic concurrency via a <code>version</code> column for low-contention writes. Debezium + Kafka for change-data-capture into downstream systems.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Vertical-scale ceiling — a single Postgres box maxes out around 5K–10K complex writes/sec on commodity hardware. Sharding is genuinely hard (no native multi-shard transactions; you build the routing layer yourself). Schema migrations on huge tables can lock writes for hours without careful tooling (pg_repack, gh-ost). Joins across a sharded cluster are expensive.</p>
+    <p class="field tip"><span class="lbl">Interview tip</span>Drop these terms casually: <strong>isolation levels</strong> ("READ COMMITTED is the default; I'd bump to SERIALIZABLE for the inventory check"), <strong>SELECT FOR UPDATE</strong> for pessimistic row locks, <strong>partial indexes</strong> on <code>WHERE deleted_at IS NULL</code> for soft-deletes, <strong>GIN index</strong> for full-text or JSONB, <strong>logical replication</strong> for read replicas, <strong>connection pooler</strong> for >1K concurrent clients. The senior tell: explaining when you'd use <code>SERIALIZABLE</code> vs <code>SELECT FOR UPDATE</code> vs an optimistic <code>version</code> column.</p>
+  </div>
+
+  <div class="highlight hl-blue"><strong>Rule of thumb:</strong> if you can't argue why <em>not</em> to use Postgres, use Postgres. JSONB columns mean it doubles as a document store for the 80% case; full-text search via GIN works up to single-digit millions of rows; pgvector handles modest vector workloads. The biggest mistake in interviews is reaching for NoSQL on a workload that Postgres would crush — Postgres is the boring correct answer surprisingly often.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 5 — DOCUMENT -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-orange">Family 2</span>
+  <h2>Document — The JSON-Shaped Store</h2>
+  <p>Imagine you're building a CMS where every "article" has a wildly different shape — some have a video block, some have polls, some have nested comments three levels deep. You don't want to invent a new table for every variation. You want to drop the whole article as a JSON tree into one place, then query it back the same way. That's the document model: the record is a self-describing JSON-like document, and the DB indexes the fields inside.</p>
+
+  <div class="tech-card">
+    <h3>MongoDB &amp; Couchbase <span class="badge tag-orange">JSON tree · BSON · Flexible schema</span></h3>
+    <p class="field story"><span class="lbl">The story</span>Born around 2009 in the heyday of "the relational model doesn't fit the web". MongoDB stores BSON (binary JSON) documents inside <strong>collections</strong> (the document equivalent of tables). Documents in the same collection can have different fields — schema is enforced by the application, not the DB. You query with a JSON-shaped query language, and the aggregation pipeline composes operations like <code>$match → $group → $sort</code>. Sharded clusters with config servers handle horizontal scale.</p>
+    <p class="field when"><span class="lbl">When to pick</span>Schema is genuinely fluid and changing rapidly (early-stage product). Data is naturally hierarchical and always read as a whole (a blog post with its embedded comments). The team has more JavaScript than SQL muscle. Increasingly rare as a default in 2026 — <strong>Postgres JSONB has eaten most of Mongo's niche</strong> and made the choice tougher to defend.</p>
+    <p class="field feat"><span class="lbl">Features</span>BSON document model, aggregation pipeline, secondary indexes (single, compound, multikey, text, geo, wildcard, hashed), change streams (CDC out of the box), sharded clusters, multi-document ACID transactions (since 4.0), MongoDB Atlas as the managed offering.</p>
+    <p class="field"><span class="lbl">Patterns</span><strong>Embed</strong> related data when always read together (a user with their addresses inline). <strong>Reference</strong> (foreign-key style) when the related data is large, shared, or changes independently. Aggregation pipelines for analytics-style queries on operational data. Shard key chosen to spread writes — picking <code>_id</code> (monotonic ObjectIds) creates a hot shard, a classic interview gotcha.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Was famously eventually-consistent for years before tightening defaults. Hot documents (e.g., a global counter) suffer write conflicts because the unit of atomicity is the document. Index size grows fast — every secondary index is its own B-tree. Operationally heavier than Postgres for equivalent workloads in most teams' hands.</p>
+    <p class="field tip"><span class="lbl">Interview tip</span>Be ready to defend why you'd pick Mongo over Postgres in 2026 — usually the answer is "I wouldn't, unless the team already has Mongo expertise or the hierarchy is so deep that JSONB queries get awkward." Naming Mongo without that defense is a junior signal. Strong signals when you do pick it: discussing shard key choice ("not <code>_id</code> — monotonic insert makes the latest shard hot"), embed-vs-reference decision per relationship, and the read concern / write concern levels.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 6 — WIDE-COLUMN -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-orange">Family 3</span>
+  <h2>Wide-Column — One Big Sorted Table Per Partition</h2>
+  <p>Imagine you're building WhatsApp's message inbox. Every user has a stream of messages — could be 50, could be 50 million. The query you always run is "give me Sarah's last 100 messages, newest first." You don't join, you don't aggregate across users, you don't need ad-hoc questions. You just want to grab one user's slice fast, even at 2 billion users. This is exactly the workload Cassandra was built for.</p>
+
+  <div class="tech-card">
+    <h3>Cassandra · ScyllaDB · HBase · DynamoDB <span class="badge tag-orange">Partition + clustering · LSM-tree · AP-tunable</span></h3>
+    <p class="field story"><span class="lbl">The story</span>Born from Google's Bigtable paper (2006) and Amazon's Dynamo paper (2007). The mental model: every row has a <strong>partition key</strong> (decides which node owns it) and a <strong>clustering key</strong> (decides the sort order within that partition). A "row" can have millions of columns, and adjacent rows within the same partition are stored together on disk — so reading "the last 100 messages for user 42" is a single seek + scan. The storage engine is an LSM-tree, which means writes are append-only and blindingly fast. The cluster is peer-to-peer — no master, every node knows the ring.</p>
+    <p class="field when"><span class="lbl">When to pick</span>Write-heavy workloads. Massive scale (multi-TB to PB). Access pattern is "give me everything for partition X, optionally within range Y". Time-series-shaped data (sensor readings, event logs, user feeds, message inboxes, audit trails). You can design tables around queries up front. You're willing to sacrifice flexible queries for horizontal scale.</p>
+    <p class="field feat"><span class="lbl">Features</span>Tunable consistency per query (<code>R + W &gt; N</code> for strong reads; <code>R=1, W=1</code> for fastest). Wide columns — a partition can hold millions of clustered rows. LSM-tree storage (write-optimized). Peer-to-peer (no master, no SPOF). Multi-datacenter replication built in. Hinted handoff for transient node failures. DynamoDB adds managed sharding and global tables for multi-region active-active.</p>
+    <p class="field"><span class="lbl">Patterns</span><strong>Design one table per query</strong> — denormalize aggressively, because joins don't exist. Partition key = the thing you always filter by (<code>user_id</code>). Clustering key = sort within partition (<code>created_at DESC</code>). For "Sarah's last 50 messages": <code>PRIMARY KEY ((user_id), created_at)</code>. Replication factor of 3 across 3 AZs is the standard production setup.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>No joins, ever. Eventually consistent by default — you ask for stronger guarantees per query at the cost of latency. Query patterns must be designed up front; ad-hoc queries without the partition key trigger scatter-gather across the whole cluster and you'll cancel them before they finish. Compaction (merging SSTables) is the operational headache at scale. Counters and lightweight transactions are second-class citizens.</p>
+    <p class="field tip"><span class="lbl">Interview tip</span>"Design the partition key around the access pattern; never query without the partition key — otherwise it's scatter-gather and that's a query you cancel before it finishes." Mention <strong>R + W &gt; N quorum</strong> for strong consistency, <strong>hinted handoff</strong> for transient failures, <strong>SSTable compaction</strong> as the ops headache, <strong>tombstones</strong> as the deletion gotcha. For DynamoDB specifically: "single-table design" with <code>PK</code> + <code>SK</code> and GSIs for secondary access patterns.</p>
+  </div>
+
+  <div class="highlight hl-orange"><strong>Mental shortcut:</strong> if your interview prompt has the phrase "user feed", "message inbox", "activity timeline", "event log", or "sensor readings" — and the access is always "give me partition X" — wide-column is the default. If you also need ad-hoc queries across partitions, you need to add Elasticsearch or a search index in front.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 7 — KEY-VALUE -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-green">Family 4</span>
+  <h2>Key-Value — The Distributed Hash Map</h2>
+  <p>Imagine a user logs into Netflix. Before the homepage can render, the server needs to know who this user is — name, plan, language preference, A/B test bucket — and it needs that in under a millisecond. The session_id is the key, the user blob is the value, and the question is the simplest possible: "give me the value for this key." No joins, no filters, no aggregations. Just a hash lookup at network speed. That's the key-value workload, and Redis serves billions of these per second across every modern product you use.</p>
+
+  <div class="tech-card">
+    <h3>Redis · Memcached · DynamoDB · RocksDB <span class="badge tag-green">Key → blob · Hash table · In-memory or LSM</span></h3>
+    <p class="field story"><span class="lbl">The story</span>The simplest data model imaginable: a giant distributed hash map. Key in, value out. The value can be a string, a hash (field-value pairs), a list, a set, a sorted set (Redis only) — anything that fits in memory. Redis is the dominant in-memory choice: data lives in RAM, optionally persisted to disk via AOF/RDB snapshots, sub-millisecond latency at 100K+ ops/sec per node. Memcached is the stripped-down cousin: no data structures, no persistence, just blazing-fast in-memory key→string.</p>
+    <p class="field when"><span class="lbl">When to pick</span>Caching (the #1 use). Session stores. Rate limiting (atomic <code>INCR</code> with TTL). Leaderboards (sorted sets). Real-time counters. Pub/sub (Redis Streams). Distributed locks (Redlock). Anywhere "by-key lookup" is the only access pattern and you need it in &lt;1ms.</p>
+    <p class="field feat"><span class="lbl">Features</span>Redis data structures: <code>STRING</code>, <code>HASH</code>, <code>LIST</code>, <code>SET</code>, <code>ZSET</code> (sorted set), <code>STREAM</code>, <code>HyperLogLog</code>, <code>BITMAP</code>, geo indexes. TTLs per key. Atomic operations (<code>INCR</code>, <code>ZADD</code>). Lua scripting for multi-step atomicity. Pub/sub. Redis Cluster for sharding (16384 hash slots). Persistence via AOF (append-only file) and RDB (snapshot). Sentinel for HA failover.</p>
+    <p class="field"><span class="lbl">Patterns</span><strong>Cache-aside</strong> (most common): app checks Redis, on miss reads DB and writes back to Redis. <strong>Write-through</strong>: writes go to Redis and DB synchronously. <strong>Write-behind</strong>: writes go to Redis, async flushed to DB. <strong>Sorted set</strong> for leaderboards: <code>ZADD scores 1500 alice; ZREVRANGE scores 0 10</code>. <strong>Atomic counters with TTL</strong> for rate limiting. <strong>SETNX</strong> for distributed locks (with Redlock for safer multi-node).</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Data lives in RAM — capacity is expensive. Eviction policy (LRU, LFU, TTL) matters under pressure. Persistence is best-effort, not the same guarantee as Postgres' fsync. Multi-key atomic ops need same shard (hash tags <code>{user:42}:profile</code>). Memcached lacks data structures, persistence, and replication — pure ephemeral cache.</p>
+    <p class="field tip"><span class="lbl">Interview tip</span>Never just say "I'll use Redis". Say: "I'll store <code>user:{id}</code> as a Redis HASH with 24h TTL, shard the cluster across 6 nodes via consistent hashing, set LRU eviction at 64GB/node, and use <code>HSET</code> for partial updates." For leaderboards: ZSET. For rate limit: <code>INCR</code> + <code>EXPIRE</code> in a Lua script. For pub/sub or queues: Redis Streams. The senior tell: knowing when Memcached suffices over Redis (pure read-through cache, no data structures, no persistence needed).</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 8 — SEARCH ENGINE -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-purple">Family 5</span>
+  <h2>Search Engine — The Inverted Index</h2>
+  <p>Imagine a user types "blue runnng shoes" (typo intentional) into Amazon's search box. They expect results in 150ms, ranked by relevance, with typo tolerance, with the brand and price filters on the left, and aggregated counts per category. Postgres' <code>WHERE title ILIKE '%running shoes%'</code> would scan every row and miss the typo. You need an inverted index — a data structure that maps every <em>token</em> ("blue", "running", "shoes") to the list of documents that contain it. That's Elasticsearch.</p>
+
+  <div class="tech-card">
+    <h3>Elasticsearch · OpenSearch · Solr <span class="badge tag-purple">Inverted index · Lucene · BM25 ranking</span></h3>
+    <p class="field story"><span class="lbl">The story</span>All built on Apache Lucene's inverted-index engine. The mental model: when you index a document, the engine tokenizes the text ("running shoes" → ["run", "shoe"] after stemming + stopword removal), then maps each token to a posting list of document IDs. When you query, the engine intersects the posting lists, scores each match with BM25 (a relevance formula based on term frequency and inverse document frequency), and returns the top-K. Elasticsearch wraps Lucene in a distributed cluster — sharded indices, replica shards for HA, JSON query DSL, REST API.</p>
+    <p class="field when"><span class="lbl">When to pick</span>Full-text search with relevance ranking. Typo tolerance / fuzzy matching. Faceted search ("filter by category, see counts"). Geo queries (<code>geo_point</code>, <code>geo_shape</code>). Log aggregation and observability (the "E" in ELK / EFK stack). Aggregations across millions of docs (date histograms, percentiles, terms). Anywhere Postgres' <code>ILIKE</code> stops being good enough.</p>
+    <p class="field feat"><span class="lbl">Features</span>Inverted index (the magic). Tokenization + stemming + stopword removal + synonyms. Fuzzy matching by edit distance. BM25 relevance scoring (and now learning-to-rank). Aggregations (terms, date histograms, percentiles, cardinality). Geo queries. Index aliases for zero-downtime reindex. Hot / warm / cold tiers for log workloads. Vector search via dense_vector and ANN since 8.x.</p>
+    <p class="field"><span class="lbl">Patterns</span>Pair with Kafka for the indexing pipeline — app writes to source-of-truth DB (Postgres), CDC stream emits to Kafka, an indexer consumer updates ES. <strong>Time-based indices</strong> for log data: one index per day (<code>logs-2026-05-07</code>) so dropping old logs is O(1) and recent data gets more shards. <strong>Aliases</strong> let you swap the live index without app changes. Search-side: use <code>match</code> for text, <code>term</code> for exact, <code>bool</code> to combine, aggregations for facets.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span><strong>Not a source of truth</strong> — eventually consistent (1s default refresh before docs are searchable). Schema rigidity via mappings (changing a field type requires reindex). Operationally heavy: shard sizing, JVM heap tuning, hot/warm/cold tier design. Memory hungry. Lucene merges (segment compaction) are expensive at scale. License changes (Elastic vs OpenSearch fork in 2021) muddied the product picture.</p>
+    <p class="field tip"><span class="lbl">Interview tip</span>"Postgres is the source of truth; Elasticsearch is the search-side view, fed by CDC through Kafka." Name the indexing pipeline explicitly — it's the part juniors hand-wave. Drop these: <strong>inverted index</strong>, <strong>BM25</strong>, <strong>tokenizer + analyzer</strong>, <strong>shard count is forever</strong> (you can't change it without reindex), <strong>refresh interval</strong> (the 1s lag), <strong>index aliases</strong> for zero-downtime reindex.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 9 — TIME-SERIES -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-cyan">Family 6</span>
+  <h2>Time-Series — Append-Only Streams of Measurements</h2>
+  <p>Imagine you're storing CPU usage from 100,000 servers, sampled every 10 seconds. That's 10 million data points per second, all of shape <code>(server_id, timestamp, metric_name, value)</code>. The questions you ask: "show me CPU on web-server-42 for the last hour", "average CPU across the fleet by minute for the last 24h", "alert me when p99 latency crosses 500ms over a 5-minute window". This is a workload no general-purpose DB likes — but specialized time-series DBs make it trivial.</p>
+
+  <div class="tech-card">
+    <h3>InfluxDB · TimescaleDB · Prometheus · Druid <span class="badge tag-cyan">(metric, ts, value) · Time-partitioned · Compressed columnar</span></h3>
+    <p class="field story"><span class="lbl">The story</span>Time-series data has unique shape: append-only, never updated, almost always queried by a time range plus a label filter, and aggregated in time buckets. Specialized DBs exploit this — they partition by time (one chunk per hour or day), apply heavy compression on per-column runs (timestamps and values both compress beautifully when sorted by time), and ship built-in aggregation operators. <strong>Prometheus</strong> dominates monitoring: pull-based scraping, PromQL query language, single-node by default. <strong>InfluxDB</strong> is the long-term storage classic. <strong>TimescaleDB</strong> is a Postgres extension that gives you SQL on top of time-series performance. <strong>Druid</strong> is the analytics-scale variant for billion-row ad-hoc OLAP on event streams.</p>
+    <p class="field when"><span class="lbl">When to pick</span>Metrics and observability (Prometheus is the default). IoT sensor data. Financial tick data. Application performance monitoring. Anything where the record shape is <code>(entity, timestamp, value)</code>, writes vastly outnumber reads, and queries are "range over time + aggregate". If you'd be tempted to store it in Cassandra with a time-based clustering key, a time-series DB is probably the better answer.</p>
+    <p class="field feat"><span class="lbl">Features</span>Time-partitioned chunks, automatic retention/downsampling (raw data for 7 days, 5-min averages for 90 days, hourly for 1 year). Columnar compression — 10x to 100x smaller than row-oriented storage for the same data. Built-in aggregation operators (rate, derivative, moving average, percentile). Tag-based indexing (server=web-42, region=us-east). High write throughput per node (millions of points/sec).</p>
+    <p class="field"><span class="lbl">Patterns</span>Pair with a metrics-emission library (Prometheus client libs) that exposes a <code>/metrics</code> endpoint scraped every 15s. Use <strong>recording rules</strong> for precomputed aggregations on hot dashboards. Use <strong>alerting rules</strong> on PromQL expressions. For long-term retention: remote write from Prometheus to Thanos / Cortex / Mimir. For business analytics on event streams: Druid behind a Kafka consumer.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Cardinality is the silent killer — too many unique tag combinations explode the index (a metric tagged with <code>user_id</code> across 10M users will OOM Prometheus). Not suited for arbitrary ad-hoc joins. Limited update / delete semantics (the data model assumes append-only). Single-node Prometheus has no built-in HA — you run two scraping the same targets and dedupe at the query layer.</p>
+    <p class="field tip"><span class="lbl">Interview tip</span>"For metrics I'd use Prometheus with a 15s scrape, recording rules for hot dashboards, and Thanos for long-term retention. The cardinality cap is the thing I'd watch — I won't tag metrics with high-cardinality fields like <code>user_id</code> or <code>request_id</code>." For business events: "Kafka → Druid for ad-hoc OLAP, vs Kafka → Cassandra for known queries." That distinction is the senior signal.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 10 — GRAPH -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-purple">Family 7</span>
+  <h2>Graph — When the Relationships Are the Data</h2>
+  <p>Imagine LinkedIn's "you are 3 connections away from this hiring manager" feature. To answer that in Postgres, you'd join the <code>connections</code> table to itself three times, scanning millions of rows. To answer it in Cassandra, you'd reshape the data into pre-computed friend-of-friend tables and pray. In a graph DB, it's literally one line of Cypher: <code>MATCH (me)-[:KNOWS*1..3]-(target) RETURN target</code>. When the relationships <em>are</em> the data — not metadata around it — graph DBs collapse queries that other families choke on.</p>
+
+  <div class="tech-card">
+    <h3>Neo4j · Amazon Neptune · JanusGraph · TigerGraph <span class="badge tag-purple">Nodes + edges · Adjacency-list storage</span></h3>
+    <p class="field story"><span class="lbl">The story</span>Data is stored as <strong>nodes</strong> (vertices) and <strong>edges</strong> (relationships), both of which can have properties. The storage engine keeps an adjacency list per node — every edge for that node is a direct pointer, not an index lookup. So traversing "friends of friends" is following pointers, not joining tables. Cypher (Neo4j) and Gremlin (TinkerPop) are the dominant query languages — they let you express "find all paths from A to B of length up to N where each hop satisfies a predicate" in one statement.</p>
+    <p class="field when"><span class="lbl">When to pick</span>Social networks (friend-of-friend, shortest path). Fraud detection (anomalous paths through transaction graphs). Recommendation engines ("users who bought X also bought Y" via graph walks). Knowledge graphs (entity-relationship semantics). Identity / access control (resolving role inheritance). Anywhere a relational query needs 4+ self-joins to express what you mean.</p>
+    <p class="field feat"><span class="lbl">Features</span>Native graph storage — edges are first-class pointers. Cypher / Gremlin / SPARQL query languages. Variable-length path queries (<code>[:KNOWS*1..5]</code>). Built-in graph algorithms (shortest path, PageRank, community detection, centrality). Property graph model — nodes and edges both carry typed properties.</p>
+    <p class="field"><span class="lbl">Patterns</span>Use a graph DB <strong>alongside</strong> your primary store, not instead of it. Postgres or Cassandra owns the source of truth; the graph DB stores the relationship layer derived from it via CDC. For LinkedIn-style "people you may know", the graph is rebuilt nightly and queried for serving. Don't try to model an entire schema in the graph — limit it to the relationships where graph queries pay off.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Graphs <strong>don't shard cleanly</strong> — the whole point is that edges cross arbitrary boundaries, so any cut splits the queries you care about. Most graph DBs are single-machine at heart, with limited horizontal scale. Slower than RDBMS for non-graph queries (simple lookups). Smaller ecosystem and tooling than SQL. Operationally exotic for most teams.</p>
+    <p class="field tip"><span class="lbl">Interview tip</span>Don't reach for a graph DB unless the query is "variable-depth traversal" or "find all paths". For "fetch my immediate friends" — that's just a Postgres join. Senior signal: knowing the line. "Up to 2 hops, Postgres handles it. Beyond that, graph DB earns its place." Drop terms: <strong>adjacency list</strong>, <strong>variable-length path</strong>, <strong>property graph</strong>, <strong>Cypher</strong>.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 11 — VECTOR -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-yellow">Family 8</span>
+  <h2>Vector — Similarity Search for the AI Era</h2>
+  <p>Imagine ChatGPT-style retrieval-augmented generation. The user asks "how does our 401k matching work?" To answer, the system needs to find the 5 most semantically similar chunks across 100,000 internal documents — not "documents containing the word 401k" (that's Elasticsearch's job) but "documents whose meaning is closest to this question". To do that, every chunk is first converted into a 768-dimensional vector (an embedding) by a model like OpenAI's text-embedding-3-large. Finding the nearest vectors in 768-dimensional space is what a vector DB does — billions of vectors, sub-100ms query time.</p>
+
+  <div class="tech-card">
+    <h3>Pinecone · Weaviate · Milvus · Qdrant · pgvector <span class="badge tag-yellow">Embeddings · HNSW / IVF · ANN search</span></h3>
+    <p class="field story"><span class="lbl">The story</span>A vector is just an array of N floats. "Nearest neighbor in N-dimensional space" is the cosine-similarity (or Euclidean / dot product) of two vectors. The hard part: doing it across billions of vectors in milliseconds, where exact brute-force search is O(N) and a death sentence. The solution: <strong>approximate nearest neighbor (ANN)</strong> indexes — HNSW (graph-based), IVF (clustering-based), or LSH (hashing-based). They trade tiny accuracy (95%+ recall) for million-fold speedup. Pinecone is the dominant managed product; pgvector is the Postgres extension that brings the workload back into the relational fold for modest scale.</p>
+    <p class="field when"><span class="lbl">When to pick</span>Semantic search over text/images/audio. Retrieval-augmented generation (RAG) for LLM apps. Recommendation by embedding similarity ("users who liked similar items"). Image / face recognition. Anomaly detection in embedding space. Any workload where "give me the 10 most similar items to this query" is the question.</p>
+    <p class="field feat"><span class="lbl">Features</span>HNSW (Hierarchical Navigable Small World) index — fast, accurate, memory-hungry. IVF (Inverted File Index) — cheaper memory, slightly slower. Filtered ANN search (vector similarity + metadata predicate like "language=en"). Hybrid search combining vector similarity with BM25 keyword scoring. Multi-tenant namespaces. Sharded indices for horizontal scale.</p>
+    <p class="field"><span class="lbl">Patterns</span>Embedding pipeline: text/image → model API → vector → store. <strong>Chunking</strong> strategy matters more than the DB choice — bad chunks ruin retrieval no matter how fast your ANN is. Pair with a re-ranker (a smaller cross-encoder model that re-scores the top 50 ANN hits to improve precision). For modest scale (&lt;10M vectors), pgvector inside Postgres avoids a separate system.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>"Approximate" — you can't get exact answers cheaply. Embedding cost (the model call) often dwarfs the DB cost. Re-embedding when the model changes is a full reindex. Vector size × count = memory bill; 768-dim float32 vectors are 3KB each, 1B vectors = 3TB RAM. Quality of retrieval is dominated by embedding model quality, not the DB.</p>
+    <p class="field tip"><span class="lbl">Interview tip</span>"For RAG I'd embed chunks of ~500 tokens with text-embedding-3-large, store them in pgvector for &lt;10M scale or Pinecone beyond that, use HNSW with M=16/ef=200, and add a cross-encoder re-ranker on the top 50 results before passing to the LLM." Knowing HNSW parameters, chunking strategy, and re-rankers is the senior signal.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 12 — OBJECT STORE -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-green">Family 9</span>
+  <h2>Object Store — When the Data Is Just Bytes</h2>
+  <p>Imagine Sarah uploads a 4K video to YouTube. That's gigabytes of bytes that no one will query <em>inside</em> — the questions are all "by id, give me the bytes" and "by id, stream the bytes from offset 1M to 2M". Stuffing those bytes into Postgres' BYTEA column or Cassandra's blob column is wasteful and slow. The right home is an object store: cheap, durable, infinitely scalable, designed exactly for "key → big binary blob". S3 popularized the model in 2006 and it's now the bedrock of every cloud system.</p>
+
+  <div class="tech-card">
+    <h3>Amazon S3 · Google Cloud Storage · Azure Blob · MinIO <span class="badge tag-green">Path → blob · 11-nines durability · Cheap and infinite</span></h3>
+    <p class="field story"><span class="lbl">The story</span>An object store is conceptually a giant key-value store where the values are large opaque blobs (kilobytes to terabytes) and the key is a path-like string (<code>users/42/profile.jpg</code>). Underneath: erasure-coded data spread across multiple storage devices and availability zones for 11 nines (99.999999999%) of durability. S3 also gives you metadata, versioning, lifecycle rules (auto-tier to cheaper storage classes after N days), event notifications (S3 → Lambda / SQS), and signed URLs for direct client uploads / downloads.</p>
+    <p class="field when"><span class="lbl">When to pick</span>Anything bigger than ~1MB. User-uploaded images, videos, documents. Database backups. ML training datasets. Logs and analytics data lakes (Parquet on S3, queried by Athena / Spark). Static website assets (with CloudFront in front). Pretty much any blob in any modern system.</p>
+    <p class="field feat"><span class="lbl">Features</span>Strong read-after-write consistency since 2020 (you can read the bytes immediately after PUT). Versioning. Storage tiers (Standard → Standard-IA → Glacier → Glacier Deep Archive). Lifecycle policies. Server-side encryption (SSE-S3, SSE-KMS). Cross-region replication. Multipart uploads for large files. Pre-signed URLs (direct client → S3, bypassing your servers). Event notifications. S3 Select (push SQL filtering down into the object store).</p>
+    <p class="field"><span class="lbl">Patterns</span><strong>Direct client upload</strong> — your API returns a pre-signed PUT URL, the browser uploads directly to S3, your server records only metadata in Postgres. <strong>CDN in front</strong> (CloudFront / Cloudflare) for read-heavy content. <strong>Lifecycle to Glacier</strong> for cold archives (cents per TB-month). <strong>S3 event → SQS → worker</strong> for "process this upload" pipelines. Use the Postgres row to hold metadata (size, mime, owner, expiry), keep the bytes in S3.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span>Latency is ~100ms per object op — not for hot-path low-latency reads. List operations are eventually consistent and slow. You pay for requests too, not just storage. No partial updates — you re-upload the whole object. Vendor lock-in is real (S3 API has been copied but features diverge).</p>
+    <p class="field tip"><span class="lbl">Interview tip</span>"Any blob &gt;1MB goes in S3, not the database. The DB row holds the metadata and the S3 key; clients upload directly via pre-signed URLs to bypass our servers; CloudFront caches reads at the edge." Drop these: <strong>pre-signed URL</strong>, <strong>multipart upload</strong>, <strong>lifecycle policy</strong>, <strong>S3 event → Lambda / SQS</strong>, <strong>11 nines durability</strong>.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 13 — NEWSQL -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-blue">Family 10</span>
+  <h2>NewSQL — When You Refuse to Choose</h2>
+  <p>The painful trade-off of the 2010s: keep Postgres' ACID and live with its single-node ceiling, or move to Cassandra/DynamoDB and rewrite your app around eventual consistency. NewSQL is the bet that you shouldn't have to choose. Google's Spanner (2012) was the proof — a globally distributed SQL database with linearizable transactions across continents, made possible by atomic clocks and a clever protocol. CockroachDB, TiDB, and YugabyteDB are the open-source descendants. The pitch is intoxicating: SQL semantics, ACID transactions, horizontal scale, no sharding pain.</p>
+
+  <div class="tech-card">
+    <h3>Google Spanner · CockroachDB · TiDB · YugabyteDB <span class="badge tag-blue">SQL · Distributed · Linearizable · Raft / Paxos</span></h3>
+    <p class="field story"><span class="lbl">The story</span>Data lives in ranges (CockroachDB) or splits (Spanner) automatically sharded across nodes. Each range is replicated 3x via the <strong>Raft</strong> (or Paxos) consensus protocol, so every write is committed only when a quorum of replicas agrees. The result: ACID transactions across rows on different machines, with linearizable consistency. Spanner uses TrueTime (atomic clocks + GPS) to bound clock skew and enable global transactions. CockroachDB and TiDB use logical clocks (HLC — hybrid logical clock) for the same effect with slightly weaker guarantees.</p>
+    <p class="field when"><span class="lbl">When to pick</span>You need PostgreSQL semantics but the workload exceeds a single Postgres box's headroom. Multi-region active-active with strong consistency. Compliance / regulatory workloads where eventual consistency is unacceptable. Financial systems at scale. Greenfield projects where you'd <em>want</em> to start on Postgres but know you'll need horizontal scale soon.</p>
+    <p class="field feat"><span class="lbl">Features</span>Standard SQL (Postgres-wire-compatible in CockroachDB, MySQL-compatible in TiDB). ACID transactions across shards. Automatic range-based sharding and rebalancing. Multi-region replication with per-row geo-fencing in Spanner. Online schema changes. Time-travel queries (<code>AS OF SYSTEM TIME</code>). Built-in change-data-capture.</p>
+    <p class="field"><span class="lbl">Patterns</span>Treat it like Postgres until proven otherwise. The hot pitfall: cross-region transactions are slow (every commit waits for quorum across regions, easily 100ms+). Design schemas so most transactions live within one region; use Spanner's interleaved tables or CockroachDB's REGIONAL BY ROW to pin data to its home region.</p>
+    <p class="field trade"><span class="lbl">Trade-offs</span><strong>Latency tax</strong> — every cross-shard transaction pays a Raft round trip (typically 5-20ms intra-region, 100ms+ cross-region). Operationally complex compared to single-node Postgres. Newer products = thinner ecosystem (fewer ORM optimizations, fewer monitoring tools). Cost is often higher per TB than Postgres or DynamoDB.</p>
+    <p class="field tip"><span class="lbl">Interview tip</span>"I'd start on Postgres. If we hit the vertical ceiling and the workload still needs ACID transactions across rows, I'd move to CockroachDB or Spanner — same SQL surface, horizontal scale, but I'd accept ~10-20ms latency for cross-shard commits." Naming Spanner without that latency caveat is a junior signal. Senior tell: knowing the latency budget for global transactions and designing the schema to minimize cross-region writes.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 14 — DECISION TREE -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-orange">Step 4</span>
+  <h2>Decision Tree — Picking the Right Family in Three Questions</h2>
+  <p>This is the muscle you need to develop. Walk through the tree in your head on any interview prompt and you'll land on a family within thirty seconds. Then defend the choice with workload numbers.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TD
+  START([I need to store<br/>something])
+  Q1{<b>Q1 — What SHAPE<br/>is the record?</b>}
+  START --> Q1
+
+  Q1 -->|Tabular rows<br/>with relationships| Q2A{<b>Q2 — Need joins<br/>+ ACID across rows?</b>}
+  Q1 -->|Self-contained<br/>JSON tree| DOC["Document DB<br/>MongoDB · Couchbase"]
+  Q1 -->|Wide partition +<br/>clustering key,<br/>write-heavy| WC["Wide-Column<br/>Cassandra · DynamoDB"]
+  Q1 -->|Key &rarr; small<br/>opaque value| Q2B{<b>Q2 — Latency<br/>budget?</b>}
+  Q1 -->|Large blob<br/>&gt; 1 MB| OBJ["Object Store<br/>S3 · GCS"]
+  Q1 -->|Time-stamped<br/>measurements| TS["Time-Series<br/>Prometheus · Influx"]
+  Q1 -->|Nodes + edges,<br/>variable-depth<br/>traversal| GR["Graph DB<br/>Neo4j · Neptune"]
+  Q1 -->|Embedding vector,<br/>similarity search| VEC["Vector DB<br/>Pinecone · pgvector"]
+  Q1 -->|Free text,<br/>ranking + fuzzy| ES["Search Engine<br/>Elasticsearch"]
+
+  Q2A -->|Yes &mdash; multi-row<br/>transactions| Q3{<b>Q3 — Does one box<br/>handle the load?</b>}
+  Q2A -->|No &mdash; key-only<br/>access on one entity| Q2B
+
+  Q3 -->|Yes, &lt; 5K writes/sec| RDB["RDBMS<br/>Postgres · MySQL"]
+  Q3 -->|No, need ACID<br/>across many nodes| NEW["NewSQL<br/>Spanner · CockroachDB"]
+
+  Q2B -->|&lt; 1 ms,<br/>fits in RAM| KV["Key-Value Cache<br/>Redis · Memcached"]
+  Q2B -->|10&ndash;50 ms ok,<br/>massive scale| WC
+
+  style START fill:#171d27,stroke:#e8743b,color:#f0f2f7,stroke-width:2px
+  style Q1 fill:#1a2230,stroke:#e8743b,color:#f0f2f7,stroke-width:2px
+  style Q2A fill:#1a2230,stroke:#4a90d9,color:#f0f2f7,stroke-width:2px
+  style Q2B fill:#1a2230,stroke:#4a90d9,color:#f0f2f7,stroke-width:2px
+  style Q3  fill:#1a2230,stroke:#9b72cf,color:#f0f2f7,stroke-width:2px
+
+  style RDB fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style NEW fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style DOC fill:#e8743b,stroke:#e8743b,color:#fff
+  style WC  fill:#e8743b,stroke:#e8743b,color:#fff
+  style KV  fill:#38b265,stroke:#38b265,color:#fff
+  style ES  fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style GR  fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style TS  fill:#3cbfbf,stroke:#3cbfbf,color:#fff
+  style VEC fill:#d4a838,stroke:#d4a838,color:#0b0f14
+  style OBJ fill:#38b265,stroke:#38b265,color:#fff
+    </div>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The three questions in order:</strong> (1) <em>What shape is the record</em> — tabular, document, key→blob, wide row, blob, vector, edge, time-stamped? (2) <em>What's the dominant access pattern</em> — point lookup, range scan, join, full-text, traversal? (3) <em>What's the consistency &amp; scale budget</em> — single-region ACID is fine, eventually-consistent at planet scale, global linearizable? Answer those and you'll be right within one family every time.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 15 — POLYGLOT -->
+<div class="sec" id="s15">
+  <span class="sec-tag tag-green">Step 5</span>
+  <h2>Polyglot Persistence — How Real Systems Stack Them</h2>
+  <p>Here's the truth juniors miss: production systems almost never use one database. They use four or five, each owning the slice of the workload it's built for. This is called <strong>polyglot persistence</strong> and it's the single most senior-sounding concept in HLD interviews. Below are four real-world stacks — memorize the pattern, not the products.</p>
+
+  <div class="g2">
+    <div class="tech-card">
+      <h3>Twitter / X — Posting and Reading Tweets</h3>
+      <p class="field"><span class="lbl">RDBMS</span><strong>MySQL (Gizzard-sharded):</strong> user accounts, social graph metadata. Source of truth for identity.</p>
+      <p class="field"><span class="lbl">Wide-Column</span><strong>Manhattan (Twitter's Cassandra-like):</strong> tweets, timelines, fan-out home feeds. Write-heavy, range-scan by user.</p>
+      <p class="field"><span class="lbl">Key-Value</span><strong>Redis:</strong> hot timeline caches, rate limits, session data. Sub-millisecond reads on hot users.</p>
+      <p class="field"><span class="lbl">Search</span><strong>Earlybird (Lucene-based):</strong> real-time tweet search with relevance ranking.</p>
+      <p class="field"><span class="lbl">Object Store</span><strong>Blobstore:</strong> images, videos, media uploads.</p>
+    </div>
+    <div class="tech-card">
+      <h3>Uber — Booking a Ride</h3>
+      <p class="field"><span class="lbl">RDBMS</span><strong>Postgres / MySQL via Schemaless:</strong> trip records, payments, ride history. ACID needed.</p>
+      <p class="field"><span class="lbl">Wide-Column</span><strong>Cassandra:</strong> driver location history, trip events stream.</p>
+      <p class="field"><span class="lbl">Key-Value</span><strong>Redis:</strong> "drivers near this geohash" — live driver locations in geo-sorted sets, evicted on disconnect.</p>
+      <p class="field"><span class="lbl">Search</span><strong>Elasticsearch:</strong> address geocoding and search, support-team queries on past trips.</p>
+      <p class="field"><span class="lbl">Time-Series</span><strong>M3DB / Prometheus:</strong> operational metrics across fleet of services.</p>
+    </div>
+    <div class="tech-card">
+      <h3>Netflix — Browsing and Watching</h3>
+      <p class="field"><span class="lbl">Wide-Column</span><strong>Cassandra:</strong> viewing history per user, A/B test assignments. Write-heavy, partitioned by user.</p>
+      <p class="field"><span class="lbl">Key-Value</span><strong>EVCache (Memcached fork):</strong> personalized homepage caches across regions. Millions of ops/sec.</p>
+      <p class="field"><span class="lbl">Search</span><strong>Elasticsearch:</strong> title search, autocomplete.</p>
+      <p class="field"><span class="lbl">Object Store</span><strong>S3:</strong> video files, sub-segments, transcoded variants. CloudFront / Open Connect edges in front.</p>
+      <p class="field"><span class="lbl">Time-Series</span><strong>Atlas (in-house):</strong> 2.5 billion metrics/min across the fleet.</p>
+    </div>
+    <div class="tech-card">
+      <h3>ChatGPT-style RAG Assistant</h3>
+      <p class="field"><span class="lbl">RDBMS</span><strong>Postgres:</strong> user accounts, conversation metadata, document upload records.</p>
+      <p class="field"><span class="lbl">Vector</span><strong>Pinecone / pgvector:</strong> 768-dim embeddings of every document chunk. Sub-100ms ANN search.</p>
+      <p class="field"><span class="lbl">Object Store</span><strong>S3:</strong> the raw uploaded PDFs, images, audio.</p>
+      <p class="field"><span class="lbl">Key-Value</span><strong>Redis:</strong> session cache, conversation history during active chat.</p>
+      <p class="field"><span class="lbl">Search</span><strong>Elasticsearch:</strong> hybrid retrieval — combine BM25 keyword match with vector similarity.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>So in short —</strong> when you draw the architecture, draw the storage layer as a row of distinct boxes, each labelled with the family and the slice it owns. "Postgres for accounts, Cassandra for the feed, Redis for the hot cache, Elasticsearch for search, S3 for media" — that one sentence is worth more interview signal than any single diagram you'll draw all loop.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- SECTION 16 — CHEAT SHEET -->
+<div class="sec" id="s16">
+  <span class="sec-tag tag-yellow">Cheat Sheet</span>
+  <h2>One-Line Per Family — The Crib Card</h2>
+  <p>Memorize this card. If the interviewer pauses on the DB box, deliver the matching line in one breath. Each line is the seniority signal — workload + family + storage engine + key feature you'd actually use.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Family</th><th>Engine</th><th>Reach for it when…</th><th>Killer feature to name-drop</th></tr></thead>
+      <tbody>
+        <tr><td><strong>RDBMS</strong><br/>Postgres · MySQL</td><td>B-tree</td><td>ACID multi-table; money, identity, inventory</td><td>SERIALIZABLE isolation, SELECT FOR UPDATE, GIN/JSONB</td></tr>
+        <tr><td><strong>Document</strong><br/>MongoDB</td><td>B-tree on BSON</td><td>Fluid schema, nested hierarchy, when JSONB feels awkward</td><td>Aggregation pipeline, shard key choice, change streams</td></tr>
+        <tr><td><strong>Wide-Column</strong><br/>Cassandra · DynamoDB</td><td>LSM-tree</td><td>Write-heavy, partition-key access, time-ordered streams</td><td>Tunable R+W&gt;N quorum, peer-to-peer, single-table design</td></tr>
+        <tr><td><strong>Key-Value</strong><br/>Redis · Memcached</td><td>RAM hash table</td><td>Sub-ms lookups, caching, leaderboards, rate limits</td><td>HASH / ZSET / Streams, LRU eviction, Redlock</td></tr>
+        <tr><td><strong>Search Engine</strong><br/>Elasticsearch</td><td>Inverted index (Lucene)</td><td>Full-text, ranking, facets, log analytics</td><td>BM25, tokenizer chain, index aliases, time-based indices</td></tr>
+        <tr><td><strong>Time-Series</strong><br/>Prometheus · Influx</td><td>Columnar + time-partitioned</td><td>Metrics, IoT, append-only timestamped data</td><td>PromQL, recording rules, downsampling, cardinality cap</td></tr>
+        <tr><td><strong>Graph</strong><br/>Neo4j · Neptune</td><td>Adjacency list</td><td>Variable-depth traversal, social/fraud/recommendation</td><td>Cypher, variable-length path, property graph</td></tr>
+        <tr><td><strong>Vector</strong><br/>Pinecone · pgvector</td><td>HNSW / IVF ANN</td><td>Semantic search, RAG, embedding similarity</td><td>HNSW M/ef tuning, hybrid search, re-ranker stage</td></tr>
+        <tr><td><strong>Object Store</strong><br/>S3 · GCS</td><td>Distributed FS + erasure coding</td><td>Anything &gt;1MB; media, backups, data lake</td><td>Pre-signed URLs, lifecycle to Glacier, S3 events</td></tr>
+        <tr><td><strong>NewSQL</strong><br/>Spanner · CockroachDB</td><td>Sharded B-tree + Raft</td><td>ACID at planet scale, multi-region active-active</td><td>TrueTime / HLC, range-based sharding, regional rows</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>The senior closer:</strong> "I don't pick a database, I pick a portfolio. The source of truth lives in [RDBMS or NewSQL]. The hot read path is fronted by [Redis]. The bulk write stream lands in [wide-column or time-series]. Search-shaped queries go through [Elasticsearch]. Large blobs sit in [S3]. Each one owns the slice of the workload it's built for — and the interfaces between them are CDC streams through Kafka." That sentence is worth your offer.</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

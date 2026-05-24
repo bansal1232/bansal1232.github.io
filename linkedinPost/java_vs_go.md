@@ -12,18 +12,18 @@ And suddenly the industry was obsessed with:
 • Simpler backend systems
 • Massive scalability with lower resource consumption
 
-For years, Go became the poster child for modern concurrency, while Java was viewed as old-school enterprise technology.
+For years, people saw Go as the modern language for concurrency,, while Java was viewed as old-school enterprise technology.
 
 But Java didn’t stay still.
 
 Over the years, the JVM evolved aggressively:
+• Project Loom with Virtual Threads
 • Better garbage collectors
 • Smarter JIT optimizations
 • Lower latency
 • Improved memory efficiency
 • Reactive ecosystems
 • GraalVM
-• Project Loom with Virtual Threads
 
 That’s where the narrative started changing again.
 
