@@ -161,6 +161,18 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 
 /* ── METRIC PILL ── */
 .metric{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--surface2);border:1px solid var(--border);padding:.2rem .55rem;border-radius:5px;color:var(--orange);margin:.15rem .25rem .15rem 0}
+
+/* ── COLLAPSIBLE DETAIL VIEW ── */
+.detail-toggle{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin:1.4rem 0;overflow:hidden}
+.detail-toggle[open]{border-color:var(--blue)}
+.detail-toggle > summary{cursor:pointer;list-style:none;padding:1rem 1.3rem;font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;color:var(--heading);display:flex;align-items:center;justify-content:space-between;gap:1rem;transition:background .15s}
+.detail-toggle > summary::-webkit-details-marker{display:none}
+.detail-toggle > summary:hover{background:var(--surface2)}
+.detail-toggle > summary::after{content:'▸';color:var(--orange);font-size:1rem;transition:transform .2s;flex-shrink:0}
+.detail-toggle[open] > summary::after{transform:rotate(90deg)}
+.detail-toggle > summary .toggle-hint{font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:500;color:var(--muted);margin-left:auto;margin-right:.6rem}
+.detail-body{padding:0 1.3rem 1.3rem;border-top:1px solid var(--border)}
+.detail-body > p:first-child{margin-top:1rem}
 </style>
 </head>
 <body>
@@ -651,6 +663,275 @@ flowchart TB
       </ol>
     </div>
   </div>
+
+  <details class="detail-toggle">
+    <summary>📤 Write flow — detailed view<span class="toggle-hint">click to expand</span></summary>
+    <div class="detail-body">
+      <p>The genius of the write path is what it <em>doesn't</em> do synchronously. Mom's phone gets its <code>201 Created</code> in ~250ms, but the real work — figuring out whose feeds need to learn about her new post — happens in the background over the next few seconds. The user never waits for it.</p>
+
+      <div class="card" style="border-left:3px solid var(--orange);margin-bottom:1.2rem">
+        <h3>The mental model first</h3>
+        <p>Hold this in your head: a "write" is actually <strong>two distinct operations</strong> stitched together with a queue.</p>
+        <ol style="padding-left:1.5rem;list-style:decimal;margin-top:.6rem">
+          <li><strong>The synchronous part</strong> — persist the post durably and confirm to the author. This must be fast (<300ms) because mom is staring at a loading spinner. It writes to S3 + Cassandra and emits an event. <em>That's it.</em></li>
+          <li><strong>The asynchronous part</strong> — figure out who follows mom, push the new post id into each follower's Redis feed cache, and ping any currently-online followers via websocket. This runs <em>after</em> mom's 201 response, driven by Kafka, and has a 5-second budget.</li>
+        </ol>
+        <p style="margin-top:.6rem">The split is what makes the system feel snappy to authors and still keep 300M readers' feeds fresh. The <strong>Fan-out Service ⑧</strong> is the asynchronous worker that does the heavy lifting nobody sees.</p>
+      </div>
+
+      <div class="g2">
+        <div class="card">
+          <h3>Step 1 — Mom hits "Post"</h3>
+          <p>Mom's <strong>phone ①</strong> issues:</p>
+          <pre style="background:#0b0f14;border:1px solid var(--border);border-radius:6px;padding:.7rem .9rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--text);margin:.5rem 0">POST /api/v1/posts
+Authorization: Bearer &lt;Mom's JWT&gt;
+Content-Type: multipart/form-data
+
+{
+  "caption": "Happy birthday Sarah! 🎂",
+  "media": &lt;photo.jpg bytes&gt;
+}</pre>
+          <p>The request carries both the caption and the raw photo bytes. The phone has already done client-side validation (file under 10MB, JPEG/PNG only) so the server can trust the payload size — but it still re-validates because <em>never trust the client</em> is rule one.</p>
+        </div>
+        <div class="card">
+          <h3>Step 2 — Front-door routing (LB → Web → App)</h3>
+          <ul style="padding-left:1.3rem;margin:.3rem 0">
+            <li><strong>Load Balancer ②</strong> terminates TLS and picks a regional web server. Writes are routed to the user's <em>home</em> region (where their primary post shard lives), not the nearest one, to avoid cross-region replication on the critical path.</li>
+            <li><strong>Web Server ③</strong> handles multipart parsing, enforces per-user rate limits (e.g. max 60 posts/day), and proxies onward.</li>
+            <li><strong>Application Server ④</strong> authenticates the JWT, resolves <code>user_id = mom_18</code>, runs spam/abuse classifiers on the caption, and forwards to the <strong>Post Service ⑤</strong>.</li>
+          </ul>
+          <p style="margin-top:.5rem"><em>Why spam classification here, not later:</em> if we rejected spam <em>after</em> writing to Cassandra, we'd have to delete it back out and risk fan-out racing ahead. Catching it at the app tier keeps bad data out of the durable store entirely.</p>
+        </div>
+      </div>
+
+      <div class="g2" style="margin-top:1rem">
+        <div class="card">
+          <h3>Step 3 — Upload media to S3 ⑦</h3>
+          <p>Post Service streams the photo bytes to <strong>S3 ⑦</strong> (or Facebook's internal equivalent, Haystack). S3 returns a content-addressable id like <code>media_a47f9c</code>. The bytes go to S3 because:</p>
+          <ul style="padding-left:1.3rem;margin:.3rem 0">
+            <li>Cassandra is for <em>structured, small</em> records — stuffing a 4MB JPEG into a row would balloon row sizes and wreck read throughput.</li>
+            <li>S3 is replicated across 3 availability zones for durability we don't have to engineer.</li>
+            <li>The <strong>CDN ⑦</strong> sits in front of S3, so when Sarah eventually views the photo, she pulls it from an edge node 20ms away — never touching the origin.</li>
+          </ul>
+          <p>This step takes ~200ms for a typical phone photo. It's the longest single step in the synchronous path.</p>
+        </div>
+        <div class="card">
+          <h3>Step 4 — Persist the post in FeedItem DB ⑥</h3>
+          <p>Post Service generates a unique <code>post_id = post_99813</code> (Snowflake-style: 64-bit, timestamp-prefixed so ids are roughly chronological) and writes the row to <strong>FeedItem DB ⑥</strong>:</p>
+          <pre style="background:#0b0f14;border:1px solid var(--border);border-radius:6px;padding:.7rem .9rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--text);margin:.5rem 0">INSERT INTO feed_item (
+  post_id, user_id, content,
+  media_id, created_at
+) VALUES (
+  'post_99813', 'mom_18',
+  'Happy birthday Sarah! 🎂',
+  'media_a47f9c', 1716638526
+);</pre>
+          <p>Cassandra is partitioned by <code>user_id</code>, so this write lands on a single node (no coordinator scatter), with quorum replication to 2 more nodes for durability. Latency: ~15ms.</p>
+        </div>
+      </div>
+
+      <div class="g2" style="margin-top:1rem">
+        <div class="card">
+          <h3>Step 5 — Emit the "post created" event to Kafka</h3>
+          <p>Post Service publishes a small event to a Kafka topic:</p>
+          <pre style="background:#0b0f14;border:1px solid var(--border);border-radius:6px;padding:.7rem .9rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--text);margin:.5rem 0">{
+  "event": "post_created",
+  "post_id": "post_99813",
+  "author_id": "mom_18",
+  "created_at": 1716638526
+}</pre>
+          <p>Notice what's <em>not</em> in the event: the caption, the media bytes, the follower list. The event is intentionally tiny — Kafka consumers can look up everything else from the post id. This keeps the topic throughput high and lets us reprocess events cheaply on replay.</p>
+          <p>Post Service now returns <code>201 {post_id}</code> to mom. <em>Total synchronous time: ~250ms.</em> Mom's spinner stops; her post appears in her own profile. Everything else happens in the background.</p>
+        </div>
+        <div class="card">
+          <h3>Step 6 — Fan-out Service ⑧ picks up the event</h3>
+          <p>A pool of <strong>Fan-out Service ⑧</strong> workers consumes the Kafka topic. For each event, the worker:</p>
+          <ol style="padding-left:1.5rem;list-style:decimal;margin:.3rem 0">
+            <li>Looks up mom's follower list from the social graph store. Mom has 200 followers → cheap.</li>
+            <li><strong>Checks the follower count threshold.</strong> If the author had more than 1M followers (Ronaldo, Taylor Swift), the worker would <em>skip fan-out entirely</em> and let those posts be pulled at read time. Mom is below threshold, so fan-out proceeds.</li>
+            <li>Partitions the 200 follower ids into batches (say, 50 per batch) and dispatches each batch to a Redis-writing sub-worker for parallelism.</li>
+          </ol>
+          <p>The threshold check is the single most important branch in this service — it's what separates push-friendly authors from celebrities, and it's the answer to "how does Facebook handle Ronaldo?"</p>
+        </div>
+      </div>
+
+      <div class="g2" style="margin-top:1rem">
+        <div class="card">
+          <h3>Step 7 — Push into each follower's User Feed Cache ⑨</h3>
+          <p>For each of mom's 200 followers (including Sarah, <code>user_id = 42</code>), Fan-out issues two Redis commands:</p>
+          <pre style="background:#0b0f14;border:1px solid var(--border);border-radius:6px;padding:.7rem .9rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--text);margin:.5rem 0">ZADD user:42:feed 1716638526 post_99813
+ZREMRANGEBYRANK user:42:feed 0 -501</pre>
+          <p><code>ZADD</code> inserts <code>post_99813</code> into Sarah's sorted set, scored by the post's timestamp. <code>ZREMRANGEBYRANK</code> trims the set back down to its 500-item cap, evicting the oldest entry. Both ops are O(log N) — microseconds.</p>
+          <p>200 followers × ~1ms per Redis call = under 5 seconds total fan-out wall-clock, even if done sequentially. With batching/parallelism it's typically ~1 second. <em>Sarah's feed cache now contains mom's post, indistinguishable from any other entry.</em></p>
+        </div>
+        <div class="card">
+          <h3>Step 8 — Notification Service ⑫ pings active followers</h3>
+          <p>The same Kafka event is also consumed by <strong>Notification Service ⑫</strong>, which:</p>
+          <ul style="padding-left:1.3rem;margin:.3rem 0">
+            <li>Filters mom's followers down to those with an open websocket / mobile session right now.</li>
+            <li>For each, checks notification preferences (does Sarah want mobile pushes from mom? yes).</li>
+            <li>Throttles: if mom has already triggered 3 notifications to Sarah today, skip this one.</li>
+            <li>Emits a websocket message to Sarah's app → her screen shows "1 new post" without her having to refresh.</li>
+          </ul>
+          <p>This is what closes the loop on the "5-second freshness" requirement — Sarah learns about mom's post in real-time, not on her next manual refresh.</p>
+        </div>
+      </div>
+
+      <h3 class="subh" style="margin-top:2rem">What's NOT happening (and why that's the win)</h3>
+      <p>The write path's elegance is in what was <em>kept out</em> of the critical path.</p>
+      <div class="diagram-box" style="padding:0">
+        <table style="width:100%;border-collapse:collapse;font-size:.9rem">
+          <thead>
+            <tr style="background:var(--surface2)">
+              <th style="text-align:left;padding:.7rem 1rem;border-bottom:1px solid var(--border);color:var(--heading)">What we kept out of the synchronous path</th>
+              <th style="text-align:left;padding:.7rem 1rem;border-bottom:1px solid var(--border);color:var(--heading)">Why</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">Follower lookup + 200 cache writes</td><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">Would add seconds to mom's wait. Async via Kafka instead — she sees 201 in 250ms.</td></tr>
+            <tr><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">Sending push notifications to active followers</td><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">Pushes can fail / retry. Doing them inline would tie the author's response time to the notification provider's latency.</td></tr>
+            <tr><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">Pushing to celebrity-author followers</td><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">600M Redis writes per Ronaldo post = system meltdown. Skip them; readers pull instead.</td></tr>
+            <tr><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">Pre-computing ranking scores</td><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">Scores depend on the <em>reader's</em> features at read time. Computing at write would need 200 score evaluations per post, all wasted on inactive followers.</td></tr>
+            <tr><td style="padding:.6rem 1rem;color:var(--text)">Storing photo bytes in Cassandra</td><td style="padding:.6rem 1rem;color:var(--text)">Wrong tool. Cassandra rows would balloon; S3 + CDN is purpose-built for big-binary delivery.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="highlight hl-orange" style="margin-top:1.2rem"><strong>So what — write path edition:</strong> the write is fast because <strong>we cheat with a queue</strong>. The author's request only needs to persist the post and emit an event — both bounded, both fast. Everything that takes time (fan-out, notifications, threshold logic) is deferred to async workers that nobody waits on. The 5-second freshness budget for readers is plenty for fan-out to catch up, and if it doesn't, the celebrity pull path catches the rest at read time. Two paths, one consistent feed.</div>
+    </div>
+  </details>
+
+  <details class="detail-toggle">
+    <summary>📥 Read flow — detailed view<span class="toggle-hint">click to expand</span></summary>
+    <div class="detail-body">
+      <p>The genius of this design is that <strong>by the time Sarah taps the app icon, her feed is already 90% assembled in Redis.</strong> The read path is mostly a cache fetch plus a final ranking pass. Here's what happens under the hood — every step expanded so you can see exactly which component does which job, and why.</p>
+
+      <div class="card" style="border-left:3px solid var(--blue);margin-bottom:1.2rem">
+        <h3>The mental model first</h3>
+        <p>Before tracing packets, hold this in your head: there are <strong>two sources of feed candidates</strong> the system has to merge on every read.</p>
+        <ol style="padding-left:1.5rem;list-style:decimal;margin-top:.6rem">
+          <li><strong>The push pile</strong> — posts from normal-follower accounts (mom, friends, coworkers) that the <strong>Fan-out Service ⑧</strong> already shoved into Sarah's personal Redis sorted set when those posts were created. This pile is <em>pre-baked</em> — it cost zero work at read time.</li>
+          <li><strong>The pull pile</strong> — posts from celebrities Sarah follows (Ronaldo, Taylor Swift). These were <em>deliberately skipped</em> by fan-out because pushing one Ronaldo post to 600M follower caches would be insane. So Ronaldo's posts live only in the <strong>FeedItem DB ⑥</strong>, and Sarah has to <em>pull</em> them at read time.</li>
+        </ol>
+        <p style="margin-top:.6rem">The <strong>Feed Generation Service ⑩</strong> is the conductor that fetches both piles, merges them, ranks them, hydrates the winners, and ships them back. Total budget: <strong>~800ms</strong>.</p>
+      </div>
+
+      <div class="g2">
+        <div class="card">
+          <h3>Step 1 — The request leaves Sarah's phone</h3>
+          <p>Sarah's <strong>app ①</strong> opens. The feed component issues:</p>
+          <pre style="background:#0b0f14;border:1px solid var(--border);border-radius:6px;padding:.7rem .9rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--text);margin:.5rem 0">GET /api/v1/feed?since_id=post_99745&amp;limit=50
+Authorization: Bearer &lt;Sarah's JWT&gt;</pre>
+          <p>The <code>since_id</code> cursor is the last post id Sarah saw on her previous session — it lets the server return only what's <em>newer</em> than what she's already scrolled past, so we don't waste bytes re-sending posts she's seen.</p>
+        </div>
+        <div class="card">
+          <h3>Step 2 — Front-door routing (LB → Web → App)</h3>
+          <ul style="padding-left:1.3rem;margin:.3rem 0">
+            <li><strong>Load Balancer ②</strong> receives the HTTPS request, terminates TLS, and picks a healthy edge web server (round-robin or least-connections). Sarah's IP is geo-routed to her nearest data center.</li>
+            <li><strong>Web Server ③</strong> (nginx) handles the static stuff — gzip compression, HTTP keep-alive, rate-limit checks ("is this user banging the API more than 100 req/min?"). Then it proxies onward.</li>
+            <li><strong>Application Server ④</strong> authenticates the JWT, resolves Sarah's <code>user_id = 42</code>, looks up her session features (locale, device, A/B test buckets), and forwards the request to the <strong>Feed Generation Service ⑩</strong>.</li>
+          </ul>
+          <p style="margin-top:.5rem"><em>Why these three hops matter:</em> each layer does a job the next layer shouldn't have to think about. By the time Feed Gen sees the request, it knows it's a real, authenticated, rate-limited Sarah — it can focus purely on assembling content.</p>
+        </div>
+      </div>
+
+      <div class="g2" style="margin-top:1rem">
+        <div class="card">
+          <h3>Step 3 — Fetch the push pile from User Feed Cache ⑨</h3>
+          <p>Feed Gen issues a single Redis command:</p>
+          <pre style="background:#0b0f14;border:1px solid var(--border);border-radius:6px;padding:.7rem .9rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--text);margin:.5rem 0">ZREVRANGE user:42:feed 0 499</pre>
+          <p>This returns the <strong>500 most-recent post ids</strong> that fan-out has dropped into Sarah's sorted set (scored by timestamp, so <code>ZREVRANGE</code> gives them newest-first). Mom's birthday photo <code>post_99813</code>, which fan-out wrote at 14:02:08, is sitting near the top.</p>
+          <p>This is the magic step — <strong>17.5K reads/sec across the fleet, each one a single O(log N + 500) Redis call, all under 5ms.</strong> No database query, no merge logic, no scoring. Just "give me Sarah's pre-baked candidate list."</p>
+        </div>
+        <div class="card">
+          <h3>Step 4 — Fetch the pull pile from FeedItem DB ⑥</h3>
+          <p>Now Feed Gen handles the celebrities. It looks at Sarah's follow list (cached in-process) and identifies the 3 high-follower accounts she follows. For each:</p>
+          <pre style="background:#0b0f14;border:1px solid var(--border);border-radius:6px;padding:.7rem .9rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--text);margin:.5rem 0">SELECT post_id, user_id, content_preview,
+       media_id, created_at
+FROM feed_item
+WHERE user_id = 'ronaldo'
+ORDER BY created_at DESC
+LIMIT 50;</pre>
+          <p>Three queries → 150 candidate ids. These run in parallel (≈30ms total since Cassandra is partitioned by <code>user_id</code> and each query hits one node). They were <em>not</em> in Sarah's cache because fan-out deliberately skipped them when each post was created.</p>
+          <p><em>Why we do this on read, not write:</em> if Ronaldo posts and fan-out tried to push to 600M caches, every Ronaldo post would generate 600M Redis writes. Doing 3 reads per Sarah-fetch is <em>trivial</em> by comparison — and it's the same 3 reads whether Ronaldo posts 1 time or 100 times an hour.</p>
+        </div>
+      </div>
+
+      <div class="g2" style="margin-top:1rem">
+        <div class="card">
+          <h3>Step 5 — Merge into a single candidate set</h3>
+          <p>Feed Gen now has:</p>
+          <ul style="padding-left:1.3rem;margin:.3rem 0">
+            <li>500 candidates from the cache (push pile)</li>
+            <li>150 candidates from Cassandra (pull pile)</li>
+            <li>After dedup → ~650 unique post ids</li>
+          </ul>
+          <p>These get bundled with Sarah's <strong>user features</strong> (age, locale, engagement history, which content types she's clicked recently, which authors she's "close friends" with) and shipped to the <strong>Ranking Service ⑪</strong>.</p>
+        </div>
+        <div class="card">
+          <h3>Step 6 — Rank with ML</h3>
+          <p><strong>Ranking Service ⑪</strong> runs the 650 candidates through a trained model that scores each post for <em>predicted relevance to Sarah right now</em>. Features include:</p>
+          <ul style="padding-left:1.3rem;margin:.3rem 0">
+            <li>recency (how long ago was it posted)</li>
+            <li>author affinity (how often does Sarah engage with this author)</li>
+            <li>content type match (Sarah watches videos more than reads text → boost videos)</li>
+            <li>social proof (how many of Sarah's friends already engaged)</li>
+            <li>diversity penalty (don't return 10 posts from the same author in a row)</li>
+          </ul>
+          <p>The model returns the <strong>top 50 ranked post ids</strong>, each with a score. Mom's birthday photo, despite being only 30 candidates deep in the cache by timestamp, ranks #2 because mom has very high author-affinity for Sarah. <em>This step alone is ~150ms</em> — the single biggest budget item in the read path.</p>
+        </div>
+      </div>
+
+      <div class="g2" style="margin-top:1rem">
+        <div class="card">
+          <h3>Step 7 — Hydrate the winners</h3>
+          <p>At this point Feed Gen has 50 post ids but only thin metadata. It needs the <em>full payload</em> — author name, profile photo URL, caption text, image URLs, like count, comment count. It issues:</p>
+          <ul style="padding-left:1.3rem;margin:.3rem 0">
+            <li>A batched Cassandra read for all 50 post bodies from <strong>FeedItem DB ⑥</strong>.</li>
+            <li>For each post that has media, it swaps the <code>media_id</code> for a signed <strong>CDN ⑦</strong> URL (so the browser fetches the actual JPEG/MP4 directly from the edge cache, not through the app server).</li>
+            <li>Counts (likes, comments) come from a separate counter service — often cached, often slightly stale, that's fine.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Step 8 — The response</h3>
+          <p>Feed Gen assembles the final JSON:</p>
+          <pre style="background:#0b0f14;border:1px solid var(--border);border-radius:6px;padding:.7rem .9rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--text);margin:.5rem 0">{
+  "feed": [
+    {"post_id": "post_99820", "author": "...",
+     "media_url": "https://cdn.fb.com/...", ...},
+    {"post_id": "post_99813", "author": "Mom",
+     "caption": "🎂", ...},
+    ...
+  ],
+  "next_cursor": "post_99745"
+}</pre>
+          <p>This flows back up: <strong>Feed Gen → App Server → Web Server → LB → Sarah's phone</strong>. Total wall-clock time from her tap to the first photo rendering: <strong>~800ms</strong>.</p>
+        </div>
+      </div>
+
+      <h3 class="subh" style="margin-top:2rem">What's NOT happening (and why that's the win)</h3>
+      <p>To appreciate the design, look at what we <em>didn't</em> do.</p>
+      <div class="diagram-box" style="padding:0">
+        <table style="width:100%;border-collapse:collapse;font-size:.9rem">
+          <thead>
+            <tr style="background:var(--surface2)">
+              <th style="text-align:left;padding:.7rem 1rem;border-bottom:1px solid var(--border);color:var(--heading)">What we skipped</th>
+              <th style="text-align:left;padding:.7rem 1rem;border-bottom:1px solid var(--border);color:var(--heading)">Why it would have killed us</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">Querying posts from each of Sarah's 500 follows on read</td><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">8.75M sub-queries/sec at 17.5K req/sec — destroys Cassandra</td></tr>
+            <tr><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">Pushing Ronaldo's posts to 600M caches on write</td><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">One celebrity post = 600M Redis writes — destroys Redis</td></tr>
+            <tr><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">Sorting/merging candidates ourselves in memory</td><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">Redis sorted sets do it in O(log N) on insert; we just <code>ZREVRANGE</code></td></tr>
+            <tr><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">Streaming media bytes through the app server</td><td style="padding:.6rem 1rem;border-bottom:1px solid var(--border);color:var(--text)">CDN URLs let the browser fetch directly from the edge</td></tr>
+            <tr><td style="padding:.6rem 1rem;color:var(--text)">Re-ranking every refresh from scratch</td><td style="padding:.6rem 1rem;color:var(--text)">Candidate list is pre-built; ranking only runs on 650 items, not millions</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="highlight hl-blue" style="margin-top:1.2rem"><strong>So what — read path edition:</strong> the read is fast because <strong>the hard work was done 90 seconds earlier when mom posted</strong>. Fan-out paid the cost of "who should see this?" at write time, in the background, asynchronously. Sarah's read is essentially: <em>fetch a pre-sorted list from Redis → patch in the celebrity exceptions → score → hydrate → return.</em> Every box in the read path earns its place by being either (a) too slow if combined into another box, or (b) needed to handle one of the two extremes (normal-user push, celebrity pull) that pure approaches can't handle alone.</div>
+    </div>
+  </details>
 
   <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around three insights — (1) <strong>writes are 100× rarer than reads</strong>, so we move feed assembly to write-time via fan-out; (2) <strong>celebrities break naive fan-out</strong>, so we use a hybrid push/pull model with a follower-count threshold; (3) <strong>chronological is a worse product than ranked</strong>, so a dedicated ML scoring tier sits between the candidate cache and the response. Every box in the diagram earns its place by removing one of those failure modes from Pass 1.</div>
 </div>

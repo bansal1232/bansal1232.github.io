@@ -4,7 +4,7 @@
 <script src="/js/analytics.js"></script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Payment System (Stripe / PayPal) — HLD Design</title>
+<title>Payment System (Razorpay / PayU) — HLD Design</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="../../css/diagram-zoom.css"/>
 <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
@@ -169,7 +169,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
   <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
   <div class="pill">High-Level Design</div>
   <h1>Payment <span>System</span></h1>
-  <p class="sub">Stripe / PayPal style — idempotency, sagas, and a double-entry ledger that never loses a cent. The architecture, the failure modes, and why every box is non-negotiable when real money is on the wire.</p>
+  <p class="sub">Razorpay / PayU style — idempotency, sagas, and a double-entry ledger that never loses a paisa. The architecture, the failure modes, and why every box is non-negotiable when real money is on the wire.</p>
 </div>
 
 <div class="layout">
@@ -217,13 +217,13 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 <div class="sec" id="s1">
   <span class="sec-tag tag-orange">Step 1</span>
   <h2>What is a Payment System?</h2>
-  <p>Sarah is checking out at 14:02:06 on a Tuesday. The cart says one pair of sneakers, $89.00. She taps "Buy". Within two seconds, four things must happen and they must happen <em>together</em>: her credit card gets charged $89, the merchant's escrow balance goes up by $89, the inventory drops by one pair, and a confirmation email lands in her inbox. If any of those four steps fails — and the rest succeed — somebody loses money. If we charge her card but never tell the merchant, Sarah paid for sneakers that won't ship. If we tell the merchant but the charge fails, the merchant ships sneakers we never collected for. If Sarah retries because her Wi-Fi blinked, we must not charge her twice.</p>
+  <p>Priya is checking out at 14:02:06 IST on a Tuesday. The cart says one pair of running shoes, ₹6,499. She taps "Place order". Within a few seconds, four things must happen and they must happen <em>together</em>: her HDFC credit card gets charged ₹6,499, the merchant's escrow balance goes up by ₹6,499, the inventory drops by one pair, and a confirmation SMS lands on her phone. If any of those four steps fails — and the rest succeed — somebody loses money. If we charge her card but never tell the merchant, Priya paid for shoes that won't ship. If we tell the merchant but the charge fails, the merchant ships shoes we never collected for. If Priya retries because her Jio fibre blinked, we must not charge her twice.</p>
 
-  <p>That's what a payment system is: a piece of software whose entire purpose is moving money between three parties — the buyer's bank, the merchant's bank, and the platform's escrow account — without ever creating, destroying, or duplicating a single cent. Stripe, PayPal, Adyen, Razorpay all solve this same problem at scale.</p>
+  <p>That's what a payment system is: a piece of software whose entire purpose is moving money between three parties — the buyer's bank, the merchant's bank, and the platform's escrow account — without ever creating, destroying, or duplicating a single paisa. Razorpay, PayU, Cashfree, Paytm all solve this same problem at scale; Stripe and Adyen do it globally.</p>
 
   <div class="highlight hl-red"><strong>The two questions that drive every design decision below:</strong> (1) How do we make a multi-step money transfer <em>atomic</em> across systems we don't control (card networks, banks, our own DB)? (2) How do we guarantee that retries — from network drops, server crashes, double-clicks — never result in a double-charge or a leak?</div>
 
-  <div class="highlight hl-orange"><strong>Why this is harder than a normal CRUD app:</strong> in a normal app, a failure means "user sees an error, retries, no harm done". In a payment system, a failure between step 2 (card charged) and step 3 (merchant credited) means real money has left Sarah's bank and is sitting in nobody's account. That's not a bug — that's a regulator-visible incident. So the architecture is built to make those middle-state losses literally impossible.</div>
+  <div class="highlight hl-orange"><strong>Why this is harder than a normal CRUD app:</strong> in a normal app, a failure means "user sees an error, retries, no harm done". In a payment system, a failure between step 2 (card charged) and step 3 (merchant credited) means real money has left Priya's bank and is sitting in nobody's account. That's not a bug — that's an RBI-visible incident. So the architecture is built to make those middle-state losses literally impossible.</div>
 </div>
 
 <div class="divider"></div>
@@ -245,7 +245,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
         <li><strong>Split payments</strong> — one charge, money goes to multiple recipients (marketplace use case)</li>
         <li><strong>Recurring subscriptions</strong> — auto-charge on a schedule</li>
         <li><strong>Payouts to merchants</strong> — move escrow money to merchants' bank accounts on a schedule</li>
-        <li><strong>Multi-currency</strong> — accept USD, EUR, INR, etc.; FX conversion when needed</li>
+        <li><strong>Multi-currency</strong> — accept INR, USD, EUR, etc.; FX conversion when needed (RBI's LRS / FEMA rules apply for cross-border)</li>
       </ul>
     </div>
     <div class="card">
@@ -254,19 +254,20 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
         <li><strong>ACID-strict</strong> — no money ever lost or duplicated, period</li>
         <li><strong>Idempotent</strong> — every mutation safe to retry, same result every time</li>
         <li><strong>Highly available</strong> — payment downtime is revenue lost forever</li>
-        <li><strong>Sub-second response</strong> — Sarah cannot wait 5 seconds at the checkout page</li>
-        <li><strong>Audit-ready</strong> — every cent traceable to a state change with a timestamp</li>
-        <li><strong>PCI-DSS compliant</strong> — card data handled per industry regulations</li>
+        <li><strong>Sub-second response</strong> — Priya cannot wait 5 seconds at the checkout page (plus OTP time for &gt; ₹5,000 txns)</li>
+        <li><strong>Audit-ready</strong> — every paisa traceable to a state change with a timestamp (RBI inspectors can demand the trail on 24-hr notice)</li>
+        <li><strong>PCI-DSS &amp; RBI compliant</strong> — card data handled per industry regulations, payment data localised in India per RBI's 2018 directive</li>
       </ul>
       <h3 style="margin-top:1rem">🚫 Out of Scope</h3>
       <ul>
-        <li>Card-network internals — we integrate with Stripe / Visa / Mastercard, we do not <em>be</em> them</li>
+        <li>Card-network internals — we integrate with Razorpay / Visa / Mastercard / RuPay, we do not <em>be</em> them</li>
+        <li>UPI / NPCI rails — covered in a separate UPI HLD; this page focuses on the card-payment flow</li>
         <li>Fraud-model training pipeline — we consume the model, not build it</li>
       </ul>
     </div>
   </div>
 
-  <div class="highlight hl-orange"><strong>The non-functional requirements are the hard part.</strong> Charging a card via Stripe's API is a 5-line problem. Making the charge survive a network drop mid-flight, never double-charge on retry, balance to the cent against Stripe's daily statement, and stay PCI-compliant — that's the architecture.</div>
+  <div class="highlight hl-orange"><strong>The non-functional requirements are the hard part.</strong> Charging a card via Razorpay's API is a 5-line problem. Making the charge survive a network drop mid-flight, never double-charge on retry, balance to the paisa against Razorpay's daily settlement file, and stay PCI-DSS + RBI-compliant — that's the architecture.</div>
 </div>
 
 <div class="divider"></div>
@@ -277,16 +278,16 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 <div class="sec" id="s3">
   <span class="sec-tag tag-blue">Step 3</span>
   <h2>Capacity Estimation &amp; Constraints</h2>
-  <p>Numbers are not optional in HLD. They drive sharding, ledger sizing, and how big our database needs to be. Let's pick a Stripe-like mid-size scale.</p>
+  <p>Numbers are not optional in HLD. They drive sharding, ledger sizing, and how big our database needs to be. Let's pick a Razorpay-like mid-size scale for a card-payments platform serving Indian merchants.</p>
 
   <h3 class="subh">Traffic estimates</h3>
-  <p>Assume <strong>1 million transactions per day</strong>, average ticket size $50, peak load is Black Friday at roughly 40× the daily average concentrated into a few hours.</p>
+  <p>Assume <strong>1 million transactions per day</strong>, average ticket size ₹4,000, peak load is Flipkart's Big Billion Days / Amazon's Great Indian Festival at roughly 40× the daily average concentrated into a few hours.</p>
 
   <div class="g4">
     <div class="card"><h3>Avg TPS</h3><p><span class="metric">~12 TPS</span></p><p>1M / 86400</p></div>
-    <div class="card"><h3>Peak TPS</h3><p><span class="metric">~500 TPS</span></p><p>Black Friday spike</p></div>
-    <div class="card"><h3>GMV / day</h3><p><span class="metric">~$50M</span></p><p>1M × $50 avg</p></div>
-    <div class="card"><h3>API latency</h3><p><span class="metric">p99 &lt; 1s</span></p><p>End-to-end checkout</p></div>
+    <div class="card"><h3>Peak TPS</h3><p><span class="metric">~500 TPS</span></p><p>Big Billion Days spike</p></div>
+    <div class="card"><h3>GMV / day</h3><p><span class="metric">~₹400 Cr</span></p><p>1M × ₹4,000 avg</p></div>
+    <div class="card"><h3>API latency</h3><p><span class="metric">p99 &lt; 1s</span></p><p>End-to-end (excl. OTP)</p></div>
   </div>
 
   <h3 class="subh">Storage estimate (5-year regulatory retention)</h3>
@@ -301,7 +302,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
       <tbody>
         <tr><td>Avg TPS</td><td><code>12/s</code></td><td>Drives base sizing — small box can do this</td></tr>
         <tr><td>Peak TPS</td><td><code>500/s</code></td><td>Drives autoscale ceilings &amp; rate-limit budgets</td></tr>
-        <tr><td>GMV / day</td><td><code>$50M</code></td><td>Defines the cost-of-error — every minute of downtime is ~$35K</td></tr>
+        <tr><td>GMV / day</td><td><code>₹400 Cr</code></td><td>Defines the cost-of-error — every minute of downtime is ~₹28 lakh of failed checkouts</td></tr>
         <tr><td>5-yr storage</td><td><code>2-6 TB</code></td><td>Forces partitioning of the ledger by account_id</td></tr>
         <tr><td>Ledger rows / yr</td><td><code>~1 B</code></td><td>Append-only — no UPDATE, ever; only INSERT</td></tr>
       </tbody>
@@ -324,29 +325,31 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 POST /v1/payments
 Headers: { "Idempotency-Key": "1f3b9c2a-..." }
 {
-  "amount":            8900,           <span class="cmt">// in cents</span>
-  "currency":          "USD",
-  "payment_method_id": "pm_abc123",    <span class="cmt">// Stripe-style token, no PAN</span>
-  "customer_id":       "cus_sarah42",
-  "merchant_id":       "mer_zappos99",
-  "description":       "Order #5512 — sneakers"
+  "amount":            649900,         <span class="cmt">// in paise (₹6,499)</span>
+  "currency":          "INR",
+  "payment_method_id": "token_abc123", <span class="cmt">// Razorpay/RBI-mandated token, no PAN</span>
+  "customer_id":       "cus_priya42",
+  "merchant_id":       "mer_myntra99",
+  "description":       "Order #5512 — running shoes"
 }
 → 201 Created  { "id": "pay_...", "status": "succeeded", ... }
 
 <span class="cmt">// Refund — mutation, requires Idempotency-Key</span>
 POST /v1/refunds
 Headers: { "Idempotency-Key": "..." }
-{ "payment_id": "pay_...", "amount": 8900, "reason": "requested_by_customer" }
+{ "payment_id": "pay_...", "amount": 649900, "reason": "requested_by_customer" }
 → 201 Created
 
 <span class="cmt">// Read a payment — safe, no key needed</span>
 GET /v1/payments/:id
 → 200 OK { ... }
 
-<span class="cmt">// Payout to a merchant's bank — mutation, requires Idempotency-Key</span>
+<span class="cmt">// Payout to a merchant's bank — IMPS/NEFT/RTGS, requires Idempotency-Key</span>
 POST /v1/payouts
 Headers: { "Idempotency-Key": "..." }
-{ "merchant_id": "mer_zappos99", "amount": 50000, "currency": "USD" }
+{ "merchant_id": "mer_myntra99", "amount": 5000000, "currency": "INR",
+  "mode": "IMPS",      <span class="cmt">// IMPS &lt; ₹5L instant, NEFT batched, RTGS &gt; ₹2L same-day</span>
+  "vpa":  "myntra@hdfc" <span class="cmt">// or beneficiary ifsc + account_no</span> }
 → 201 Created
 
 <span class="cmt">// Webhooks — async events fired to merchant's HTTPS endpoint</span>
@@ -354,9 +357,9 @@ POST → merchant.example.com/webhook
 { "type": "payment.succeeded", "data": { ... } }
    <span class="cmt">// Retried with exponential backoff for up to 3 days on non-2xx</span></pre>
 
-  <div class="highlight hl-blue"><strong>Why <code>Idempotency-Key</code> is mandatory on every mutation:</strong> Sarah's phone might lose signal right after sending the request. Her browser auto-retries. Without an idempotency key, the second request is indistinguishable from a fresh charge, and Sarah pays $178 for one pair of sneakers. With the key, the second request is recognized as a replay, the original result is returned, and she pays $89 once. The key is a UUID generated <em>by the client</em> and included in the request header — analogous to a receipt number on a paper invoice.</div>
+  <div class="highlight hl-blue"><strong>Why <code>Idempotency-Key</code> is mandatory on every mutation:</strong> Priya's phone might lose signal right after sending the request — Jio's 4G in her area is patchy. Her browser auto-retries. Without an idempotency key, the second request is indistinguishable from a fresh charge, and Priya pays ₹12,998 for one pair of shoes. With the key, the second request is recognized as a replay, the original result is returned, and she pays ₹6,499 once. The key is a UUID generated <em>by the client</em> and included in the request header — analogous to a receipt number on a paper invoice.</div>
 
-  <div class="highlight hl-orange"><strong>Tokens, not PANs:</strong> the API never accepts raw card numbers (the PAN — Primary Account Number, the 16-digit digits on the front of the card). The client SDK posts the card directly to Stripe's hosted iframe and gets back an opaque <code>pm_...</code> token. Our backend only ever sees the token. This is the single biggest PCI-DSS scope reducer (more in §12).</div>
+  <div class="highlight hl-orange"><strong>Tokens, not PANs:</strong> the API never accepts raw card numbers (the PAN — Primary Account Number, the 16-digit digits on the front of the card). RBI's 2022 tokenization mandate makes this not just best practice but legally required — Indian merchants are forbidden from storing PANs at all. The client SDK posts the card directly to Razorpay's hosted iframe and gets back an opaque <code>token_...</code> reference. Our backend only ever sees the token. This is the single biggest PCI-DSS scope reducer (more in §12).</div>
 </div>
 
 <div class="divider"></div>
@@ -367,14 +370,14 @@ POST → merchant.example.com/webhook
 <div class="sec" id="s5">
   <span class="sec-tag tag-cyan">Step 5</span>
   <h2>Database Schema</h2>
-  <p>A payment system has four core tables, and the relationships matter enormously. <strong>Account</strong> represents any party that holds a balance — customer, merchant, the platform's own escrow, the platform's revenue. <strong>Transaction</strong> is a single business event ("Sarah pays $89 to Zappos"). <strong>Payment</strong> attaches the payment-method specifics. <strong>LedgerEntry</strong> is the append-only double-entry record — the source of truth for every cent. We will use <strong>Postgres with strict serializability</strong> here; the trade-offs against NoSQL are covered in §15.</p>
+  <p>A payment system has four core tables, and the relationships matter enormously. <strong>Account</strong> represents any party that holds a balance — customer, merchant, the platform's own escrow, the platform's revenue. <strong>Transaction</strong> is a single business event ("Priya pays ₹6,499 to Myntra"). <strong>Payment</strong> attaches the payment-method specifics. <strong>LedgerEntry</strong> is the append-only double-entry record — the source of truth for every paisa. We will use <strong>Postgres with strict serializability</strong> here; the trade-offs against NoSQL are covered in §15.</p>
 
   <div class="diagram-box">
     <div class="mermaid">
 erDiagram
   ACCOUNT {
     string id PK
-    bigint balance_cents
+    bigint balance_paise
     string currency
     string customer_id FK
     string type
@@ -384,7 +387,7 @@ erDiagram
     string idempotency_key UK
     string source_account_id FK
     string dest_account_id FK
-    bigint amount_cents
+    bigint amount_paise
     string status
     timestamp created_at
   }
@@ -399,7 +402,7 @@ erDiagram
     string id PK
     string account_id FK
     string transaction_id FK
-    bigint amount_cents
+    bigint amount_paise
     string entry_type
     timestamp created_at
   }
@@ -422,16 +425,16 @@ erDiagram
       <p>No UPDATE, no DELETE. Ever. Reversing a transaction does not delete the original entries — it adds <em>new</em> entries that compensate. This gives us a perfect audit trail: the entire history of every account is reconstructable by replaying the ledger from the first day. Regulators love this; engineers learn to love it after their first incident.</p>
     </div>
     <div class="card">
-      <h3>💰 <code>balance_cents</code> as a derived snapshot</h3>
-      <p>The <code>balance</code> on Account is not the source of truth — it's a <em>cached snapshot</em> derived from <code>SUM(amount_cents) FROM ledger_entry WHERE account_id = ?</code>. The ledger is truth; the balance is convenience. This is what makes the system reconcilable.</p>
+      <h3>💰 <code>balance_paise</code> as a derived snapshot</h3>
+      <p>The <code>balance</code> on Account is not the source of truth — it's a <em>cached snapshot</em> derived from <code>SUM(amount_paise) FROM ledger_entry WHERE account_id = ?</code>. The ledger is truth; the balance is convenience. This is what makes the system reconcilable.</p>
     </div>
     <div class="card">
       <h3>💳 Payment ≠ Transaction</h3>
-      <p>A transaction is a business event ("$89 from Sarah to Zappos"); a payment is the mechanism ("Visa card ending 4242, auth code XYZ, captured at 14:02:06"). One transaction has exactly one payment, but separating them lets us swap the payment mechanism (card → wallet → bank transfer) without changing the business semantics.</p>
+      <p>A transaction is a business event ("₹6,499 from Priya to Myntra"); a payment is the mechanism ("HDFC Visa card ending 4242, auth code XYZ, captured at 14:02:06 IST"). One transaction has exactly one payment, but separating them lets us swap the payment mechanism (card → UPI → wallet → netbanking) without changing the business semantics — important in India where ~70% of online checkouts happen on UPI, not card.</p>
     </div>
   </div>
 
-  <div class="highlight hl-cyan"><strong>The audit invariant — write it on the wall:</strong> for every transaction, the sum of its ledger entries must equal zero (debits and credits balance). Globally, <code>SUM(amount_cents) FROM ledger_entry</code> across all accounts must equal zero too. If that sum ever diverges from zero, money has been created or destroyed in our system — that is a P0 incident that wakes up the on-call engineer.</div>
+  <div class="highlight hl-cyan"><strong>The audit invariant — write it on the wall:</strong> for every transaction, the sum of its ledger entries must equal zero (debits and credits balance). Globally, <code>SUM(amount_paise) FROM ledger_entry</code> across all accounts must equal zero too. If that sum ever diverges from zero, money has been created or destroyed in our system — that is a P0 incident that wakes up the on-call engineer.</div>
 </div>
 
 <div class="divider"></div>
@@ -445,15 +448,15 @@ erDiagram
   <p>This is the section that wins or loses the interview. We'll build the architecture in three passes: the simplest thing that could plausibly work, why it shatters the moment real money flows through it, and the production shape where every box exists to plug a specific failure mode.</p>
 
   <h3 class="subh">Pass 1 — The naive design (and why it breaks)</h3>
-  <p>One app server. It receives the checkout POST, charges the card via Stripe's API, then in the same request handler updates the merchant's balance in the DB, then sends a confirmation email, then returns 200 to the browser. Three calls in series, one happy path.</p>
+  <p>One app server. It receives the checkout POST, charges the card via Razorpay's API, then in the same request handler updates the merchant's balance in the DB, then sends a confirmation SMS/email, then returns 200 to the browser. Three calls in series, one happy path.</p>
 
   <div class="diagram-box">
     <div class="mermaid">
 flowchart LR
-  C["Sarah's Browser"] --> APP["App Server"]
-  APP -->|"1. charge"| STR["Stripe API"]
+  C["Priya's Browser"] --> APP["App Server"]
+  APP -->|"1. charge"| RZP["Razorpay API"]
   APP -->|"2. update balance"| DB[("MySQL — merchant balance")]
-  APP -->|"3. email"| EM["SMTP"]
+  APP -->|"3. SMS/email"| EM["MSG91 / SMTP"]
   APP --> C
     </div>
   </div>
@@ -462,19 +465,19 @@ flowchart LR
   <div class="g2">
     <div class="card">
       <h3>💥 Network drop after step 1, before step 2</h3>
-      <p>Stripe charged Sarah's card for $89. Our app server crashed before writing the merchant balance. Sarah's bank statement shows the charge. Our DB shows nothing. The merchant has no idea Sarah paid and never ships sneakers. Sarah is angry, Zappos is angry, and nobody can find the $89 — it's sitting in our Stripe account with no internal record. <strong>Money has effectively leaked out of the system.</strong></p>
+      <p>Razorpay charged Priya's HDFC card for ₹6,499. Our app server crashed before writing the merchant balance. Priya's HDFC statement shows the charge. Our DB shows nothing. The merchant has no idea Priya paid and never ships shoes. Priya is angry, Myntra is angry, and nobody can find the ₹6,499 — it's sitting in our Razorpay nodal account with no internal record. <strong>Money has effectively leaked out of the system.</strong></p>
     </div>
     <div class="card">
-      <h3>💥 Sarah retries — double charge</h3>
-      <p>Browser timed out after step 1, Sarah hits "Buy" again. Our app receives a fresh request that looks identical. We run the whole flow again — Stripe charges Sarah <em>twice</em>. Now $178 has left her account for one pair of sneakers. She files a chargeback, the bank yanks back $89 plus a $25 dispute fee, and we still owe Zappos for the sneakers they shipped.</p>
+      <h3>💥 Priya retries — double charge</h3>
+      <p>Browser timed out after step 1, Priya hits "Place order" again. Our app receives a fresh request that looks identical. We run the whole flow again — Razorpay charges Priya <em>twice</em>. Now ₹12,998 has left her account for one pair of shoes. She files a chargeback, the bank yanks back ₹6,499 plus a ~₹500 dispute fee, and we still owe Myntra for the shoes they shipped.</p>
     </div>
     <div class="card">
       <h3>💥 Hot-row contention on merchant balance</h3>
-      <p>Black Friday: Zappos receives 500 orders per second. Every order does <code>UPDATE merchant SET balance = balance + amount WHERE id = 'zappos'</code>. Postgres serializes these updates on the same row. Lock queue grows, p99 latency climbs from 50ms to 5 seconds, and Sarah sees a spinner on her checkout page.</p>
+      <p>Big Billion Days: Myntra receives 500 orders per second. Every order does <code>UPDATE merchant SET balance = balance + amount WHERE id = 'myntra'</code>. Postgres serializes these updates on the same row. Lock queue grows, p99 latency climbs from 50ms to 5 seconds, and Priya sees a spinner on her checkout page just when she's most price-sensitive — she abandons and goes to Amazon.</p>
     </div>
     <div class="card">
       <h3>💥 No audit trail, no recovery path</h3>
-      <p>A single <code>UPDATE balance</code> overwrites history. We can never answer "what was Sarah's balance at 14:02:05?" or "did this charge actually happen?" Regulators want a ledger of every state transition. Without one, we cannot pass an audit and we cannot debug incidents — we can only guess.</p>
+      <p>A single <code>UPDATE balance</code> overwrites history. We can never answer "what was Priya's balance at 14:02:05?" or "did this charge actually happen?" RBI inspectors want a ledger of every state transition. Without one, we cannot pass an inspection and we cannot debug incidents — we can only guess.</p>
     </div>
   </div>
 
@@ -485,7 +488,7 @@ flowchart LR
     <div class="card" style="border-color:rgba(232,116,59,.4)">
       <h3 style="color:var(--orange)">🎟️ Idempotency Key</h3>
       <p>Every mutation request carries a UUID generated by the client — a <em>receipt number</em>. The server keeps a record of every key it has seen. If the same key shows up twice, the server returns the original result instead of executing the operation again. Same as a hotel handing back the same room key when you re-show the same booking confirmation — they don't re-book the room.</p>
-      <p><strong>Solves:</strong> double-charge on retry. Sarah can mash the Buy button 100 times — the first request runs, the next 99 return the same result, no extra money moves.</p>
+      <p><strong>Solves:</strong> double-charge on retry. Priya can mash the Place order button 100 times — the first request runs, the next 99 return the same result, no extra money moves.</p>
     </div>
     <div class="card" style="border-color:rgba(74,144,217,.4)">
       <h3 style="color:var(--blue)">🔄 Saga Pattern</h3>
@@ -539,7 +542,7 @@ flowchart TB
   API --> ORC
   ORC --> FRAUD
   ORC --> GA
-  GA --> STRIPE["Stripe / Card Networks"]
+  GA --> STRIPE["Razorpay / Visa / RuPay"]
   ORC --> LS
   LS --> LDB
   LS --> SNAP
@@ -571,8 +574,8 @@ flowchart TB
   <div class="g2">
     <div class="card">
       <h3><span class="comp-num orange">①</span> Client SDK</h3>
-      <p>The Stripe.js or PayPal SDK loaded in Sarah's browser or mobile app. It does two critical jobs: (1) it tokenizes her card by posting the raw PAN <em>directly</em> to Stripe's hosted iframe, never to our servers — getting back a token like <code>pm_abc123</code> that our backend can use without ever touching real card data. (2) It generates a fresh UUID for the <code>Idempotency-Key</code> header, locking in the receipt number before the user even clicks "Buy".</p>
-      <p><strong>Solves:</strong> two huge problems at once — keeps PCI scope off our servers (§12) and gives us the idempotency primitive we depend on for safe retries.</p>
+      <p>The Razorpay Checkout SDK (or PayU's BOLT SDK) loaded in Priya's browser or mobile app. It does two critical jobs: (1) it tokenizes her card by posting the raw PAN <em>directly</em> to Razorpay's hosted iframe, never to our servers — getting back a token like <code>token_abc123</code> that our backend can use without ever touching real card data (per RBI's 2022 tokenisation mandate). (2) It generates a fresh UUID for the <code>Idempotency-Key</code> header, locking in the receipt number before the user even clicks "Place order".</p>
+      <p><strong>Solves:</strong> two huge problems at once — keeps PCI scope off our servers and complies with RBI's no-card-storage rule (§12), and gives us the idempotency primitive we depend on for safe retries.</p>
     </div>
     <div class="card">
       <h3><span class="comp-num purple">②</span> API Gateway</h3>
@@ -596,8 +599,8 @@ flowchart TB
     </div>
     <div class="card">
       <h3><span class="comp-num blue">⑥</span> Payment Gateway Adapter</h3>
-      <p>A thin wrapper around Stripe, Adyen, or whichever upstream processor we use. It exposes a uniform internal API (<code>authorize</code>, <code>capture</code>, <code>refund</code>) so the orchestrator does not need to know which gateway it's talking to. This is also where we do gateway-specific retries with exponential backoff and circuit-breaker logic — if Stripe is timing out, we fail fast instead of pile-driving more requests.</p>
-      <p><strong>Solves:</strong> vendor lock-in and gateway outages. Without an adapter layer, Stripe-specific code is sprinkled through the codebase — making "fail over to Adyen on Stripe outage" a multi-month project. With it, we change one adapter implementation.</p>
+      <p>A thin wrapper around Razorpay, PayU, Cashfree, or whichever upstream processor we use. It exposes a uniform internal API (<code>authorize</code>, <code>capture</code>, <code>refund</code>) so the orchestrator does not need to know which gateway it's talking to. This is also where we do gateway-specific retries with exponential backoff and circuit-breaker logic — if Razorpay is timing out (their last big outage was Jan 2023, 4 hours), we fail fast instead of pile-driving more requests.</p>
+      <p><strong>Solves:</strong> vendor lock-in and gateway outages. Without an adapter layer, Razorpay-specific code is sprinkled through the codebase — making "fail over to PayU on Razorpay outage" a multi-month project. With it, we change one adapter implementation. This matters more in India than abroad because no single PA holds &gt; 50% market share — most large merchants run 2–3 PAs in parallel.</p>
     </div>
     <div class="card">
       <h3><span class="comp-num green">⑦</span> Ledger Service</h3>
@@ -611,64 +614,161 @@ flowchart TB
     </div>
     <div class="card">
       <h3><span class="comp-num cyan">⑨</span> Account Snapshot Cache</h3>
-      <p>Computing <code>SUM(amount_cents) FROM ledger_entry WHERE account_id = ?</code> is slow once an account has a million entries. We materialize a periodic snapshot — every N minutes a job rolls up the ledger into a per-account balance row, and reads hit the snapshot first. If a snapshot is stale, we read the snapshot plus the small delta of entries since the snapshot timestamp. Truth is still the ledger; this is just a fast cached read.</p>
+      <p>Computing <code>SUM(amount_paise) FROM ledger_entry WHERE account_id = ?</code> is slow once an account has a million entries. We materialize a periodic snapshot — every N minutes a job rolls up the ledger into a per-account balance row, and reads hit the snapshot first. If a snapshot is stale, we read the snapshot plus the small delta of entries since the snapshot timestamp. Truth is still the ledger; this is just a fast cached read.</p>
       <p><strong>Solves:</strong> read latency on hot accounts. Without snapshots, fetching the platform escrow balance — a single account that touches every transaction — would scan billions of rows. With snapshots, it's an O(1) lookup plus a tiny tail.</p>
     </div>
     <div class="card">
       <h3><span class="comp-num red">⑩</span> Fraud Detection</h3>
       <p>Two-stage gate the orchestrator runs before authorizing the card. Stage 1: real-time deterministic rules — velocity checks (this card just tried 10 charges in 60 seconds), IP blacklists, BIN risk. Sub-100ms, blocks the obvious. Stage 2: an ML model (gradient-boosted trees scoring features like amount-vs-customer-history, geo mismatch, device fingerprint) runs in ~100ms and either approves, declines, or flags for manual review.</p>
-      <p><strong>Solves:</strong> chargebacks. A chargeback costs us the disputed amount plus a $25 fee and counts against our gateway's risk score. Stripe will throttle or terminate accounts whose chargeback rate exceeds 1%. Catching even 50% of fraud before authorization pays for the fraud team many times over.</p>
+      <p><strong>Solves:</strong> chargebacks. A chargeback costs us the disputed amount plus a ~₹500 dispute fee and counts against our gateway's risk score. Razorpay (and the underlying Visa/Mastercard rails) will throttle or terminate accounts whose chargeback rate exceeds 1%. Catching even 50% of fraud before authorization pays for the fraud team many times over.</p>
     </div>
     <div class="card">
       <h3><span class="comp-num yellow">⑪</span> Notification Service</h3>
-      <p>The fan-out for downstream effects. Sends Sarah's confirmation email, fires the merchant webhook (<code>POST merchant.example.com/webhook</code> with the payment payload), pushes a real-time event to the merchant dashboard. Critically, this is async — the orchestrator queues notifications and moves on; if Zappos's webhook endpoint is slow, Sarah's checkout doesn't wait. Webhooks retry with exponential backoff for 3 days.</p>
+      <p>The fan-out for downstream effects. Sends Priya's confirmation email and SMS (via MSG91 with TRAI-mandated DLT templates), fires the merchant webhook (<code>POST merchant.example.com/webhook</code> with the payment payload), pushes a real-time event to the merchant dashboard. Critically, this is async — the orchestrator queues notifications and moves on; if Myntra's webhook endpoint is slow, Priya's checkout doesn't wait. Webhooks retry with exponential backoff for 3 days.</p>
       <p><strong>Solves:</strong> coupling latency. Without async notifications, every checkout's p99 includes the slowest merchant webhook in the system. With them, the orchestrator commits the ledger and returns success in ~500ms regardless of how slow the merchant's server is.</p>
     </div>
     <div class="card">
       <h3><span class="comp-num yellow">⑫</span> Reconciliation Service</h3>
-      <p>A daily batch job. Pulls Stripe's settlement statement (every charge they processed for us yesterday) and joins it against our internal ledger. Every Stripe row should match exactly one of our LedgerEntry rows; every one of our captured payments should match exactly one Stripe row. Discrepancies get flagged for a human and must be resolved within 24 hours per regulator expectations.</p>
-      <p><strong>Solves:</strong> the "did we actually move the money we think we moved" question. Bugs happen. Network glitches happen. Reconciliation is how we catch them within a day instead of discovering at year-end audit that we've been off by $50K for six months.</p>
+      <p>A daily batch job. Pulls Razorpay's settlement file (every charge they processed for us yesterday, delivered as a CSV/S3 object) and joins it against our internal ledger. Every Razorpay row should match exactly one of our LedgerEntry rows; every one of our captured payments should match exactly one Razorpay row. Discrepancies get flagged for a human and must be resolved within 24 hours per RBI expectations.</p>
+      <p><strong>Solves:</strong> the "did we actually move the money we think we moved" question. Bugs happen. Network glitches happen. Reconciliation is how we catch them within a day instead of discovering at the next RBI inspection that we've been off by ₹50 lakh for six months.</p>
     </div>
     <div class="card">
       <h3><span class="comp-num purple">⑬</span> Audit Log (S3 append-only)</h3>
-      <p>Every state transition in the system — workflow started, fraud checked, card authorized, ledger committed, notification sent — emits an immutable event record to S3 with object-lock turned on. The bucket is configured so even an admin with root credentials cannot delete or modify written objects. Mirrored to a separate DB for fast queries.</p>
-      <p><strong>Solves:</strong> regulatory and forensic requirements. After any incident, we need to reconstruct exactly what happened. After any audit, regulators need proof that records cannot have been tampered with. S3 object-lock plus append-only is the cheapest, most defensible answer.</p>
+      <p>Every state transition in the system — workflow started, fraud checked, card authorized, 3DS completed, ledger committed, notification sent — emits an immutable event record to S3 (ap-south-1 bucket per RBI data-localisation rules) with object-lock turned on. The bucket is configured so even an admin with root credentials cannot delete or modify written objects. Mirrored to an on-premise audit store as well, because RBI inspections expect records to be accessible even if AWS is unavailable.</p>
+      <p><strong>Solves:</strong> regulatory and forensic requirements. After any incident, we need to reconstruct exactly what happened. After any RBI inspection, the regulator needs proof that records cannot have been tampered with. S3 object-lock plus append-only is the cheapest, most defensible answer.</p>
     </div>
   </div>
 
-  <h3 class="subh">Concrete walkthrough — Sarah buys $89 sneakers at 14:02:06</h3>
-  <p>Two scenarios, mapped to the numbered components: the happy path, and a network drop mid-workflow that demonstrates the saga's compensating logic.</p>
+  <h3 class="subh">Concrete walkthrough — Priya buys ₹6,499 running shoes at 14:02:06 IST</h3>
+  <p>It's 14:02:06 IST on a Tuesday afternoon in Bengaluru. Priya is on Myntra in Chrome on her MacBook from her apartment in Koramangala. The cart shows one pair of <em>Asics Gel-Nimbus 25, UK 6</em>, ₹6,499 even. Her finger is hovering over the pink "Place order" button. The next ~700 milliseconds will pass through thirteen components, two databases, two external networks (Visa and the issuing bank's 3-D Secure server), and four state changes that must either all happen or all undo. Let's slow time down and watch them in order.</p>
 
-  <div class="g2">
-    <div class="card" style="border-left:3px solid var(--green)">
-      <h3>✅ Happy path — everything works</h3>
-      <ol style="padding-left:1.5rem;list-style:decimal">
-        <li><strong>Client SDK</strong> ① in Sarah's browser tokenizes her Visa, generates idempotency key <code>XYZ-abc-123</code>, POSTs to our API.</li>
-        <li><strong>API Gateway</strong> ② validates auth, rate-limits, forwards to <strong>Payment API Server</strong> ③.</li>
-        <li>API server checks <strong>Redis</strong> ④ — <code>SETNX</code> succeeds (new key), starts a Temporal workflow on the <strong>Orchestrator</strong> ⑤ with the request as input.</li>
-        <li>Orchestrator step 1: call <strong>Fraud Detection</strong> ⑩ — score 0.05, approve.</li>
-        <li>Orchestrator step 2: call <strong>Gateway Adapter</strong> ⑥ → <strong>Stripe</strong> with <code>authorize($89)</code> → success, <code>auth_id=auth_99</code>.</li>
-        <li>Orchestrator step 3: <strong>Gateway Adapter</strong> calls <code>capture(auth_99)</code> on Stripe → success, money is on the wire.</li>
-        <li>Orchestrator step 4: call <strong>Ledger Service</strong> ⑦ to write two entries — <code>-$89</code> from Sarah's payment-method account, <code>+$89</code> to Zappos's escrow account — in a single Postgres TX on <strong>Ledger DB</strong> ⑧. Snapshot ⑨ refreshed lazily.</li>
-        <li>Orchestrator step 5: enqueue notifications on <strong>Notification Service</strong> ⑪ — confirmation email to Sarah, webhook to Zappos.</li>
-        <li>API server returns <code>200 { id: pay_..., status: succeeded }</code> to Sarah's browser. <em>Total elapsed: ~600ms.</em> Every state transition logged to <strong>Audit Log</strong> ⑬.</li>
-      </ol>
-    </div>
-    <div class="card" style="border-left:3px solid var(--red)">
-      <h3>⚠️ Failure path — network drop after capture, before ledger write</h3>
-      <ol style="padding-left:1.5rem;list-style:decimal">
-        <li>Steps 1-6 run as above. Sarah's card has been captured for $89 — <strong>real money has moved.</strong></li>
-        <li>Right before step 7, the orchestrator pod hosting our workflow loses its network connection.</li>
-        <li>Temporal's heartbeat fails; the workflow is rescheduled on a different pod within ~10s.</li>
-        <li>The new pod resumes the workflow at step 7 — <em>not from scratch.</em> Temporal knows steps 1-6 already completed.</li>
-        <li>Step 7 retries: write ledger entries. Succeeds this time. Workflow continues.</li>
-        <li>Sarah's browser, which timed out at 30s, hits "Buy" again with the <em>same</em> idempotency key <code>XYZ-abc-123</code>. API server sees the key in Redis, returns the in-flight workflow's eventual result. No second charge, no second ledger entry.</li>
-        <li><em>Alternate path:</em> if step 7 keeps failing (say, ledger DB outage), Temporal eventually escalates the workflow to its compensating actions: call <strong>Stripe</strong> with <code>refund(capture_99)</code>, undoing the $89 capture. Sarah sees a "payment failed" error; her card is not charged. <strong>No money lost, no money duplicated.</strong></li>
-      </ol>
-    </div>
+  <p>We'll do this twice: once on the happy path — every server up, every network call clean — and once on a nightmare path where the orchestrator pod loses power between charging her card and writing the ledger entry. The second scenario is the one that earns the architecture its keep.</p>
+
+  <p><em>One quick note on the India context:</em> RBI mandates 3-D Secure (the OTP step) on every domestic card transaction above ₹5,000 and on every recurring mandate, regardless of amount. So unlike the US flow where auth can run silently, Priya will see her HDFC OTP screen pop up mid-checkout. The architecture treats this as a sub-step of authorization handled by the gateway adapter — the orchestrator just sees "auth succeeded" or "auth failed", same shape as before.</p>
+
+  <h4 class="subh" style="font-size:1.05rem;margin-top:1.4rem">✅ Happy path — every component does its job (~700ms end-to-end, plus OTP)</h4>
+
+  <div class="card" style="border-left:3px solid var(--green);padding:1.5rem 1.8rem">
+    <p style="margin-top:0"><strong>T = 0 ms — Priya's finger hits "Place order".</strong> The Myntra checkout page has loaded the <strong>Client SDK</strong> ① (in our case, the Razorpay Checkout SDK) as a hidden iframe pointed at <code>checkout.razorpay.com</code>. Two things happen in Priya's browser before any request leaves her laptop:</p>
+    <ol style="padding-left:1.5rem;list-style:decimal;color:var(--text)">
+      <li><strong>Card tokenization.</strong> The Razorpay SDK takes the raw PAN <code>4111 1111 1111 1111</code> she typed earlier and POSTs it <em>directly</em> to <code>api.razorpay.com/v1/tokens</code> — not to Myntra, and not to us. Razorpay responds with an opaque token <code>token_NkXyZ...</code>. This token is the only thing our backend will ever see; we are completely out of PCI-DSS scope because raw card data never touched our servers (§12). India's 2022 RBI tokenization mandate makes this not just best practice but legally required — merchants are forbidden from storing PANs at all.</li>
+      <li><strong>Idempotency key generation.</strong> The SDK calls <code>crypto.randomUUID()</code> and gets <code>XYZ-abc-123</code>. This UUID is now locked in — every retry of this same checkout, even if Priya's Jio fibre flickers and her browser auto-retries 5 times, will carry the same key. The receipt number was decided before she clicked.</li>
+    </ol>
+    <p>The browser then fires:</p>
+    <pre style="background:#0b0f14;padding:.9rem;border-radius:6px;font-size:.82rem;overflow-x:auto;color:#d4dae5"><code>POST https://api.payments.example/v1/payments
+Idempotency-Key: XYZ-abc-123
+Authorization: Bearer &lt;Myntra's API key&gt;
+Content-Type: application/json
+
+{
+  "amount_paise": 649900,
+  "currency": "INR",
+  "payment_method_token": "token_NkXyZ...",
+  "merchant_id": "mrch_myntra",
+  "customer_id": "cust_priya_42",
+  "description": "Asics Gel-Nimbus 25, UK 6"
+}</code></pre>
+    <p>Two India-specific details in the body: amounts are in <strong>paise</strong> (1 ₹ = 100 paise) stored as integers — never floats, because floats can't represent ₹0.01 exactly and a rounding error of a paisa per transaction at 1M tx/day adds up to a regulator-visible drift. And <code>currency</code> is <code>INR</code>, which determines which acquiring bank Razorpay will route through and which RBI rules apply.</p>
+
+    <p style="margin-top:1.1rem"><strong>T = 30 ms — Request hits the <span style="color:var(--purple)">API Gateway</span> ②.</strong> The TLS handshake finished at T=20ms; AWS API Gateway in the ap-south-1 (Mumbai) region now does its three jobs in ~5ms: (a) validates the bearer token belongs to a known merchant — Myntra checks out, (b) checks the per-key rate limit — Myntra's quota is 2,000 req/sec (they handle big Big Billion Days spikes), we've seen 340 from them this second, fine, (c) forwards the cleaned request to the next hop. If Priya's request had come from a fraudster firing 10,000 attempts/sec, it would have died right here — never reaching application code, never wasting a database connection.</p>
+
+    <p><strong>T = 45 ms — <span style="color:var(--orange)">Payment API Server</span> ③ receives the request.</strong> This is a stateless Go service running 50 pods behind an internal load balancer, also in ap-south-1 because RBI's data-localisation rule requires Indian payment data to be stored and processed within India. The pod that gets Priya's request does five things in fast succession:</p>
+    <ol style="padding-left:1.5rem;list-style:decimal;color:var(--text)">
+      <li><strong>Schema validation</strong> — does <code>amount_paise</code> parse as a positive integer? Is <code>currency</code> in our supported list? Does <code>merchant_id</code> exist and is it active? All yes.</li>
+      <li><strong>Idempotency lookup</strong> against <strong>Redis</strong> ④. The pod runs <code>SET idempotency:XYZ-abc-123 "in-flight" NX EX 86400</code>. The <code>NX</code> flag means "only set if it doesn't exist"; the <code>EX 86400</code> sets a 24-hour TTL. Redis returns <code>OK</code> — the key is new. We have the lock. (If Priya's browser were retrying a 2nd attempt right now, Redis would return <code>nil</code> and we'd jump straight to returning the in-progress or cached response.)</li>
+      <li><strong>Database row insert</strong> — defensive second layer. The pod INSERTs into the <code>transaction</code> table with <code>idempotency_key='XYZ-abc-123'</code> as a UNIQUE constraint. Even if Redis is wiped between attempts, Postgres will reject the duplicate. Both layers must fail for a double-charge — astronomically unlikely.</li>
+      <li><strong>Kick off the workflow</strong> on the <strong>Orchestrator</strong> ⑤. The pod calls <code>temporalClient.startWorkflow("ProcessPayment", { ...request, internalTxId: "tx_001" })</code> and gets back a workflow handle.</li>
+      <li><strong>Block on the first decisive result</strong> — the pod holds Priya's HTTP connection open and awaits a signal from the workflow. It will return either when the workflow reaches a terminal state or when 90 seconds elapse (longer than the US flow because the 3DS OTP step can take Priya 30+ seconds to read her SMS and type the code).</li>
+    </ol>
+
+    <p><strong>T = 80 ms — <span style="color:var(--blue)">Payment Orchestrator</span> ⑤ (Temporal) starts the saga.</strong> Temporal persists the workflow's initial state to its own Postgres cluster before running a single line of business logic. This persistence is the trick: if any worker pod dies at any point, another picks up exactly here. The workflow code reads like straight-line Java:</p>
+    <pre style="background:#0b0f14;padding:.9rem;border-radius:6px;font-size:.82rem;overflow-x:auto;color:#d4dae5"><code>@WorkflowMethod
+public PaymentResult processPayment(PaymentRequest req) {
+    FraudScore fs   = fraudActivity.score(req);          // step 1
+    if (fs.declined()) return PaymentResult.declined(fs);
+    AuthResult  auth = gatewayActivity.authorize(req);   // step 2 (includes 3DS for INR &gt; ₹5K)
+    CaptureResult cap = gatewayActivity.capture(auth);   // step 3
+    ledgerActivity.writeDoubleEntry(req, cap);           // step 4
+    notifyActivity.fanout(req, cap);                     // step 5
+    return PaymentResult.succeeded(cap);
+}</code></pre>
+
+    <p><strong>T = 120 ms — Step 1: <span style="color:var(--red)">Fraud Detection</span> ⑩.</strong> Temporal schedules the fraud activity on a fraud-worker pod. Stage 1 — deterministic rules — runs in 8ms: Priya's card has been on file 2 years, this is her 14th purchase, IP <code>49.207.x.x</code> in Bengaluru matches her shipping pincode 560034, BIN 411111 is an HDFC Visa (low risk). No rule triggers. Stage 2 — the gradient-boosted model — scores in 85ms using features like <code>amount_vs_avg_for_customer = 1.3</code> (close to her normal ₹5,000 average), <code>geo_mismatch = false</code>, <code>device_seen_before = true</code>, <code>hour_of_day_z_score = 0.3</code>. Final score: <strong>0.05</strong> (where 1.0 is certainly-fraud). Approved. Without this step, Priya's checkout flow looks identical — but if a stolen card from a Pakistan IP tried to buy 5× ₹6,499 shoes in 30 seconds, the velocity rule would catch it before any money moves.</p>
+
+    <p><strong>T = 220 ms — Step 2: authorize the card via <span style="color:var(--blue)">Gateway Adapter</span> ⑥.</strong> Temporal hands off to a gateway-worker pod. The adapter — a thin Razorpay-specific wrapper — calls:</p>
+    <pre style="background:#0b0f14;padding:.9rem;border-radius:6px;font-size:.82rem;overflow-x:auto;color:#d4dae5"><code>POST https://api.razorpay.com/v1/payments/create
+Authorization: Basic &lt;rzp_live_key&gt;
+Idempotency-Key: tx_001-authorize        // derived from our internal tx ID
+amount=649900&amp;currency=INR&amp;token=token_NkXyZ...&amp;capture=manual</code></pre>
+    <p>Razorpay routes through the Visa network to HDFC (Priya's issuing bank). Because the amount is over ₹5,000, HDFC triggers <strong>3-D Secure</strong>: it sends Priya an OTP via SMS to her registered mobile number and returns a redirect URL to its OTP page. The orchestrator passes this URL back to the API server, which streams it down to Priya's browser. The Razorpay iframe expands to show the HDFC OTP screen.</p>
+
+    <p><strong>T = 4 s to T = 35 s — Priya types her OTP.</strong> Most users take 15–30 seconds; some take longer if their SMS is delayed. HDFC's OTP page submits directly back to Razorpay (not through us). Razorpay completes the 3DS verification with Visa, gets a Cardholder Authentication Verification Value (CAVV), and returns to the orchestrator: <code>{ id: "pay_xyz", status: "authorized", auth_id: "auth_99" }</code>. HDFC has now put a hold on ₹6,499 of Priya's credit line. <strong>No money has actually moved yet</strong> — we've just reserved the amount. If anything fails between here and capture, we can just walk away and HDFC auto-releases the hold within 5 days per Visa rules. Note the idempotency key we passed to Razorpay — derived deterministically from our transaction ID — so if our adapter retries this call after a timeout, Razorpay will return the existing authorization rather than creating a second hold.</p>
+
+    <p><strong>T = 35.2 s — Step 3: capture the authorization.</strong> The adapter immediately follows up:</p>
+    <pre style="background:#0b0f14;padding:.9rem;border-radius:6px;font-size:.82rem;overflow-x:auto;color:#d4dae5"><code>POST https://api.razorpay.com/v1/payments/auth_99/capture
+Idempotency-Key: tx_001-capture
+amount=649900&amp;currency=INR</code></pre>
+    <p>Razorpay tells HDFC "yes, actually take the ₹6,499". HDFC debits Priya's available credit and queues a transfer to Razorpay's nodal account (held with ICICI). The actual settlement to our merchant account happens via NEFT in T+1 working day per RBI's settlement cycle, not the T+2 ACH cycle the US uses. Razorpay returns <code>{ status: "captured", balance_transaction: "rcpt_99" }</code> in 110ms. <strong>This is the moment real money has moved.</strong> ₹6,499 has left Priya's HDFC credit line; it is now Razorpay's, owed to us, owed to Myntra. If we crash now and never write the ledger, we owe Myntra ₹6,499 and our internal records won't show it — a money-leak bug.</p>
+
+    <p><strong>T = 35.4 s — Step 4: write the double-entry ledger via <span style="color:var(--green)">Ledger Service</span> ⑦.</strong> The orchestrator now does the most important step. It calls the ledger service with:</p>
+    <pre style="background:#0b0f14;padding:.9rem;border-radius:6px;font-size:.82rem;overflow-x:auto;color:#d4dae5"><code>POST /internal/ledger/write
+{
+  "transaction_id": "tx_001",
+  "entries": [
+    { "account_id": "acct_priya_hdfc",    "amount_paise": -649900 },
+    { "account_id": "acct_myntra_escrow", "amount_paise": +649900 }
+  ]
+}</code></pre>
+    <p>The ledger service first validates the audit invariant: <code>-649900 + 649900 = 0</code> ✓. Any request where the sum is non-zero is rejected outright — you cannot create or destroy money through this service. Then it opens a <code>SERIALIZABLE</code> Postgres transaction on the <strong>Ledger DB</strong> ⑧, INSERTs both rows, COMMITs. The COMMIT does not return until the rows are also durable on the synchronous standby in another availability zone (we run primary in Mumbai ap-south-1a, standby in Hyderabad ap-south-1b) — so if our primary catches fire in the next 50ms, the records survive. Total time: 65ms. The <strong>Account Snapshot Cache</strong> ⑨ has a background job that will roll these new entries into the per-account balance snapshots within the next minute; until then, reads against Priya's account compute "last snapshot + small delta".</p>
+
+    <p><strong>T = 35.5 s — Step 5: fan out notifications via <span style="color:var(--yellow)">Notification Service</span> ⑪.</strong> The orchestrator enqueues four messages on Kafka — but does not wait for any of them to be delivered. This is critical: Priya's checkout doesn't have to wait for Myntra's webhook server (which lives somewhere in their Bengaluru data center and has a 2-second response time on bad days). The four messages are:</p>
+    <ol style="padding-left:1.5rem;list-style:decimal;color:var(--text)">
+      <li>Email to <code>priya@gmail.com</code> with the receipt — including the mandatory GST breakdown (CGST + SGST on intra-state, IGST on inter-state).</li>
+      <li>SMS to <code>+91 98xxx xxxxx</code> via the merchant's DLT-registered template (Indian SMS regulator TRAI requires every commercial SMS to use a pre-registered template).</li>
+      <li>POST to <code>https://myntra.example/webhooks/payments</code> with the full payment payload, signed with our webhook secret so Myntra can verify it's really us.</li>
+      <li>Realtime push to the merchant dashboard so Myntra's ops team sees the sale within seconds.</li>
+    </ol>
+    <p>If Myntra's webhook endpoint is down, the notification service retries with exponential backoff for 3 days — Priya's checkout doesn't care.</p>
+
+    <p><strong>T = 35.6 s — Workflow returns success to the API server.</strong> The API server caches the final response in Redis (under the same <code>XYZ-abc-123</code> key, replacing the "in-flight" marker), then returns to Priya's browser:</p>
+    <pre style="background:#0b0f14;padding:.9rem;border-radius:6px;font-size:.82rem;overflow-x:auto;color:#d4dae5"><code>HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "id": "pay_tx_001",
+  "status": "succeeded",
+  "amount_paise": 649900,
+  "currency": "INR",
+  "created_at": "2026-05-26T08:32:41.600Z"
+}</code></pre>
+    <p>Note the timestamp is in UTC (08:32 UTC = 14:02 IST) — internal records always store UTC, and the display layer converts to IST when rendering to Priya.</p>
+
+    <p><strong>T = 35.7 s — Priya sees the confirmation page.</strong> The Myntra frontend swaps to "Order placed! Delivery by Friday." with her order number. Meanwhile, every state transition along the way — <code>workflow.started</code>, <code>fraud.scored</code>, <code>gateway.authorized</code>, <code>3ds.completed</code>, <code>gateway.captured</code>, <code>ledger.committed</code>, <code>notifications.enqueued</code>, <code>workflow.completed</code> — has been written to the <strong>Audit Log</strong> ⑬ on S3 (ap-south-1 bucket with object-lock) and mirrored to our on-premise audit store, because RBI inspections expect access to payment audit records even if AWS is unavailable. Twelve hours from now, the <strong>Reconciliation Service</strong> ⑫ will pull Razorpay's settlement file, find this ₹6,499 transaction in it, and cross-check it against our ledger row. Match. Green tick. Priya's running shoes ship the next morning.</p>
+
+    <p style="margin-top:.7rem;font-size:.88rem;color:var(--muted)"><em>End-to-end wall-clock time was ~35 seconds, but only ~700 ms of actual server work — the remaining ~34 seconds was Priya reading her HDFC OTP SMS and typing it in. The architecture's compute time is essentially identical to the US flow; the latency you see is dominated by the regulator-mandated OTP step.</em></p>
   </div>
 
-  <div class="highlight hl-orange"><strong>So what:</strong> the architecture exists because money is allergic to "almost". Idempotency means retries are free. The saga means partial failures are recoverable. The double-entry ledger means we can prove every cent. Take any one of those out and you ship a system that, on its first bad Tuesday, charges someone twice or loses $89 into the void — and you find out about it a month later from an angry customer or, worse, a regulator.</div>
+  <h4 class="subh" style="font-size:1.05rem;margin-top:1.6rem">⚠️ Failure path — the orchestrator pod dies between capture and ledger write</h4>
+
+  <div class="card" style="border-left:3px solid var(--red);padding:1.5rem 1.8rem">
+    <p style="margin-top:0">Same Priya, same shoes, same 14:02:06 IST. Steps 1 through 3 above all execute identically — fraud check passed, 3DS OTP entered successfully, ₹6,499 captured at HDFC. At T = 35.4 s — the instant after Razorpay confirmed the ₹6,499 capture but <em>before</em> the orchestrator could call the ledger service — the worker pod running Priya's workflow gets evicted by Kubernetes because the node it's on starts failing health checks (maybe an EBS volume in ap-south-1 is degraded; Mumbai's monsoon is hard on data centers). <strong>₹6,499 of real money has moved out of Priya's HDFC credit line, into Razorpay's pipeline, owed to Myntra — and our system has lost the pod that was tracking it.</strong> Without Temporal, this is exactly the money-leak we feared in Pass 1.</p>
+
+    <p><strong>T = 35.4 s — pod dies.</strong> The pod stops sending heartbeats. The Razorpay HTTP response (the success notification for the capture) is somewhere in the kernel buffer of the dead pod, lost.</p>
+
+    <p><strong>T = 35.5 s — Priya's browser is still waiting.</strong> The HTTP connection to the API server is still open; the API server is still blocked waiting on Temporal to signal a result. So far, Priya sees a spinner.</p>
+
+    <p><strong>T = 45 s — Temporal notices.</strong> Temporal's service detects the worker hasn't checked in for 10 seconds and marks the workflow as available for reassignment. It looks at the persisted workflow history — which it saved at every step boundary — and sees: step 1 completed (fraud approved), step 2 completed (auth <code>auth_99</code>, 3DS verified), step 3 completed (capture <code>rcpt_99</code>). Step 4 has not started. <strong>Temporal does not re-run steps 1–3.</strong> Critically, this means Priya is not asked to enter her OTP a second time — Temporal knows the 3DS step already succeeded. It schedules step 4 on a fresh worker pod, with the captured state from step 3 already in hand.</p>
+
+    <p><strong>T = 45.2 s — new pod resumes at step 4.</strong> It calls the ledger service with the exact same parameters the dead pod would have used: <code>tx_001</code>, <code>-₹6,499</code> Priya, <code>+₹6,499</code> Myntra. The ledger service writes the rows, COMMITs in Postgres. Step 5 (notifications) runs. The workflow completes. <strong>The books are balanced.</strong></p>
+
+    <p><strong>What about Priya's browser?</strong> If her HTTP request timed out at the 90-second mark with no response, the Myntra checkout page either auto-retries or shows her a "we're confirming your payment, give us a moment" UI. Either way, when she eventually clicks "Place order" again — same idempotency key <code>XYZ-abc-123</code>, because the Razorpay SDK generates the key once per cart session.</p>
+
+    <p><strong>T = ~90 s — Priya's retry hits the API.</strong> The API server runs the same <code>SET NX</code> against Redis. This time Redis returns <code>nil</code> — the key exists. The API server reads the existing value: at this point either still <code>"in-flight"</code> (if the workflow is still resuming) in which case the server polls Temporal for the workflow's status, or the final success payload from the original workflow. Either way, <strong>no second workflow is started, no second authorization, no second OTP, no second capture, no second ledger write</strong>. Priya gets back the same confirmation as the original request. One charge. One ledger entry. One pair of shoes shipped.</p>
+
+    <p style="margin-top:1.2rem"><strong>The really bad case — what if the ledger DB itself is down for an hour?</strong> Temporal's retry policy keeps re-running step 4 with exponential backoff. After ~5 minutes of failures, the workflow code triggers a compensating action: it calls the gateway adapter again with <code>refund(rcpt_99)</code>. Razorpay issues a ₹6,499 refund back to Priya's HDFC Visa — refunds in India settle in 5–7 working days per RBI rules, slower than the original capture but unavoidable. The audit log records: capture executed, ledger write permanently failed, capture refunded — auditors (and RBI inspectors, who can demand transaction-level audit trails on 24-hour notice) can reconstruct exactly what happened. Priya eventually sees a "payment failed, please try again" page. Her HDFC statement shows a charge today and a matching refund 5 working days later. <strong>No money lost. No money duplicated. No money in limbo.</strong></p>
+  </div>
+
+  <div class="highlight hl-orange"><strong>So what:</strong> the architecture exists because money is allergic to "almost". Every box in the diagram earns its keep in one of those ~700 milliseconds of compute (or in the recovery from one of them not going to plan). <strong>Idempotency</strong> ④ means Priya's retry — whether triggered by a Jio outage at T=200ms or a 90-second timeout — is free; no duplicate charge possible. The <strong>orchestrator</strong> ⑤ means the pod dying at T=35.4s doesn't lose her money, and crucially doesn't force her to re-do her OTP; another pod resumes the exact next step. The <strong>double-entry ledger</strong> ⑦⑧ means the books are always balanced — if step 4 ever fails permanently, the compensating refund at Razorpay brings the world back to zero. The <strong>audit log</strong> ⑬ means we can prove every paisa to an RBI inspector. Take any one of those four out and you ship a system that, on its first bad Tuesday, charges someone twice or loses ₹6,499 into the void — and you find out about it a month later from an angry customer or, worse, a regulator.</div>
 </div>
 
 <div class="divider"></div>
@@ -681,7 +781,7 @@ flowchart TB
   <h2>Idempotency — The Foundational Property</h2>
   <p>If you take only one idea from this page, take this one. Every other guarantee in the system depends on idempotency working correctly.</p>
 
-  <p>An operation is <strong>idempotent</strong> if executing it twice has the same effect as executing it once. <code>SET balance = 100</code> is idempotent (no matter how many times you run it, balance = 100). <code>balance = balance + 89</code> is <em>not</em> idempotent — running it twice charges $178. The entire point of the idempotency-key contract is to make non-idempotent operations <em>look</em> idempotent to the caller, so retries are safe.</p>
+  <p>An operation is <strong>idempotent</strong> if executing it twice has the same effect as executing it once. <code>SET balance = 100</code> is idempotent (no matter how many times you run it, balance = 100). <code>balance = balance + 6499</code> is <em>not</em> idempotent — running it twice charges ₹12,998. The entire point of the idempotency-key contract is to make non-idempotent operations <em>look</em> idempotent to the caller, so retries are safe.</p>
 
   <h3 class="subh">How idempotency keys work end-to-end</h3>
   <div class="diagram-box">
@@ -731,12 +831,12 @@ sequenceDiagram
         <li>Generate the key on the server — defeats the purpose; client's retry would generate a new key</li>
         <li>Use the request body hash as the key — if the user genuinely wants to charge twice for the same amount, you've blocked them</li>
         <li>Allow same key with different bodies — that's a bug, not an idempotent retry; return 422</li>
-        <li>Forget to make every step in the workflow itself idempotent — Stripe's API also takes idempotency keys; pass them through</li>
+        <li>Forget to make every step in the workflow itself idempotent — Razorpay's API also takes idempotency keys; pass them through</li>
       </ul>
     </div>
   </div>
 
-  <div class="highlight hl-cyan"><strong>End-to-end idempotency is a chain.</strong> The client passes a key to our API; our API passes a derived key to Stripe; the orchestrator's ledger-write step uses a third derived key. If <em>any</em> link in the chain is non-idempotent, retries can produce duplicates somewhere in the system. Audit each integration explicitly — Stripe takes <code>Idempotency-Key</code> headers, Postgres takes UNIQUE constraints, internal services take UUIDs in the request body.</div>
+  <div class="highlight hl-cyan"><strong>End-to-end idempotency is a chain.</strong> The client passes a key to our API; our API passes a derived key to Razorpay; the orchestrator's ledger-write step uses a third derived key. If <em>any</em> link in the chain is non-idempotent, retries can produce duplicates somewhere in the system. Audit each integration explicitly — Razorpay takes <code>X-Idempotency-Key</code> headers, Postgres takes UNIQUE constraints, internal services take UUIDs in the request body.</div>
 </div>
 
 <div class="divider"></div>
@@ -750,15 +850,15 @@ sequenceDiagram
   <p>The ledger is the single most important piece of the system, and the idea behind it is 700 years old. Italian merchants in the 1400s figured out that if you record every transaction as <em>two equal-and-opposite entries</em>, errors become detectable and money becomes traceable. Modern payment systems are doing the same thing, just with Postgres instead of leather-bound books.</p>
 
   <h3 class="subh">The mechanic</h3>
-  <p>Every transaction generates at least two LedgerEntry rows. One DEBITs an account, one CREDITs another, and the amounts sum to zero. Sarah's $89 sneaker purchase looks like this:</p>
+  <p>Every transaction generates at least two LedgerEntry rows. One DEBITs an account, one CREDITs another, and the amounts sum to zero. Priya's ₹6,499 running-shoe purchase looks like this:</p>
 
   <div class="diagram-box">
     <div class="mermaid">
 flowchart LR
-  TX["Transaction tx_001<br/>Sarah buys sneakers $89"]
-  TX --> E1["Entry A — DEBIT<br/>account: sarah_card<br/>amount: −$89"]
-  TX --> E2["Entry B — CREDIT<br/>account: zappos_escrow<br/>amount: +$89"]
-  E1 --> SUM["SUM = $0 ✓<br/>audit invariant holds"]
+  TX["Transaction tx_001<br/>Priya buys shoes ₹6,499"]
+  TX --> E1["Entry A — DEBIT<br/>account: priya_hdfc<br/>amount: −₹6,499"]
+  TX --> E2["Entry B — CREDIT<br/>account: myntra_escrow<br/>amount: +₹6,499"]
+  E1 --> SUM["SUM = ₹0 ✓<br/>audit invariant holds"]
   E2 --> SUM
 
   style TX fill:#171d27,stroke:#e8743b,color:#d4dae5
@@ -768,43 +868,45 @@ flowchart LR
     </div>
   </div>
 
-  <p>The two entries land in the same Postgres transaction, so either both commit or neither does. After the commit: Sarah's payment-method account is $89 lower, Zappos's escrow is $89 higher, and the system as a whole has the same total amount of money it had before.</p>
+  <p>The two entries land in the same Postgres transaction, so either both commit or neither does. After the commit: Priya's payment-method account is ₹6,499 lower, Myntra's escrow is ₹6,499 higher, and the system as a whole has the same total amount of money it had before.</p>
 
   <h3 class="subh">Why this beats a simple <code>balance</code> column</h3>
   <div class="g2">
     <div class="card">
       <h3>📊 Auditability</h3>
-      <p>Every cent ever moved is a row. You can answer "what was Zappos's balance at 14:02:05" by summing entries up to that timestamp. With a single <code>balance</code> column, that history is gone the moment the next transaction overwrites it.</p>
+      <p>Every paisa ever moved is a row. You can answer "what was Myntra's balance at 14:02:05" by summing entries up to that timestamp. With a single <code>balance</code> column, that history is gone the moment the next transaction overwrites it.</p>
     </div>
     <div class="card">
       <h3>🔐 The mathematical invariant</h3>
-      <p><code>SUM(amount_cents) FROM ledger_entry GROUP BY account_id</code> gives every account's balance. <code>SUM(amount_cents) FROM ledger_entry</code> across <em>all</em> accounts must equal <strong>zero</strong>. If it doesn't, money was created or destroyed — and you have a P0 incident regardless of which row caused it.</p>
+      <p><code>SUM(amount_paise) FROM ledger_entry GROUP BY account_id</code> gives every account's balance. <code>SUM(amount_paise) FROM ledger_entry</code> across <em>all</em> accounts must equal <strong>zero</strong>. If it doesn't, money was created or destroyed — and you have a P0 incident regardless of which row caused it.</p>
     </div>
     <div class="card">
       <h3>⚡ No hot-row contention</h3>
-      <p>Updating Zappos's balance with <code>UPDATE merchant SET balance = balance + 89</code> serializes every Zappos transaction on one row. Inserting a new ledger entry serializes nothing — Postgres can append in parallel. Black Friday goes from "spinner of death" to "actually responsive".</p>
+      <p>Updating Myntra's balance with <code>UPDATE merchant SET balance = balance + 649900</code> serializes every Myntra transaction on one row. Inserting a new ledger entry serializes nothing — Postgres can append in parallel. Big Billion Days goes from "spinner of death" to "actually responsive".</p>
     </div>
     <div class="card">
       <h3>🔄 Reversals are clean</h3>
-      <p>Refunding Sarah doesn't UPDATE or DELETE the original entries. It writes <em>new</em> entries: <code>+$89</code> to her account, <code>-$89</code> from Zappos's escrow, with a reference to the original transaction. The original history is preserved; the reversal is a separate audit event.</p>
+      <p>Refunding Priya doesn't UPDATE or DELETE the original entries. It writes <em>new</em> entries: <code>+₹6,499</code> to her account, <code>−₹6,499</code> from Myntra's escrow, with a reference to the original transaction. The original history is preserved; the reversal is a separate audit event.</p>
     </div>
   </div>
 
   <h3 class="subh">More complex example — split payment with platform fee</h3>
-  <p>Sarah pays $100 for a service. The platform takes a 3% fee. Three ledger entries, sum still zero:</p>
+  <p>Priya pays ₹10,000 for a service. The platform takes a 3% fee (with 18% GST on top of the fee, payable to government). Four ledger entries, sum still zero:</p>
   <div class="tbl-wrap">
     <table class="tbl">
       <thead><tr><th>Entry</th><th>Account</th><th>Type</th><th>Amount</th></tr></thead>
       <tbody>
-        <tr><td>1</td><td>sarah_card</td><td>DEBIT</td><td><code>−$100.00</code></td></tr>
-        <tr><td>2</td><td>provider_escrow</td><td>CREDIT</td><td><code>+$97.00</code></td></tr>
-        <tr><td>3</td><td>platform_revenue</td><td>CREDIT</td><td><code>+$3.00</code></td></tr>
-        <tr><td colspan="3"><strong>Sum</strong></td><td><code>$0.00 ✓</code></td></tr>
+        <tr><td>1</td><td>priya_hdfc</td><td>DEBIT</td><td><code>−₹10,000.00</code></td></tr>
+        <tr><td>2</td><td>provider_escrow</td><td>CREDIT</td><td><code>+₹9,646.00</code></td></tr>
+        <tr><td>3</td><td>platform_revenue</td><td>CREDIT</td><td><code>+₹300.00</code></td></tr>
+        <tr><td>4</td><td>gst_payable</td><td>CREDIT</td><td><code>+₹54.00</code></td></tr>
+        <tr><td colspan="3"><strong>Sum</strong></td><td><code>₹0.00 ✓</code></td></tr>
       </tbody>
     </table>
   </div>
+  <p style="font-size:.88rem;color:var(--muted);margin-top:.4rem"><em>The gst_payable account is settled monthly to the government via the GSTR-3B filing. Treating GST as its own ledger account makes month-end statutory filings trivial — one SQL query gives the total liability.</em></p>
 
-  <div class="highlight hl-green"><strong>The on-call sanity check:</strong> a payment system is healthy when <code>SELECT SUM(amount_cents) FROM ledger_entry</code> returns zero. We run that query as a Datadog metric every minute. If it ever drifts, an alarm fires before the next transaction even completes — because something is fundamentally broken and every additional transaction makes it worse.</div>
+  <div class="highlight hl-green"><strong>The on-call sanity check:</strong> a payment system is healthy when <code>SELECT SUM(amount_paise) FROM ledger_entry</code> returns zero. We run that query as a Datadog metric every minute. If it ever drifts, an alarm fires before the next transaction even completes — because something is fundamentally broken and every additional transaction makes it worse.</div>
 </div>
 
 <div class="divider"></div>
@@ -815,7 +917,7 @@ flowchart LR
 <div class="sec" id="s9">
   <span class="sec-tag tag-blue">Step 9</span>
   <h2>Saga Pattern with Temporal</h2>
-  <p>A payment is not an atomic operation — it spans multiple systems we don't control. We can't take a global lock across Stripe, our DB, and the merchant's webhook endpoint. The saga pattern is how we get atomicity-like guarantees without distributed transactions.</p>
+  <p>A payment is not an atomic operation — it spans multiple systems we don't control. We can't take a global lock across Razorpay, our DB, and the merchant's webhook endpoint. The saga pattern is how we get atomicity-like guarantees without distributed transactions.</p>
 
   <h3 class="subh">The saga as code (Temporal workflow)</h3>
   <span class="code-label cl-blue">payment workflow — pseudocode</span>
@@ -851,11 +953,11 @@ flowchart LR
     </div>
     <div class="card">
       <h3>🔁 Auto-retry with backoff</h3>
-      <p>Transient failures (Stripe 502, network blip, DB timeout) are retried with exponential backoff up to a configured max. Permanent failures (declined card, validation error) escalate immediately to compensating actions.</p>
+      <p>Transient failures (Razorpay 502, network blip, DB timeout) are retried with exponential backoff up to a configured max. Permanent failures (declined card, validation error) escalate immediately to compensating actions.</p>
     </div>
     <div class="card">
       <h3>🧯 Compensating actions</h3>
-      <p>Each step has an inverse. If we capture a charge but can't write the ledger, the orchestrator runs <code>refund</code> against Stripe to undo the capture. Sarah sees an error; her card is not charged. No half-completed state survives.</p>
+      <p>Each step has an inverse. If we capture a charge but can't write the ledger, the orchestrator runs <code>refund</code> against Razorpay to undo the capture. Priya sees an error; her card ends up with a charge-and-refund pair within 5–7 working days (RBI refund timeline). No half-completed state survives.</p>
     </div>
   </div>
 
@@ -863,8 +965,8 @@ flowchart LR
   <p>2PC is the classical answer to multi-system atomicity: a coordinator asks every participant "can you commit?", then if all say yes, says "commit". <strong>It does not work for us</strong> for two reasons:</p>
   <div class="g2">
     <div class="card">
-      <h3>🚫 Stripe doesn't support 2PC</h3>
-      <p>Card networks have no "prepare-to-commit" stage. Once we tell Stripe to capture, the money moves. You cannot ask the world's payment networks to please pause their transaction until our other systems are ready.</p>
+      <h3>🚫 Razorpay doesn't support 2PC</h3>
+      <p>Card networks have no "prepare-to-commit" stage. Once we tell Razorpay to capture, the money moves. You cannot ask the world's payment networks to please pause their transaction until our other systems are ready.</p>
     </div>
     <div class="card">
       <h3>🚫 2PC blocks under coordinator failure</h3>
@@ -883,7 +985,7 @@ flowchart LR
 <div class="sec" id="s10">
   <span class="sec-tag tag-red">Step 10</span>
   <h2>Fraud Detection</h2>
-  <p>Fraud is the single biggest non-engineering risk to a payment platform. A 1% chargeback rate gets you throttled by Stripe; a 2% chargeback rate gets your account terminated and you lose your business overnight. Catching fraud <em>before</em> the charge is therefore worth a lot of latency budget.</p>
+  <p>Fraud is the single biggest non-engineering risk to a payment platform. A 1% chargeback rate gets you throttled by Razorpay (and the underlying Visa/Mastercard rails); a 2% chargeback rate gets your merchant account terminated and you lose your business overnight. Catching fraud <em>before</em> the charge is therefore worth a lot of latency budget. The good news in India: RBI's mandatory 3-D Secure step on every &gt; ₹5,000 card transaction already kills a big chunk of card-not-present fraud at the network level — but it doesn't catch everything (account-takeover fraud where the attacker also intercepts the OTP, friendly fraud, etc.).</p>
 
   <h3 class="subh">Two-stage gate</h3>
   <div class="g2">
@@ -894,8 +996,8 @@ flowchart LR
         <li><strong>Velocity check</strong> — same card seen 10 times in 60 seconds across our system → block</li>
         <li><strong>IP blacklist</strong> — known fraudster IP / Tor exit node / data-center IP</li>
         <li><strong>BIN risk</strong> — the card-issuer prefix tells us if it's a prepaid card from a high-fraud country</li>
-        <li><strong>Geo mismatch</strong> — billing address in California, IP in Nigeria, shipping address in Russia</li>
-        <li><strong>Amount threshold</strong> — first-ever charge on a brand-new account for $9999 → manual review</li>
+        <li><strong>Geo mismatch</strong> — billing address in Bengaluru, IP in Lagos, shipping address in Moscow</li>
+        <li><strong>Amount threshold</strong> — first-ever charge on a brand-new account for ₹4,99,000 (just under the ₹5 lakh CTR threshold) → manual review</li>
       </ul>
       <p>Implemented as a Redis-backed counter set + hot rule list, evaluated in &lt;50ms.</p>
     </div>
@@ -923,25 +1025,25 @@ flowchart LR
 <div class="sec" id="s11">
   <span class="sec-tag tag-yellow">Step 11</span>
   <h2>Reconciliation</h2>
-  <p>"Trust but verify" is the entire job. Every day, a batch process compares our internal ledger against the source-of-truth statements from Stripe, the card networks, and the banks we settle with. The two views must match to the cent. If they don't, an engineer is paged.</p>
+  <p>"Trust but verify" is the entire job. Every day, a batch process compares our internal ledger against the source-of-truth settlement files from Razorpay, the card networks, and the banks we settle with. The two views must match to the paisa. If they don't, an engineer is paged.</p>
 
   <h3 class="subh">The daily reconciliation pipeline</h3>
   <ol style="padding-left:1.5rem;list-style:decimal;color:var(--text);max-width:760px;line-height:1.78">
-    <li><strong>02:00 UTC</strong> — pull yesterday's settlement statement from Stripe via their API. Lists every charge they processed for us, with their internal IDs and our metadata.</li>
-    <li><strong>02:15 UTC</strong> — query our LedgerEntry table for every successful payment from yesterday.</li>
-    <li><strong>02:30 UTC</strong> — full outer join on <code>(payment_id, amount, currency)</code>. Three buckets: (a) match on both sides — green; (b) in Stripe but not in our ledger — red, money received but unrecorded; (c) in our ledger but not in Stripe — red, we think we got paid but Stripe disagrees.</li>
-    <li><strong>02:45 UTC</strong> — non-empty red buckets page the on-call. Issue must be triaged within 24 hours per regulator expectations.</li>
+    <li><strong>02:00 IST</strong> — pull yesterday's settlement file from Razorpay's S3 bucket (or via their API). Lists every charge they processed for us, with their internal IDs (<code>pay_xxx</code>) and our merchant order IDs.</li>
+    <li><strong>02:15 IST</strong> — query our LedgerEntry table for every successful payment from yesterday (IST day boundary, 18:30 to 18:30 UTC).</li>
+    <li><strong>02:30 IST</strong> — full outer join on <code>(payment_id, amount, currency)</code>. Three buckets: (a) match on both sides — green; (b) in Razorpay but not in our ledger — red, money received but unrecorded; (c) in our ledger but not in Razorpay — red, we think we got paid but Razorpay disagrees.</li>
+    <li><strong>02:45 IST</strong> — non-empty red buckets page the on-call. Issue must be triaged within 24 hours per RBI's payment-system operator (PSO) expectations.</li>
   </ol>
 
   <h3 class="subh">Common discrepancy patterns</h3>
   <div class="g3">
     <div class="card">
       <h3>⏱️ Timing skew</h3>
-      <p>A transaction captured at 23:59 UTC might land in our ledger today and Stripe's statement tomorrow. Resolved by widening the window — match against today's <em>and</em> yesterday's Stripe statement.</p>
+      <p>A transaction captured at 23:59 IST might land in our ledger today and Razorpay's settlement file tomorrow. Resolved by widening the window — match against today's <em>and</em> yesterday's Razorpay file.</p>
     </div>
     <div class="card">
       <h3>🔄 Async webhook lag</h3>
-      <p>Stripe webhooks for capture-success can arrive after the next-day statement. We use the workflow's own state, not just webhooks, as the truth — webhooks are a hint, not the source.</p>
+      <p>Razorpay webhooks for capture-success can arrive after the next-day file. We use the workflow's own state, not just webhooks, as the truth — webhooks are a hint, not the source.</p>
     </div>
     <div class="card">
       <h3>🐞 Real bug</h3>
@@ -949,7 +1051,7 @@ flowchart LR
     </div>
   </div>
 
-  <div class="highlight hl-yellow"><strong>The recon dashboard is the heartbeat of trust.</strong> Investors, auditors, and regulators all look at the same number: yesterday's reconciliation green-rate. 100% green every day is not a luxury — it is the whole reason a payment platform is allowed to exist.</div>
+  <div class="highlight hl-yellow"><strong>The recon dashboard is the heartbeat of trust.</strong> Investors, auditors, and RBI inspectors all look at the same number: yesterday's reconciliation green-rate. 100% green every day is not a luxury — it is the whole reason a payment platform is allowed to operate under an RBI PA/PG licence.</div>
 </div>
 
 <div class="divider"></div>
@@ -960,38 +1062,38 @@ flowchart LR
 <div class="sec" id="s12">
   <span class="sec-tag tag-purple">Step 12</span>
   <h2>PCI-DSS Compliance</h2>
-  <p>PCI-DSS is the payment-card industry's data-security standard. It is non-optional for anyone handling card data, and the cost of compliance scales sharply with how much of our infrastructure touches card numbers. The goal is therefore to <em>never see a real card number anywhere on our servers</em>.</p>
+  <p>PCI-DSS is the payment-card industry's global data-security standard. RBI layers an Indian-specific regime on top of it — most notably the 2018 data-localisation directive (all payment data must be stored in India) and the 2022 tokenisation mandate (merchants cannot store PANs at all). It is non-optional for anyone handling card data, and the cost of compliance scales sharply with how much of our infrastructure touches card numbers. The goal is therefore to <em>never see a real card number anywhere on our servers</em>.</p>
 
   <h3 class="subh">Tokenization — the single most important PCI scope reducer</h3>
   <div class="diagram-box">
     <div class="mermaid">
 sequenceDiagram
-  participant U as Sarah's Browser
-  participant SDK as Stripe.js iframe
-  participant ST as Stripe Vault
+  participant U as Priya's Browser
+  participant SDK as Razorpay iframe
+  participant ST as Razorpay Vault
   participant API as Our API
   participant DB as Our DB
 
-  U->>SDK: Types card 4242-4242-4242-4242
-  Note over SDK: Card data NEVER leaves the iframe<br/>Posted directly to Stripe
-  SDK->>ST: Vault the card
-  ST-->>SDK: token = "pm_abc123"
+  U->>SDK: Types card 4111-1111-1111-1111
+  Note over SDK: Card data NEVER leaves the iframe<br/>Posted directly to Razorpay
+  SDK->>ST: Vault the card (network token, RBI-compliant)
+  ST-->>SDK: token = "token_abc123"
   SDK->>U: Page receives only token
 
-  U->>API: POST /v1/payments<br/>{ payment_method_id: "pm_abc123" }
-  Note over API: Backend never sees PAN —<br/>only the opaque token
-  API->>DB: INSERT (..., payment_method_id="pm_abc123")
-  API->>ST: charge using pm_abc123
+  U->>API: POST /v1/payments<br/>{ payment_method_id: "token_abc123" }
+  Note over API: Backend never sees PAN —<br/>only the opaque network token
+  API->>DB: INSERT (..., payment_method_id="token_abc123")
+  API->>ST: charge using token_abc123
     </div>
   </div>
 
-  <p>The Stripe.js iframe is hosted on Stripe's domain, so it doesn't even share the same browsing context as our checkout page. Card data is captured by Stripe, vaulted by Stripe, and we receive an opaque token like <code>pm_abc123</code> that we can use to charge but cannot reverse-engineer back into a real card number. This single design decision moves our PCI scope from <em>"we are a processor"</em> (PCI Level 1, hundreds of pages of audit) to <em>"we are a tokenized merchant"</em> (PCI SAQ-A, a checklist).</p>
+  <p>The Razorpay iframe is hosted on Razorpay's domain, so it doesn't even share the same browsing context as our checkout page. Card data is captured by Razorpay, vaulted by Razorpay (as a network token issued by Visa/Mastercard's token-service-provider — the only legal way to store a card reference in India since the RBI 2022 mandate), and we receive an opaque token like <code>token_abc123</code> that we can use to charge but cannot reverse-engineer back into a real card number. This single design decision moves our PCI scope from <em>"we are a processor"</em> (PCI Level 1, hundreds of pages of audit) to <em>"we are a tokenized merchant"</em> (PCI SAQ-A, a checklist).</p>
 
-  <h3 class="subh">The other PCI guardrails</h3>
+  <h3 class="subh">The other PCI + RBI guardrails</h3>
   <div class="g2">
     <div class="card">
       <h3>🔐 Network isolation</h3>
-      <p>Servers that handle payment tokens live in a tightly-firewalled VPC with no inbound internet access. Egress is whitelisted to Stripe's IPs and our other services only. Audit logs all egress for review.</p>
+      <p>Servers that handle payment tokens live in a tightly-firewalled VPC in AWS ap-south-1 (Mumbai) with no inbound internet access. Egress is whitelisted to Razorpay's IPs and our other services only. Audit logs all egress for review. Data never leaves Indian soil per RBI 2018 directive.</p>
     </div>
     <div class="card">
       <h3>📜 Logged everything, redacted forever</h3>
@@ -999,15 +1101,15 @@ sequenceDiagram
     </div>
     <div class="card">
       <h3>🔑 Secrets via vault, rotated quarterly</h3>
-      <p>Stripe API keys, signing secrets, and DB credentials are held in HashiCorp Vault or AWS Secrets Manager. Apps fetch at boot, no secrets in env files or git. Rotated every 90 days minimum.</p>
+      <p>Razorpay API keys, signing secrets, and DB credentials are held in HashiCorp Vault or AWS Secrets Manager (Mumbai region). Apps fetch at boot, no secrets in env files or git. Rotated every 90 days minimum.</p>
     </div>
     <div class="card">
-      <h3>📋 Annual audit + quarterly scans</h3>
-      <p>An external QSA (Qualified Security Assessor) audits us yearly. Quarterly ASV (Approved Scanning Vendor) scans probe our public surface for vulnerabilities. Findings are tracked to closure within 30-90 days depending on severity.</p>
+      <h3>📋 Annual audit + RBI system audit</h3>
+      <p>An external QSA (Qualified Security Assessor) audits us yearly for PCI-DSS. RBI also requires an annual System Audit (SAR) by a CERT-In empanelled auditor, plus quarterly ASV scans. Findings tracked to closure within 30–90 days depending on severity.</p>
     </div>
   </div>
 
-  <div class="highlight hl-purple"><strong>The one-line summary an auditor wants to hear:</strong> "We don't store, process, or transmit primary account numbers — we tokenize at the client and only handle opaque tokens server-side." If that sentence is true and provable, you've reduced ~80% of the PCI burden.</div>
+  <div class="highlight hl-purple"><strong>The one-line summary an auditor wants to hear:</strong> "We don't store, process, or transmit primary account numbers — we tokenize at the client and only handle opaque network tokens server-side, hosted entirely in our Mumbai region." If that sentence is true and provable, you've reduced ~80% of the PCI burden and you're aligned with RBI's localisation + tokenisation rules in one move.</div>
 </div>
 
 <div class="divider"></div>
@@ -1018,28 +1120,28 @@ sequenceDiagram
 <div class="sec" id="s13">
   <span class="sec-tag tag-cyan">Step 13</span>
   <h2>Multi-Currency</h2>
-  <p>Sarah pays $89 USD; the merchant settles in EUR. Naïvely you might think "convert the amount, save the converted number". That breaks the audit invariant — the FX spread has to live somewhere too, and the conversion rate at transaction time has to be locked or you can't reconcile.</p>
+  <p>A US tourist pays ₹6,499 worth of items but their card is denominated in USD; the merchant Myntra settles in INR. Or the reverse: an NRI in Dubai uses an INR-card on a USD-priced overseas merchant via Razorpay's international corridor. Naïvely you might think "convert the amount, save the converted number". That breaks the audit invariant — the FX spread has to live somewhere too, and the conversion rate at transaction time has to be locked or you can't reconcile.</p>
 
   <h3 class="subh">The rule — entries are always in the account's native currency</h3>
-  <p>An account has a fixed currency. <code>sarah_card</code> is USD. <code>zappos_escrow_eur</code> is EUR. A ledger entry's amount is always denominated in <em>that account's currency</em>. FX conversion is itself a transaction with multiple legs — and the spread is credited to a platform revenue account.</p>
+  <p>An account has a fixed currency. <code>tourist_card_usd</code> is USD. <code>myntra_escrow_inr</code> is INR. A ledger entry's amount is always denominated in <em>that account's currency</em>. FX conversion is itself a transaction with multiple legs — and the spread is credited to a platform revenue account. (Cross-border flows in India also need to comply with FEMA reporting; the FX revenue account makes that filing a simple SQL query.)</p>
 
-  <h3 class="subh">Sarah pays $89 USD, merchant settles EUR at rate 1 USD = 0.92 EUR</h3>
+  <h3 class="subh">US tourist pays $78 USD, Myntra settles INR at rate 1 USD = ₹83.32</h3>
   <div class="tbl-wrap">
     <table class="tbl">
       <thead><tr><th>#</th><th>Account</th><th>Currency</th><th>Amount</th><th>Note</th></tr></thead>
       <tbody>
-        <tr><td>1</td><td>sarah_card</td><td>USD</td><td><code>−$89.00</code></td><td>Card debited</td></tr>
-        <tr><td>2</td><td>platform_fx_pool_usd</td><td>USD</td><td><code>+$89.00</code></td><td>USD enters platform</td></tr>
-        <tr><td>3</td><td>platform_fx_pool_eur</td><td>EUR</td><td><code>−€81.88</code></td><td>EUR leaves platform pool</td></tr>
-        <tr><td>4</td><td>zappos_escrow_eur</td><td>EUR</td><td><code>+€81.88</code></td><td>Merchant credited at 1 USD = 0.92 EUR</td></tr>
-        <tr><td>5</td><td>platform_fx_revenue_eur</td><td>EUR</td><td><code>+€0.00</code></td><td>Spread / margin (if applicable)</td></tr>
+        <tr><td>1</td><td>tourist_card_usd</td><td>USD</td><td><code>−$78.00</code></td><td>Card debited</td></tr>
+        <tr><td>2</td><td>platform_fx_pool_usd</td><td>USD</td><td><code>+$78.00</code></td><td>USD enters platform</td></tr>
+        <tr><td>3</td><td>platform_fx_pool_inr</td><td>INR</td><td><code>−₹6,499.00</code></td><td>INR leaves platform pool</td></tr>
+        <tr><td>4</td><td>myntra_escrow_inr</td><td>INR</td><td><code>+₹6,499.00</code></td><td>Merchant credited at 1 USD = ₹83.32</td></tr>
+        <tr><td>5</td><td>platform_fx_revenue_inr</td><td>INR</td><td><code>+₹0.00</code></td><td>Spread / margin (if applicable)</td></tr>
       </tbody>
     </table>
   </div>
 
-  <p>Each currency's entries sum to zero on their own — USD entries (1, 2) sum to zero, EUR entries (3, 4, 5) sum to zero. The platform takes on the FX risk; we hedge by holding currency pools and rebalancing them periodically with our banking partners.</p>
+  <p>Each currency's entries sum to zero on their own — USD entries (1, 2) sum to zero, INR entries (3, 4, 5) sum to zero. The platform takes on the FX risk; we hedge by holding currency pools and rebalancing them periodically with our AD-Category-I banking partners (the only banks RBI-authorised to handle FX).</p>
 
-  <div class="highlight hl-cyan"><strong>The locked-rate rule:</strong> the FX rate used for entries 3 and 4 is captured at transaction time, written into the Transaction row, and never recalculated. If the rate later moves, that's our P&amp;L — but the ledger never changes. This is what makes multi-currency reconcilable.</div>
+  <div class="highlight hl-cyan"><strong>The locked-rate rule:</strong> the FX rate used for entries 3 and 4 is captured at transaction time, written into the Transaction row, and never recalculated. If the rate later moves, that's our P&amp;L — but the ledger never changes. This is what makes multi-currency reconcilable and what makes monthly FEMA filings auditable.</div>
 </div>
 
 <div class="divider"></div>
@@ -1092,8 +1194,8 @@ sequenceDiagram
       <tbody>
         <tr><td>Payment API pod crashes mid-request</td><td>Client times out, retries with same idempotency key</td><td>Retry hits Redis or DB unique-constraint, returns original result</td></tr>
         <tr><td>Orchestrator pod dies between steps</td><td>Workflow paused</td><td>Temporal reschedules workflow on a healthy pod, resumes at next step</td></tr>
-        <tr><td>Stripe gateway has 30-min outage</td><td>New payments fail on authorize step</td><td>Circuit breaker fails fast; client sees error; no money moved; saga not started</td></tr>
-        <tr><td>Stripe drops mid-capture</td><td>Workflow doesn't know if capture succeeded</td><td>Idempotent retry to Stripe; if still uncertain, query Stripe API for capture status</td></tr>
+        <tr><td>Razorpay gateway has 30-min outage</td><td>New payments fail on authorize step</td><td>Circuit breaker fails fast; client sees error; no money moved; saga not started; merchant traffic optionally failed over to PayU adapter</td></tr>
+        <tr><td>Razorpay drops mid-capture</td><td>Workflow doesn't know if capture succeeded</td><td>Idempotent retry to Razorpay; if still uncertain, query Razorpay API for capture status</td></tr>
         <tr><td>Ledger DB primary loses a disk</td><td>Sync replica promoted; ~30s of write blockage</td><td>Postgres synchronous replication; orchestrator retries blocked writes</td></tr>
         <tr><td>Redis idempotency cache wiped</td><td>First retry would re-execute</td><td>DB UNIQUE constraint on Transaction.idempotency_key catches it; original row read and returned</td></tr>
         <tr><td>Notification service down</td><td>Webhooks not delivered</td><td>Async retry with exponential backoff for 3 days; payment itself unaffected</td></tr>
@@ -1118,22 +1220,22 @@ sequenceDiagram
   <div class="ans"><strong>Idempotency keys, two layers of defense.</strong> The client SDK generates a UUID before the first request and reuses it on every retry. Server-side: Redis <code>SETNX idempotency:&lt;key&gt;</code> on the fast path, plus a <code>UNIQUE</code> constraint on Transaction.idempotency_key in Postgres as the bulletproof backup. Even if Redis is wiped, the DB rejects the duplicate insert and we return the original cached response. The client can mash "Buy" 100 times — only the first request runs, the rest return the same result.</div>
 
   <div class="iq">What happens if we capture the card but our DB write fails?</div>
-  <div class="ans"><strong>Temporal saga compensating action.</strong> The orchestrator persisted "capture succeeded" before attempting the ledger write. When the ledger write fails permanently (after retries), the saga runs the compensating action — <code>refund(captureId)</code> against Stripe — undoing the capture. Sarah sees a payment-failed error; her card is not charged. The audit log records all five state transitions: authorized → captured → ledger-failed → refund-issued → refund-confirmed. Money is never lost or duplicated; only briefly in flight.</div>
+  <div class="ans"><strong>Temporal saga compensating action.</strong> The orchestrator persisted "capture succeeded" before attempting the ledger write. When the ledger write fails permanently (after retries), the saga runs the compensating action — <code>refund(captureId)</code> against Razorpay — undoing the capture. Priya sees a payment-failed error; her HDFC card shows a charge and a matching refund within 5–7 working days (RBI refund timeline). The audit log records all five state transitions: authorized → captured → ledger-failed → refund-issued → refund-confirmed. Money is never lost or duplicated; only briefly in flight.</div>
 
   <div class="iq">Why double-entry ledger over a simple balance column?</div>
-  <div class="ans"><strong>Auditability, the math invariant, and zero hot-row contention.</strong> A balance column overwrites history (you can't answer "what was the balance at 2pm yesterday?"). Double-entry is append-only — every cent's movement is a row, queryable forever. The mathematical invariant <code>SUM(amount_cents) FROM ledger_entry = 0</code> globally is a free correctness check; if it ever drifts from zero, money has been created or destroyed and we can detect it within a minute. And appending parallel rows scales infinitely; updating one balance row serializes everything on Postgres row locks.</div>
+  <div class="ans"><strong>Auditability, the math invariant, and zero hot-row contention.</strong> A balance column overwrites history (you can't answer "what was the balance at 2pm yesterday?"). Double-entry is append-only — every paisa's movement is a row, queryable forever. The mathematical invariant <code>SUM(amount_paise) FROM ledger_entry = 0</code> globally is a free correctness check; if it ever drifts from zero, money has been created or destroyed and we can detect it within a minute. And appending parallel rows scales infinitely; updating one balance row serializes everything on Postgres row locks.</div>
 
   <div class="iq">How would you build the refund flow?</div>
-  <div class="ans"><strong>It's a brand-new transaction, not a mutation of the original.</strong> A refund request creates a new Transaction with its own idempotency key, a reference to the original payment, and writes <em>new</em> ledger entries that are equal-and-opposite to the original (debit Zappos's escrow, credit Sarah's payment-method-account, both for $89). The orchestrator then calls Stripe's refund API. Original transaction stays in the ledger forever — refund is recorded as a separate event with full audit trail. Partial refunds work the same way with a smaller amount.</div>
+  <div class="ans"><strong>It's a brand-new transaction, not a mutation of the original.</strong> A refund request creates a new Transaction with its own idempotency key, a reference to the original payment, and writes <em>new</em> ledger entries that are equal-and-opposite to the original (debit Myntra's escrow, credit Priya's payment-method-account, both for ₹6,499). The orchestrator then calls Razorpay's refund API. Original transaction stays in the ledger forever — refund is recorded as a separate event with full audit trail. Partial refunds work the same way with a smaller amount. RBI mandates refunds reach the customer within 5–7 working days; we monitor refund-aging dashboards to catch breaches.</div>
 
   <div class="iq">How does a saga differ from a 2-phase commit?</div>
-  <div class="ans"><strong>2PC takes locks; saga takes responsibility.</strong> 2PC asks every participant "can you commit?", holds locks, then says "commit". This requires every participant to support the protocol — and Stripe / Visa / Mastercard do not. 2PC also blocks indefinitely if the coordinator dies after "prepare". Saga gives up trying to be atomic, instead defining a compensating action for every step. When something fails, the saga undoes the partial work in reverse. Saga works across systems we don't own; 2PC works only inside one DB.</div>
+  <div class="ans"><strong>2PC takes locks; saga takes responsibility.</strong> 2PC asks every participant "can you commit?", holds locks, then says "commit". This requires every participant to support the protocol — and Razorpay / Visa / Mastercard / RuPay do not. 2PC also blocks indefinitely if the coordinator dies after "prepare". Saga gives up trying to be atomic, instead defining a compensating action for every step. When something fails, the saga undoes the partial work in reverse. Saga works across systems we don't own; 2PC works only inside one DB.</div>
 
   <div class="iq">How do you keep PCI scope small?</div>
-  <div class="ans"><strong>Tokenize at the client, never see the PAN server-side.</strong> Stripe.js (a Stripe-hosted iframe) collects the card number directly in the browser and ships it to Stripe's vault, returning an opaque <code>pm_...</code> token. Our backend only ever stores tokens. We don't store, process, or transmit primary account numbers — which moves us from PCI Level 1 (full audit) to PCI SAQ-A (a checklist). Backed up by network isolation, secret rotation, log redaction, quarterly ASV scans, and an annual QSA audit.</div>
+  <div class="ans"><strong>Tokenize at the client, never see the PAN server-side.</strong> The Razorpay Checkout SDK (a Razorpay-hosted iframe) collects the card number directly in the browser and ships it to Razorpay's vault, which mints a network token via the Visa/Mastercard TSP and returns it as an opaque <code>token_...</code>. Our backend only ever stores tokens. We don't store, process, or transmit primary account numbers — which moves us from PCI Level 1 (full audit) to PCI SAQ-A (a checklist), and also aligns us with RBI's 2022 tokenisation mandate that flat-out forbids merchants from storing PANs. Backed up by network isolation, secret rotation, log redaction, quarterly ASV scans, annual QSA audit, and an annual RBI System Audit Report.</div>
 
-  <div class="iq">How do you handle a Stripe outage mid-transaction?</div>
-  <div class="ans"><strong>It depends where in the saga we were.</strong> If we hadn't called Stripe yet (before authorize), the circuit breaker fails fast — client sees error, no money moved, no compensation needed. If we'd authorized but not captured, Temporal retries capture with exponential backoff; if Stripe stays down for hours we run the reverse-auth compensating action and tell the client we can't fulfill. If we'd captured but couldn't confirm, we use Stripe's idempotency-key feature to safely re-query — never re-charge. After Stripe recovers, the reconciliation job verifies our internal ledger matches Stripe's settlement to the cent.</div>
+  <div class="iq">How do you handle a Razorpay outage mid-transaction?</div>
+  <div class="ans"><strong>It depends where in the saga we were.</strong> If we hadn't called Razorpay yet (before authorize), the circuit breaker fails fast — client sees error, no money moved, no compensation needed; large merchants optionally fail over to a secondary PA (PayU/Cashfree) at this point. If we'd authorized but not captured, Temporal retries capture with exponential backoff; if Razorpay stays down for hours we run the reverse-auth compensating action and tell the client we can't fulfill. If we'd captured but couldn't confirm, we use Razorpay's idempotency-key feature to safely re-query — never re-charge. After Razorpay recovers, the reconciliation job verifies our internal ledger matches Razorpay's settlement file to the paisa.</div>
 
   <div class="iq">How do you scale the ledger to a billion rows per year?</div>
   <div class="ans"><strong>Partition by account_id; sub-shard hot accounts.</strong> Most accounts have tiny histories so partitioning by account_id keeps each account's full record co-located for fast SUM queries. The platform escrow account — which touches every single transaction — gets sub-sharded into 32 virtual shards (escrow_01..escrow_32) so writes don't bottleneck on one row. Reads roll up by summing across the sub-shards. Snapshot caches materialize per-account balances every few minutes so balance reads are O(1) instead of O(N) over the entire ledger.</div>
