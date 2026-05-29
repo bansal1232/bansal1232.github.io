@@ -558,6 +558,7 @@
         <h4>Browse by Stack</h4>
         <ol>
           <li><a href="#s5">High-Level Design (HLD) <span class="sb-count">27</span></a></li>
+          <li><a href="#s7">Databases <span class="sb-count">2</span></a></li>
           <li><a href="#s4">Low-Level Design (LLD) <span class="sb-count">12</span></a></li>
           <li><a href="#s1">Languages <span class="sb-count">3</span></a></li>
           <li><a href="#s2">Backend &amp; Tech Stack <span class="sb-count">8</span></a></li>
@@ -597,12 +598,6 @@
                 <div class="dd-card-footer"><span class="dd-card-cta">Read the cheat sheet →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
               </a>
 
-              <a class="dd-card" href="design-dev/HLD/databases-comparison-hld.html" target="_blank" data-tags="hld system-design database rdbms document widecolumn keyvalue search timeseries graph vector objectstore newsql polyglot">
-                <span class="dd-tag">HLD · Reference</span>
-                <h3 class="dd-card-title">Database Families Compared — RDBMS, Document, Wide-Column, KV, Search…</h3>
-                <p class="dd-card-desc">The ten database families every system-design interview expects you to wield — RDBMS, Document, Wide-Column, Key-Value, Search Engine, Time-Series, Graph, Vector, Object Store, NewSQL. Storage engines, consistency story, decision tree, and polyglot stacks from Twitter, Uber, Netflix, and RAG systems.</p>
-                <div class="dd-card-footer"><span class="dd-card-cta">Compare the families →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
-              </a>
             </div>
           </div>
 
@@ -807,9 +802,36 @@
         </div>
 
         <div class="divider"></div>
+        <div class="sec" id="s7">
+          <div class="sec-head">
+            <h2><span class="sec-num">02</span>Databases</h2>
+            <p>Storage choices decide every other box in the diagram. Family-by-family comparisons, deep dives into specific engines, and the honest "stay on Postgres" decision tree — everything you need to defend a DB pick in design review or an interview.</p>
+          </div>
+
+          <div class="dd-stack">
+            <h3 class="dd-stack-title">Reference &amp; Deep Dives</h3>
+            <div class="dd-grid">
+              <a class="dd-card" href="design-dev/HLD/databases-comparison-hld.html" target="_blank" data-tags="database rdbms document widecolumn keyvalue search timeseries graph vector objectstore newsql polyglot reference">
+                <span class="dd-tag">DB · Reference</span>
+                <h3 class="dd-card-title">Database Families Compared — RDBMS, Document, Wide-Column, KV, Search…</h3>
+                <p class="dd-card-desc">The ten database families every system-design interview expects you to wield — RDBMS, Document, Wide-Column, Key-Value, Search Engine, Time-Series, Graph, Vector, Object Store, NewSQL. Storage engines, consistency story, decision tree, and polyglot stacks from Twitter, Uber, Netflix, and RAG systems.</p>
+                <div class="dd-card-footer"><span class="dd-card-cta">Compare the families →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+              </a>
+
+              <a class="dd-card" href="design-dev/Databases/distributed-sql-databases.html" target="_blank" data-tags="database cockroachdb yugabytedb tidb newsql distributed-sql raft mvcc spanner scaling rdbms postgres mysql">
+                <span class="dd-tag">DB · Deep Dive</span>
+                <h3 class="dd-card-title">Distributed SQL Under the Hood — CockroachDB, YugabyteDB, TiDB</h3>
+                <p class="dd-card-desc">What problem distributed SQL actually solves, and how the three open-source players do it inside — Raft per range, hybrid logical clocks, MVCC across nodes, and Spanner-style 2PC. Side-by-side comparison, migration punch list from Postgres/MySQL, and the honest decision tree of when not to bother.</p>
+                <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
         <div class="sec" id="s4">
           <div class="sec-head">
-            <h2><span class="sec-num">02</span>Low-Level Design (LLD)</h2>
+            <h2><span class="sec-num">03</span>Low-Level Design (LLD)</h2>
             <p>Object-modeling and class-design problems — first the framework that fits any 45-minute LLD round, then eight worked case studies with full Java code, state machines, and the gotchas Grokking glosses over.</p>
           </div>
 
@@ -947,7 +969,7 @@
         <div class="divider"></div>
         <div class="sec" id="s1">
           <div class="sec-head">
-            <h2><span class="sec-num">03</span>Languages</h2>
+            <h2><span class="sec-num">04</span>Languages</h2>
             <p>Story-driven interview guides for the languages you'll be writing on the whiteboard — Java fundamentals plus modern Java 25 features, and a JavaScript &amp; Node.js deep dive that covers the runtime as much as the syntax.</p>
           </div>
 
@@ -1005,7 +1027,7 @@
         <div class="divider"></div>
         <div class="sec" id="s2">
           <div class="sec-head">
-            <h2><span class="sec-num">04</span>Backend &amp; Tech Stack</h2>
+            <h2><span class="sec-num">05</span>Backend &amp; Tech Stack</h2>
             <p>The day-to-day toolkit of a backend engineer — frameworks, message brokers, databases, containers, browser storage. Each guide is interview-grade with the production gotchas baked in.</p>
           </div>
 
@@ -1167,7 +1189,7 @@
         <div class="divider"></div>
         <div class="sec" id="s6">
           <div class="sec-head">
-            <h2><span class="sec-num">05</span>Google Interview</h2>
+            <h2><span class="sec-num">06</span>Google Interview</h2>
             <p>Problems in the shape Google likes — bounded constraints, brutal scale, and an obvious-once-you-see-it trick that replaces sorting or coordination with a smaller, cheaper primitive.</p>
           </div>
 
