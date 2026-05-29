@@ -4,8 +4,8 @@
 <script src="/js/analytics.js"></script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>JavaScript &amp; Node.js Interview Guide — Story-Driven Q&amp;A</title>
-<meta name="description" content="A comprehensive, story-driven walkthrough of every JavaScript and Node.js question that actually shows up in interviews — hoisting, closures, event loop, promises, streams, clustering and more."/>
+<title>JavaScript &amp; Node.js Interview Guide — Concept Reference</title>
+<meta name="description" content="A detailed concept-by-concept reference for every JavaScript and Node.js question that shows up in interviews — hoisting, closures, event loop, promises, streams, clustering and more."/>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="../../css/diagram-zoom.css"/>
 <link rel="stylesheet" href="../../css/likes.css"/>
@@ -151,10 +151,6 @@ code{font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--orange)
 .qa-block .a ul{margin:.4rem 0 .6rem;padding-left:1.2rem}
 .qa-block .a ul li{margin-bottom:.3rem;list-style:disc;color:var(--text)}
 
-/* story bubble */
-.story{background:linear-gradient(180deg,rgba(212,168,56,.08),rgba(212,168,56,.02));border:1px dashed rgba(212,168,56,.4);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);line-height:1.78;font-style:italic}
-.story strong{font-style:normal;color:var(--yellow);font-weight:700;letter-spacing:.05em;text-transform:uppercase;font-size:.7rem;display:block;margin-bottom:.35rem}
-
 /* ── TABLE ── */
 .tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
 .tbl{width:100%;border-collapse:collapse;font-size:.84rem}
@@ -182,8 +178,8 @@ code{font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--orange)
 <div class="hero">
   <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
   <div class="pill">Interview Prep · JavaScript &amp; Node.js</div>
-  <h1><span class="yellow">JavaScript</span> &amp; <span class="green">Node.js</span><br/>Interview — Every Question, Told as a Story</h1>
-  <p class="sub">A complete walkthrough of the questions actually asked in JS and Node.js rounds — from hoisting to the event loop, from closures to streams. Each concept is taught as a small story so the answer sticks the first time.</p>
+  <h1><span class="yellow">JavaScript</span> &amp; <span class="green">Node.js</span><br/>Interview — Concept Reference</h1>
+  <p class="sub">A detailed, concept-by-concept walkthrough of the questions actually asked in JS and Node.js rounds — from hoisting to the event loop, from closures to streams. Each topic is explained directly, with the meaning, mechanics, and gotchas spelled out.</p>
 </div>
 
 <div class="layout">
@@ -233,10 +229,18 @@ code{font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--orange)
   <h2>1 · How JavaScript Actually Runs</h2>
   <p>Before any specific question makes sense, the interviewer wants to know if you have the right mental picture of <em>what is even happening</em> when JS runs your code. Get this picture right and half the trick questions answer themselves.</p>
 
-  <div class="story">
-    <strong>The Story</strong>
-    Imagine JavaScript as a single chef in a tiny kitchen. There is exactly one chef (one thread), one cooking surface (the <em>call stack</em>), and a long line of order tickets sitting in a tray (the <em>callback queue</em>). Whenever the chef finishes the dish on the surface, she grabs the next ticket from the tray and starts cooking it. While a dish is on the surface, the chef cannot touch anything else — no chopping, no plating, no answering the door. That is what "single-threaded" means. The trick is that the chef has helpers outside the kitchen (the browser or Node.js APIs — timers, network, file system) who do the slow work for her, then drop a ticket back in her tray when they're done. That is "non-blocking I/O".
-  </div>
+  <h3>Concept</h3>
+  <p>JavaScript is a <strong>single-threaded</strong> language: there is exactly one call stack, one heap, and one thread executing your code at any moment. It cannot run two functions in parallel. What gives JS its illusion of concurrency is the <strong>runtime around the engine</strong> — browsers expose Web APIs (timers, network, DOM events) and Node exposes libuv (file system, sockets, DNS). Those APIs do slow work outside the JS thread and post their results back as callbacks.</p>
+  <p>The pieces are:</p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li><strong>Call Stack</strong> — the active execution context. Every function call pushes a frame; every return pops one. When the stack is empty, JS is idle.</li>
+    <li><strong>Heap</strong> — where objects live. Garbage-collected by the engine.</li>
+    <li><strong>Web/Node APIs</strong> — non-JS code that handles timers, I/O, network. These run outside the JS thread.</li>
+    <li><strong>Task (Macrotask) Queue</strong> — holds callbacks from <code>setTimeout</code>, I/O, UI events, <code>setImmediate</code>.</li>
+    <li><strong>Microtask Queue</strong> — holds Promise <code>.then</code>/<code>.catch</code>/<code>.finally</code> callbacks, <code>queueMicrotask</code>, <code>MutationObserver</code>.</li>
+    <li><strong>Event Loop</strong> — the scheduler. When the stack is empty, it drains <em>all</em> microtasks, then picks one macrotask, runs it, drains microtasks again, and repeats.</li>
+  </ul>
+  <p>"Non-blocking I/O" means JS never waits for slow operations on its own thread — it hands the work to the runtime and continues. The result is delivered later via a callback in one of the queues.</p>
 
   <div class="diagram-box">
     <div class="mermaid">
@@ -275,10 +279,16 @@ flowchart LR
   <h2>2 · var, let, const &amp; Hoisting</h2>
   <p>Hoisting is the feature that surprises every beginner: variables seem to "exist" before they were declared. The interview question is rarely "what is hoisting?" — it is a code snippet where the answer depends on whether you used <code>var</code>, <code>let</code>, or <code>const</code>.</p>
 
-  <div class="story">
-    <strong>The Story</strong>
-    Picture JavaScript reading your file in two passes. On the <em>first pass</em>, it walks through your code with a notebook, writing down every variable name it sees. <code>var</code> names go in the notebook with the value <em>undefined</em>. <code>let</code> and <code>const</code> names also go in the notebook — but with a red sticker that says "do not touch yet". On the <em>second pass</em>, JS actually executes the lines top to bottom, peeling off the red stickers when it reaches the declaration. That red-sticker zone — between the top of the scope and the actual <code>let</code>/<code>const</code> line — is called the <strong>Temporal Dead Zone (TDZ)</strong>.
-  </div>
+  <h3>Concept</h3>
+  <p><strong>Hoisting</strong> is the JavaScript engine's two-phase processing of a scope. Before any code runs, the engine scans the scope and registers every variable and function declaration in memory. Only after that does it execute statements top to bottom.</p>
+  <p>The three declaration keywords behave differently during this scan:</p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li><code>var</code> — registered AND initialized with <code>undefined</code>. Reading it before the assignment line returns <code>undefined</code> (no error).</li>
+    <li><code>let</code> / <code>const</code> — registered but NOT initialized. The binding exists but is in the <strong>Temporal Dead Zone (TDZ)</strong>. Any read or write before the declaration line throws a <code>ReferenceError</code>.</li>
+    <li><code>function</code> declarations — fully hoisted (both name and body), so you can call them above their declaration.</li>
+  </ul>
+  <p><strong>Scope rules:</strong> <code>var</code> is function-scoped (it leaks out of <code>if</code> / <code>for</code> blocks). <code>let</code> and <code>const</code> are block-scoped (limited to the nearest <code>{ }</code>). <code>const</code> additionally forbids reassignment of the binding — but the value it points to (if an object) remains mutable.</p>
+  <p><strong>Why TDZ exists:</strong> it forces developers to declare variables before use, eliminating an entire class of bugs that <code>var</code>'s "silent undefined" used to mask.</p>
 
   <span class="code-label cl-yellow">classic-trick.js</span>
 <pre><span class="cmt">// var is hoisted with value undefined</span>
@@ -323,10 +333,15 @@ flowchart LR
   <h2>3 · Scope &amp; Closures</h2>
   <p>Closures are the single most-asked JS concept. They are also the foundation of currying, memoization, module patterns, and most of the React Hook tricks you'll see later.</p>
 
-  <div class="story">
-    <strong>The Story</strong>
-    Sarah writes a thank-you note and tucks it into a small backpack. Then she gives the backpack to her friend Raj and walks away. Years later Raj opens the backpack and reads the note — Sarah is long gone, but her words are still there, exactly as she left them. A <strong>closure</strong> is that backpack. When you define a function inside another function, the inner function carries a backpack of the outer function's variables with it. Even after the outer function has returned and "walked away", the inner function still has access to those variables.
-  </div>
+  <h3>Concept</h3>
+  <p>A <strong>closure</strong> is a function bundled together with references to the variables of the lexical scope in which it was defined. When a function is created, it captures the surrounding environment — and that environment persists for as long as the function itself does.</p>
+  <p>The key behavior: even after the outer function returns and its local variables would normally be discarded, those variables remain alive in memory because the inner function still references them. The closure does NOT capture values by copy — it captures live references, so changes are reflected if the variable is mutated.</p>
+  <p><strong>Two ingredients make a closure:</strong></p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li><strong>Lexical scoping</strong> — a function's accessible variables are determined by where it is written in the source code, not by where it is called from.</li>
+    <li><strong>First-class functions</strong> — functions can be returned, stored in variables, and passed around. When they travel, their scope chain travels with them.</li>
+  </ul>
+  <p>Closures are how JavaScript implements private state, partial application, and stateful callbacks without classes.</p>
 
   <span class="code-label cl-green">closure-counter.js</span>
 <pre><span class="kw">function</span> <span class="fn">makeCounter</span>() {
@@ -383,10 +398,17 @@ c(); <span class="cmt">// 3 — count survives between calls</span></pre>
   <h2>4 · The <code>this</code> Keyword</h2>
   <p>"What is <code>this</code>?" is JavaScript's most-asked, most-mistaken question. The trick is to remember that <code>this</code> isn't decided when the function is <em>written</em> — it's decided when the function is <em>called</em>.</p>
 
-  <div class="story">
-    <strong>The Story</strong>
-    Think of <code>this</code> as the speaker pointing at the audience. The pronoun "you" doesn't have a fixed meaning — it depends on who the speaker is pointing at right now. The same way, <code>this</code> doesn't have a fixed meaning — it depends on <em>how</em> the function is called. There are exactly four "ways to call" — and each one decides what <code>this</code> points to.
-  </div>
+  <h3>Concept</h3>
+  <p><code>this</code> is a special identifier whose value is determined <strong>at call time</strong>, not at function definition. It is part of the function's execution context — every time you invoke a function, JS sets up a fresh <code>this</code> based on the call site syntax.</p>
+  <p>There are four binding rules, checked in order of precedence (highest to lowest):</p>
+  <ol style="padding-left:1.4rem;color:var(--text)">
+    <li><strong><code>new</code> binding</strong> — <code>new Fn()</code> creates a fresh empty object and sets <code>this</code> to it.</li>
+    <li><strong>Explicit binding</strong> — <code>fn.call(obj)</code>, <code>fn.apply(obj)</code>, or <code>fn.bind(obj)</code> directly specify <code>this</code>.</li>
+    <li><strong>Implicit / method binding</strong> — <code>obj.fn()</code> sets <code>this</code> to the object before the dot.</li>
+    <li><strong>Default binding</strong> — a plain <code>fn()</code> call sets <code>this</code> to <code>globalThis</code> in non-strict mode, or <code>undefined</code> in strict mode / ES modules.</li>
+  </ol>
+  <p><strong>Arrow functions are the exception:</strong> they do not have their own <code>this</code>. They inherit it from the enclosing lexical scope at the time of definition, and that binding cannot be changed by <code>call</code>/<code>apply</code>/<code>bind</code>. This makes arrow functions safe to use as callbacks without losing context.</p>
+  <p><strong>Common pitfall:</strong> assigning a method to a variable (<code>const g = obj.method</code>) strips the implicit binding. When you call <code>g()</code> later, it falls back to the default binding and <code>this</code> becomes global / undefined.</p>
 
   <div class="tbl-wrap">
     <table class="tbl">
@@ -439,10 +461,21 @@ user.<span class="fn">greet</span>();             <span class="cmt">// "Hi Sarah
   <h2>5 · Prototypes &amp; Inheritance</h2>
   <p>JavaScript doesn't have classes the way Java does — even the <code>class</code> keyword is sugar over prototypes. Once you understand the prototype chain, every "why does <code>arr.map</code> exist?" question answers itself.</p>
 
-  <div class="story">
-    <strong>The Story</strong>
-    Imagine a chain of librarians. You ask the first librarian for a book on "map". She doesn't have it. She points up a shelf and says "ask the librarian one floor up." That librarian also doesn't have it, but she points one more floor up. Eventually the top librarian has the book and hands it down. That is the <strong>prototype chain</strong>. Every object has a hidden link (<code>__proto__</code>) to a "parent" object. When you ask for a property, JS walks up the chain until it finds it — or hits <code>null</code> at the top.
-  </div>
+  <h3>Concept</h3>
+  <p>JavaScript uses <strong>prototypal inheritance</strong>, not classical class-based inheritance. Every object has an internal slot called <code>[[Prototype]]</code> (accessible via <code>Object.getPrototypeOf(obj)</code> or the legacy <code>__proto__</code>) that points to another object — its prototype.</p>
+  <p><strong>Property lookup algorithm:</strong> when you access <code>obj.foo</code>, the engine:</p>
+  <ol style="padding-left:1.4rem;color:var(--text)">
+    <li>Checks if <code>foo</code> is an own property of <code>obj</code>. If yes, returns it.</li>
+    <li>Otherwise follows <code>[[Prototype]]</code> to the parent object and repeats step 1.</li>
+    <li>Continues walking the chain until it finds <code>foo</code> or reaches <code>null</code> (the end of every chain). If null is reached, returns <code>undefined</code>.</li>
+  </ol>
+  <p><strong>Two related but distinct concepts:</strong></p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li><code>prototype</code> — a property that exists only on <em>constructor functions</em>. It is the object that will become the <code>[[Prototype]]</code> of instances created with <code>new</code>.</li>
+    <li><code>__proto__</code> / <code>[[Prototype]]</code> — exists on every object. It is the actual link used for lookups.</li>
+  </ul>
+  <p>The relationship: <code>new Foo().__proto__ === Foo.prototype</code>.</p>
+  <p><strong>The <code>class</code> keyword is syntactic sugar.</strong> Under the hood it still creates a constructor function and attaches methods to its <code>prototype</code>. <code>extends</code> sets up the prototype chain between two constructors. There is no real "class" in JavaScript — only objects linking to other objects.</p>
 
   <span class="code-label cl-yellow">proto-chain.js</span>
 <pre><span class="kw">const</span> arr = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>];
@@ -492,10 +525,21 @@ arr.<span class="fn">hasOwnProperty</span>(<span class="num">0</span>); <span cl
   <h2>6 · The Event Loop &amp; Microtasks</h2>
   <p>Every async question is the event loop wearing a different hat. If you only memorise one diagram for your interview, memorise this one.</p>
 
-  <div class="story">
-    <strong>The Story</strong>
-    Picture a busy bartender. The bar has two ticket trays. The <strong>microtask tray</strong> sits right under her hand — every time she finishes pouring a drink, she empties this tray completely before doing anything else. The <strong>macrotask tray</strong> sits across the room — after the microtask tray is empty, she walks over, grabs <em>one</em> ticket, comes back, and starts pouring. Then she empties the microtask tray again. That's the loop. Promise callbacks land in the close tray (microtasks). <code>setTimeout</code> callbacks land in the far tray (macrotasks). That single rule explains the answer to most async puzzles.
-  </div>
+  <h3>Concept</h3>
+  <p>The <strong>event loop</strong> is the runtime mechanism that decides which queued callback to run next, now that the JS call stack is empty. It enforces a strict ordering rule based on two distinct queues:</p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li><strong>Microtask queue</strong> — high priority. Holds Promise <code>.then</code> / <code>.catch</code> / <code>.finally</code> callbacks, <code>queueMicrotask()</code>, and <code>MutationObserver</code> callbacks.</li>
+    <li><strong>Macrotask (task) queue</strong> — lower priority. Holds <code>setTimeout</code>, <code>setInterval</code>, I/O completion callbacks, UI events (click, scroll), and <code>setImmediate</code> in Node.</li>
+  </ul>
+  <p><strong>The algorithm per loop iteration:</strong></p>
+  <ol style="padding-left:1.4rem;color:var(--text)">
+    <li>Run the currently executing synchronous code to completion (the call stack must be empty).</li>
+    <li>Drain the <em>entire</em> microtask queue. If draining microtasks schedules more microtasks, those run too — before any macrotask.</li>
+    <li>Pick exactly <em>one</em> macrotask from the queue and run it.</li>
+    <li>Go back to step 2.</li>
+  </ol>
+  <p><strong>Consequence:</strong> a Promise that resolves "immediately" still runs <em>after</em> all synchronous code in the current execution, but <em>before</em> any <code>setTimeout(..., 0)</code> that was scheduled earlier. This single ordering rule explains the output of nearly every async puzzle.</p>
+  <p><strong>Starvation risk:</strong> because microtasks fully drain before macrotasks, a chain of microtasks that schedules more microtasks forever will prevent the loop from ever processing I/O, timers, or rendering. The page or server freezes.</p>
 
   <span class="code-label cl-cyan">order-puzzle.js</span>
 <pre><span class="kw">console</span>.<span class="fn">log</span>(<span class="str">'A'</span>);
@@ -532,10 +576,17 @@ arr.<span class="fn">hasOwnProperty</span>(<span class="num">0</span>); <span cl
   <h2>7 · Promises &amp; async / await</h2>
   <p>Promises gave us a cleaner way out of "callback hell". <code>async/await</code> then gave us a cleaner way out of <code>.then</code> chains. Underneath, it's all still the event loop.</p>
 
-  <div class="story">
-    <strong>The Story</strong>
-    You order a pizza. The cashier hands you a buzzer (the Promise). The buzzer is in one of three states: <strong>pending</strong> (still cooking), <strong>fulfilled</strong> (ready, here's your pizza), or <strong>rejected</strong> (sorry, we're out of cheese). You don't stand at the counter — you walk away with the buzzer and tell it: "<em>when</em> you're fulfilled, do this; <em>if</em> rejected, do that". That's <code>.then</code> and <code>.catch</code>. <code>async/await</code> is the same buzzer, but you're allowed to write your code as if you were standing at the counter — JS handles the walking-away for you behind the scenes.
-  </div>
+  <h3>Concept</h3>
+  <p>A <strong>Promise</strong> is an object that represents the eventual completion (or failure) of an asynchronous operation. It is a placeholder for a value that does not exist yet but will exist in the future.</p>
+  <p><strong>Three states:</strong></p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li><strong>pending</strong> — initial state. Operation is still in flight.</li>
+    <li><strong>fulfilled</strong> — operation succeeded. Promise now has a value.</li>
+    <li><strong>rejected</strong> — operation failed. Promise now has a reason (typically an Error).</li>
+  </ul>
+  <p>A promise transitions from pending to either fulfilled or rejected exactly once. After that, it is <strong>settled</strong> and immutable — its state and value cannot change again.</p>
+  <p><strong>Consumers attach handlers</strong> with <code>.then(onFulfilled, onRejected)</code>, <code>.catch(onRejected)</code>, and <code>.finally(onSettled)</code>. These handlers always run asynchronously, as microtasks. Each <code>.then</code> returns a new Promise, enabling chaining where the next handler receives the previous handler's return value.</p>
+  <p><strong><code>async</code> / <code>await</code> is syntactic sugar over Promises.</strong> An <code>async</code> function always returns a Promise. <code>await expr</code> pauses execution of that function until <code>expr</code> settles, then resumes with the resolved value (or throws on rejection). The engine rewrites the function into a state machine of <code>.then</code> calls internally. Errors can be caught with regular <code>try / catch</code>.</p>
 
   <h3>The four Promise combinators</h3>
   <div class="g2">
@@ -593,10 +644,21 @@ users.<span class="fn">forEach</span>(<span class="kw">async</span> u =&gt; { <s
   <h2>8 · Equality, Coercion &amp; Truthiness</h2>
   <p>JavaScript's loose equality is the source of the language's worst-known memes. Interviewers love it because it forces you to demonstrate that you actually understand type coercion.</p>
 
-  <div class="story">
-    <strong>The Story</strong>
-    There are two judges in the JS courthouse. Judge <code>===</code> is strict — same type AND same value, or you lose. Judge <code>==</code> is lenient — she'll convert your types behind the scenes to "give you the benefit of the doubt." Most production code uses Judge Strict because Judge Lenient's rulings are unpredictable: <code>0 == ''</code> is true, <code>null == undefined</code> is true, but <code>null == 0</code> is false. Use <code>===</code> by default.
-  </div>
+  <h3>Concept</h3>
+  <p>JavaScript provides two equality operators:</p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li><strong><code>===</code> (strict equality)</strong> — returns true only if both operands have the same type AND the same value. No conversion happens.</li>
+    <li><strong><code>==</code> (loose equality)</strong> — applies the Abstract Equality Comparison algorithm from the ECMAScript spec, which performs type coercion before comparing. Strings are converted to numbers, booleans are converted to numbers, objects are converted to primitives, and so on.</li>
+  </ul>
+  <p><strong>Type coercion</strong> is the implicit conversion of a value from one type to another. JS coerces in several places:</p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li>Comparison operators (<code>==</code>, <code>&lt;</code>, <code>&gt;</code>)</li>
+    <li>Arithmetic operators (<code>+</code>, <code>-</code>, etc.) — note <code>+</code> with any string becomes string concatenation</li>
+    <li>Boolean contexts (<code>if</code>, ternary, <code>&amp;&amp;</code>, <code>||</code>, <code>!</code>)</li>
+    <li>Template literals — values are converted via <code>String()</code></li>
+  </ul>
+  <p><strong>Truthy and falsy</strong> describe how values behave in boolean contexts. A value is <em>falsy</em> if it coerces to <code>false</code>. The complete list of falsy values is fixed and short: <code>false</code>, <code>0</code>, <code>-0</code>, <code>0n</code> (BigInt zero), <code>""</code> (empty string), <code>null</code>, <code>undefined</code>, <code>NaN</code>. Everything else is truthy — including empty arrays <code>[]</code> and empty objects <code>{}</code>, which trips up developers coming from Python or Ruby.</p>
+  <p><strong>Rule of thumb:</strong> always use <code>===</code> in production code. The only legitimate use of <code>==</code> is the idiom <code>x == null</code>, which is true for both <code>null</code> and <code>undefined</code> — a deliberate spec exception.</p>
 
   <span class="code-label cl-red">coercion-traps.js</span>
 <pre>[] == ![]              <span class="cmt">// true   — !! both sides become 0</span>
@@ -633,10 +695,22 @@ users.<span class="fn">forEach</span>(<span class="kw">async</span> u =&gt; { <s
   <h2>9 · Shallow vs Deep Copy</h2>
   <p>The bug story behind this question is identical at every company: "I changed one item in <code>userB</code> and somehow <code>userA</code> changed too."</p>
 
-  <div class="story">
-    <strong>The Story</strong>
-    Imagine a Google Doc shared between two people. If Raj and Sarah both have the SAME share-link, edits Raj makes appear on Sarah's screen — they share one document. That's a <strong>reference</strong>. Now imagine Sarah hits "Make a copy" — she gets her own copy, edits don't affect Raj. That's a <strong>shallow copy</strong>. But wait — the doc has an embedded spreadsheet. Sarah's copy still <em>links to the same spreadsheet</em>. Editing the embedded sheet still leaks across. To truly separate them she'd need to also copy the sheet. That recursive copy of every nested thing is a <strong>deep copy</strong>.
-  </div>
+  <h3>Concept</h3>
+  <p>In JavaScript, primitive values (numbers, strings, booleans, null, undefined, symbol, bigint) are passed and copied <strong>by value</strong>. Objects (including arrays and functions) are passed and copied <strong>by reference</strong> — what gets copied is the pointer to the same memory, not the contents.</p>
+  <p>Three distinct copy levels:</p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li><strong>Reference copy</strong> — <code>const b = a</code>. Both variables point to the same object. Any mutation through one is visible through the other.</li>
+    <li><strong>Shallow copy</strong> — duplicates only the top-level properties. Nested objects are still shared by reference. Made with <code>Object.assign({}, obj)</code>, the spread operator <code>{...obj}</code>, or <code>Array.from(arr)</code>.</li>
+    <li><strong>Deep copy</strong> — recursively duplicates every level of the structure. The result shares no memory with the original. Made with <code>structuredClone(obj)</code> (the modern standard, built into Node ≥17 and all current browsers).</li>
+  </ul>
+  <p><strong>Why <code>structuredClone</code> over <code>JSON.parse(JSON.stringify(obj))</code>:</strong></p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li>The JSON round-trip silently drops <code>undefined</code>, functions, and symbols.</li>
+    <li>It converts <code>Date</code> objects to strings and <code>Map</code> / <code>Set</code> to empty <code>{}</code>.</li>
+    <li>It throws on circular references.</li>
+    <li><code>structuredClone</code> handles all of the above correctly — Dates, Maps, Sets, RegExp, typed arrays, and circular references.</li>
+  </ul>
+  <p><strong>Immutability is separate from copying.</strong> A shallow copy followed by <code>Object.freeze()</code> prevents adding/removing top-level keys but does NOT freeze nested objects. For deep immutability, freeze recursively or use a library like Immer.</p>
 
   <span class="code-label cl-blue">copy-tradeoffs.js</span>
 <pre><span class="kw">const</span> a = { name: <span class="str">'Raj'</span>, addr: { city: <span class="str">'Pune'</span> } };
@@ -665,10 +739,12 @@ c.addr.city = <span class="str">'Delhi'</span>;
   <h2>10 · Debounce vs Throttle</h2>
   <p>Both limit how often a function runs. They're cousins but solve different problems. Interviewers love asking you to implement both from scratch.</p>
 
-  <div class="story">
-    <strong>The Story</strong>
-    Imagine an elevator. <strong>Debounce</strong> is the elevator that waits — every time a new person presses the button, the doors restart their wait. The lift only departs once nobody has pressed for X seconds. Perfect for "wait until the user stops typing, THEN search". <strong>Throttle</strong> is the elevator on a fixed schedule — it leaves every 30 seconds no matter how many times you press. Perfect for "limit scroll handler to fire at most every 100ms".
-  </div>
+  <h3>Concept</h3>
+  <p>Both are <strong>rate-limiting wrappers</strong> for functions called too frequently. They differ in when they allow the underlying function to actually execute.</p>
+  <p><strong>Debounce</strong> — collapses a burst of calls into a single delayed call. Every new invocation cancels the pending timer and starts a fresh one. The wrapped function only executes once the caller has gone <em>quiet</em> for the configured delay. Use when you only care about the final state after activity stops: search-as-you-type (wait until typing pauses, then query), window-resize handlers (compute layout after resize finishes), autosave-on-edit.</p>
+  <p><strong>Throttle</strong> — enforces a maximum execution rate. Allows the wrapped function to run at most once per interval, regardless of how many times it is invoked in between. The first call typically goes through immediately; subsequent calls within the interval are dropped (or queued for the next slot). Use when you need <em>continuous</em> sampled updates: scroll position trackers, mousemove handlers, progress reports, animation frame coordination.</p>
+  <p><strong>Both rely on closures</strong> — the wrapper captures a timer reference or a "last called" timestamp in its closure, so calls share state across invocations.</p>
+  <p><strong>Variants worth knowing:</strong> debounce can be configured with a <em>leading</em> edge (fire immediately, then ignore) or <em>trailing</em> edge (default — fire after quiet period). Throttle implementations differ in whether they drop late calls or queue them — production libraries like Lodash let you pick.</p>
 
   <span class="code-label cl-cyan">debounce-throttle.js</span>
 <pre><span class="kw">function</span> <span class="fn">debounce</span>(fn, delay) {
@@ -708,10 +784,15 @@ c.addr.city = <span class="str">'Delhi'</span>;
   <h2>11 · Currying &amp; Memoization</h2>
 
   <h3>Currying — one argument at a time</h3>
-  <div class="story">
-    <strong>The Story</strong>
-    A vending machine that asks for coins one at a time instead of all at once. Each time you drop a coin (an argument), it gives you back a new vending machine that's waiting for the next coin. Only when you've dropped all the coins does the snack actually drop. <code>add(2)(3)(4)</code> — each call returns a new function until all arguments are gathered.
-  </div>
+  <p><strong>Currying</strong> is the transformation of a function that takes N arguments into a chain of N functions, each taking exactly one argument and returning the next function in the chain. Only when the final argument is supplied does the original function actually execute and return a value.</p>
+  <p>Formally: <code>f(a, b, c)</code> becomes <code>f(a)(b)(c)</code>. A practical "smart curry" implementation often relaxes this rule — it accepts any number of arguments at a time but keeps returning a partially-applied function until enough arguments have been collected.</p>
+  <p><strong>Why it matters:</strong></p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li><strong>Partial application</strong> — fix some arguments early and reuse the resulting function (e.g., <code>const addTen = add(10)</code>).</li>
+    <li><strong>Function composition</strong> — curried functions are easier to plug into pipelines and <code>compose</code>/<code>pipe</code> chains.</li>
+    <li><strong>Configuration</strong> — separate "configuration" arguments from "data" arguments, useful in functional libraries (Ramda, Lodash/fp).</li>
+  </ul>
+  <p>Currying is implemented purely with closures — each returned function captures the previously supplied arguments.</p>
 
   <span class="code-label cl-purple">curry.js</span>
 <pre><span class="kw">function</span> <span class="fn">curry</span>(fn) {
@@ -726,10 +807,15 @@ c.addr.city = <span class="str">'Delhi'</span>;
 <span class="fn">add</span>(<span class="num">1</span>, <span class="num">2</span>)(<span class="num">3</span>);     <span class="cmt">// 6</span></pre>
 
   <h3>Memoization — remember past answers</h3>
-  <div class="story">
-    <strong>The Story</strong>
-    Sarah's a librarian. The first time someone asks "what's the sum of digits of 9876?" she actually computes it. Second time, she reaches into a drawer (the cache) and hands the answer back. Memoization is just a closure with a cache.
-  </div>
+  <p><strong>Memoization</strong> is an optimization technique where a function caches its results keyed by its arguments. The first call with a given set of arguments performs the actual computation and stores the result; subsequent calls with the same arguments return the cached result without recomputing.</p>
+  <p>It is a specific case of <strong>caching</strong>, applied to pure functions. It trades memory for compute time — appropriate when the function is expensive (recursive Fibonacci, parsing, expensive DOM measurements) and called repeatedly with overlapping inputs.</p>
+  <p><strong>Requirements for safe memoization:</strong></p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li>The function must be <strong>pure</strong> — same inputs always produce the same output, no side effects, no dependency on external state (time, random, network).</li>
+    <li>Arguments must be <strong>hashable into a cache key</strong>. Primitives serialize cleanly; complex objects require <code>JSON.stringify</code> (which fails on cycles) or a structural hash.</li>
+    <li>The cache should be <strong>bounded</strong> — an unbounded cache becomes a memory leak. Use an LRU (Least Recently Used) cache or set a TTL.</li>
+  </ul>
+  <p>Like currying, memoization is built on closures — the cache lives in the wrapper's closure scope, hidden from external code but persistent across calls.</p>
 
   <span class="code-label cl-yellow">memoize.js</span>
 <pre><span class="kw">function</span> <span class="fn">memoize</span>(fn) {
@@ -803,10 +889,16 @@ api?.fetch?.()</pre>
   <h2>13 · Why Node.js Exists</h2>
   <p>Node.js is JavaScript's V8 engine ripped out of Chrome and stitched onto a C library called <strong>libuv</strong>. The marriage gave the language two things it never had: file-system access and a way to do async I/O at scale.</p>
 
-  <div class="story">
-    <strong>The Story</strong>
-    In 2009 Ryan Dahl was watching an upload progress bar in a browser. Underneath, Apache was spinning up a whole new thread for each upload — at 10,000 uploads, the server died from thread overhead. Ryan asked: "What if the server was one thread that just <em>delegated</em> the slow stuff and kept moving?" He took Chrome's V8 (fast JS engine), bolted on libuv (a C library that talks to the OS for non-blocking I/O), and Node.js was born. The whole point of Node is: <strong>one thread can serve thousands of concurrent connections, because no single connection ever blocks the thread</strong>.
-  </div>
+  <h3>Concept</h3>
+  <p><strong>Node.js</strong> is a server-side JavaScript runtime. It takes the V8 engine (the same engine that runs JS inside Chrome) and embeds it into a C++ host program that provides everything a server needs but a browser does not — a file system API, sockets, child processes, native modules, and an async I/O system.</p>
+  <p>The defining architectural choice is the <strong>single-threaded, non-blocking I/O model</strong>:</p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li>Your JavaScript runs on exactly one thread (the main thread).</li>
+    <li>Any operation that would block — reading a file, waiting for a TCP packet, computing a hash — is delegated to either the OS kernel (for network I/O) or to libuv's thread pool (for file system, DNS, crypto, zlib).</li>
+    <li>While those operations run in the background, the main thread is free to handle other requests. When the background work finishes, a callback is queued on the event loop.</li>
+  </ul>
+  <p><strong>Why this matters:</strong> a traditional thread-per-request server allocates ~1MB of stack per connection. At 10,000 connections, that is 10GB of RAM plus context-switching overhead, and most threads sit idle waiting on I/O. Node serves 10,000 concurrent connections on a single thread because the thread never waits — it only services completed callbacks.</p>
+  <p><strong>The trade-off:</strong> any CPU-bound work on the main thread blocks every other request. A 200ms JSON parse or password hash freezes the entire server. CPU-heavy tasks must be offloaded to worker threads or the cluster module to scale.</p>
 
   <div class="diagram-box">
     <div class="mermaid">
@@ -894,10 +986,24 @@ flowchart LR
     </div>
   </div>
 
-  <div class="story">
-    <strong>The Story</strong>
-    Picture a postman doing a daily route through six neighbourhoods in fixed order. Each neighbourhood is a phase. He starts at <strong>Timers</strong> and delivers anything whose timer has elapsed. Then he moves to the <strong>Poll</strong> neighbourhood — this is the busiest one, where most of his packages (network I/O, file reads) live. Then <strong>Check</strong>, where <code>setImmediate</code> callbacks live. Then <strong>Close</strong> for any socket-close callbacks. After each neighbourhood (and even between deliveries within one), he stops, opens his special microtask envelope, and processes everything in there — that's <code>process.nextTick</code> and resolved Promises. Then he carries on. Loop forever.
-  </div>
+  <h3>Concept</h3>
+  <p>The Node event loop is not a single queue — it is a state machine that cycles through <strong>six distinct phases</strong> in a fixed order. Each phase has its own callback queue, and the loop processes one phase before moving to the next.</p>
+  <p><strong>The six phases (in order):</strong></p>
+  <ol style="padding-left:1.4rem;color:var(--text)">
+    <li><strong>Timers</strong> — executes callbacks scheduled by <code>setTimeout</code> and <code>setInterval</code> whose threshold has elapsed. Note that "5ms" means "at least 5ms" — the callback fires as soon as the timer expires AND this phase is reached.</li>
+    <li><strong>Pending callbacks</strong> — runs I/O callbacks deferred from the previous loop tick (mostly TCP error callbacks). Rarely your code.</li>
+    <li><strong>Idle / Prepare</strong> — internal use by libuv, not exposed to user code.</li>
+    <li><strong>Poll</strong> — the largest phase. Two responsibilities: (a) compute how long to block waiting for new I/O, then (b) process I/O callbacks (incoming network data, completed file reads). If the poll queue is empty and a <code>setImmediate</code> is pending, it moves on to Check; otherwise it may block here waiting for I/O.</li>
+    <li><strong>Check</strong> — runs <code>setImmediate</code> callbacks. This is the only phase that executes them.</li>
+    <li><strong>Close callbacks</strong> — runs callbacks registered for close events (e.g., <code>socket.on('close', ...)</code>).</li>
+  </ol>
+  <p>After the Close phase, the loop returns to Timers and starts again.</p>
+  <p><strong>Microtasks run between every callback</strong> within and between phases, not just between full loop ticks. Microtasks come in two queues processed in order:</p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li><code>process.nextTick</code> queue — highest priority, drained first.</li>
+    <li>Promise microtask queue — drained after nextTick.</li>
+  </ul>
+  <p><strong>Why six phases matter:</strong> if you schedule a <code>setTimeout(fn, 0)</code> from inside an I/O callback, it runs on the <em>next</em> loop iteration's Timers phase. A <code>setImmediate</code> from the same I/O callback runs in the <em>same</em> iteration's Check phase. That guarantee is why <code>setImmediate</code> always beats <code>setTimeout(0)</code> from inside I/O — and why race-condition bugs trace back to "wrong phase".</p>
 
   <div class="g2">
     <div class="card">
@@ -975,10 +1081,19 @@ process.<span class="fn">nextTick</span>(() =&gt; <span class="kw">console</span
   <h2>16 · Streams &amp; Buffers</h2>
   <p>Streams are how Node processes data that doesn't fit in memory — like a 5GB log file or a video upload. Instead of loading the whole thing, you process it in chunks as it flows past.</p>
 
-  <div class="story">
-    <strong>The Story</strong>
-    Imagine a fire brigade passing buckets of water down a line. The water (your data) never sits in any one person's hands for long — each person grabs a bucket, processes it, hands it on. That's a stream. The alternative (the non-stream way) is to fill an entire swimming pool first and then carry it — fine for a glass of water, impossible for a fire.
-  </div>
+  <h3>Concept</h3>
+  <p>A <strong>stream</strong> is an abstraction for sequentially processing data that arrives or departs in chunks over time, without loading the entire payload into memory. Streams operate on small fixed-size buffers (typically 16 KB or 64 KB) that flow through a pipeline of producers, transformers, and consumers.</p>
+  <p>Streams are <strong>built on EventEmitter</strong> — they emit events like <code>data</code>, <code>end</code>, <code>error</code>, and <code>close</code> as chunks become available or the stream finishes.</p>
+  <p><strong>Four stream types in Node:</strong></p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li><strong>Readable</strong> — produces data. Consumers read chunks from it. Examples: <code>fs.createReadStream</code>, HTTP request, <code>process.stdin</code>.</li>
+    <li><strong>Writable</strong> — consumes data. Producers write chunks into it. Examples: <code>fs.createWriteStream</code>, HTTP response, <code>process.stdout</code>.</li>
+    <li><strong>Duplex</strong> — both readable and writable, with two independent channels. Example: TCP sockets — you read incoming bytes and write outgoing bytes separately.</li>
+    <li><strong>Transform</strong> — a Duplex where the output is computed from the input. Example: <code>zlib.createGzip()</code>, <code>crypto.createCipheriv()</code>.</li>
+  </ul>
+  <p><strong>Backpressure</strong> is the central problem streams solve. If the consumer is slower than the producer, chunks pile up in memory and eventually crash the process. Node streams handle this automatically: when a Writable's internal buffer fills, <code>write()</code> returns <code>false</code>, signaling the producer to pause. When the buffer drains, the <code>drain</code> event fires and the producer resumes.</p>
+  <p><strong>Always use <code>pipeline()</code> (from <code>stream/promises</code>) instead of raw <code>.pipe()</code></strong> — it correctly propagates errors, destroys all streams on failure, and resolves only when the entire chain finishes successfully. Raw <code>.pipe()</code> silently leaks streams on error.</p>
+  <p><strong>A Buffer</strong> is the underlying data type streams carry. It is a fixed-length region of raw memory <em>outside</em> V8's heap (so it does not count against the JS heap size limit). Buffers handle binary data — files, network packets, encoded text. Allocate with <code>Buffer.alloc(n)</code> (zero-filled, safe) or <code>Buffer.from(data)</code>.</p>
 
   <h3>The four stream types</h3>
   <div class="g2">
@@ -1057,10 +1172,16 @@ bus.<span class="fn">emit</span>(<span class="str">'order:placed'</span>, <span 
   <h2>18 · Cluster vs Worker Threads</h2>
   <p>One Node process uses one CPU core. But your server has 8 cores. How do you use them all?</p>
 
-  <div class="story">
-    <strong>The Story</strong>
-    Imagine you run a busy restaurant with one chef and the orders are stacking up. You have two options. Option A: open <em>identical clones of the same restaurant</em> next door — same menu, separate kitchens. A host out front routes diners to whichever clone is free. That is <strong>cluster</strong> — multiple Node processes, each with its own memory, sharing the same listening port. Option B: keep one restaurant but hire <em>specialised assistants</em> (sous-chefs) for the slow tasks. The head chef keeps taking orders; the assistants chop, mix, plate in parallel and hand back finished work. That is <strong>worker threads</strong> — multiple threads inside one process, sharing memory.
-  </div>
+  <h3>Concept</h3>
+  <p>A single Node process runs your JavaScript on one thread, which means it can only saturate one CPU core. To use multiple cores, Node provides two distinct mechanisms — and the choice depends on what kind of work you are scaling.</p>
+  <p><strong>Cluster</strong> — spawns multiple <em>independent Node processes</em>, each a full OS-level process with its own V8 instance, its own heap, and its own event loop. A "primary" process forks N "worker" processes (typically one per CPU core). All workers share the same listening socket, and the OS distributes incoming connections among them. Processes do not share memory; they communicate through IPC messages.</p>
+  <p><strong>Worker Threads</strong> — spawns multiple <em>threads inside the same Node process</em>. Each thread has its own V8 isolate and event loop, but they live inside one OS process. Threads can share memory through <code>SharedArrayBuffer</code> and synchronize via <code>Atomics</code>. They communicate through structured-clone messages on a <code>MessagePort</code>.</p>
+  <p><strong>When to use which:</strong></p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li><strong>Cluster — for I/O-bound HTTP servers.</strong> Each worker handles its own connections; if one process crashes, the others continue serving. Operationally simpler — the same code runs in each worker. This is what PM2 and Kubernetes replica scaling rely on.</li>
+    <li><strong>Worker Threads — for CPU-bound work inside a single request.</strong> If an endpoint must do something heavy (image resize, hash, parse, PDF generation), running it on the main thread freezes the server for every other client. Offloading to a worker thread keeps the main thread responsive.</li>
+  </ul>
+  <p><strong>Trade-offs:</strong> processes have higher startup cost and more memory overhead but stronger isolation (one crash does not take down the others). Threads are cheaper to create and can share memory but a fatal error in one thread can destabilize the whole process.</p>
 
   <div class="tbl-wrap">
     <table class="tbl">
@@ -1152,10 +1273,22 @@ bus.<span class="fn">emit</span>(<span class="str">'order:placed'</span>, <span 
   <h2>21 · Express &amp; the Middleware Pipeline</h2>
   <p>Express is a thin layer over Node's <code>http</code> module. Its core idea is the <strong>middleware pipeline</strong> — a function chain that each request walks through.</p>
 
-  <div class="story">
-    <strong>The Story</strong>
-    Picture an airport. A passenger (the request) walks through a series of stations: check-in, security scan, passport control, boarding. Each station can: stamp the passport (mutate the request), reject the passenger (send a response), or wave them on (call <code>next()</code>). Express middleware is exactly that — a function with signature <code>(req, res, next)</code> chained in order. The first one to call <code>res.send()</code> ends the journey; the rest never run. The first one to call <code>next(err)</code> jumps to the error-handling station.
-  </div>
+  <h3>Concept</h3>
+  <p><strong>Middleware</strong> is a function that sits in the request-handling pipeline. Each middleware has the signature <code>(req, res, next)</code> — it receives the request and response objects, and a <code>next</code> callback that passes control to the next middleware in the chain.</p>
+  <p>Express maintains an ordered list of middleware. When a request arrives, Express walks the list in registration order, calling each middleware. Each middleware has three options:</p>
+  <ol style="padding-left:1.4rem;color:var(--text)">
+    <li><strong>Pass control forward</strong> by calling <code>next()</code> (optionally after mutating <code>req</code> or <code>res</code>).</li>
+    <li><strong>End the response</strong> by calling <code>res.send()</code>, <code>res.json()</code>, <code>res.end()</code>, etc. Subsequent middleware in the chain is skipped.</li>
+    <li><strong>Forward an error</strong> by calling <code>next(err)</code>. Express then skips all normal middleware and jumps to the next <em>error-handling middleware</em> (a function with four arguments: <code>(err, req, res, next)</code>).</li>
+  </ol>
+  <p><strong>Two key types of middleware:</strong></p>
+  <ul style="padding-left:1.4rem;color:var(--text)">
+    <li><strong>Application-level</strong> — registered with <code>app.use(...)</code>. Runs for every request that matches its path prefix.</li>
+    <li><strong>Route-level</strong> — registered with <code>app.get</code>, <code>app.post</code>, etc. Only runs for that HTTP method on that exact path.</li>
+  </ul>
+  <p><strong>Order matters.</strong> Body parsers must be registered before any handler that reads <code>req.body</code>. Authentication middleware must be registered before protected routes. Error-handling middleware must be registered <em>last</em>.</p>
+  <p><strong>Error detection by arity:</strong> Express distinguishes error-handling middleware from normal middleware by inspecting <code>fn.length</code>. A function with four parameters is treated as an error handler and only runs when <code>next(err)</code> was called upstream. This is convention, not configuration.</p>
+  <p>Express itself is a thin wrapper over Node's built-in <code>http</code> module. The middleware pattern, the router, and helpers like <code>res.json()</code> are all that Express adds — the actual networking is pure Node.</p>
 
   <span class="code-label cl-green">express-pipeline.js</span>
 <pre><span class="kw">const</span> app = <span class="fn">express</span>();
@@ -1348,7 +1481,7 @@ app.<span class="fn">get</span>(<span class="str">'/x'</span>, <span class="fn">
   </div>
 
   <div class="highlight hl-blue" style="margin-top:1.6rem">
-    <strong>Final tip.</strong> The interviewer rarely cares whether your answer is textbook-perfect. They care whether you can explain <em>why</em> the design is the way it is, and what <em>breaks</em> if it weren't. Every story above is built around the "why" — keep that pattern in your answers, and you'll sound like an engineer instead of a flashcard.
+    <strong>Final tip.</strong> The interviewer rarely cares whether your answer is textbook-perfect. They care whether you can explain <em>why</em> the design is the way it is, and what <em>breaks</em> if it weren't. Every concept above is built around the "why" — keep that pattern in your answers, and you'll sound like an engineer instead of a flashcard.
   </div>
 </div>
 

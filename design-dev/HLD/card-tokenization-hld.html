@@ -1,0 +1,1749 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Card Tokenization System — 50K TPS · HLD + LLD</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet"/>
+
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+
+<style>
+  :root{
+    --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+    --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+    --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+    --green:#38b265;--green-d:rgba(56,178,101,.1);
+    --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+    --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+    --red:#e05252;--red-d:rgba(224,82,82,.1);
+    --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+    --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+    --r:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;line-height:1.65;font-size:15px}
+  h1,h2,h3,h4{font-family:'Playfair Display',serif;color:var(--heading);letter-spacing:-.01em;margin:0 0 .8rem}
+  h1{font-size:2.6rem;font-weight:800;line-height:1.1}
+  h1 span{color:var(--orange)}
+  h2{font-size:1.7rem;font-weight:700;margin-bottom:1.1rem}
+  h3{font-size:1.15rem;font-weight:700;margin-bottom:.55rem;color:var(--heading)}
+  code,pre{font-family:'JetBrains Mono',monospace}
+  pre{background:#0d1218;border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.2rem;overflow-x:auto;font-size:.83rem;color:#cdd5e2;line-height:1.6}
+  code{background:#0d1218;padding:.12rem .4rem;border-radius:4px;font-size:.82rem;color:#ffa675;border:1px solid var(--border)}
+  pre code{background:none;border:none;padding:0;color:inherit}
+
+  .hero{position:relative;padding:4.5rem 4rem 3rem;max-width:1920px;margin:0 auto;border-bottom:1px solid var(--border);text-align:center}
+  .back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+  .back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+  .pill{display:inline-block;background:var(--orange-d);color:var(--orange);border:1px solid var(--orange);font-size:.72rem;font-weight:700;padding:.3rem .8rem;border-radius:100px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem}
+  .hero h1{margin-left:auto;margin-right:auto}
+  .hero .sub{font-size:1.1rem;color:var(--muted);max-width:780px;margin:.4rem auto 0}
+  @media(max-width:960px){.hero{padding:4.5rem 1.5rem 2.5rem} h1{font-size:1.9rem}}
+  @media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+
+  .layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+  @media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+  @media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+  .sidebar{position:sticky;top:2rem;font-size:.88rem}
+  @media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+  .sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+  .sidebar ol{list-style:none;padding:0;margin:0;counter-reset:sbtoc}
+  .sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+  .sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+  .sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+  .sidebar a:hover{color:var(--orange)}
+  @media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+  @media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+  .sec{scroll-margin-top:1.5rem;margin-bottom:1rem}
+  .sec > p{color:var(--text);font-size:1rem;margin:0 0 1rem;max-width:920px}
+  .divider{height:1px;background:var(--border);margin:3.5rem 0}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.3rem;transition:border-color .2s}
+  .card:hover{border-color:#2e3949}
+  .card h3{margin-bottom:.4rem;font-size:1.02rem;display:flex;align-items:center;gap:.2rem;flex-wrap:wrap}
+  .card p{color:var(--text);font-size:.94rem;margin:0}
+  .card p + p{margin-top:.5rem}
+  .card ul,.card li{color:var(--text)}
+  .card ul{padding-left:1.1rem;margin:.5rem 0 0}
+
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+  .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1rem}
+  .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1rem}
+  @media(max-width:880px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+  .highlight{background:var(--orange-d);border-left:3px solid var(--orange);border-radius:6px;padding:.9rem 1.2rem;margin:1.1rem 0;color:var(--text);font-size:.96rem}
+  .highlight.green{background:var(--green-d);border-left-color:var(--green)}
+  .highlight.blue{background:var(--blue-d);border-left-color:var(--blue)}
+  .highlight.red{background:var(--red-d);border-left-color:var(--red)}
+  .highlight.purple{background:var(--purple-d);border-left-color:var(--purple)}
+  .highlight strong{color:var(--heading)}
+
+  table{width:100%;border-collapse:collapse;font-size:.92rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin:.4rem 0 1.1rem}
+  th,td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.82rem;text-transform:uppercase;letter-spacing:.05em}
+  tr:last-child td{border-bottom:none}
+  td{color:var(--text)}
+  td code{font-size:.78rem}
+
+  .diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+  .diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+  .comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+  .comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+  .comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+  .comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+  .comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+  .comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+  .comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+  .comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+  .sec h2{padding-bottom:.5rem;border-bottom:2px solid var(--border);display:flex;align-items:baseline;gap:.7rem}
+  .sec h2::before{content:attr(data-n);font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--orange);font-weight:700}
+
+  .chip{display:inline-block;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:.72rem;font-weight:600;padding:.2rem .55rem;border-radius:100px;margin:.15rem .25rem .15rem 0;font-family:'JetBrains Mono',monospace}
+  .chip.orange{color:var(--orange);border-color:var(--orange)}
+  .chip.green{color:var(--green);border-color:var(--green)}
+  .chip.blue{color:var(--blue);border-color:var(--blue)}
+  .chip.red{color:var(--red);border-color:var(--red)}
+  .chip.purple{color:var(--purple);border-color:var(--purple)}
+
+  .lat-bar{display:flex;height:30px;border-radius:6px;overflow:hidden;border:1px solid var(--border);margin:.4rem 0 .8rem;background:var(--surface2)}
+  .lat-bar > div{display:flex;align-items:center;justify-content:center;font-size:.72rem;color:#fff;font-weight:600;font-family:'JetBrains Mono',monospace;border-right:1px solid rgba(0,0,0,.3)}
+  .lat-bar > div:last-child{border-right:none}
+
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">HLD-first · Payments &amp; Security</div>
+  <h1>Card <span>Tokenization</span> System — 50K TPS</h1>
+  <p class="sub">A payment-grade vault that turns raw 16-digit PANs into opaque tokens, survives PCI-DSS audit, and tokenizes 50,000 card transactions per second — explained as a beginner-friendly HLD walkthrough with the LLD code appendix at the bottom.</p>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">What &amp; Why</a></li>
+      <li><a href="#s2">Requirements</a></li>
+      <li><a href="#s3">Capacity Estimates</a></li>
+      <li><a href="#s4">Actors &amp; Use Cases</a></li>
+      <li><a href="#s5">API Design</a></li>
+      <li><a href="#s6">Architecture — Story Arc</a></li>
+      <li><a href="#s7">Latency Budget — Every ms Accounted For</a></li>
+      <li><a href="#s8">Tokenization Strategies</a></li>
+      <li><a href="#s9">Data Model (ER)</a></li>
+      <li><a href="#s10">Sequence Diagrams</a></li>
+      <li><a href="#s11">Token Lifecycle (State)</a></li>
+      <li><a href="#s12">Network Topology &amp; PCI Zones</a></li>
+      <li><a href="#s13">PCI-DSS &amp; Security</a></li>
+      <li><a href="#s14">Deployment Topology — K8s &amp; HSM</a></li>
+      <li><a href="#s15">Multi-Region &amp; Disaster Recovery</a></li>
+      <li><a href="#s16">Scaling to 50K TPS</a></li>
+      <li><a href="#s17">Observability — SLOs, Metrics, Traces</a></li>
+      <li><a href="#s18">Failure Modes</a></li>
+      <li><a href="#s19">LLD — Class Diagram</a></li>
+      <li><a href="#s20">LLD — Java Code</a></li>
+      <li><a href="#s21">Trade-offs &amp; Interview Points</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+    <!-- ============== 1 ============== -->
+    <div class="sec" id="s1">
+      <h2 data-n="01">What is card tokenization, and why does it exist?</h2>
+
+      <p>Imagine Raj buys a coffee at a Starbucks app. He types his 16-digit Visa card number — <code>4111 2222 3333 4444</code> — into the checkout screen. That string of digits is called the <strong>PAN</strong> (Primary Account Number — the number printed on the front of every credit card). For Starbucks to charge Raj, the PAN has to travel from his phone to a payment processor like Stripe, then to Visa, then to Raj's bank. So far so good — that's just a payment.</p>
+
+      <p>Now imagine Raj uses Starbucks <em>every morning</em> for two years. Starbucks would love to never ask him for his card again — they want to remember it. The naive solution is "store the PAN in the database." That instantly creates three nightmares:</p>
+
+      <div class="g3">
+        <div class="card">
+          <h3 style="color:var(--red)">Nightmare 1 — Breach</h3>
+          <p>A database dump (SQL injection, a stolen backup, a rogue admin) leaks millions of card numbers. Each PAN is worth $5–$50 on the dark web. The 2013 Target breach exposed 40 million PANs and cost Target ~$292M.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--red)">Nightmare 2 — PCI-DSS</h3>
+          <p>PCI-DSS (Payment Card Industry Data Security Standard) is the legal contract Visa/Mastercard force on anyone storing PANs. The moment your DB has even one PAN, <em>every machine that DB lives on</em> falls "in scope" — quarterly audits, network segmentation, $250K+/year compliance bill.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--red)">Nightmare 3 — Sprawl</h3>
+          <p>The PAN gets cached in logs, copied into analytics, replicated to a backup region, printed in a debug trace. Now you have to find and scrub every copy. Most breaches happen because of the copies, not the original.</p>
+        </div>
+      </div>
+
+      <p><strong>Tokenization</strong> is the way out. It says: "We'll keep the PAN in <em>exactly one vault</em>, locked behind hardware encryption. Everywhere else — your application DB, your analytics, your logs, your CRM — we'll store a meaningless lookup string called a <strong>token</strong> that looks like a card number (<code>tok_8392_1947_2055_8821</code>) but maps to the real PAN only inside the vault." Now if your application DB leaks, the attacker walks away with tokens that are worthless without access to the vault. Your PCI scope shrinks from "everything" to "just the vault."</p>
+
+      <div class="highlight blue">
+        <strong>The one-line definition:</strong> tokenization is a <em>format-preserving replacement</em> for sensitive data that is reversible only by a tightly controlled service. It's not encryption (the token doesn't contain the PAN) — it's a <em>swap</em>, with the real value held elsewhere.
+      </div>
+
+      <p>This page designs a tokenization service that handles 50,000 tokenize/detokenize calls per second — roughly the volume of every major Indian payment gateway combined. The bulk of the page is the high-level design (capacity, architecture, network topology, deployment, multi-region, observability). The low-level Java code lives at the bottom as an appendix.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 2 ============== -->
+    <div class="sec" id="s2">
+      <h2 data-n="02">Clarify requirements — functional &amp; non-functional</h2>
+
+      <p>Before drawing boxes, pin down what the system must do, what it must guarantee, and — just as important — what it will <em>not</em> do. This list is what you'd hand the interviewer in the first 5 minutes.</p>
+
+      <div class="g2">
+        <div class="card">
+          <h3 style="color:var(--green)">Functional requirements (what)</h3>
+          <ul>
+            <li><strong>Tokenize:</strong> accept a PAN, return a token. Same PAN → same token (deterministic) <em>or</em> a fresh token every time (random) — both options must be supported.</li>
+            <li><strong>Detokenize:</strong> accept a token, return the PAN. Only callers with the right scope/role get the full PAN; others may get the last-4 digits only.</li>
+            <li><strong>Card metadata lookup:</strong> given a token, return BIN (first 6 digits, identifies the bank), last-4, network (Visa/Mastercard), and expiry — without revealing the full PAN. This is the most common read.</li>
+            <li><strong>Revoke / rotate:</strong> mark a token as dead (card lost) or re-tokenize with a new key (key rotation).</li>
+            <li><strong>Multi-tenancy:</strong> separate merchants must have isolated tokens — Merchant A's token must not detokenize for Merchant B even if they share infra.</li>
+            <li><strong>Audit log:</strong> every detokenize call is recorded — who, when, why, from where. Required by PCI-DSS § 10.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--blue)">Non-functional requirements (how well)</h3>
+          <ul>
+            <li><strong>Throughput:</strong> 50,000 TPS sustained, 100K TPS peak. Read:write ratio ~ 10:1 (most calls look up metadata; far fewer create new tokens).</li>
+            <li><strong>Latency:</strong> p50 ≤ 5 ms, p99 ≤ 25 ms end-to-end. Payments time out fast — anything over 50 ms breaks checkout flows.</li>
+            <li><strong>Availability:</strong> 99.99% (≈ 52 minutes of downtime/year). A vault outage kills every merchant integration simultaneously.</li>
+            <li><strong>Durability:</strong> zero token loss. Losing a token means losing a customer's card-on-file forever.</li>
+            <li><strong>Security:</strong> PCI-DSS Level 1 compliant. PAN is never logged, never sent over an unencrypted channel, never leaves the HSM (Hardware Security Module) in plaintext for more than the milliseconds it takes to compute the token.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="highlight red">
+        <strong>Out of scope (state this explicitly):</strong> we are <em>not</em> building the card-acquiring rails (Visa/Mastercard switch), the fraud-scoring engine, the chargeback flow, or the 3DS step-up authentication. We're building only the <em>vault</em> — the thing that holds PANs and hands out tokens. Saying "out of scope" early prevents the interviewer from steering you into a 3-hour discussion.
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 3 ============== -->
+    <div class="sec" id="s3">
+      <h2 data-n="03">Back-of-the-envelope — does 50K TPS even fit?</h2>
+
+      <p>Numbers ground every design decision. Before choosing Redis or Cassandra or Postgres, work out how much data we're storing, how much we're moving across the network, and how many machines we'll need. The interviewer is watching for whether you can do this without a calculator.</p>
+
+      <h3 style="margin-top:1.2rem">Traffic</h3>
+      <table>
+        <thead><tr><th>Metric</th><th>Calculation</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Sustained throughput</td><td>given</td><td><strong>50,000 req/s</strong></td></tr>
+          <tr><td>Peak throughput (2× headroom)</td><td>50K × 2</td><td><strong>100,000 req/s</strong></td></tr>
+          <tr><td>Daily requests</td><td>50K × 86,400 s</td><td>~4.3 billion/day</td></tr>
+          <tr><td>Reads (detokenize + metadata)</td><td>91% of total</td><td>~45,500 req/s</td></tr>
+          <tr><td>Writes (new tokenize)</td><td>9% of total</td><td>~4,500 req/s</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Storage</h3>
+      <p>Each row in the vault is roughly: token (24 B) + encrypted PAN (32 B) + merchant_id (16 B) + BIN (6 B) + last4 (4 B) + expiry (4 B) + metadata (50 B) + timestamps (16 B) ≈ <strong>~200 bytes</strong> per record (with indices and overhead, budget 500 B).</p>
+      <table>
+        <thead><tr><th>Horizon</th><th>Calculation</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Active card-on-file count (industry)</td><td>500M unique cards globally</td><td>~500M rows</td></tr>
+          <tr><td>Steady-state storage</td><td>500M × 500 B</td><td><strong>~250 GB</strong> (fits 1 Postgres node easily; we shard anyway)</td></tr>
+          <tr><td>New tokens/day</td><td>4,500/s × 86,400 × 0.5 dedup</td><td>~200M/day if no dedup; ~10M/day with dedup of repeat cards</td></tr>
+          <tr><td>Audit-log writes (every call)</td><td>50K/s × 200 B</td><td>~10 MB/s ≈ <strong>~860 GB/day</strong> — needs cheap blob storage (S3) + a query tier (ClickHouse)</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Network &amp; CPU</h3>
+      <table>
+        <thead><tr><th>Resource</th><th>Calculation</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Inbound bandwidth (50K × 500 B request)</td><td>50K × 0.5 KB</td><td>~25 MB/s (200 Mbps) per region — trivial</td></tr>
+          <tr><td>HSM operations/sec</td><td>4,500 tokenize writes/s (HSM only on write)</td><td>Need cluster of <strong>4–6 HSMs</strong> (each handles ~2K ops/s)</td></tr>
+          <tr><td>Cache hit ratio target</td><td>hot tokens (BIN/last4 reads)</td><td>≥ 95% — keeps Postgres reads at ~2,500/s, well within one shard</td></tr>
+        </tbody>
+      </table>
+
+      <div class="highlight green">
+        <strong>So what:</strong> 250 GB of data is small. The hard parts are the <em>HSM bottleneck</em> on writes, the <em>p99 latency budget</em> (25 ms), and the <em>audit log firehose</em> (860 GB/day). Most of the architecture exists to solve those three, not to "scale storage."
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 4 ============== -->
+    <div class="sec" id="s4">
+      <h2 data-n="04">Actors &amp; use cases — who calls this thing, and why?</h2>
+
+      <p>The vault is an internal service; humans never touch it directly. The "actors" are other services inside our own payments platform. Naming them in a flowchart prevents the common mistake of designing the vault in isolation from the apps it serves.</p>
+
+      <div class="diagram-box">
+        <div class="mermaid">
+flowchart LR
+  M([Merchant App<br/>e.g. Starbucks])
+  P([Payment Gateway<br/>e.g. Stripe internal])
+  F([Fraud Service])
+  A([Analytics / BI])
+  O([Ops Console])
+
+  M --> T1[Tokenize PAN at checkout]
+  M --> T2[Charge with token]
+  P --> T3[Detokenize before card-network call]
+  F --> T4[Read BIN + last4 for risk scoring]
+  A --> T5[Read masked metadata only]
+  O --> T6[Revoke token / key rotation]
+
+  style M fill:#e8743b,stroke:#e8743b,color:#fff
+  style P fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style F fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style A fill:#38b265,stroke:#38b265,color:#fff
+  style O fill:#d4a838,stroke:#d4a838,color:#fff
+        </div>
+      </div>
+
+      <p>Notice three things from this diagram. First, the <strong>Merchant App</strong> never sees the PAN after the initial tokenize call — it only holds tokens. Second, the <strong>Payment Gateway</strong> is the <em>only</em> caller allowed to fetch the full PAN (and only when it's about to send the transaction to Visa). Third, <strong>Analytics</strong> can read masked fields (BIN, last4) without unlocking the vault — this is where most "useful queries" actually happen and we want them to be cheap and safe.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 5 ============== -->
+    <div class="sec" id="s5">
+      <h2 data-n="05">API design — five endpoints, no more</h2>
+
+      <p>A good vault has a deliberately small API. Every extra endpoint is another attack surface. Five endpoints cover 100% of the use cases above.</p>
+
+      <table>
+        <thead><tr><th>Endpoint</th><th>Purpose</th><th>Auth</th><th>Idempotent?</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>POST /v1/tokens</code></td>
+            <td>Tokenize a PAN. Body: <code>{ pan, expiry, merchant_id, idempotency_key }</code>. Returns: <code>{ token, bin, last4, network }</code>.</td>
+            <td>mTLS + service JWT</td>
+            <td>Yes (via idempotency_key — replays return same token)</td>
+          </tr>
+          <tr>
+            <td><code>GET /v1/tokens/{token}</code></td>
+            <td>Detokenize. Returns full PAN. Caller must have <code>scope=pan:read</code>.</td>
+            <td>mTLS + JWT + scope</td>
+            <td>Yes</td>
+          </tr>
+          <tr>
+            <td><code>GET /v1/tokens/{token}/metadata</code></td>
+            <td>Cheap read — BIN, last4, network, expiry. Used by Fraud, Analytics, UI.</td>
+            <td>mTLS + JWT</td>
+            <td>Yes</td>
+          </tr>
+          <tr>
+            <td><code>DELETE /v1/tokens/{token}</code></td>
+            <td>Revoke. Future detokenize returns 410 Gone. Metadata still readable for forensics.</td>
+            <td>mTLS + JWT + scope</td>
+            <td>Yes</td>
+          </tr>
+          <tr>
+            <td><code>POST /v1/tokens/{token}/rotate</code></td>
+            <td>Re-encrypt PAN under a new KEK (Key Encryption Key). Token stays the same; the ciphertext underneath changes. Run during quarterly key rotation.</td>
+            <td>mTLS + ops scope</td>
+            <td>Yes</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p><strong>Why no <code>PATCH /tokens/{token}</code>?</strong> Cards are immutable from the vault's perspective — if the customer's card changes, the merchant tokenizes the new PAN and gets a new token. Mutability would create audit-trail nightmares.</p>
+
+      <div class="highlight blue">
+        <strong>Idempotency matters.</strong> Payments retry aggressively (network blips are constant). If the merchant retries <code>POST /v1/tokens</code> three times, all three must return the <em>same</em> token. We pass an <code>idempotency_key</code> (UUID generated by the merchant) and store it in Redis for 24h. Without this, you create duplicate tokens for the same card on every retry — a silent data-quality bug.
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 6 ============== -->
+    <div class="sec" id="s6">
+      <h2 data-n="06">High-Level Architecture — built up in three passes</h2>
+
+      <p>Rather than dumping the final diagram and labelling boxes, let's <em>discover</em> the architecture the way you'd reason through it on a whiteboard. Three passes: naive → mental model → production. At each step a real failure forces the next piece into existence.</p>
+
+      <h3 style="margin-top:1.5rem">Pass 1 — The naive design (and exactly where it breaks)</h3>
+
+      <p>The simplest thing that could work: one Postgres database with a table <code>(token, pan, merchant_id, ...)</code>. Stripe → Postgres → done. Two endpoints, one table.</p>
+
+      <div class="diagram-box">
+        <div class="mermaid">
+flowchart LR
+  C[Merchant App] --> S[Tokenize Service]
+  S --> DB[(Postgres<br/>token, pan, ...)]
+  style DB fill:#e05252,stroke:#e05252,color:#fff
+        </div>
+      </div>
+
+      <p>Now list what breaks. This is the most important sentence of any architecture interview: <em>"This naive design fails because…"</em></p>
+
+      <div class="g3">
+        <div class="card">
+          <h3 style="color:var(--red)">Breaks at security</h3>
+          <p>The PAN is stored in plaintext (or with a key that lives on the same box as the data). One <code>pg_dump</code> and the attacker has 500 million cards. PCI-DSS would refuse to certify this design on day one.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--red)">Breaks at throughput</h3>
+          <p>One Postgres node handles ~10K writes/s with fsync on. At 50K TPS sustained you'd hit lock contention, WAL backpressure, and 100% disk utilization within minutes. There's no horizontal scaling story here.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--red)">Breaks at latency</h3>
+          <p>Every metadata lookup hits disk. A cold Postgres read is 5–10 ms by itself. Add network + auth + serialization and you're already past the 5 ms p50 budget. No room for the payment gateway, fraud check, etc.</p>
+        </div>
+      </div>
+
+      <p>Each of these three failures will drive one specific component into the production design — a <strong>Vault Service with HSM</strong> for security, <strong>sharded storage</strong> for throughput, and a <strong>read-through cache</strong> for latency.</p>
+
+      <h3 style="margin-top:2rem">Pass 2 — The mental model: split the "answer" from the "secret"</h3>
+
+      <p>Here's the central architectural idea, and it's the one most candidates miss: <strong>the PAN and the token are two completely different objects with completely different access patterns.</strong></p>
+
+      <div class="g2">
+        <div class="card" style="border-color:var(--red)">
+          <h3 style="color:var(--red)">The PAN side — "the secret"</h3>
+          <p>Touched only by the Vault Service. Stored encrypted, key inside an HSM. Read by <em>one</em> caller (the Payment Gateway), and only at the moment of card-network submission. Very few reads. Locked-down network. PCI-DSS scope.</p>
+          <p>Optimize for: <strong>security, not speed.</strong></p>
+        </div>
+        <div class="card" style="border-color:var(--green)">
+          <h3 style="color:var(--green)">The Token side — "the answer"</h3>
+          <p>Touched by everyone — merchant apps, fraud, analytics, UI, BI dashboards. Mostly reads. Mostly metadata (BIN, last4) not the PAN itself. Cache-friendly. No PCI scope as long as it never holds the PAN.</p>
+          <p>Optimize for: <strong>speed, scale, cheap reads.</strong></p>
+        </div>
+      </div>
+
+      <p>Once you internalize this split, every other choice falls out naturally: <em>encrypted PAN goes in a separate datastore from the metadata, the cache holds only metadata (never PAN), the HSM sits in front of the PAN-store and nothing else.</em> The architecture is just the careful drawing of this fence.</p>
+
+      <div class="highlight purple">
+        <strong>Analogy:</strong> think of a hotel safe. The <em>contents</em> of the safe (your passport, cash) come out maybe once a week. But the <em>front desk</em> looks up "is room 304 occupied? what name? what time did they check in?" hundreds of times a day. You don't open the safe to answer those questions — you ask the front desk. Tokenization works the same way: PAN = safe contents, metadata = front-desk register, vault service = the only key to the safe.
+      </div>
+
+      <h3 style="margin-top:2rem">Pass 3 — The production shape (numbered)</h3>
+
+      <p>Now we draw the real architecture. Every numbered box is a component we added to solve a specific failure mode from Pass 1 or to honor the split from Pass 2. After the diagram, each number gets its own card with "what it does" and "what problem it solves."</p>
+
+      <div class="diagram-box">
+        <div class="mermaid">
+flowchart TB
+  subgraph CLIENT [Client Tier]
+    M([① Merchant SDK<br/>browser / mobile])
+  end
+
+  subgraph EDGE [Edge / Auth]
+    LB[② API Gateway + mTLS]
+    AZ[③ Auth Service<br/>JWT · scopes · rate-limit]
+  end
+
+  subgraph CORE [Tokenization Core]
+    TS[④ Tokenize Service<br/>stateless · auto-scaled]
+    CA[⑤ Redis Cache<br/>token → metadata]
+    DT[⑥ Detok Service<br/>PAN-read path · isolated]
+  end
+
+  subgraph VAULT [Vault Zone · PCI-DSS in-scope]
+    HSM[(⑦ HSM Cluster<br/>FIPS 140-2 L3)]
+    VDB[(⑧ Vault DB<br/>encrypted PAN<br/>sharded by token-hash)]
+  end
+
+  subgraph META [Metadata Tier · out of PCI scope]
+    MDB[(⑨ Metadata DB<br/>BIN · last4 · expiry)]
+  end
+
+  subgraph AUDIT [Audit + Async]
+    K[⑩ Kafka<br/>audit events]
+    CH[(⑪ ClickHouse<br/>audit queries)]
+    S3[(⑫ S3 Glacier<br/>7-year retention)]
+  end
+
+  M -->|HTTPS + idempotency-key| LB
+  LB --> AZ
+  AZ --> TS
+  AZ --> DT
+  TS -->|write| VDB
+  TS -->|encrypt PAN| HSM
+  TS -->|write metadata| MDB
+  TS -->|invalidate| CA
+  DT -->|cache hit ~95%| CA
+  CA -.miss.-> MDB
+  DT -->|PAN read| VDB
+  DT -->|decrypt PAN| HSM
+  TS --> K
+  DT --> K
+  K --> CH
+  K --> S3
+
+  style M fill:#e8743b,stroke:#e8743b,color:#fff
+  style LB fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style AZ fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style TS fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style CA fill:#38b265,stroke:#38b265,color:#fff
+  style DT fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style HSM fill:#e05252,stroke:#e05252,color:#fff
+  style VDB fill:#e05252,stroke:#e05252,color:#fff
+  style MDB fill:#38b265,stroke:#38b265,color:#fff
+  style K fill:#d4a838,stroke:#d4a838,color:#fff
+  style CH fill:#d4a838,stroke:#d4a838,color:#fff
+  style S3 fill:#3cbfbf,stroke:#3cbfbf,color:#fff
+        </div>
+      </div>
+
+      <h3 style="margin-top:1.6rem">Component-by-component — what each numbered box does</h3>
+      <p>Use the numbers in the diagram above to find the matching card below. Every card has the same shape: what it does in plain language, then what would break if we removed it.</p>
+
+      <div class="g2">
+        <div class="card">
+          <h3><span class="comp-num orange">①</span> Merchant SDK</h3>
+          <p>A small JavaScript / iOS / Android library that the merchant embeds in their checkout page. When Raj types his card, the SDK collects the PAN <em>in the browser</em>, opens a TLS connection straight to our API gateway, and hands back a token to the merchant's own backend. The merchant's server <em>never sees the raw PAN</em> — that's the magic that keeps the merchant out of PCI scope.</p>
+          <p><strong>Solves:</strong> "iframe trick" — if the SDK didn't exist and the merchant POSTed the PAN from their own backend, the merchant's web server, load balancer, and logs would all be in PCI scope. The SDK shrinks scope to just our infra.</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num blue">②</span> API Gateway + mTLS</h3>
+          <p>The front door. Terminates TLS 1.3, enforces mutual TLS (the client presents a certificate proving "I am Merchant 42's checkout SDK"), drops malformed traffic, rate-limits by client cert. Built on Envoy or NGINX. Stateless — easy to scale horizontally to hundreds of pods behind an L4 load balancer.</p>
+          <p><strong>Solves:</strong> raw exposure of the Tokenize Service. Without a gateway you'd put auth, rate-limiting, and TLS termination inside the app — every change forces a redeploy of business code. The gateway lets us update certificates and rate-limit rules with zero impact on the core service.</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num blue">③</span> Auth Service</h3>
+          <p>Mints and validates short-lived JWT tokens that carry the caller's identity (merchant_id, service_name) and scopes (<code>pan:read</code>, <code>token:create</code>, <code>token:revoke</code>). A merchant SDK gets <code>token:create</code> only — never <code>pan:read</code>. The Payment Gateway gets both. This separation is what stops a compromised merchant key from unlocking PANs.</p>
+          <p><strong>Solves:</strong> "anyone with the right URL gets PAN" — without scope-aware auth, every authenticated caller could detokenize. PCI-DSS § 7 explicitly mandates least-privilege access to PANs.</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num purple">④</span> Tokenize Service (write path)</h3>
+          <p>The hot write path. Stateless, auto-scaled, written in Go or Java. For every <code>POST /tokens</code>: (1) check idempotency key in Redis; (2) call HSM to encrypt PAN with the active DEK (Data Encryption Key); (3) generate a token (UUIDv7 or HMAC-based, see §8); (4) write <code>(token, ciphertext, KEK_id, merchant_id)</code> to Vault DB; (5) write <code>(token, BIN, last4, expiry)</code> to Metadata DB; (6) publish audit event to Kafka. Returns the token to the caller.</p>
+          <p><strong>Solves:</strong> hand-rolling all of these steps in the merchant or gateway code. Centralizing them here means there's <em>exactly one place</em> that knows how to mint a token correctly — and one place to audit.</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num green">⑤</span> Redis Cache (metadata)</h3>
+          <p>A 6-node Redis cluster holding the hot <code>token → {BIN, last4, expiry, network}</code> mapping. TTL 1 hour, evicted LRU. Holds <em>no PAN</em> ever — only the safe-to-display fields. Hit ratio ≥ 95% in steady state because the same cards are charged repeatedly (subscriptions, recurring buyers).</p>
+          <p><strong>Solves:</strong> the 5 ms p50 latency budget. Without the cache, every metadata read hits Postgres and you're at 10–15 ms p50. With the cache, hot reads are ~0.5 ms and the DB sees only 5% of traffic.</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num purple">⑥</span> Detokenize Service (PAN-read path)</h3>
+          <p>A <em>separate</em> service from Tokenize, on a separate network segment, with stricter IAM. Only callers with <code>scope=pan:read</code> reach it. For every call: verify scope, fetch ciphertext from Vault DB, ask HSM to decrypt, return PAN. Every call writes an audit event before the response leaves the service.</p>
+          <p><strong>Solves:</strong> blast radius. If the Tokenize Service is compromised, the attacker can mint tokens but cannot read PANs. The two paths share zero code and zero credentials.</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num red">⑦</span> HSM Cluster (FIPS 140-2 Level 3)</h3>
+          <p>Hardware Security Modules — physical, tamper-resistant boxes from Thales or AWS CloudHSM. They hold the <strong>KEK</strong> (Key Encryption Key) that wraps every DEK (Data Encryption Key). The DEK encrypts the PAN. The PAN's plaintext exists only for the microseconds the HSM has it; it never enters our application memory. Active-active cluster of 4–6 boxes for failover and throughput (~2K ops/s each).</p>
+          <p><strong>Solves:</strong> the moral hazard of "where is the master key?" If the master key lives in a config file or environment variable, anyone who reads it owns every PAN. An HSM physically prevents key extraction — even root on the box can't dump it.</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num red">⑧</span> Vault DB (encrypted PAN store)</h3>
+          <p>Postgres or DynamoDB, sharded by <code>hash(token)</code> across 16 shards. Stores <code>(token, ciphertext, kek_id, merchant_id, status, created_at)</code>. PAN is encrypted with AES-256-GCM using a DEK that's <em>itself</em> encrypted by the HSM's KEK (envelope encryption). PCI-DSS in-scope — full disk encryption, network-isolated, no analytics access.</p>
+          <p><strong>Solves:</strong> a single-DB hotspot. With 16 shards, write load is spread evenly. Sharding by hash(token) — not by merchant_id — avoids one big merchant becoming a hot shard.</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num green">⑨</span> Metadata DB (out of PCI scope)</h3>
+          <p>A separate Postgres (or DynamoDB) with <code>(token, BIN, last4, expiry, network, merchant_id, status)</code>. <strong>No PAN, no ciphertext.</strong> Because it never holds PAN data, it's not in PCI scope — analytics, fraud, BI can query it freely. Replicated to a read replica for analytics.</p>
+          <p><strong>Solves:</strong> "every analyst is a PCI risk." When metadata lives on a non-PCI box, your data team can join it with order tables without escalating scope.</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num yellow">⑩</span> Kafka (audit event bus)</h3>
+          <p>Every tokenize / detokenize / revoke call writes a structured event to a Kafka topic: <code>{event_id, ts, actor, action, token, merchant_id, ip, scope_used}</code>. Producer waits for <code>acks=all</code> on the write path because PCI-DSS § 10 says the audit log <em>must</em> be durable before the operation completes — if the log is missing, the operation didn't happen.</p>
+          <p><strong>Solves:</strong> "did you actually log every PAN read?" Synchronous Kafka write with acks=all gives durability without coupling your latency to a slow log DB.</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num yellow">⑪</span> ClickHouse (audit query tier)</h3>
+          <p>Kafka events are streamed into ClickHouse via Kafka Engine tables. Auditors query: "show me every detokenize on token X in the last 90 days" — ClickHouse answers in &lt; 100 ms over billions of rows. Compaction + columnar layout keeps storage cheap.</p>
+          <p><strong>Solves:</strong> running ad-hoc queries on Postgres would slow down the write path. A columnar OLAP store is built exactly for this audit pattern.</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num cyan">⑫</span> S3 Glacier (long-term retention)</h3>
+          <p>PCI-DSS demands 7 years of audit logs. Storing all that in ClickHouse would cost a fortune. After 90 days, events tier down to S3 Glacier — pennies per GB, retrieval takes hours but auditors don't need millisecond access for 5-year-old events.</p>
+          <p><strong>Solves:</strong> the long-tail-storage bill. ClickHouse handles the last 90 days hot, Glacier handles the next 6 years cold, deletion happens at year 7.</p>
+        </div>
+      </div>
+
+      <h3 style="margin-top:1.5rem">Concrete walkthrough — Raj's first Starbucks purchase</h3>
+      <p>Let's trace one real request through every numbered component. Watch how the data-plane / control-plane split from Pass 2 keeps the PAN in <em>one</em> place.</p>
+
+      <ol style="line-height:1.8">
+        <li>Raj types <code>4111 2222 3333 4444</code> into Starbucks checkout. The <strong>Merchant SDK ①</strong> running in his browser collects the PAN and POSTs it to our <strong>API Gateway ②</strong> over TLS 1.3, presenting Starbucks' client cert.</li>
+        <li>Gateway validates the cert, forwards to <strong>Auth Service ③</strong>, which checks the scope is <code>token:create</code> only (no <code>pan:read</code>), then routes the request to <strong>Tokenize Service ④</strong>.</li>
+        <li>Tokenize Service checks Redis for the idempotency key — miss. It calls <strong>HSM ⑦</strong> to encrypt the PAN under the current DEK, getting back ciphertext + DEK-wrapped-by-KEK. It generates a UUIDv7 token <code>tok_018f...</code>.</li>
+        <li>Tokenize Service writes the ciphertext row to <strong>Vault DB ⑧</strong> and the metadata row (BIN <code>411122</code>, last4 <code>4444</code>) to <strong>Metadata DB ⑨</strong> in a two-phase commit.</li>
+        <li>Tokenize Service publishes an audit event to <strong>Kafka ⑩</strong> with <code>acks=all</code>, then returns the token to Starbucks. Total latency: ~7 ms.</li>
+        <li>Five months later, Raj clicks "Buy" on his daily latte. Starbucks' backend sends <code>{ token: tok_018f..., amount: 250 }</code> to its payment gateway.</li>
+        <li>The payment gateway calls <strong>Detokenize Service ⑥</strong> with <code>scope=pan:read</code>. Detok service hits <strong>Cache ⑤</strong> first for the BIN routing (95% hit), then fetches ciphertext from <strong>Vault DB ⑧</strong>, asks <strong>HSM ⑦</strong> to decrypt, gets the PAN back for 3 ms, and immediately submits to Visa.</li>
+        <li>Both calls are written to Kafka → <strong>ClickHouse ⑪</strong> in real time. 90 days later they tier down to <strong>Glacier ⑫</strong>.</li>
+      </ol>
+
+      <div class="highlight green">
+        <strong>So what:</strong> Raj's PAN entered our system once, lived inside the Vault Zone (⑦⑧) only, and was decrypted exactly twice in five months — once at tokenize, once at charge time. Everyone else (merchant, fraud, analytics) operated on the token or the masked metadata. That's the entire job of a tokenization platform in one sentence.
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 7. LATENCY BUDGET (NEW) ============== -->
+    <div class="sec" id="s7">
+      <h2 data-n="07">Latency Budget — every millisecond accounted for</h2>
+
+      <p>"p99 ≤ 25 ms" sounds easy until you add up where the milliseconds actually go. The 25 ms budget has to cover network round-trips, mTLS handshakes (mostly cached), auth, the HSM RPC, two DB writes, a Kafka <code>acks=all</code>, and the response serialization. If any one of these blows its share, the budget is gone. Let's pull each flow apart by component so you can defend it on a whiteboard.</p>
+
+      <h3 style="margin-top:1.4rem">Tokenize (write path) — target p99 = 18 ms</h3>
+      <p>Tokenize is the most expensive call because it hits the HSM and writes to two databases. Here's the millisecond-by-millisecond breakdown a senior engineer would walk through:</p>
+
+      <div class="lat-bar">
+        <div style="flex:1;background:#7b8599">Gateway+mTLS 0.5</div>
+        <div style="flex:1;background:#4a90d9">Auth 0.4</div>
+        <div style="flex:1;background:#3cbfbf">Idem-key lookup 0.3</div>
+        <div style="flex:6;background:#e05252">HSM encrypt 4–6 ms</div>
+        <div style="flex:2;background:#9b72cf">Vault DB write 1.5</div>
+        <div style="flex:2;background:#38b265">Metadata DB write 1.5</div>
+        <div style="flex:2;background:#d4a838">Kafka acks=all 1.5</div>
+        <div style="flex:1;background:#e8743b">Response 0.3</div>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted);margin-top:.2rem">Sum p50 ≈ 10 ms · p99 ≈ 18 ms (HSM tail dominates)</p>
+
+      <table>
+        <thead><tr><th>Hop</th><th>p50</th><th>p99</th><th>What's happening</th></tr></thead>
+        <tbody>
+          <tr><td>TLS handshake (amortized)</td><td>0.05 ms</td><td>0.5 ms</td><td>TLS 1.3 0-RTT or session resumption; only first call on a connection pays the full 1-RTT cost.</td></tr>
+          <tr><td>API Gateway routing</td><td>0.2 ms</td><td>0.6 ms</td><td>Envoy decode, route match, header rewrite. Tail is GC pause inside Envoy.</td></tr>
+          <tr><td>Auth Service (JWT verify)</td><td>0.3 ms</td><td>0.8 ms</td><td>Public-key verify (RS256) — CPU bound. Cached JWKs avoid network calls.</td></tr>
+          <tr><td>Idempotency lookup (Redis)</td><td>0.3 ms</td><td>1 ms</td><td><code>SET NX EX</code> single round-trip in same AZ.</td></tr>
+          <tr><td>HSM encrypt (the bottleneck)</td><td>4 ms</td><td>10 ms</td><td>Wrap DEK + AES-GCM encrypt PAN. CloudHSM RPC + crypto = ~3 ms median; tail is HSM queue depth.</td></tr>
+          <tr><td>Vault DB write</td><td>1 ms</td><td>3 ms</td><td>One <code>INSERT</code> with sync commit on Postgres primary in same AZ.</td></tr>
+          <tr><td>Metadata DB write</td><td>1 ms</td><td>3 ms</td><td>Second INSERT, parallel with vault write under best implementation.</td></tr>
+          <tr><td>Kafka <code>acks=all</code></td><td>1.5 ms</td><td>4 ms</td><td>Replicate to 2 ISRs before ack. We accept this cost because PCI § 10 demands durable audit before responding.</td></tr>
+          <tr><td>Response serialization</td><td>0.2 ms</td><td>0.5 ms</td><td>JSON encode + send.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:1.2rem">Detokenize (PAN-read) — target p99 = 15 ms</h3>
+      <p>Detokenize skips the metadata write but still touches the HSM. The hot read is from Vault DB (which is small enough to fit fully in page cache) rather than disk.</p>
+      <div class="lat-bar">
+        <div style="flex:1;background:#7b8599">Gateway 0.5</div>
+        <div style="flex:1;background:#4a90d9">Auth+scope 0.5</div>
+        <div style="flex:2;background:#9b72cf">Vault DB read 1.5</div>
+        <div style="flex:5;background:#e05252">HSM decrypt 3–5</div>
+        <div style="flex:2;background:#d4a838">Audit Kafka 1.5</div>
+        <div style="flex:1;background:#e8743b">Response 0.3</div>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted);margin-top:.2rem">Sum p50 ≈ 8 ms · p99 ≈ 15 ms</p>
+
+      <h3 style="margin-top:1.2rem">Metadata read (the hot 95%) — target p99 = 5 ms</h3>
+      <p>The cheap path. No HSM, no Vault DB. Just gateway + auth + Redis. This is where most of the 50K TPS goes.</p>
+      <div class="lat-bar">
+        <div style="flex:2;background:#7b8599">Gateway 0.5</div>
+        <div style="flex:2;background:#4a90d9">Auth 0.4</div>
+        <div style="flex:2;background:#38b265">Redis GET 0.5</div>
+        <div style="flex:1;background:#e8743b">Resp 0.2</div>
+      </div>
+      <p style="font-size:.85rem;color:var(--muted);margin-top:.2rem">Sum p50 ≈ 1.6 ms · p99 ≈ 5 ms</p>
+
+      <h3 style="margin-top:1.2rem">Where the tail (p99) actually comes from</h3>
+      <div class="g3">
+        <div class="card">
+          <h3 style="color:var(--red)">HSM queue depth</h3>
+          <p>Single HSMs handle ~2K ops/sec. When all 4 boxes hit 80% utilization, queuing latency adds 5–10 ms to p99. Mitigation: keep utilization under 60% via aggressive autoscaling on HSM-pool depth metric.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--yellow)">JVM/Go GC pauses</h3>
+          <p>Go's STW pause is &lt; 1 ms with current GC; older Java apps can pause 50+ ms during full GCs. Pin the Tokenize Service to G1GC with low pause targets, or use Shenandoah/ZGC.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--blue)">Kafka leader election</h3>
+          <p>If a Kafka broker fails mid-request, the producer waits for a new leader to be elected (typically &lt; 6 s). During this window every audit-blocking write spikes — we use very short retry budgets to fail fast instead of waiting.</p>
+        </div>
+      </div>
+
+      <div class="highlight blue">
+        <strong>Interview gold:</strong> when asked "why is your p99 25 ms?" — point to the HSM line. Hardware crypto modules are the dominant tail in every real tokenization system. The fix is not "use a faster algorithm" — it's "pool more HSMs and keep them lightly loaded."
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 8. TOKENIZATION STRATEGIES ============== -->
+    <div class="sec" id="s8">
+      <h2 data-n="08">Tokenization strategies — how do you actually generate the token?</h2>
+
+      <p>"Generate a token" sounds trivial — give it a UUID and call it a day. In practice there are three families of approaches, each with very different consequences for the database, the cache, and the security posture.</p>
+
+      <div class="g3">
+        <div class="card" style="border-color:var(--blue)">
+          <h3 style="color:var(--blue)">A. Random / vault-based</h3>
+          <p>Generate a cryptographically random ID (UUIDv4 or v7), store the row <code>(token → PAN)</code> in the vault DB. Token has zero relation to the PAN — knowing the token tells the attacker nothing.</p>
+          <p><strong>Pros:</strong> Strongest security. Format flexible. Easy to revoke (delete row).</p>
+          <p><strong>Cons:</strong> Requires DB lookup every detokenize (mitigated by cache). Same PAN tokenized twice gives different tokens unless we dedupe.</p>
+          <p><strong>Use when:</strong> default choice for 90% of vaults. <strong>This is what we use.</strong></p>
+        </div>
+        <div class="card" style="border-color:var(--purple)">
+          <h3 style="color:var(--purple)">B. Deterministic / HMAC-based</h3>
+          <p>Token = HMAC-SHA256(PAN, secret_key) truncated to 16 bytes. Same PAN always gives the same token. No DB lookup needed for <em>tokenize</em>.</p>
+          <p><strong>Pros:</strong> Idempotent for free. Useful when merchants want "same card = same token" for analytics across sessions.</p>
+          <p><strong>Cons:</strong> If the secret leaks, an attacker can tokenize a guessed PAN and check if it matches your stored tokens — <em>known-PAN attack</em>. Mitigation: per-merchant secret. We still need a DB to detokenize.</p>
+          <p><strong>Use when:</strong> the merchant explicitly needs cross-session card recognition without storing PANs themselves.</p>
+        </div>
+        <div class="card" style="border-color:var(--green)">
+          <h3 style="color:var(--green)">C. Format-Preserving Encryption (FPE)</h3>
+          <p>Use NIST FF1/FF3-1 algorithms to encrypt the PAN into a string that <em>also looks like a PAN</em> (16 digits, valid Luhn checksum). The "token" is the encrypted PAN itself — no vault lookup needed.</p>
+          <p><strong>Pros:</strong> Token fits in existing card-number columns in legacy systems. No DB hop for detokenize — just decrypt.</p>
+          <p><strong>Cons:</strong> Compromise of the FPE key compromises every token. Tokens are not revocable independently — you'd rotate the key for everyone. Slower than HMAC.</p>
+          <p><strong>Use when:</strong> retrofitting legacy mainframe systems that <em>cannot</em> hold a non-numeric token.</p>
+        </div>
+      </div>
+
+      <div class="highlight blue">
+        <strong>Our choice — random vault tokens with a deterministic option:</strong> by default we mint a UUIDv7 (time-ordered for index locality). If the merchant sends <code>"strategy":"deterministic"</code> in the tokenize call, we instead compute <code>HMAC-SHA256(PAN, merchant_specific_pepper)</code>. The merchant-specific pepper means a leak in one merchant's keys doesn't blow up every merchant.
+      </div>
+
+      <p><strong>Token format we emit:</strong> <code>tok_&lt;base32(uuidv7)&gt;</code> — e.g. <code>tok_018f7a2b9c4d6e8f9a1b2c3d</code>. Prefix lets logs/dashboards tell tokens apart from other IDs at a glance. Base32 (not base64) avoids URL-encoding issues.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 9. DATA MODEL ============== -->
+    <div class="sec" id="s9">
+      <h2 data-n="09">Data model — ER diagram</h2>
+
+      <p>We deliberately keep the PAN-bearing table in a different schema (and on a different DB) from the metadata. The ER diagram below shows both schemas as if they were one logical model — but in production they live behind different network boundaries.</p>
+
+      <div class="diagram-box">
+        <div class="mermaid">
+erDiagram
+  TOKEN {
+    string token PK
+    string merchant_id FK
+    string kek_id FK
+    bytes ciphertext_pan
+    bytes wrapped_dek
+    string status
+    datetime created_at
+    datetime revoked_at
+  }
+  METADATA {
+    string token PK,FK
+    string bin
+    string last4
+    string network
+    string expiry_yyyymm
+    string merchant_id FK
+    string status
+    datetime created_at
+  }
+  MERCHANT {
+    string merchant_id PK
+    string name
+    string pci_tier
+    string pepper_id FK
+    datetime onboarded_at
+  }
+  KEK {
+    string kek_id PK
+    string hsm_serial
+    int version
+    datetime created_at
+    datetime rotated_at
+  }
+  AUDIT_EVENT {
+    string event_id PK
+    string token FK
+    string actor
+    string action
+    string scope
+    string ip
+    datetime ts
+  }
+
+  MERCHANT ||--o{ TOKEN     : "owns"
+  MERCHANT ||--o{ METADATA  : "owns"
+  TOKEN    ||--|| METADATA  : "shares token"
+  KEK      ||--o{ TOKEN     : "wraps DEK"
+  TOKEN    ||--o{ AUDIT_EVENT : "logged in"
+        </div>
+      </div>
+
+      <p>Three things to note:</p>
+      <ul>
+        <li><strong>TOKEN and METADATA share the same PK (<code>token</code>)</strong> but live in different physical databases. The join happens only inside the Vault Service — the Metadata DB never knows the ciphertext exists, and the Vault DB never holds BIN/last4 (so a vault leak doesn't reveal which cards belong to whom).</li>
+        <li><strong>KEK has versions.</strong> When we rotate the master key (quarterly per PCI), we don't decrypt and re-encrypt every row immediately — we mark <code>kek_id_v2</code> active for new tokens, and rotate old rows in a background job. The token PK never changes.</li>
+        <li><strong>AUDIT_EVENT is append-only.</strong> It lives in Kafka + ClickHouse, not in the relational vault. Never updated, never deleted before the 7-year retention window expires.</li>
+      </ul>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 10. SEQUENCE DIAGRAMS ============== -->
+    <div class="sec" id="s10">
+      <h2 data-n="10">Sequence diagrams — the three hot flows</h2>
+
+      <h3>Tokenize (write path)</h3>
+      <div class="diagram-box">
+        <div class="mermaid">
+sequenceDiagram
+  actor User as Raj (browser)
+  participant SDK as Merchant SDK
+  participant GW as API Gateway
+  participant TS as Tokenize Service
+  participant ID as Redis (idempotency)
+  participant HSM as HSM
+  participant VDB as Vault DB
+  participant MDB as Metadata DB
+  participant K as Kafka
+
+  User->>SDK: enters PAN
+  SDK->>GW: POST /v1/tokens {pan, idem_key, merchant_id}
+  GW->>TS: mTLS-validated request
+  TS->>ID: GET idem_key
+  alt cache miss (new request)
+    TS->>HSM: wrap(DEK) — encrypt PAN
+    HSM-->>TS: ciphertext + wrappedDEK
+    TS->>VDB: INSERT vault row
+    TS->>MDB: INSERT metadata row
+    TS->>K: publish AUDIT event (acks=all)
+    K-->>TS: ack
+    TS->>ID: SET idem_key = token TTL 24h
+    TS-->>SDK: 201 {token, bin, last4}
+  else cache hit (retry)
+    ID-->>TS: existing token
+    TS->>MDB: GET metadata
+    TS-->>SDK: 200 {token, bin, last4}
+  end
+        </div>
+      </div>
+
+      <h3>Detokenize (PAN-read path) — separate service, stricter auth</h3>
+      <div class="diagram-box">
+        <div class="mermaid">
+sequenceDiagram
+  participant PG as Payment Gateway
+  participant GW as API Gateway
+  participant AZ as Auth Service
+  participant DT as Detokenize Service
+  participant CA as Redis Cache
+  participant VDB as Vault DB
+  participant HSM as HSM
+  participant K as Kafka
+  participant VN as Visa Network
+
+  PG->>GW: GET /v1/tokens/{token}  (scope=pan:read)
+  GW->>AZ: verify JWT + scope
+  AZ-->>GW: ok, scope confirmed
+  GW->>DT: forward
+  DT->>VDB: SELECT ciphertext WHERE token=?
+  VDB-->>DT: row
+  alt status != ACTIVE
+    DT-->>PG: 410 Gone
+  else status == ACTIVE
+    DT->>HSM: unwrap(DEK) + decrypt(PAN)
+    HSM-->>DT: PAN (plaintext)
+    DT->>K: AUDIT {actor=PG, action=DETOK}
+    K-->>DT: ack
+    DT-->>PG: 200 {pan, expiry}
+    PG->>VN: charge
+    Note over DT: PAN bytes zeroized after return
+  end
+        </div>
+      </div>
+
+      <h3>Metadata-only read (hot path, 95% of traffic)</h3>
+      <div class="diagram-box">
+        <div class="mermaid">
+sequenceDiagram
+  participant Caller as Fraud / Analytics
+  participant DT as Tokenize Service
+  participant CA as Redis Cache
+  participant MDB as Metadata DB
+
+  Caller->>DT: GET /v1/tokens/{token}/metadata
+  DT->>CA: GET token:meta
+  alt cache hit (95%)
+    CA-->>DT: {bin, last4, network, expiry}
+  else cache miss (5%)
+    CA-->>DT: nil
+    DT->>MDB: SELECT bin, last4, network, expiry
+    MDB-->>DT: row
+    DT->>CA: SETEX token:meta 3600
+  end
+  DT-->>Caller: 200 {bin, last4, network, expiry}
+  Note over DT: HSM and Vault DB NOT touched
+        </div>
+      </div>
+
+      <div class="highlight green">
+        <strong>Notice the asymmetry:</strong> the hot metadata read never touches the HSM, the Vault DB, or even the Detokenize Service. It's the cheap path because that's where the volume is. The expensive path (real PAN) only runs ~4,500 times/sec instead of 50,000.
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 11. STATE DIAGRAM ============== -->
+    <div class="sec" id="s11">
+      <h2 data-n="11">Token lifecycle — state diagram</h2>
+
+      <p>Every token goes through one of these states. Transitions are the only writes that mutate an existing row.</p>
+
+      <div class="diagram-box">
+        <div class="mermaid">
+stateDiagram-v2
+  [*] --> ACTIVE       : tokenize
+  ACTIVE --> REVOKED   : DELETE /tokens/{t}
+  ACTIVE --> EXPIRED   : card expiry_yyyymm passed
+  ACTIVE --> ROTATING  : quarterly KEK rotation begins
+  ROTATING --> ACTIVE  : re-encrypt complete
+  REVOKED --> [*]      : after 7-year audit window
+  EXPIRED --> [*]      : after 7-year audit window
+        </div>
+      </div>
+
+      <table>
+        <thead><tr><th>State</th><th>Reads return</th><th>Writes allowed?</th></tr></thead>
+        <tbody>
+          <tr><td><code>ACTIVE</code></td><td>PAN (with scope) + metadata</td><td>only <code>revoke</code>, <code>rotate</code></td></tr>
+          <tr><td><code>REVOKED</code></td><td>metadata only (last4 + network for forensics); detokenize returns 410 Gone</td><td>none — terminal until purge</td></tr>
+          <tr><td><code>EXPIRED</code></td><td>metadata only; PAN refused</td><td>none — terminal until purge</td></tr>
+          <tr><td><code>ROTATING</code></td><td>PAN still readable through new KEK; old KEK kept until job completes</td><td>only background re-encryption worker</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 12. NETWORK TOPOLOGY (NEW) ============== -->
+    <div class="sec" id="s12">
+      <h2 data-n="12">Network Topology &amp; PCI Zones — drawing the fence</h2>
+
+      <p>PCI scope is defined by <strong>network reachability</strong>, not by what your code does. If a machine can open a TCP connection to a machine that holds PANs, the auditor considers it in-scope. So the network diagram is literally how you keep the auditor away from 95% of your fleet. Think of it as four concentric rings, with firewall rules that only allow traffic going inward, never sideways or outward.</p>
+
+      <div class="diagram-box">
+        <div class="mermaid">
+flowchart TB
+  subgraph INET [Public Internet]
+    USER([Merchant SDKs / Customers])
+  end
+
+  subgraph DMZ [Zone 1 · DMZ · public subnet]
+    ALB[AWS ALB / CloudFront]
+    GW[API Gateway · Envoy]
+  end
+
+  subgraph APP [Zone 2 · App tier · private subnet]
+    AUTH[Auth Service]
+    TOK[Tokenize Service]
+    META[Metadata API]
+    REDIS[(Redis Cluster)]
+    MDB[(Metadata DB)]
+  end
+
+  subgraph PCI [Zone 3 · PCI-DSS in-scope · isolated subnet]
+    DETOK[Detokenize Service]
+    VDB[(Vault DB · encrypted PAN)]
+  end
+
+  subgraph SECURE [Zone 4 · HSM subnet · air-gap admin]
+    HSM[(HSM Cluster · FIPS L3)]
+  end
+
+  subgraph AUDIT [Zone 5 · Audit · append-only]
+    KAFKA[Kafka cluster]
+    CH[(ClickHouse)]
+    S3[(S3 Glacier)]
+  end
+
+  USER --> ALB --> GW
+  GW --> AUTH
+  GW --> TOK
+  GW --> META
+  GW --> DETOK
+  TOK --> REDIS
+  TOK --> MDB
+  TOK --> VDB
+  TOK --> HSM
+  DETOK --> VDB
+  DETOK --> HSM
+  TOK --> KAFKA
+  DETOK --> KAFKA
+  KAFKA --> CH
+  KAFKA --> S3
+
+  style DMZ fill:#171d27,stroke:#4a90d9
+  style APP fill:#171d27,stroke:#38b265
+  style PCI fill:#171d27,stroke:#e05252
+  style SECURE fill:#171d27,stroke:#9b72cf
+  style AUDIT fill:#171d27,stroke:#d4a838
+  style HSM fill:#e05252,stroke:#e05252,color:#fff
+  style VDB fill:#e05252,stroke:#e05252,color:#fff
+        </div>
+      </div>
+
+      <table>
+        <thead><tr><th>Zone</th><th>What lives here</th><th>Who can talk in</th><th>PCI scope?</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Zone 1 · DMZ</strong></td><td>ALB, API Gateway (Envoy). TLS termination, mTLS, WAF.</td><td>Public internet (port 443 only)</td><td>Connected — minimally in scope</td></tr>
+          <tr><td><strong>Zone 2 · App</strong></td><td>Auth Service, Tokenize, Metadata API, Redis, Metadata DB</td><td>Only DMZ; outbound to Zone 3 + 5 allowed</td><td>Tokenize is in-scope (touches PAN); rest is connected-only</td></tr>
+          <tr><td><strong>Zone 3 · PCI-in-scope</strong></td><td>Detokenize Service, Vault DB (encrypted PAN)</td><td>Only Zone 2 services with specific IAM role; nothing else</td><td><strong>Fully in scope</strong></td></tr>
+          <tr><td><strong>Zone 4 · HSM</strong></td><td>HSM cluster, key-rotation tooling</td><td>Only Tokenize + Detokenize via dedicated VPC endpoint; admin via separate jump host</td><td>In scope — physical + logical isolation</td></tr>
+          <tr><td><strong>Zone 5 · Audit</strong></td><td>Kafka, ClickHouse, S3 archive</td><td>Inbound only — no outbound back to Zones 2/3</td><td>Connected (holds audit data, not PAN)</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:1.2rem">Why the segmentation matters — the "blast radius" view</h3>
+      <p>If an attacker compromises a pod in <strong>Zone 2</strong> (say, a vulnerable image in the Metadata API), here's what they can and cannot reach:</p>
+      <div class="g2">
+        <div class="card" style="border-color:var(--green)">
+          <h3 style="color:var(--green)">Can reach (within Zone 2)</h3>
+          <ul>
+            <li>Other Zone 2 pods over the cluster network</li>
+            <li>Metadata DB (BIN + last4 only — useful but not PAN)</li>
+            <li>Redis cache (metadata only — no PAN)</li>
+          </ul>
+        </div>
+        <div class="card" style="border-color:var(--red)">
+          <h3 style="color:var(--red)">Cannot reach</h3>
+          <ul>
+            <li>Vault DB — firewall blocks the port from Zone 2 IP ranges</li>
+            <li>HSM — same; HSM API gateway only accepts requests from specific service accounts</li>
+            <li>Audit Kafka — Zone 5 is inbound-only; no replay attacks possible from a compromised pod</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="highlight purple">
+        <strong>Defense-in-depth recap:</strong> the PAN is protected by (1) HSM-managed encryption, (2) IAM scopes on the API, (3) JWT-level least privilege, and (4) raw network segmentation. An attacker has to defeat <em>all four</em> to exfiltrate PANs. The network fence is the cheapest of the four and probably the most effective.
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 13. PCI-DSS & SECURITY ============== -->
+    <div class="sec" id="s13">
+      <h2 data-n="13">PCI-DSS &amp; security — the rules you cannot violate</h2>
+
+      <p>PCI-DSS (Payment Card Industry Data Security Standard) is the rulebook every system touching PANs must follow. It has 12 top-level requirements; the ones that actively shape this design are the ones below. Treat them as <em>hard constraints</em>, not nice-to-haves — failing any of them means the auditor revokes your right to process cards.</p>
+
+      <div class="g2">
+        <div class="card">
+          <h3 style="color:var(--red)">PCI § 3 — Protect stored PAN</h3>
+          <p>PAN at rest must be unreadable. We use <strong>envelope encryption</strong>: the DEK (per-record AES-256 key) encrypts the PAN; the KEK (master key) encrypts the DEK; the KEK lives inside an HSM and never appears in our application memory. A dump of the Vault DB yields ciphertext that needs the HSM to decrypt — and the HSM refuses anyone without the right IAM role.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--red)">PCI § 4 — Encrypt PAN in transit</h3>
+          <p>TLS 1.2+ everywhere. mTLS between services. Old TLS, SSL, and any cipher with known weaknesses (RC4, 3DES) are disabled at the gateway. Within our VPC we still use TLS — not "trust the network" — because lateral movement is the most common attack vector after initial compromise.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--red)">PCI § 7 — Least privilege</h3>
+          <p>JWT scopes split <code>token:create</code> from <code>pan:read</code>. The Merchant SDK can only mint tokens; only the Payment Gateway gets <code>pan:read</code>. Even within the team, on-call engineers cannot read PANs — only <em>incident-time</em> elevated access through a separate break-glass workflow that pages the security team.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--red)">PCI § 10 — Audit everything</h3>
+          <p>Every tokenize, detokenize, revoke, and admin action writes an immutable Kafka event with <code>acks=all</code> <em>before</em> the response leaves the service. Logs are retained for 7 years (90 days hot in ClickHouse, then S3 Glacier). Failed audit writes block the operation — yes, this can cause an outage; that's by design.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--red)">PCI § 3.6 — Key management</h3>
+          <p>KEKs rotate quarterly. Rotation is online: new tokens get the new KEK immediately; old tokens are re-wrapped in the background. Old KEKs are retained (read-only) until the last token using them is rotated or purged. Key generation, retirement, and destruction are all logged.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--red)">PCI § 9 — Physical security</h3>
+          <p>HSMs are FIPS 140-2 Level 3 — tamper-resistant, alarmed, audited. On AWS we use CloudHSM (managed) or self-host Thales boxes in a co-located facility. The HSM management network is air-gapped from the application network.</p>
+        </div>
+      </div>
+
+      <h3 style="margin-top:1.4rem">Defense-in-depth — what we add beyond PCI minimums</h3>
+      <ul>
+        <li><strong>Token format reveals nothing.</strong> A token <code>tok_018f...</code> contains no embedded BIN, no merchant_id, no expiry — leaking a token gives the attacker an opaque blob.</li>
+        <li><strong>Detokenize rate-limit per actor.</strong> A compromised payment-gateway credential should not be able to bulk-exfiltrate PANs. We rate-limit detokenize to ~50 req/s per actor in non-charge contexts; bulk reads require an out-of-band approval workflow.</li>
+        <li><strong>Anomaly alerts.</strong> ClickHouse runs continuous queries: "actor X did 5× their 30-day average detokenize rate in the last 5 min" → page on-call.</li>
+        <li><strong>Per-merchant pepper.</strong> Even in deterministic mode, the HMAC key is per-merchant. Compromise of one merchant's pepper doesn't allow guessing tokens across merchants.</li>
+        <li><strong>No PAN in logs, ever.</strong> Logger formatters strip anything that looks like a 13–19 digit number passing the Luhn check. We unit-test this; CI fails if a print statement contains <code>pan</code>.</li>
+      </ul>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 14. DEPLOYMENT TOPOLOGY (NEW) ============== -->
+    <div class="sec" id="s14">
+      <h2 data-n="14">Deployment Topology — Kubernetes, HSM cluster, and the autoscaler</h2>
+
+      <p>The architecture diagram tells you <em>what</em> services exist. The deployment topology tells you <em>where</em> they run — which K8s namespace, how many replicas, how they autoscale, and how the HSM (which is not a Pod — it's literally a physical box) plugs in. This is where interviewers test whether you've actually run a production system, or just drawn boxes.</p>
+
+      <div class="diagram-box">
+        <div class="mermaid">
+flowchart TB
+  subgraph REG [Region us-east-1]
+    subgraph AZ1 [AZ us-east-1a]
+      subgraph K8S1 [EKS cluster · same VPC]
+        NS1[ns: tokenize<br/>Tokenize Pods × 30]
+        NS2[ns: detokenize<br/>Detok Pods × 20]
+        NS3[ns: gateway<br/>Envoy × 12]
+        REDIS1[(Redis primary × 6)]
+      end
+      HSM1[HSM box × 2<br/>baremetal]
+      VDB1[(Vault DB primary<br/>16 shards)]
+      MDB1[(Metadata DB primary)]
+    end
+    subgraph AZ2 [AZ us-east-1b]
+      subgraph K8S2 [EKS · same cluster, different AZ]
+        NS1B[Tokenize × 30]
+        NS2B[Detok × 20]
+        NS3B[Envoy × 12]
+        REDIS2[(Redis replica × 6)]
+      end
+      HSM2[HSM box × 2]
+      VDB2[(Vault DB sync replica)]
+      MDB2[(Metadata DB async replica)]
+    end
+  end
+
+  NS1 --> HSM1
+  NS2 --> HSM1
+  NS1B --> HSM2
+  NS2B --> HSM2
+  VDB1 -. sync replication .- VDB2
+  MDB1 -. async replication .- MDB2
+
+  style HSM1 fill:#e05252,stroke:#e05252,color:#fff
+  style HSM2 fill:#e05252,stroke:#e05252,color:#fff
+  style VDB1 fill:#e05252,stroke:#e05252,color:#fff
+  style VDB2 fill:#e05252,stroke:#e05252,color:#fff
+        </div>
+      </div>
+
+      <h3 style="margin-top:1.4rem">Pod sizing — back of the envelope</h3>
+      <table>
+        <thead><tr><th>Service</th><th>Per-pod capacity</th><th>Pods at 50K TPS</th><th>Resources</th></tr></thead>
+        <tbody>
+          <tr><td>API Gateway (Envoy)</td><td>~8K req/s</td><td>~14 (with headroom 24)</td><td>2 vCPU · 2 GB · no PV</td></tr>
+          <tr><td>Tokenize Service (Java/Go)</td><td>~400 req/s (HSM-bound)</td><td>~50 (with headroom 60)</td><td>2 vCPU · 1 GB</td></tr>
+          <tr><td>Detokenize Service</td><td>~400 req/s (HSM-bound)</td><td>~30 (with headroom 40)</td><td>2 vCPU · 1 GB</td></tr>
+          <tr><td>Metadata Read Service</td><td>~3K req/s (Redis-bound)</td><td>~20 (with headroom 30)</td><td>1 vCPU · 512 MB</td></tr>
+          <tr><td>Auth Service</td><td>~5K req/s</td><td>~12</td><td>1 vCPU · 512 MB</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:1.2rem">Autoscaling — what the HPA actually watches</h3>
+      <p>Most teams default to CPU-based HPA. For a tokenization service that's wrong because the bottleneck is the HSM, not CPU. We use <strong>custom metrics</strong> via Prometheus Adapter:</p>
+      <div class="g3">
+        <div class="card">
+          <h3 style="color:var(--orange)">Tokenize Service HPA</h3>
+          <p>Scale up if <code>hsm_pool_depth &gt; 100</code> OR <code>p95_latency_ms &gt; 15</code>. Scale down if both metrics have been below 50% threshold for 10 min.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--blue)">Gateway HPA</h3>
+          <p>Scale on <code>requests_per_pod &gt; 6000</code> (= 75% of capacity). Drop a pod only if RPS &lt; 3000 for 5 min — slow scale-down avoids thrash.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--green)">Metadata Read HPA</h3>
+          <p>Scale on <code>redis_connection_pool_pct &gt; 70%</code>. Redis is the gating resource; CPU rarely matters here.</p>
+        </div>
+      </div>
+
+      <h3 style="margin-top:1.2rem">HSM cluster — outside Kubernetes</h3>
+      <p>HSMs are <em>not</em> Pods. They're physical (or AWS-managed) appliances reached over a VPC endpoint. We run 4 HSMs per region (2 per AZ for HA). The app reaches them via an internal HSM proxy that:</p>
+      <ul>
+        <li><strong>Pools connections</strong> — the HSM SDK has a limited connection budget; we share connections across pods via a sidecar/sidecar-less proxy (HashiCorp Boundary or custom).</li>
+        <li><strong>Hides the vendor SDK</strong> — application code talks gRPC; vendor swap (Thales → CloudHSM) only changes the proxy.</li>
+        <li><strong>Load-balances across HSMs</strong> — round-robin with health checks. A dead HSM is taken out of rotation in &lt; 5 s.</li>
+        <li><strong>Implements circuit breaker</strong> — if 50% of HSM calls fail within 30 s, the breaker opens and tokenize returns 503 instead of queuing forever.</li>
+      </ul>
+
+      <div class="highlight blue">
+        <strong>Interview prompt:</strong> if the interviewer asks "why not run HSM crypto inside the application?" — the answer is FIPS 140-2 Level 3 compliance. Self-managed keys in app memory wouldn't pass the audit; you'd need to extract them, audit-log every operation in hardware, and prove tamper-evidence. An HSM does all that out of the box.
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 15. MULTI-REGION & DR (NEW) ============== -->
+    <div class="sec" id="s15">
+      <h2 data-n="15">Multi-Region &amp; Disaster Recovery — how to survive a region outage</h2>
+
+      <p>One region is enough for capacity. Two regions are required for survival. The hard question is <em>which kind of two regions</em>: active-active (both serve writes) or active-passive (one serves, one waits). For a payment vault, the answer is <strong>active-passive with regional pinning</strong>, and we'll walk through why active-active is a trap here.</p>
+
+      <h3>The active-active trap</h3>
+      <p>Active-active feels obviously better — more throughput, faster regional failover, lower latency for users. But for tokenization, it creates a correctness problem you can't paper over:</p>
+      <div class="g2">
+        <div class="card" style="border-color:var(--red)">
+          <h3 style="color:var(--red)">The idempotency split-brain</h3>
+          <p>Imagine the merchant retries a tokenize call. The first hits us-east, the retry (after a 1-second timeout) hits us-west. Both regions check the idempotency key — both see "not found" because cross-region replication takes 30 s. Both encrypt the PAN under <em>different</em> DEKs, write to their own Vault DB, return <em>different</em> tokens. Now the merchant has two tokens for the same card, and nobody knows.</p>
+        </div>
+        <div class="card" style="border-color:var(--red)">
+          <h3 style="color:var(--red)">The token-uniqueness violation</h3>
+          <p>Two regions, both minting UUIDv7s. UUIDv7 is unique only within the bounds of a clock-sync assumption — drift between regions can in theory collide (vanishingly small, but possible). More importantly, the audit log now lives in two places with no single source of truth for PCI § 10.</p>
+        </div>
+      </div>
+
+      <h3>The chosen design — active-passive with merchant pinning</h3>
+      <div class="diagram-box">
+        <div class="mermaid">
+flowchart LR
+  subgraph US_E [us-east-1 · PRIMARY]
+    GW_E[Gateway]
+    APP_E[Services]
+    VDB_E[(Vault DB)]
+    HSM_E[(HSMs)]
+    K_E[Kafka]
+  end
+
+  subgraph US_W [us-west-2 · WARM STANDBY]
+    GW_W[Gateway · standby]
+    APP_W[Services · 25% capacity]
+    VDB_W[(Vault DB replica)]
+    HSM_W[(HSMs · separate keys)]
+    K_W[Kafka mirror]
+  end
+
+  subgraph EU [eu-west-1 · LOCAL for EU merchants]
+    GW_EU[Gateway]
+    APP_EU[Services]
+    VDB_EU[(Vault DB · EU PANs only)]
+    HSM_EU[(HSMs)]
+  end
+
+  R53[Route 53 · health-checked]
+  R53 -->|US merchants| GW_E
+  R53 -.failover.-> GW_W
+  R53 -->|EU merchants| GW_EU
+
+  VDB_E -- async logical repl 30s --> VDB_W
+  K_E -- MirrorMaker 2 --> K_W
+
+  style US_E fill:#171d27,stroke:#38b265
+  style US_W fill:#171d27,stroke:#d4a838
+  style EU fill:#171d27,stroke:#4a90d9
+        </div>
+      </div>
+
+      <h3>What replicates, and how</h3>
+      <table>
+        <thead><tr><th>Data</th><th>Mechanism</th><th>Lag</th><th>Why this way</th></tr></thead>
+        <tbody>
+          <tr><td>Vault DB (encrypted PAN)</td><td>Postgres logical replication, async</td><td>~30 s RPO</td><td>Sync would tie us-east p99 to cross-region latency (60+ ms). We accept 30 s of potential data loss for healthy latency.</td></tr>
+          <tr><td>Metadata DB</td><td>Aurora Global async replica</td><td>~5 s</td><td>Read-from-replica for analytics in west region; failover RTO ~ 1 minute.</td></tr>
+          <tr><td>Kafka audit topic</td><td>MirrorMaker 2</td><td>~10 s</td><td>Audit logs replicate to both regions so a region loss does not erase compliance trail.</td></tr>
+          <tr><td>Redis cache</td><td>Don't replicate</td><td>n/a</td><td>Cache is rebuildable. After failover, west's Redis is cold for ~5 min; we accept the cache-miss storm and pre-warm top tokens during failover drills.</td></tr>
+          <tr><td>HSM keys</td><td>Manual sync (operator-driven)</td><td>quarterly</td><td>HSM key material <em>never</em> traverses the network. Operators export wrapped KEK from primary HSM, import to DR HSM, audit both sides. Done as part of the quarterly rotation drill.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Failover playbook</h3>
+      <ol style="line-height:1.8">
+        <li><strong>Detection (≤ 30 s).</strong> Route 53 healthchecks fail on us-east gateway. PagerDuty fires.</li>
+        <li><strong>Decision (≤ 2 min).</strong> On-call confirms primary-region failure (not just a flapping check). Pages incident commander.</li>
+        <li><strong>Promote (≤ 3 min).</strong> Promote us-west Vault DB replica to primary. Aurora handles this with <code>aws rds failover-db-cluster</code>. Repoint app config via consul.</li>
+        <li><strong>Scale up (≤ 5 min).</strong> West region was running at 25% capacity (cost saving). HPA + cluster autoscaler bring it to 100% within minutes.</li>
+        <li><strong>Cut DNS (≤ 1 min).</strong> Route 53 weighted-routing shifts all traffic to us-west. TTL is 30 s, so worldwide propagation completes in ~1 min.</li>
+        <li><strong>Verify audit trail (continuous).</strong> Check that MirrorMaker 2 has caught up; if Kafka audit lag &gt; 60 s, alert security on a possible compliance gap.</li>
+      </ol>
+
+      <div class="highlight green">
+        <strong>RTO ≈ 10 min, RPO ≈ 30 s.</strong> For a payments vault this is acceptable — losing 30 s of fresh tokenize calls means a handful of merchants must retry their checkout flow. We do <em>not</em> lose the PAN, because the PAN is already at Visa once charged. The only thing at risk is brand-new card-on-file additions in the 30 s window before failover.
+      </div>
+
+      <h3>Why a separate EU region</h3>
+      <p>EU GDPR + PSD2 require EU cardholder data to stay in the EU. EU merchants are pinned to <code>eu-west-1</code> at the Route 53 layer; their PANs never touch us-east. The EU region is its own isolated tokenization vault with its own HSM keys — a US-region breach doesn't expose EU cards. The cost is operating two parallel vaults, but compliance leaves no choice.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 16. SCALING TO 50K TPS ============== -->
+    <div class="sec" id="s16">
+      <h2 data-n="16">Scaling to 50K TPS — where the bottlenecks actually live</h2>
+
+      <p>You almost never scale "the database" first. The three real bottlenecks in a tokenization vault, in order, are: <strong>HSM throughput</strong>, <strong>audit-log durability</strong>, and <strong>cache miss storms</strong>. Solving them is most of the scaling work.</p>
+
+      <div class="g3">
+        <div class="card">
+          <h3><span class="comp-num red">A</span> HSM throughput</h3>
+          <p>A single HSM does ~2,000 wrap/unwrap operations per second. At 4,500 tokenize writes/sec we need at least 3 HSMs; with headroom, run 6 in active-active and load-balance via an HSM proxy. <strong>Critically:</strong> the 45K metadata reads/sec do NOT hit the HSM — only PAN encrypt/decrypt does. That's why the cache exists.</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num yellow">B</span> Audit log durability</h3>
+          <p>Synchronous Kafka writes with <code>acks=all</code> + <code>min.insync.replicas=2</code> on a 6-broker cluster. 50K events/sec × 200 B ≈ 10 MB/s — Kafka handles that with one hand tied. The trick is keeping producer batching tight enough that <code>acks=all</code> doesn't add &gt; 3 ms p99.</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num green">C</span> Cache miss storm</h3>
+          <p>If Redis loses its hot keys (failover, eviction storm), suddenly all 50K reads hit Postgres. Mitigations: (1) Redis cluster with replicas + automatic failover; (2) "request coalescing" — when N concurrent requests miss on the same key, only one hits the DB; (3) warm-cache job on cold start.</p>
+        </div>
+      </div>
+
+      <h3 style="margin-top:1.5rem">Sharding the Vault DB</h3>
+      <p>500M tokens × 500 B = 250 GB. Fits one node, but we shard for <em>write throughput</em> and <em>blast radius</em>:</p>
+      <ul>
+        <li><strong>Shard key:</strong> <code>hash(token)</code> with consistent hashing across 16 shards. Why not <code>merchant_id</code>? Because one huge merchant (Amazon) would be a hot shard. Hashing the token guarantees uniform distribution.</li>
+        <li><strong>Per-shard:</strong> primary + 2 replicas (sync to one, async to the other for cross-region DR). Postgres logical replication on AWS RDS Multi-AZ, or Aurora Global if going cross-region.</li>
+        <li><strong>Routing:</strong> the Vault Service holds the shard map in memory, refreshed from a coordination service (etcd) every 30 s.</li>
+      </ul>
+
+      <h3 style="margin-top:1.2rem">Service tier scaling</h3>
+      <p>Both Tokenize Service and Detokenize Service are stateless — scale by adding pods behind an L4 load balancer. Per-pod budget: ~500 req/s comfortably (Go) or ~300 req/s (Java with JIT warm). For 50K TPS plan ~150 pods total across regions. CPU scales linearly; memory is mostly Redis client pools and connection pools.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 17. OBSERVABILITY (NEW) ============== -->
+    <div class="sec" id="s17">
+      <h2 data-n="17">Observability — SLOs, golden signals, and the alerts you can't sleep through</h2>
+
+      <p>A payment vault that's "down" but not alerted is worse than no vault at all — every payment in flight times out, merchants disable cards, customer support floods. So observability isn't optional plumbing; it's part of the product. Three layers: <strong>SLOs</strong> set the contract, <strong>metrics + traces</strong> tell you whether you're meeting it, and <strong>alerts</strong> wake the on-call when you're not.</p>
+
+      <h3>Service Level Objectives (SLOs)</h3>
+      <table>
+        <thead><tr><th>SLI (what we measure)</th><th>SLO (the target)</th><th>Error budget</th></tr></thead>
+        <tbody>
+          <tr><td>Availability (any 5xx ratio per minute)</td><td>99.99% over 28 days</td><td>~4 min downtime / 28 d</td></tr>
+          <tr><td>Tokenize p99 latency</td><td>&lt; 25 ms over 28 days</td><td>1% of requests may exceed</td></tr>
+          <tr><td>Detokenize p99 latency</td><td>&lt; 30 ms over 28 days</td><td>1%</td></tr>
+          <tr><td>Audit log completeness</td><td>100% — no missing events</td><td>0 (hard requirement)</td></tr>
+          <tr><td>Failed-tokenize PAN-not-stored guarantee</td><td>100% — never partial state</td><td>0</td></tr>
+        </tbody>
+      </table>
+
+      <p>Once the error budget is burned, all <em>new feature</em> deploys are frozen until the budget resets. This is the SRE contract — it forces the team to invest in reliability, not just feature velocity.</p>
+
+      <h3 style="margin-top:1.2rem">Golden signals — what every dashboard shows</h3>
+      <div class="g4">
+        <div class="card">
+          <h3 style="color:var(--orange)">Latency</h3>
+          <p>p50 / p95 / p99 per endpoint, per region. Broken out by tokenize vs detok vs metadata. Histograms with 1-min granularity; 7-day retention.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--blue)">Traffic</h3>
+          <p>RPS per endpoint per region. Per-merchant top-10 to spot a single tenant blasting the API.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--red)">Errors</h3>
+          <p>4xx + 5xx ratios. 4xx by reason (auth fail, scope mismatch, idempotency conflict). 5xx triggers paging.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--purple)">Saturation</h3>
+          <p>HSM queue depth, Redis connection pool utilization, DB connection pool, Kafka producer queue depth, pod CPU.</p>
+        </div>
+      </div>
+
+      <h3 style="margin-top:1.2rem">Distributed tracing</h3>
+      <p>Every request gets an OpenTelemetry trace from gateway → service → HSM → DB → Kafka. Sampled at 1% in steady state, 100% for any request flagged as anomalous (e.g., 5xx, p99 outlier). Traces let an engineer answer "where did this one slow request spend its time?" without log-grepping.</p>
+
+      <h3 style="margin-top:1.2rem">Security-specific telemetry — the alerts that matter for tokenization</h3>
+      <div class="g2">
+        <div class="card" style="border-color:var(--red)">
+          <h3 style="color:var(--red)">Detokenize anomaly</h3>
+          <p>ClickHouse continuous query — actor X's detok rate is 5× their 30-day rolling average over a 5-min window. Possible compromised credential or bulk exfil attempt. Page security team, not just on-call SRE.</p>
+        </div>
+        <div class="card" style="border-color:var(--red)">
+          <h3 style="color:var(--red)">Audit-log lag</h3>
+          <p>If Kafka MirrorMaker 2 lag &gt; 60 s OR ClickHouse ingestion lag &gt; 5 min, compliance gap. Audit trail must always be present.</p>
+        </div>
+        <div class="card" style="border-color:var(--orange)">
+          <h3 style="color:var(--orange)">HSM error rate</h3>
+          <p>Any single HSM &gt; 1% error rate over 5 min → quarantine. &gt; 2 HSMs degraded → page; we're running on reduced capacity.</p>
+        </div>
+        <div class="card" style="border-color:var(--orange)">
+          <h3 style="color:var(--orange)">Key rotation overdue</h3>
+          <p>A KEK older than 95 days triggers a warning; 100 days triggers a page. PCI requires quarterly rotation.</p>
+        </div>
+        <div class="card" style="border-color:var(--purple)">
+          <h3 style="color:var(--purple)">PAN-in-log canary</h3>
+          <p>A synthetic test logs a fake-but-valid-Luhn number every hour; if our log scrubber misses it, page security. This catches the day a developer adds a debug print.</p>
+        </div>
+        <div class="card" style="border-color:var(--purple)">
+          <h3 style="color:var(--purple)">Mismatched Vault/Metadata</h3>
+          <p>Reconciler job: for each new token, both rows must exist within 5 s. Mismatch &gt; 0.01% → investigate. Catches dual-write bugs.</p>
+        </div>
+      </div>
+
+      <div class="highlight blue">
+        <strong>Interview point:</strong> when asked "how do you know your tokenization service is working?" — the strongest answer is "we have an SLO-based contract with consumers and an error budget; when the budget burns we freeze feature work." Not "we log everything" — that's noise, not signal.
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 18. FAILURE MODES ============== -->
+    <div class="sec" id="s18">
+      <h2 data-n="18">Failure modes — what breaks, and what we do about it</h2>
+      <p>For each failure, the question is the same: does the system corrupt data, return wrong data, or just fail loudly? Tokenization can never afford the first two — better to fail loud than to silently mint a token whose PAN cannot be retrieved.</p>
+
+      <table>
+        <thead><tr><th>Failure</th><th>Detection</th><th>Mitigation</th></tr></thead>
+        <tbody>
+          <tr><td><strong>HSM unreachable</strong></td><td>Healthcheck on HSM client; circuit breaker opens after 3 timeouts</td><td>Tokenize returns 503 (fail closed). <em>Never</em> "encrypt later" — the PAN must not enter the DB unencrypted.</td></tr>
+          <tr><td><strong>Vault DB shard down</strong></td><td>Driver-level errors; per-shard health</td><td>Replica auto-promoted within ~10 s. Calls to that shard fail 503 during gap.</td></tr>
+          <tr><td><strong>Kafka unavailable</strong></td><td>Producer cannot get acks</td><td>Block the operation (audit log is mandatory). Optional WAL-style local disk buffer as last-resort fallback, with strict TTL and replay on Kafka recovery.</td></tr>
+          <tr><td><strong>Vault write succeeds, metadata write fails</strong></td><td>Outbox / CDC reconciler detects mismatch</td><td>Async reconciliation job replays the metadata write from the Kafka audit event (which has everything needed to rebuild the metadata row).</td></tr>
+          <tr><td><strong>Redis cache cluster failover</strong></td><td>Increased miss rate, p99 spike</td><td>Request coalescing prevents thundering herd; new primary takes over &lt; 30 s; warm-up job preloads top 1M tokens.</td></tr>
+          <tr><td><strong>Compromised JWT signing key</strong></td><td>Out-of-band alert; anomalous detok rate</td><td>Rotate signing key, invalidate all live JWTs (short TTLs make this cheap), audit-log all detok in the affected window.</td></tr>
+          <tr><td><strong>Compromised KEK (worst case)</strong></td><td>HSM tamper alarm or insider report</td><td>Mass re-encryption job with new KEK; mark all rows ROTATING. The old KEK is destroyed only after the last row finishes rotation. PCI-required incident report within 24h.</td></tr>
+          <tr><td><strong>Replay attack on tokenize</strong></td><td>Idempotency key collision</td><td>Idempotency store returns the original token — replay is a no-op by design.</td></tr>
+          <tr><td><strong>Token enumeration</strong></td><td>Detok 404 rate spike from one actor</td><td>Token format is random 128-bit — enumeration is infeasible. Rate-limit + IP block on the actor.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 19. LLD - CLASS DIAGRAM ============== -->
+    <div class="sec" id="s19">
+      <h2 data-n="19">LLD appendix — Class diagram</h2>
+
+      <p>The HLD is the system view. The LLD here zooms into <em>one</em> box from the architecture diagram — the Tokenize Service (④) — and shows the classes inside it. Reserved for the last 15 minutes of an interview if asked "now show me the code."</p>
+
+      <div class="diagram-box">
+        <div class="mermaid">
+classDiagram
+  direction LR
+
+  class TokenizationService {
+    -TokenGenerator tokenGenerator
+    -EncryptionService encryptionService
+    -VaultRepository vaultRepo
+    -MetadataRepository metadataRepo
+    -AuditPublisher auditPublisher
+    -IdempotencyStore idempotencyStore
+    +tokenize(req) TokenizeResponse
+    +detokenize(token, actor) DetokenizeResponse
+    +metadata(token) MetadataResponse
+    +revoke(token, actor) void
+  }
+
+  class TokenGenerator {
+    +generate(pan, merchantId, strategy) String
+  }
+  class UuidV7TokenGenerator {
+    +generate(pan, merchantId, strategy) String
+  }
+  class HmacTokenGenerator {
+    -PepperStore peppers
+    +generate(pan, merchantId, strategy) String
+  }
+
+  class EncryptionService {
+    +encrypt(plaintext) Ciphertext
+    +decrypt(ciphertext) bytes
+  }
+  class HsmEncryptionService {
+    -HsmClient hsm
+    -String currentKekId
+    +encrypt(plaintext) Ciphertext
+    +decrypt(ciphertext) bytes
+  }
+
+  class VaultRepository {
+    +save(record) void
+    +findByToken(token) VaultRecord
+    +updateStatus(token, status) void
+  }
+  class PostgresVaultRepository {
+    -DataSource ds
+    +save(record) void
+    +findByToken(token) VaultRecord
+    +updateStatus(token, status) void
+  }
+
+  class MetadataRepository {
+    +save(record) void
+    +findByToken(token) MetadataRecord
+  }
+
+  class AuditPublisher {
+    +publish(event) void
+  }
+  class KafkaAuditPublisher {
+    -KafkaProducer producer
+    +publish(event) void
+  }
+
+  class IdempotencyStore {
+    -RedisClient redis
+    +putIfAbsent(key, token, ttl) bool
+    +get(key) String
+  }
+
+  TokenizationService --> TokenGenerator : strategy
+  TokenizationService --> EncryptionService : encrypts via
+  TokenizationService --> VaultRepository : writes PAN
+  TokenizationService --> MetadataRepository : writes meta
+  TokenizationService --> AuditPublisher : logs
+  TokenizationService --> IdempotencyStore : dedupes
+
+  TokenGenerator <|-- UuidV7TokenGenerator
+  TokenGenerator <|-- HmacTokenGenerator
+  EncryptionService <|-- HsmEncryptionService
+  VaultRepository <|-- PostgresVaultRepository
+  AuditPublisher <|-- KafkaAuditPublisher
+        </div>
+      </div>
+
+      <h3 style="margin-top:1.4rem">Design patterns at work</h3>
+      <table>
+        <thead><tr><th>Pattern</th><th>Where</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Strategy</td><td><code>TokenGenerator</code> (UUIDv7 vs HMAC)</td><td>The choice between random and deterministic tokens is a runtime decision per merchant.</td></tr>
+          <tr><td>Repository</td><td><code>VaultRepository</code>, <code>MetadataRepository</code></td><td>Abstracts away whether the storage is Postgres, DynamoDB, or a mock — critical for unit tests with no DB.</td></tr>
+          <tr><td>Facade</td><td><code>TokenizationService</code></td><td>Hides the 6-step orchestration (idempotency check → encrypt → store → cache → audit) behind one method.</td></tr>
+          <tr><td>Adapter</td><td><code>HsmEncryptionService</code></td><td>The HSM vendor SDK (Thales, AWS CloudHSM) has its own bespoke API — adapter normalizes it to our <code>EncryptionService</code> interface so we can swap vendors.</td></tr>
+          <tr><td>Builder</td><td><code>TokenizeRequest</code>, <code>AuditEvent</code></td><td>Both have &gt; 5 fields, several optional. Builder avoids 10-arg constructors.</td></tr>
+          <tr><td>Observer</td><td><code>AuditPublisher</code> consumers</td><td>ClickHouse, S3, and fraud all subscribe to the same Kafka topic without the Tokenize Service knowing about them.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 20. JAVA CODE ============== -->
+    <div class="sec" id="s20">
+      <h2 data-n="20">LLD appendix — Java implementation</h2>
+
+      <p>Java 17+, no frameworks. The interesting parts are the orchestration in <code>TokenizationService.tokenize</code> and the envelope-encryption sequence in <code>HsmEncryptionService.encrypt</code>. Everything else is plumbing.</p>
+
+      <h3>Enums &amp; records</h3>
+<pre><code>public enum TokenStrategy { RANDOM, DETERMINISTIC }
+public enum TokenStatus   { ACTIVE, REVOKED, EXPIRED, ROTATING }
+public enum CardNetwork   { VISA, MASTERCARD, AMEX, RUPAY, DISCOVER }
+
+public record Ciphertext(byte[] cipher, byte[] wrappedDek, String kekId) {}
+public record VaultRecord(String token, String merchantId, Ciphertext payload,
+                          TokenStatus status, Instant createdAt, Instant revokedAt) {}
+public record MetadataRecord(String token, String bin, String last4, CardNetwork network,
+                             String expiryYYYYMM, String merchantId, TokenStatus status) {}
+public record AuditEvent(String eventId, Instant ts, String actor, String action,
+                         String token, String merchantId, String ip, String scopeUsed) {}
+public record TokenizeResponse(String token, String bin, String last4, CardNetwork network) {}
+public record DetokenizeResponse(String pan, String expiryYYYYMM) {}
+</code></pre>
+
+      <h3>Request with Builder</h3>
+<pre><code>public final class TokenizeRequest {
+  private final String pan, expiryYYYYMM, merchantId, idempotencyKey, ip;
+  private final TokenStrategy strategy;
+
+  private TokenizeRequest(Builder b) {
+    this.pan = b.pan; this.expiryYYYYMM = b.expiry;
+    this.merchantId = b.merchantId; this.idempotencyKey = b.idem;
+    this.ip = b.ip; this.strategy = b.strategy;
+  }
+  public String pan(){ return pan; }
+  public String expiry(){ return expiryYYYYMM; }
+  public String merchantId(){ return merchantId; }
+  public String idempotencyKey(){ return idempotencyKey; }
+  public String ip(){ return ip; }
+  public TokenStrategy strategy(){ return strategy; }
+
+  public static Builder builder(){ return new Builder(); }
+  public static final class Builder {
+    private String pan, expiry, merchantId, idem, ip;
+    private TokenStrategy strategy = TokenStrategy.RANDOM;
+    public Builder pan(String v){ this.pan = v; return this; }
+    public Builder expiry(String v){ this.expiry = v; return this; }
+    public Builder merchantId(String v){ this.merchantId = v; return this; }
+    public Builder idempotencyKey(String v){ this.idem = v; return this; }
+    public Builder ip(String v){ this.ip = v; return this; }
+    public Builder strategy(TokenStrategy v){ this.strategy = v; return this; }
+    public TokenizeRequest build(){ return new TokenizeRequest(this); }
+  }
+}
+</code></pre>
+
+      <h3>HSM envelope encryption (the security-critical bit)</h3>
+<pre><code>public final class HsmEncryptionService implements EncryptionService {
+  private final HsmClient hsm;            // vendor SDK, thread-safe
+  private final String   currentKekId;
+  private static final SecureRandom RNG = new SecureRandom();
+
+  public Ciphertext encrypt(byte[] plaintext) {
+    byte[] dek = new byte[32]; RNG.nextBytes(dek);     // fresh DEK per record
+    byte[] iv  = new byte[12]; RNG.nextBytes(iv);
+    byte[] cipher = AesGcm.encrypt(plaintext, dek, iv);  // local AES-256-GCM
+    byte[] wrapped = hsm.wrap(currentKekId, dek);        // KEK never leaves HSM
+    Arrays.fill(dek, (byte)0);                            // best-effort zeroize
+    return new Ciphertext(concat(iv, cipher), wrapped, currentKekId);
+  }
+
+  public byte[] decrypt(Ciphertext c) {
+    byte[] dek = hsm.unwrap(c.kekId(), c.wrappedDek());
+    try {
+      byte[] iv      = Arrays.copyOfRange(c.cipher(), 0, 12);
+      byte[] payload = Arrays.copyOfRange(c.cipher(), 12, c.cipher().length);
+      return AesGcm.decrypt(payload, dek, iv);
+    } finally {
+      Arrays.fill(dek, (byte)0);
+    }
+  }
+}
+</code></pre>
+
+      <h3>The orchestrating service</h3>
+<pre><code>public final class TokenizationService {
+  private final Map&lt;TokenStrategy, TokenGenerator&gt; generators;
+  private final EncryptionService encryption;
+  private final VaultRepository    vault;
+  private final MetadataRepository metadata;
+  private final AuditPublisher     audit;
+  private final IdempotencyStore   idem;
+  private final Clock              clock;
+
+  public TokenizeResponse tokenize(TokenizeRequest req) {
+    // 1) idempotency
+    Optional&lt;String&gt; existing = idem.get(req.idempotencyKey());
+    if (existing.isPresent()) {
+      MetadataRecord m = metadata.findByToken(existing.get()).orElseThrow();
+      return new TokenizeResponse(m.token(), m.bin(), m.last4(), m.network());
+    }
+    // 2) mint
+    String token = generators.get(req.strategy())
+        .generate(req.pan(), req.merchantId(), req.strategy());
+    // 3) encrypt
+    Ciphertext payload = encryption.encrypt(req.pan().getBytes(StandardCharsets.UTF_8));
+    // 4) two writes
+    Instant now = clock.instant();
+    vault.save(new VaultRecord(token, req.merchantId(), payload, TokenStatus.ACTIVE, now, null));
+    String bin = req.pan().substring(0, 6);
+    String last4 = req.pan().substring(req.pan().length() - 4);
+    CardNetwork network = NetworkResolver.fromBin(bin);
+    metadata.save(new MetadataRecord(token, bin, last4, network,
+        req.expiryYYYYMM(), req.merchantId(), TokenStatus.ACTIVE));
+    // 5) audit (sync)
+    audit.publish(new AuditEvent(UUID.randomUUID().toString(), now,
+        req.merchantId(), "TOKENIZE", token, req.merchantId(), req.ip(), "token:create"));
+    // 6) memoize idempotency
+    idem.putIfAbsent(req.idempotencyKey(), token, Duration.ofHours(24));
+    return new TokenizeResponse(token, bin, last4, network);
+  }
+
+  public DetokenizeResponse detokenize(String token, String actor, String ip) {
+    VaultRecord r = vault.findByToken(token)
+        .orElseThrow(() -&gt; new NotFoundException(token));
+    if (r.status() != TokenStatus.ACTIVE) throw new GoneException("token revoked");
+    byte[] pan = encryption.decrypt(r.payload());
+    audit.publish(new AuditEvent(UUID.randomUUID().toString(), clock.instant(),
+        actor, "DETOKENIZE", token, r.merchantId(), ip, "pan:read"));
+    MetadataRecord m = metadata.findByToken(token).orElseThrow();
+    try {
+      return new DetokenizeResponse(new String(pan, StandardCharsets.UTF_8), m.expiryYYYYMM());
+    } finally {
+      Arrays.fill(pan, (byte)0);     // do not keep PAN bytes in heap
+    }
+  }
+}
+</code></pre>
+
+      <h3 style="margin-top:1rem">Thread-safety in one sentence</h3>
+      <p><code>TokenizationService</code> is stateless once constructed; all collaborators are themselves thread-safe (HSM client connection pool, Redis client, JDBC pool, Kafka producer). The only mutable secret on heap is the DEK byte array, which we zeroize in a <code>finally</code> block — best-effort, since GC may have moved it; the HSM is the real boundary.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============== 21. TRADEOFFS ============== -->
+    <div class="sec" id="s21">
+      <h2 data-n="21">Trade-offs &amp; interview talking points</h2>
+
+      <p>The "right answer" in an interview isn't a design — it's <em>recognising what you traded away</em>. Walk through these out loud and you signal seniority.</p>
+
+      <table>
+        <thead><tr><th>Decision</th><th>Alternative we rejected</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Random tokens with vault lookup</td>
+            <td>Format-Preserving Encryption (FPE) for stateless detokenize</td>
+            <td>Vault lookup is cheap with the cache; FPE makes revocation impossible at the per-token level and ties every detokenize to one master key's lifetime.</td>
+          </tr>
+          <tr>
+            <td>Separate Tokenize &amp; Detokenize services</td>
+            <td>Single service handles both</td>
+            <td>Blast-radius reduction: a Tokenize-side RCE shouldn't be able to read existing PANs. Two services, two IAM roles, two network segments.</td>
+          </tr>
+          <tr>
+            <td>Envelope encryption (DEK per record + KEK in HSM)</td>
+            <td>Single global key for all PANs</td>
+            <td>Per-record DEKs let us rotate keys without re-encrypting every row immediately, and limit the blast radius of a memory-disclosure bug.</td>
+          </tr>
+          <tr>
+            <td>Sync Kafka audit write before response</td>
+            <td>Async fire-and-forget audit</td>
+            <td>PCI § 10 requires durable audit. We accept ~1–2 ms p99 cost for the audit write because compliance demands it; losing audit logs invalidates the entire system.</td>
+          </tr>
+          <tr>
+            <td>Separate Metadata DB (no PAN)</td>
+            <td>Single DB with PAN + metadata</td>
+            <td>Letting analytics query a non-PCI DB is enormous for the data team. The cost is dual-write complexity, which we solve with outbox reconciliation.</td>
+          </tr>
+          <tr>
+            <td>Shard by hash(token)</td>
+            <td>Shard by merchant_id</td>
+            <td>Hash-sharding gives even write distribution. Merchant sharding makes a huge merchant a hot shard.</td>
+          </tr>
+          <tr>
+            <td>Active-passive multi-region</td>
+            <td>Active-active writes</td>
+            <td>Cross-region idempotency on the same key is a correctness nightmare. We accept ~10 min failover RTO instead.</td>
+          </tr>
+          <tr>
+            <td>UUIDv7 (time-ordered) over UUIDv4</td>
+            <td>UUIDv4 random</td>
+            <td>UUIDv7 keeps inserts append-only on the B-tree, dramatically improving index locality and write throughput. Still 74 random bits — unguessable.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:1.4rem">Extension points (Open/Closed)</h3>
+      <ul>
+        <li><strong>New encryption backend.</strong> Implement <code>EncryptionService</code> with AWS KMS, GCP CloudKMS, or HashiCorp Vault — no change in <code>TokenizationService</code>.</li>
+        <li><strong>New token strategy.</strong> Add a <code>FpeTokenGenerator</code> implementing <code>TokenGenerator</code> and register it in the strategy map. Existing code is untouched.</li>
+        <li><strong>New audit sink.</strong> Add another consumer to the Kafka topic — say, a SIEM (Splunk, Datadog) — without changing the producer side.</li>
+        <li><strong>Card-on-file network token rails.</strong> Visa and Mastercard now offer "network tokens" (issuer-side tokens). Plug them in as an alternate <code>VaultRepository</code> implementation that calls Visa Token Service instead of writing to Postgres.</li>
+        <li><strong>Multi-region read replicas.</strong> Wrap <code>VaultRepository</code> + <code>MetadataRepository</code> in routing decorators that pick the closest replica on reads.</li>
+      </ul>
+
+      <h3 style="margin-top:1.4rem">Likely interviewer follow-ups</h3>
+      <div class="g2">
+        <div class="card">
+          <h3>"What if the HSM goes down mid-tokenize?"</h3>
+          <p>Circuit breaker opens, service returns 503, retry budget on the merchant SDK kicks in (max 3 retries with backoff). Critically — <strong>we never store PAN without HSM-backed encryption</strong>, even temporarily. Fail closed is the only safe option.</p>
+        </div>
+        <div class="card">
+          <h3>"How do you rotate the master key without downtime?"</h3>
+          <p>Activate the new KEK; all <em>new</em> tokens use it. A background worker re-wraps old DEKs with the new KEK in batches (say, 1M rows/hour) — token IDs do not change, only the wrapped DEK does. Old KEK kept readable until the last row rotates, then destroyed in the HSM.</p>
+        </div>
+        <div class="card">
+          <h3>"What if two services both call <code>POST /tokens</code> with the same idempotency key concurrently?"</h3>
+          <p>The first call wins via Redis <code>SET NX EX</code>. The second call sees the existing key, reads the existing token from metadata, returns it. No double-tokenize, no race.</p>
+        </div>
+        <div class="card">
+          <h3>"How do you delete a customer's data for GDPR right-to-erasure?"</h3>
+          <p>"Crypto-shred": delete the wrapped DEK for that customer's rows. The ciphertext becomes mathematically unrecoverable without re-encryption — instant, irreversible deletion of the PAN <em>without</em> rewriting the row. Metadata can stay (or be tombstoned) for legitimate audit needs.</p>
+        </div>
+        <div class="card">
+          <h3>"Why don't you put PAN and metadata in one row?"</h3>
+          <p>To keep the metadata table out of PCI scope. The moment metadata and PAN share a row (or even a database), analytics joining that table inherits PCI scope. Splitting them costs a dual-write and saves the entire data team from PCI hell.</p>
+        </div>
+        <div class="card">
+          <h3>"What's the p99 actually look like in production?"</h3>
+          <p>Metadata read (cache hit): ~1 ms. Metadata read (cache miss): ~8 ms. Tokenize (HSM-bound): ~12–18 ms (HSM round-trip + 2× DB write). Detokenize (HSM-bound): ~10–15 ms. Tail is dominated by HSM RPC and Kafka <code>acks=all</code>.</p>
+        </div>
+      </div>
+
+      <div class="highlight blue">
+        <strong>Final intuition check:</strong> if you can explain why we have <em>two</em> databases (Vault vs Metadata), why the HSM is <em>not</em> in the read path 95% of the time, and why Kafka is on the synchronous path despite the latency hit — you've understood the design. Everything else is implementation detail.
+      </div>
+    </div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+</body>
+</html>

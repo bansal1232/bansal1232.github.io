@@ -647,10 +647,24 @@
                 <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
               </a>
 
+              <a class="dd-card" href="design-dev/HLD/dream11-hld.html" target="_blank" data-tags="hld system-design backend dream11 fantasy-sports leaderboard redis-zset kafka flink aerospike cassandra postgres alb nlb ipl">
+                <span class="dd-tag">HLD · Case Study</span>
+                <h3 class="dd-card-title">Dream11 — Fantasy Sports at IPL Scale</h3>
+                <p class="dd-card-desc">10M concurrent users at toss, 500K team-saves/sec, 12M-entry Mega Contest leaderboards refreshed every 5s — the three-plane split (transaction / stream / real-time), and the reasoning behind every tech pick: Postgres vs MySQL vs Oracle, Aerospike vs Redis for wallet, Cassandra vs DynamoDB, Redis ZSET vs SQL ORDER BY, ALB vs NLB vs HAProxy, Flink vs Spark Streaming.</p>
+                <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+              </a>
+
               <a class="dd-card" href="design-dev/HLD/payment-system-hld.html" target="_blank" data-tags="hld system-design backend payments razorpay payu stripe ledger saga idempotency pci rbi">
                 <span class="dd-tag">HLD · Case Study</span>
                 <h3 class="dd-card-title">Payment System — HLD Design</h3>
                 <p class="dd-card-desc">Move money without losing or duplicating a paisa — idempotency-key + DB UNIQUE for safe retries, double-entry ledger with sum-to-zero invariants, Temporal saga with compensating actions for multi-step rollback, fraud scoring, RBI-compliant tokenization, and a Razorpay-style India context (UPI, 3DS, NEFT/IMPS settlement) to keep raw card numbers out of your servers.</p>
+                <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
+              </a>
+
+              <a class="dd-card" href="design-dev/HLD/card-tokenization-hld.html" target="_blank" data-tags="hld lld system-design payments tokenization pci-dss hsm vault encryption pan card 50k-tps security">
+                <span class="dd-tag">HLD + LLD · Payments &amp; Security</span>
+                <h3 class="dd-card-title">Card Tokenization at 50K TPS — HLD + LLD</h3>
+                <p class="dd-card-desc">Build a PCI-DSS-grade vault that swaps 16-digit PANs for opaque tokens 50,000 times a second — envelope encryption (DEK per record, KEK in HSM), random vs HMAC vs FPE tokens, vault/metadata DB split to shrink PCI scope, idempotent tokenize with Redis SET NX, audit firehose via Kafka + ClickHouse, GDPR crypto-shredding, and the full Java class diagram + Builder/Strategy/Facade code for the interview whiteboard.</p>
                 <div class="dd-card-footer"><span class="dd-card-cta">Read the deep dive →</span><button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button></div>
               </a>
 
@@ -1044,6 +1058,15 @@
                 <p class="dd-card-desc">20 deep dives covering the four NoSQL families (Document, KV, Wide-Column, Graph), ACID vs BASE, joins vs denormalization, sharding &amp; replication, CAP in practice, and the same e-commerce design done both ways — with concrete code in Postgres, MongoDB, Redis &amp; Cassandra.</p>
                 <div class="dd-card-footer">
                   <span class="dd-card-cta">Read the storytelling guide →</span>
+                  <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
+                </div>
+              </a>
+              <a class="dd-card" href="design-dev/Tech/relational-dbms-comparison.html" target="_blank" data-tags="tech database mysql postgres postgresql oracle sqlserver mariadb sqlite cockroachdb newsql relational interview storytelling">
+                <span class="dd-tag">Databases · Relational Deep Dive</span>
+                <h3 class="dd-card-title">MySQL vs Postgres vs Oracle — And Everyone Else</h3>
+                <p class="dd-card-desc">20 sections comparing every relational DBMS side-by-side — storage engines, MVCC, indexes, isolation levels, replication, JSON support, stored-procedure dialects, full-text &amp; vector search, sharding, HA, and NewSQL (Cockroach, Spanner, TiDB). With real SQL examples in MySQL, Postgres, Oracle and SQL Server dialects.</p>
+                <div class="dd-card-footer">
+                  <span class="dd-card-cta">Read the deep dive →</span>
                   <button class="dd-copy-btn" data-copy aria-label="Copy link">Copy link</button>
                 </div>
               </a>

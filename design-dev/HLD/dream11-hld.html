@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dream11 — Fantasy Sports HLD Design</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<link rel="stylesheet" href="../../css/likes.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script src="../../js/likes.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --pink:#ec5d8a;--pink-d:rgba(236,93,138,.12);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--heading)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:760px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem}
+
+/* ── SECTION ── */
+.sec{margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+.tag-pink{background:var(--pink-d);color:var(--pink)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.92rem;margin-bottom:1.5rem;max-width:780px}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.3rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.87rem;color:var(--text);line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+.card code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.05rem .35rem;border-radius:3px}
+
+/* ── CODE ── */
+.code-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;display:inline-block;padding:.3rem .75rem;border-radius:7px 7px 0 0}
+.cl-green{background:var(--green-d);color:var(--green)}
+.cl-blue{background:var(--blue-d);color:var(--blue)}
+.cl-purple{background:var(--purple-d);color:var(--purple)}
+.cl-orange{background:var(--orange-d);color:var(--orange)}
+.cl-yellow{background:var(--yellow-d);color:var(--yellow)}
+.cl-cyan{background:var(--cyan-d);color:var(--cyan)}
+.cl-red{background:var(--red-d);color:var(--red)}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:1.3rem 1.4rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.85;color:var(--text);margin-bottom:1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}.an{color:#ffa657}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── Numbered component badge ── */
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+.comp-num.pink  {background:var(--pink-d);  color:var(--pink);  border:1px solid var(--pink)}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.85rem}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--cyan)}
+.hl-pink{background:var(--pink-d);border-left:3px solid var(--pink);color:var(--pink)}
+.highlight strong{font-weight:700}
+.highlight code{font-family:'JetBrains Mono',monospace;font-size:.78rem;background:rgba(0,0,0,.25);padding:.05rem .35rem;border-radius:3px;color:inherit}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── INTERVIEW Q ── */
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.7rem 1rem;margin-bottom:.75rem;font-size:.85rem;color:var(--blue);font-weight:600}
+.iq::before{content:'Q: ';font-weight:800}
+.ans{background:var(--surface2);border-radius:var(--r);padding:1rem 1.3rem;margin-bottom:1rem;font-size:.85rem;color:var(--text);border:1px solid var(--border)}
+.ans strong{color:var(--heading)}
+.ans code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.05rem .35rem;border-radius:3px}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.82rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.6rem .85rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── CHECK LIST ── */
+.checklist{list-style:none;padding:0;margin:0}
+.checklist li{padding:.55rem 0 .55rem 1.8rem;position:relative;font-size:.88rem;color:var(--text);border-bottom:1px dashed var(--border)}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{content:'✓';position:absolute;left:.2rem;top:.55rem;color:var(--green);font-weight:800;font-size:.95rem}
+
+/* ── Verdict pill (used in tech-choice comparisons) ── */
+.verdict{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;padding:.18rem .5rem;border-radius:4px;letter-spacing:.04em}
+.v-pick{background:var(--green-d);color:var(--green);border:1px solid var(--green)}
+.v-skip{background:var(--red-d);color:var(--red);border:1px solid var(--red)}
+.v-meh{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">High-Level Design</div>
+  <h1>Dream11 — Fantasy <span>Sports at IPL Scale</span></h1>
+  <p class="sub">200 M users, 10 M concurrent at toss, 1 M score-event fan-outs per second — and the bag of tech that earns its place</p>
+</div>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Clarify Requirements</a></li>
+      <li><a href="#s2">Capacity &amp; Scale</a></li>
+      <li><a href="#s3">Actors &amp; Use Cases</a></li>
+      <li><a href="#s4">High-Level Architecture</a></li>
+      <li><a href="#s5">Database Per Service</a></li>
+      <li><a href="#s6">Load Balancer Choice</a></li>
+      <li><a href="#s7">Team Creation &amp; Deadline Lock</a></li>
+      <li><a href="#s8">Score Ingestion &amp; Fan-Out</a></li>
+      <li><a href="#s9">Live Leaderboard (Redis ZSET)</a></li>
+      <li><a href="#s10">Contest Engine &amp; Joining</a></li>
+      <li><a href="#s11">Wallet &amp; Payments</a></li>
+      <li><a href="#s12">Caching Strategy</a></li>
+      <li><a href="#s13">Trade-offs</a></li>
+      <li><a href="#s14">Interview Q&amp;A</a></li>
+      <li><a href="#s15">Production Checklist</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+<!-- Framework callout -->
+<div style="background:linear-gradient(135deg,var(--orange-d),var(--blue-d));border:1px solid var(--orange);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:2.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem;justify-content:space-between">
+  <div style="flex:1;min-width:250px">
+    <div style="font-size:.7rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:.3rem">The point of this page</div>
+    <p style="font-size:.88rem;color:var(--text);margin:0;line-height:1.6">Every box on the architecture diagram carries a <em>reason</em>. Picking Postgres over MySQL, ALB over NLB, Cassandra over MongoDB — these aren't taste calls, they're forced by the load you've signed up to handle. As you read, watch for the <strong>"Why this, not that"</strong> blocks — that's where the actual interview-grade design lives.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="hld-interview-framework.html" style="display:inline-block;background:var(--orange);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Framework &rarr;</a>
+    <a href="databases-comparison-hld.html" style="display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">DB Families &rarr;</a>
+    <a href="key-technologies.html" style="display:inline-block;background:var(--purple);color:#fff;text-decoration:none;font-weight:700;font-size:.78rem;padding:.55rem 1rem;border-radius:6px;white-space:nowrap">Tech Cheat Sheet &rarr;</a>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 1: REQUIREMENTS                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s1">
+  <span class="sec-tag tag-orange">Step 1</span>
+  <h2>Clarify Requirements</h2>
+  <p>Imagine Raj in Mumbai opens Dream11 at 6:55 PM. The IPL match starts at 7:30. He needs to build a team of 11 cricketers, pay ₹49 to enter a "Mega Contest" with 12 lakh other people, and once that match starts, watch his rank update live as players hit fours and take wickets. Multiply Raj by 10 million people doing the same thing in the same 35-minute window — that's the system we're designing. Pin the contract before reaching for tech.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>✅ Functional Requirements</h3>
+      <ul>
+        <li>Browse upcoming matches and discover contests (free, paid, mega, head-to-head)</li>
+        <li>Build a team of 11 from a match's player pool under salary-cap + role-quota constraints</li>
+        <li>Join one or more contests for a given match — pay entry fee from in-app wallet</li>
+        <li><strong>Hard lock</strong> all teams at match start time — no edits after the toss</li>
+        <li>Live score → live points → live leaderboard during the match (sub-5 s lag)</li>
+        <li>Distribute prize money to winners after the match ends &amp; results are reviewed</li>
+        <li>Wallet: deposit (UPI/cards), withdraw to bank, transaction history</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚡ Non-Functional Requirements</h3>
+      <ul>
+        <li><strong>Concurrency:</strong> 10 M concurrent users during IPL final, peak join-rate 500 K/sec in the last 5 min</li>
+        <li><strong>Latency:</strong> team save &lt; 300 ms; leaderboard refresh &lt; 1 s; score → leaderboard &lt; 5 s</li>
+        <li><strong>Availability:</strong> 99.99% on the hot path (join, lock, score, leaderboard) — downtime during a live match is unforgivable</li>
+        <li><strong>Consistency:</strong> wallet &amp; contest-entry must be strongly consistent (money + fairness); leaderboard can be eventually consistent (a 1-second-stale rank is fine)</li>
+        <li><strong>Fairness:</strong> no edits after deadline — this is a regulatory + trust requirement, not a perf one</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>Out of scope (confirm with interviewer):</strong> KYC flow, anti-fraud / collusion detection (separate ML system), tax/TDS computation, push-notification platform internals, chat / social features, news &amp; analytics articles, sport-specific scoring logic (we'll treat scoring as a pluggable strategy — cricket today, football tomorrow).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 2: CAPACITY                           -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s2">
+  <span class="sec-tag tag-yellow">Step 2</span>
+  <h2>Capacity &amp; Scale Estimates</h2>
+  <p>The numbers below force every tech choice that follows. A 10 M-concurrent burst over 5 minutes isn't a "use a bigger box" problem — it's a "your DB will die if you don't pre-shard" problem. Anchor the design in these numbers and the choices fall out.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr><th>Metric</th><th>Assumption</th><th>Result / Implication</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Total registered users</td><td>200 M (India)</td><td>—</td></tr>
+        <tr><td>Daily active users on a match day</td><td>50 M</td><td>—</td></tr>
+        <tr><td>Peak concurrent users (IPL final)</td><td>10 M</td><td>Forces stateless app tier + sticky-LB on user_id</td></tr>
+        <tr><td>Peak team-save rate (last 5 min)</td><td>500 K writes/sec</td><td>Forces async write path + Kafka buffer in front of DB</td></tr>
+        <tr><td>Peak contest-join rate</td><td>200 K joins/sec</td><td>Forces wallet on Aerospike (1 ms p99), not RDBMS</td></tr>
+        <tr><td>Contests per match</td><td>~10 K contests</td><td>—</td></tr>
+        <tr><td>Largest single contest</td><td>12 M entries (Mega Contest)</td><td>Leaderboard must rank 12 M rows in &lt;1 s — Redis ZSET, not SQL ORDER BY</td></tr>
+        <tr><td>Total teams across all contests / match</td><td>~150 M teams</td><td>Score event must fan-out to 150 M score updates within 5 s</td></tr>
+        <tr><td>Score events / over of cricket</td><td>~10 ball events × 22 score deltas = ~200</td><td>Per match: ~12 K events; with 5-second SLA → stream processor (Flink)</td></tr>
+        <tr><td>Wallet operations / sec at peak</td><td>200 K debits/sec on contest join</td><td>Single Postgres can't sustain this — wallet moves to Aerospike</td></tr>
+        <tr><td>Storage for historical matches + teams</td><td>~5 PB over 5 years</td><td>Hot data in Postgres/Cassandra; cold archive in S3</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-orange"><strong>The three numbers that hurt:</strong> (1) <strong>500 K team-saves/sec</strong> — no single SQL primary survives this, so writes go through Kafka and land in a sharded Cassandra. (2) <strong>200 K wallet debits/sec</strong> — Postgres tops out around 20 K writes/sec per primary, so wallet lives in Aerospike. (3) <strong>12 M-entry leaderboards refreshed every 5 s</strong> — SQL <code>ORDER BY points DESC LIMIT 100</code> over 12 M rows is a non-starter; Redis ZSET ranks in O(log N) and serves the top-100 in microseconds.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 3: ACTORS & USE CASES                 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s3">
+  <span class="sec-tag tag-green">Step 3</span>
+  <h2>Actors &amp; Use Cases</h2>
+  <p>Four kinds of actor drive the system. The colour each gets here is the colour you'll see them in on the architecture diagram — that visual link is intentional.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  U([User / Player])
+  S([Score Provider<br/>e.g. Sportradar])
+  A([Admin / Ops])
+  P([Payment Gateway])
+
+  U --> BR[Browse Matches &amp; Contests]
+  U --> BT[Build Team]
+  U --> JC[Join Contest]
+  U --> VL[View Live Leaderboard]
+  U --> WD[Wallet Deposit / Withdraw]
+
+  S --> SE[Push Ball-by-Ball Events]
+
+  A --> CM[Create Match &amp; Player Pool]
+  A --> CR[Cancel / Resolve Disputes]
+  A --> RP[Release Prize Money]
+
+  P --> SC[Settlement Callbacks]
+
+  style U fill:#e8743b,stroke:#e8743b,color:#fff
+  style S fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style A fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style P fill:#38b265,stroke:#38b265,color:#fff
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card"><h3>🏏 Browse</h3><p>Fetch upcoming matches and contest list. Read-heavy, cacheable for hours — perfect CDN territory.</p></div>
+    <div class="card"><h3>👕 Build Team</h3><p>Pick 11 players within ₹100 cr salary cap, 3–5 batsmen, 1 WK, etc. Validated on server (clients lie).</p></div>
+    <div class="card"><h3>💸 Join Contest</h3><p>Atomic: debit wallet → insert into <code>contest_entries</code> → write to leaderboard. Idempotency-key protects against retries.</p></div>
+    <div class="card"><h3>📈 Live Leaderboard</h3><p>WebSocket subscription per user × contest. Server pushes top-N + your rank every 5 s during a match.</p></div>
+    <div class="card"><h3>📡 Score Push</h3><p>Sportradar / official feed POSTs ball events into our ingest API. We compute fantasy points and fan out.</p></div>
+    <div class="card"><h3>🏆 Prize Distribution</h3><p>End-of-match job: read final leaderboard → compute payouts → credit winners' wallets in a single ledger transaction.</p></div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 4: HIGH-LEVEL ARCHITECTURE            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s4">
+  <span class="sec-tag tag-blue">Step 4</span>
+  <h2>High-Level Architecture</h2>
+  <p>This is where most candidates draw eight boxes and call it a day. We're going to do it properly — three passes. Pass 1: the simplest thing that could work, and where it falls apart. Pass 2: the central architectural idea (a <em>three-plane split</em>). Pass 3: the production shape, with every component justified.</p>
+
+  <!-- ── Pass 1 ── -->
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.2rem;margin:1.4rem 0 .8rem">Pass 1 — the naive design (and why it dies at toss time)</h3>
+  <p>Raj opens Dream11 and posts his team. The simplest design: one app server validates the team, debits his wallet, inserts into a contest row, and serves the leaderboard by running <code>SELECT * FROM teams WHERE contest_id = ? ORDER BY points DESC LIMIT 100</code> on every refresh. One Postgres, one app box.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  C([Mobile App]) -- save / join / refresh --> A[App Server]
+  A -- everything --> DB[(Postgres<br/>users, teams, contests,<br/>wallet, scores, leaderboard)]
+
+  style C fill:#e8743b,stroke:#e8743b,color:#fff
+  style A fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style DB fill:#9b72cf,stroke:#9b72cf,color:#fff
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card"><h3>💥 The toss-time cliff</h3><p>At 7:25 PM, 5 million users mash "Join Contest" in 60 seconds. That's 80 K writes/sec on a single Postgres rated for ~20 K. The DB collapses; users see "payment failed" while their wallet got debited. Trust gone.</p></div>
+    <div class="card"><h3>💥 The leaderboard query of doom</h3><p>A Mega Contest has 12 M entries. Every refresh runs <code>ORDER BY points DESC LIMIT 100</code> over 12 M rows. Even with an index, that's a sort across 100s of MB of memory per query. Multiply by 12 M users hitting refresh every 5 s → 2.4 M sorts/sec. No machine on earth.</p></div>
+    <div class="card"><h3>💥 The score fan-out cliff</h3><p>Virat Kohli hits a six. That single event must update points for ~80 M teams that picked him (40%+ ownership). One ball ≠ one DB update. It's tens of millions of dependent writes. Inline = death.</p></div>
+  </div>
+
+  <div class="highlight hl-red"><strong>The lesson:</strong> Dream11 is not one workload — it's three workloads in a trench coat. <em>Transactional</em> stuff (wallet, contest entry) needs ACID. <em>Streaming</em> stuff (score fan-out) needs Kafka + Flink. <em>Read-heavy ranked</em> stuff (leaderboard) needs an in-memory sorted set. Trying to make one Postgres do all three is the source of every page above.</div>
+
+  <!-- ── Pass 2 ── -->
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.2rem;margin:2rem 0 .8rem">Pass 2 — three planes, three storage philosophies</h3>
+  <p>The decision that organises everything: <strong>split the system into a transaction plane, a stream plane, and a real-time plane</strong>. Each has different consistency needs, different traffic patterns, and so they get different storage tech. They communicate through a Kafka backbone — so a slowdown in one plane can't bring down the others.</p>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🏦 Transaction plane</h3>
+      <p style="margin-bottom:.6rem">Things involving <em>money</em> and <em>fairness</em>. Wallet debits, contest entries, prize payouts. Strong consistency, ACID, idempotency. Slow is OK; wrong is not.</p>
+      <ul>
+        <li>Postgres for users, contests, contest entries</li>
+        <li>Aerospike for the wallet (200 K ops/sec, ms-latency)</li>
+        <li>Double-entry ledger pattern, sum-to-zero invariant</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>📡 Stream plane</h3>
+      <p style="margin-bottom:.6rem">Score events arrive from the feed, get translated into fantasy point deltas, then fan out to every team that picked the affected player. High throughput, eventual consistency, idempotent processing.</p>
+      <ul>
+        <li>Kafka as the event backbone (12 K events / match, but bursty)</li>
+        <li>Flink jobs for score → points translation &amp; fan-out</li>
+        <li>Cassandra for the wide team-points table (write-optimised)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>⚡ Real-time plane</h3>
+      <p style="margin-bottom:.6rem">Live leaderboard + push-to-device. Read-heavy, ranking is the only operation, staleness of a second is acceptable, latency is everything.</p>
+      <ul>
+        <li>Redis ZSET as the canonical leaderboard for each contest</li>
+        <li>WebSocket gateway holding 100 K connections each</li>
+        <li>Push diffs (your rank, top-10) every 3–5 seconds</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-blue"><strong>Why this split is the whole game:</strong> if a flash-crash drops the leaderboard cache, money is still safe — the wallet ledger in Aerospike + Postgres is the source of truth and continues working. If Kafka backs up briefly, leaderboard is stale by a few seconds but wallet debits keep flowing. Each plane fails independently because they share <em>no</em> hot storage. The contract between them is event topics, not shared tables.</div>
+
+  <!-- ── Pass 3 ── -->
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.2rem;margin:2rem 0 .8rem">Pass 3 — the production shape</h3>
+  <p>Now expand each plane into its concrete components. Read the diagram twice: once tracing what happens when Raj <em>joins a contest</em> (orange → blue → purple), once tracing what happens when Kohli <em>hits a six</em> (cyan → green → pink → orange).</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  CL([① Mobile / Web Client])
+  CDN[② CDN<br/>CloudFront]
+  ALB[③ ALB L7]
+  GW[④ API Gateway<br/>auth, rate-limit]
+  TS[⑤ Team Service]
+  CS[⑥ Contest Service]
+  WL[⑦ Wallet Service]
+  PG[(⑧ Postgres<br/>users, contests)]
+  AS[(⑨ Aerospike<br/>wallet ledger)]
+  KF[⑩ Kafka<br/>events backbone]
+  IG[⑪ Score Ingestion]
+  FL[⑫ Flink<br/>points, fan-out]
+  CA[(⑬ Cassandra<br/>team_points)]
+  RZ[(⑭ Redis ZSET<br/>leaderboards)]
+  NB[⑮ WebSocket Gateway]
+  PUSH[⑯ Push Notifs<br/>FCM / APNs]
+
+  CL -->|static| CDN
+  CL -->|API| ALB
+  ALB --> GW
+  GW --> TS
+  GW --> CS
+  GW --> WL
+  TS --> KF
+  CS --> PG
+  CS --> WL
+  WL --> AS
+  CS --> KF
+  IG --> KF
+  KF --> FL
+  FL --> CA
+  FL --> RZ
+  RZ --> NB
+  NB ==>|push| CL
+  FL --> PUSH
+
+  style CL fill:#e8743b,stroke:#e8743b,color:#fff
+  style CDN fill:#d4a838,stroke:#d4a838,color:#000
+  style ALB fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style GW fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style TS fill:#38b265,stroke:#38b265,color:#fff
+  style CS fill:#38b265,stroke:#38b265,color:#fff
+  style WL fill:#38b265,stroke:#38b265,color:#fff
+  style PG fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style AS fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style KF fill:#3cbfbf,stroke:#3cbfbf,color:#000
+  style IG fill:#3cbfbf,stroke:#3cbfbf,color:#000
+  style FL fill:#3cbfbf,stroke:#3cbfbf,color:#000
+  style CA fill:#ec5d8a,stroke:#ec5d8a,color:#fff
+  style RZ fill:#e05252,stroke:#e05252,color:#fff
+  style NB fill:#d4a838,stroke:#d4a838,color:#000
+  style PUSH fill:#d4a838,stroke:#d4a838,color:#000
+    </div>
+  </div>
+
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.05rem;margin:1.6rem 0 .8rem">Component-by-component — what each numbered box does</h3>
+  <p style="color:var(--text);font-size:.88rem;margin-bottom:1rem">Find the number in the diagram, read the matching card. Each card answers: what is this thing, why is it here, and what would break if we removed it tomorrow?</p>
+
+  <div class="g2">
+
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Mobile / Web Client</h3>
+      <p>The Android / iOS / web app every user runs. Does enough work to feel snappy: caches the player pool locally, pre-computes preview points, runs the salary-cap and role-quota checks <em>before</em> hitting the server. But it never owns truth — every team save, join, and wallet operation is re-validated server-side because a malicious client can lie.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> latency &amp; offline tolerance. If the client did nothing locally, every keystroke during team build would round-trip to the server — unusable on patchy 4G in a stadium parking lot.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num yellow">②</span> CDN (CloudFront / Akamai)</h3>
+      <p>Caches static assets &amp; semi-static data: app bundle, player photos, match thumbnails, team-of-the-week posters, and the player pool JSON (which only changes when the captain announces the playing XI ~30 min before toss). Cache TTL is short for the player pool (60 s) and long for images (days).</p>
+      <p style="margin-top:.55rem"><strong>Why CloudFront over an in-region CDN?</strong> India-first user base means we want POPs in Mumbai, Delhi, Chennai, Bengaluru, Hyderabad — CloudFront has all five. Akamai is comparable but pricier; an in-region CDN like Jio CDN doesn't have global edges for NRI users. <strong>Solves:</strong> origin offload — without a CDN, every "open match page" hits our API for assets that haven't changed in hours.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num blue">③</span> Load Balancer — AWS ALB (L7)</h3>
+      <p>Terminates TLS, routes by path (<code>/team/*</code>, <code>/contest/*</code>, <code>/ws/*</code>), sticky-hashes on <code>user_id</code> so the same user's requests warm the same caches.</p>
+      <p style="margin-top:.55rem"><strong>Why ALB and not NLB?</strong> ALB understands HTTP — it can route by URL path, terminate TLS, do health checks at the HTTP level, integrate with WAF, and stick connections on a cookie or header. NLB is L4 (TCP only) — faster (no packet inspection) but blind to URLs. For the leaderboard <strong>WebSocket</strong> tier we actually <em>do</em> use NLB (see §6) because WS upgrade is long-lived and L7 inspection adds no value once the upgrade completes. <strong>Solves:</strong> single ingress for the HTTP API, integrated security (WAF + Shield), and the ability to spray traffic across an auto-scaling fleet.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num blue">④</span> API Gateway</h3>
+      <p>The first stateful thing every request hits after the LB. Does authentication (JWT verify), rate limiting (10 requests/sec/user for <code>/team</code>, 1 req/sec for <code>/wallet/deposit</code>), request validation against an OpenAPI schema, and routes to the right downstream service. Also where we run <strong>shadow traffic</strong> during canary deploys.</p>
+      <p style="margin-top:.55rem"><strong>Why a gateway vs hitting services directly?</strong> Centralising auth + rate-limit means a new service inherits both for free; if we removed the gateway, every service would re-implement JWT verification and we'd have 8 versions of "is this rate-limited?". <strong>Solves:</strong> consistency across services, single chokepoint for security policy.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num green">⑤</span> Team Service</h3>
+      <p>Owns the team-build workflow. Validates salary cap, role quotas (1 WK, 3–5 batsmen, 1–4 all-rounders, 3–5 bowlers), captain/vice-captain selection. Writes team-save events to Kafka rather than directly to a DB — the durable record of "team v3 at 18:54:21" goes onto a Kafka topic, and a downstream consumer materialises it into Cassandra. This is the only way 500 K saves/sec become survivable.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> write absorption during the toss-time spike. The Team Service itself is stateless and elastic; Kafka is the shock absorber between users frantically editing teams and our storage layer.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num green">⑥</span> Contest Service</h3>
+      <p>Owns the contest catalog and the join workflow. Knows what contests exist, their capacity, their entry fee, their prize structure. The join API is the <em>most critical transaction in the whole system</em>: it must atomically (a) check the contest isn't full, (b) check the user hasn't already joined, (c) debit the wallet, (d) insert the contest entry, (e) seed the leaderboard. We use the <strong>saga pattern</strong> with idempotency keys — each step is reversible and the whole thing keys on <code>(user_id, contest_id, team_id)</code> so retries are safe.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> "join contest" correctness under retry + concurrent load. Without saga + idempotency, a flaky mobile network double-debits Raj's wallet.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num green">⑦</span> Wallet Service</h3>
+      <p>Thin service in front of the Aerospike-backed ledger. Two operations: <code>debit(user_id, amount, txn_id)</code> and <code>credit(user_id, amount, txn_id)</code>. Both are idempotent — the same <code>txn_id</code> applied twice has the same effect as once. Implemented as a double-entry ledger: every debit on a user account corresponds to a credit on a contest-escrow account; sums must balance to zero across the system.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> the 200 K wallet-ops/sec bottleneck. A vanilla Postgres can't sustain this; Aerospike's hybrid memory architecture (indexes in RAM, data on SSD) does sub-ms reads &amp; writes at this rate.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num purple">⑧</span> Postgres — Users &amp; Contests</h3>
+      <p>The system of record for users, KYC, contests, contest entries, and prize structures. Read-mostly, write-rarely after a contest is created. Replicated primary + 3 read replicas; reads from replicas, writes to primary. Sharded by <code>user_id</code> (consistent hashing across 16 shards) so a user's data colocates.</p>
+      <p style="margin-top:.55rem"><strong>Why Postgres specifically — read the "Why this, not that" block in §5.</strong> Short version: Postgres gives us strong consistency, real ACID, JSONB columns for flexible contest configs, partial indexes, and a vibrant operational ecosystem (logical replication, pg_partman, pg_repack). MySQL would also work; Oracle is overkill for this scale; CockroachDB would be a sensible alternative if we needed multi-region writes.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num purple">⑨</span> Aerospike — Wallet Ledger</h3>
+      <p>An in-memory NoSQL DB optimised for sub-ms read/write at huge throughput. Holds the wallet balances and the ledger of debits/credits, keyed by <code>user_id</code>. Built-in cross-data-center replication (XDR), strong consistency mode (CP), and the ability to write to SSD while keeping indexes in RAM — so durability survives node loss but reads stay fast.</p>
+      <p style="margin-top:.55rem"><strong>Why Aerospike and not Redis or Postgres?</strong> Redis is in-memory but durability is best-effort (RDB snapshots, AOF) — a snapshot lag during a node crash can lose recent debits, which is unacceptable for money. Postgres is durable but caps at ~20 K writes/sec per primary. Aerospike fills the gap: durable like Postgres, fast like Redis, scales linearly. <strong>Solves:</strong> 200 K wallet ops/sec without losing rupees.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num cyan">⑩</span> Kafka — Event Backbone</h3>
+      <p>The central nervous system of the streaming plane. Topics: <code>team-saves</code> (partitioned by <code>user_id</code>), <code>contest-joins</code> (partitioned by <code>contest_id</code>), <code>score-events</code> (partitioned by <code>match_id</code>), <code>fantasy-point-deltas</code> (partitioned by <code>team_id</code>). Retention 7 days — long enough for any consumer to replay and recover.</p>
+      <p style="margin-top:.55rem"><strong>Why Kafka over SQS or RabbitMQ?</strong> SQS is a queue, not a log — once a message is consumed it's gone, so you can't have multiple independent consumers (leaderboard + analytics + audit). Also SQS caps at ~3 K msg/sec per queue (FIFO) — not enough. RabbitMQ would need careful per-queue sharding and lacks Kafka's at-least-once + idempotent-producer guarantees. Kafka handles 1 M+ msg/sec per broker, exposes a replayable log, and lets us add new consumer groups without affecting existing ones. <strong>Solves:</strong> decoupling + replayability + throughput.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num cyan">⑪</span> Score Ingestion</h3>
+      <p>The bridge between the official cricket scoring feed (Sportradar, Opta, or BCCI feed) and our system. Receives ball-by-ball events via webhook, validates the payload signature, deduplicates (same ball can be retransmitted), and writes the raw event onto the <code>score-events</code> Kafka topic. Crucial — keeps the upstream provider isolated from our internal pipeline.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> isolation + idempotency. The feed providers occasionally retry the same ball event 3–4 times; dedup here means downstream Flink jobs don't double-count Kohli's six.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num cyan">⑫</span> Flink — Stream Processing</h3>
+      <p>Two Flink jobs power the live experience. <strong>Job A: Scoring</strong> consumes <code>score-events</code>, applies the cricket scoring rules (6 = 6 fantasy pts, wicket = 25 pts, etc.), emits <code>player-point-deltas</code>. <strong>Job B: Fan-Out</strong> consumes <code>player-point-deltas</code>, joins against the team-roster table to find every team that picked that player, emits <code>team-point-deltas</code> — which then flow to Cassandra (durable record) and Redis (live leaderboard).</p>
+      <p style="margin-top:.55rem"><strong>Why Flink over Spark Streaming?</strong> Flink is true event-at-a-time (latency ms); Spark Streaming is micro-batched (latency seconds). For a 5-second-end-to-end score SLA, the seconds budget is too tight to spend on batching. Flink also has exactly-once semantics via two-phase commits to Kafka, which we need so a restart never double-credits points. <strong>Solves:</strong> low-latency stateful stream processing with exactly-once guarantees.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num pink">⑬</span> Cassandra — team_points</h3>
+      <p>A wide-column store for the durable record of "what does every team currently score?" Schema: <code>PRIMARY KEY ((contest_id), team_id)</code> — partitioning by <code>contest_id</code> means all teams in a contest live on the same node, so the post-match leaderboard reconstruction is a single partition scan. We write hard (every point delta), read soft (only at match end + recovery). This is exactly Cassandra's sweet spot.</p>
+      <p style="margin-top:.55rem"><strong>Why Cassandra and not MongoDB or DynamoDB?</strong> MongoDB's write throughput drops with secondary indexes and large collections — and we're inserting tens of millions of updates per match. DynamoDB would work but ties us to AWS and costs more per write at this volume. Cassandra is open source, linearly write-scalable, and we control the partitioning to colocate by <code>contest_id</code>. <strong>Solves:</strong> durable, append-mostly storage of fantasy-point deltas at fan-out scale (potentially 1 M writes/sec during a wicket).</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num red">⑭</span> Redis ZSET — Per-Contest Leaderboard</h3>
+      <p>One Redis sorted set per contest, keyed <code>lb:{contest_id}</code>, member = <code>team_id</code>, score = total fantasy points. Flink updates it on every point delta with <code>ZINCRBY</code>. Reads use <code>ZREVRANGE 0 99 WITHSCORES</code> for top-100 (O(log N + K)) and <code>ZREVRANK key team_id</code> for a user's own rank (O(log N)). At 12 M members, top-100 returns in ~1 ms.</p>
+      <p style="margin-top:.55rem"><strong>Why Redis ZSET and not a DB ORDER BY?</strong> A <code>SELECT … ORDER BY points DESC LIMIT 100</code> over 12 M rows is a sort across hundreds of MB — even with an index, it's tens of milliseconds at best and the index itself is constantly being updated. ZSET is a skip-list internally; insert/update is O(log N), and the sorted order is maintained continuously, so reads are free. Cluster mode shards by contest_id across the Redis ring. <strong>Solves:</strong> ranked-read latency at fan-out scale.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num yellow">⑮</span> WebSocket Gateway</h3>
+      <p>A tier of Node.js (or Netty) servers, each holding ~100 K open WebSocket connections. When the user opens the live leaderboard, the client opens a WS to this gateway and subscribes to <code>contest:{contest_id}</code>. Every 3–5 s, a tick job reads top-N + the user's rank from Redis ZSET and pushes the diff over the open socket. We use NLB (L4) in front of this tier, not ALB — see §6 for why.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> push-based real-time updates. Polling every 5 s from 10 M users = 2 M req/sec hitting the API. Push-over-WebSocket collapses that to ~100 K open sockets per gateway node.</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="comp-num yellow">⑯</span> Push Notifications (FCM / APNs)</h3>
+      <p>For users not actively in the app: "Your team is in the top 10!", "Contest about to lock in 10 min", "Match started — Kohli is in your team". Triggered by Flink on milestone events and by a scheduled service for deadline reminders.</p>
+      <p style="margin-top:.55rem"><strong>Solves:</strong> re-engagement. A user who doesn't open the app during the match is a user who isn't retained for the next match.</p>
+    </div>
+  </div>
+
+  <!-- ── Walkthroughs ── -->
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.35rem;margin:2.5rem 0 .5rem">Walkthrough 1 — Raj builds his team</h3>
+  <p style="color:var(--text);font-size:.92rem;margin-bottom:1.2rem"><strong>Setting:</strong> It's 7:05 PM. The IPL match — Mumbai vs Bangalore — starts at 8:00 PM. Raj opens the Dream11 app, taps the match card, and starts building his fantasy team. He has a virtual ₹100 salary cap and must pick exactly 11 players from a pool of ~22 (the announced squads) under strict role quotas. This is the <em>user-data plane</em> of the system — high-frequency, bursty writes that absolutely cannot block, because at toss time we'll be doing <strong>500K team saves per second</strong>. Here is what fires under the hood.</p>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 1 — The match page loads</h3>
+    <p>Raj taps the match card. The app fires <code>GET /v1/matches/{id}/squad</code>. Goes via <strong>CDN ②</strong> for the player headshots / static metadata, and via <strong>ALB ③</strong> → <strong>API Gateway ④</strong> → <strong>Team Service ⑤</strong> for the dynamic bits: the live player pool, their credit values (Kohli ₹10.5, Bumrah ₹9.5, …), their recent-form stats.</p>
+    <p style="margin-top:.55rem">Team Service reads the squad from a hot Redis cache (key <code>squad:{match_id}</code>, TTL 5 min, populated from Postgres at squad-announcement time). <strong>Why cache here?</strong> Because the squad is read by every user opening the match — 10 M reads at peak — but it changes maybe twice (squad announce, then any last-minute injury swap). A read-through cache absorbs 99.99% of the traffic.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 2 — Raj picks his 11 (client-side)</h3>
+    <p>For the next 15 minutes Raj is fiddling. He taps Kohli (₹10.5 cr), then Rohit (₹10.0), then Bumrah, then Cummins… he reaches ₹98 cr and realises he has no wicket-keeper. He drops Cummins (₹9.5), adds Pant (₹10.0), now at ₹98.5 cr — fits the cap. He sets <strong>Kohli as captain</strong> (2× points) and <strong>Bumrah as vice-captain</strong> (1.5× points).</p>
+    <p style="margin-top:.55rem"><strong>All of this is purely client-side.</strong> No server round-trip per pick. The app holds the squad + credits in memory and re-runs validation locally on every tap: salary check, role-quota check, captain/VC chosen. Server hits would (a) be wasteful at 200 M users × dozens of taps each, and (b) feel laggy.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 3 — Raj taps "Save Team"</h3>
+    <p>Now the team goes to the server. The phone fires:</p>
+<pre style="margin-top:.65rem"><span class="kw">POST</span> /v1/teams
+{
+  <span class="str">"match_id"</span>:  <span class="str">"mi-vs-rcb-2026-05-29"</span>,
+  <span class="str">"players"</span>:   [<span class="str">"kohli"</span>, <span class="str">"rohit"</span>, <span class="str">"bumrah"</span>, <span class="str">"pant"</span>, ...],
+  <span class="str">"captain"</span>:   <span class="str">"kohli"</span>,
+  <span class="str">"vice_cap"</span>:  <span class="str">"bumrah"</span>,
+  <span class="str">"client_ts"</span>: <span class="str">"2026-05-29T19:20:11Z"</span>
+}</pre>
+    <p style="margin-top:.55rem">→ <strong>ALB ③</strong> → <strong>API Gateway ④</strong> (JWT verified once, route to <code>/teams/*</code> target group) → <strong>Team Service ⑤</strong>. Note the <code>client_ts</code> — purely advisory; server time is the authority for the deadline check that's about to happen.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 4 — Validation (the gatekeeper)</h3>
+    <p>Team Service runs <strong>four checks</strong> before it'll accept the save. Any fail returns 400 immediately — no Kafka, no Redis, no downstream noise:</p>
+    <ul style="margin-top:.45rem">
+      <li><strong>Count</strong> — exactly 11 players.</li>
+      <li><strong>Salary cap</strong> — sum of player credits ≤ ₹100. Looks up credits from the cached squad data.</li>
+      <li><strong>Role quotas</strong> — 1 wicket-keeper, 3–5 batsmen, 1–4 all-rounders, 3–5 bowlers, at most 7 from any one team.</li>
+      <li><strong>Captain / VC</strong> — both present, both in the 11, both distinct.</li>
+    </ul>
+    <p style="margin-top:.55rem"><strong>Why re-validate server-side when the client already did?</strong> Because the client can be hacked, reverse-engineered, or just buggy. A hostile user could POST a team worth ₹500 cr or with two captains. Server validation is the only authority — the client check is a UX optimisation, not a security control.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 5 — The deadline check (fairness, not just UX)</h3>
+    <p>Now the most important check: <strong>is the match still pre-toss?</strong> Team Service holds <code>match.start_time</code> in a tiny in-process cache (refreshed every 30 s from Postgres). If <code>server_now() ≥ start_time</code>, the response is:</p>
+<pre style="margin-top:.65rem"><span class="kw">HTTP</span> 423 LOCKED
+{<span class="str">"error"</span>: <span class="str">"match_started"</span>, <span class="str">"message"</span>: <span class="str">"Edits are not allowed after the toss."</span>}</pre>
+    <p style="margin-top:.55rem"><strong>Why this matters:</strong> if a user could edit their team after the first over, they'd already know who's bowling well, who's looking out of form, who's about to come on to bowl the death overs. That isn't fantasy — that's gambling fraud. The deadline check is the line between game and crime, and we enforce it strictly server-side. (§7 deep-dives the three-layer defense in depth: this check, the consumer-side drop, and the downstream timestamp guard.)</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 6 — Publish to Kafka (the shock absorber)</h3>
+    <p>Validation passed. Team Service does NOT write to Cassandra directly. It publishes to <strong>Kafka ⑩ topic <code>team-saves</code></strong>, partitioned by <code>user_id</code> so a single user's edits stay ordered:</p>
+<pre style="margin-top:.65rem"><span class="cmt"># Topic: team-saves · Partition key: user_id</span>
+{
+  <span class="str">"user_id"</span>:   <span class="str">"raj"</span>,
+  <span class="str">"team_id"</span>:   <span class="str">"team-987"</span>,
+  <span class="str">"match_id"</span>:  <span class="str">"mi-vs-rcb-2026-05-29"</span>,
+  <span class="str">"version"</span>:   <span class="num">7</span>,
+  <span class="str">"players"</span>:   [<span class="str">"kohli"</span>, <span class="str">"rohit"</span>, ...],
+  <span class="str">"captain"</span>:   <span class="str">"kohli"</span>,
+  <span class="str">"vice_cap"</span>:  <span class="str">"bumrah"</span>,
+  <span class="str">"server_ts"</span>: <span class="str">"2026-05-29T19:20:11.243Z"</span>
+}</pre>
+    <p style="margin-top:.55rem"><strong>Why Kafka and not Cassandra directly?</strong> Because at toss-time we hit <strong>500K saves/sec</strong>. Cassandra can sustain ~50K writes/sec per node — we'd need a 10-node cluster running flat out just for team saves, and any GC pause would back-pressure the API. Kafka can ingest 500K/sec on a 5-broker cluster without breaking a sweat — it's a sequential append to a log file. The durable Cassandra write happens asynchronously a few hundred ms later via a consumer.</p>
+    <p style="margin-top:.55rem"><strong>Why partition by user_id?</strong> So a user's own edits stay in order. If Raj saves version 6 then version 7 in quick succession, both land on the same partition and get consumed in order. Two different users' saves can be processed in parallel because they're on different partitions.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 7 — Cache the current team in Redis</h3>
+    <p>Right after the Kafka publish, Team Service writes the team to Redis:</p>
+<pre style="margin-top:.65rem"><span class="fn">SET</span> current_team:raj:mi-vs-rcb-2026-05-29 {team_json} EX 86400</pre>
+    <p style="margin-top:.55rem">TTL = 24 hours (long enough to cover the match + post-match scoring). <strong>Why this cache?</strong> Because the moment the match starts, the scoring fan-out (Walkthrough 3) needs to know which players each user has — and reading that from Cassandra for 200 M users every match would be a thundering herd. Redis serves the lookup in &lt; 1 ms. The Cassandra row is the source of truth; the Redis entry is the hot-path read cache.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 8 — Return 200 to Raj (optimistic ack)</h3>
+    <p>Team Service returns <code>200 OK</code> as soon as Kafka has acknowledged the publish — typically <strong>under 50 ms from tap to ack</strong>. The Cassandra write hasn't happened yet, but we don't wait for it.</p>
+    <p style="margin-top:.55rem"><strong>Is this safe?</strong> Yes, because Kafka is durable — once the broker acks (with <code>acks=all</code>, written to all 3 in-sync replicas), the event won't be lost even if the entire Cassandra consumer pipeline dies. We can rebuild Cassandra from Kafka by replaying the topic. The user's experience is "save was instant"; the durable persistence catches up within a second.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 9 — Async: Cassandra Consumer materialises the row</h3>
+    <p>A separate consumer service reads from <code>team-saves</code> and writes to <strong>Cassandra ⑬ <code>teams</code> table</strong>:</p>
+<pre style="margin-top:.65rem"><span class="kw">INSERT INTO</span> teams (user_id, match_id, team_id, version, players, captain, vice_cap, server_ts)
+<span class="kw">VALUES</span> (...);
+<span class="cmt">-- Partition key: (user_id, match_id) · Clustering: version DESC</span>
+<span class="cmt">-- Latest version is always the first row in a partition scan</span></pre>
+    <p style="margin-top:.55rem">The consumer also does a <strong>second deadline check</strong>: if <code>server_ts ≥ match.start_time</code>, it drops the event silently. This catches the rare race where Team Service let an event through right at the deadline boundary due to clock skew (typical: 50–100 ms via NTP). Defense in depth — the same fairness rule enforced twice.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 10 — Raj edits, edits, edits</h3>
+    <p>Over the next 50 minutes Raj swaps Pant for KL Rahul, then back to Pant, then changes Kohli's role from captain to vice-captain (and back). Each "Save" repeats steps 3–9. Each save bumps the <code>version</code> field and lands as a new row in Cassandra — we keep the full edit history for audit and dispute resolution.</p>
+    <p style="margin-top:.55rem">At <strong>7:59:30 PM</strong> Raj makes one last tweak. At <strong>8:00:00 PM</strong> sharp the deadline ticks. At <strong>8:00:01 PM</strong> Raj realises Bumrah is injured and tries to swap him out → Step 5 returns 423 LOCKED. His team is frozen at version 12, captain Kohli, vice-cap Bumrah. Now the team is locked for the entire match.</p>
+  </div>
+
+  <div class="highlight hl-blue"><strong>The "optimistic ack via Kafka" trick is the single most important pattern in this flow.</strong> Synchronous DB writes can't survive 500K/sec; Kafka can. By acking on the Kafka publish and materialising to Cassandra asynchronously, Team Service gets sub-50 ms response times during the toss-time spike while still guaranteeing durability. Redis carries the hot-path read; Cassandra carries the audit trail. <strong>Three datastores doing three different jobs</strong> — and none of them is on the critical synchronous path.</p>
+
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.35rem;margin:2.5rem 0 .5rem">Walkthrough 2 — Raj joins a contest</h3>
+  <p style="color:var(--text);font-size:.92rem;margin-bottom:1.2rem"><strong>Setting:</strong> It's 7:24 PM. The IPL match starts at 8:00 PM. Raj has built his fantasy team (Kohli as captain, Bumrah as vice-captain) and taps "Join" on a ₹49 Mega Contest with 12 million entries and a top prize of ₹1 crore. He has exactly ₹49 in his Dream11 wallet from a previous win. This is the <em>transaction plane</em> of the system — money is moving, so every step has to be ACID-safe. Here is what fires under the hood, step by step.</p>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 1 — The tap leaves Raj's phone</h3>
+    <p>The tap first goes to the <strong>CDN ②</strong> for any static asset the join screen needs (icons, contest banner). Static stuff never hits our origin — it is served from an edge POP in Mumbai about 15 ms away. The actual <em>API call</em> — <code>POST /v1/contests/{id}/join</code> — bypasses the CDN and goes straight to the <strong>ALB ③</strong>. ALB does TLS termination, picks a healthy <strong>API Gateway ④</strong> node, and forwards.</p>
+    <p style="margin-top:.55rem"><strong>Why ALB and not NLB here?</strong> This is a normal short-lived HTTP request, not a long-lived WebSocket. ALB gives us per-path routing (<code>/wallet/*</code> vs <code>/contest/*</code> → different target groups) and request-level metrics. NLB would work but throw away that L7 visibility.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 2 — Gateway: the bouncer</h3>
+    <p>The <strong>API Gateway ④</strong> does four jobs before it lets the request anywhere near the Contest Service:</p>
+    <ul style="margin-top:.45rem">
+      <li><strong>JWT verification</strong> — checks Raj's signed token (issued at login). If expired, return 401 immediately. This protects every downstream service from doing auth work.</li>
+      <li><strong>Rate limiting</strong> — Raj is allowed N joins per minute. Not about cost; about a buggy client retrying in a tight loop and double-charging him. The limit is keyed by <code>user_id</code> in Redis with a sliding window.</li>
+      <li><strong>Schema validation</strong> — body must contain a valid <code>team_id</code>. Reject malformed requests early.</li>
+      <li><strong>Routes</strong> to <strong>Contest Service ⑥</strong> (gRPC internally for lower latency).</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 3 — Idempotency: the "tap twice" problem</h3>
+    <p>Raj's phone has a flaky 4G connection. He taps "Join", sees a spinner, gets impatient, taps again. Without protection, we would double-debit his wallet and try to enter him twice.</p>
+    <p style="margin-top:.55rem"><strong>Contest Service ⑥</strong> generates an idempotency key: <code>SHA256(user_id + contest_id + team_id)</code>. Before doing anything, it checks Redis for this key:</p>
+    <ul style="margin-top:.45rem">
+      <li><strong>First time</strong> → Redis says "not seen". Proceed. Cache the request fingerprint with TTL = 5 minutes.</li>
+      <li><strong>Replay</strong> → Redis says "already processed, here is the result". Return that result without doing the work again.</li>
+    </ul>
+    <p style="margin-top:.55rem">This is why duplicate retries are safe — and it is the single most important pattern for any payment-adjacent API.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 4 — The wallet debit (the money-moving moment)</h3>
+    <p>Now Contest Service calls <strong>Wallet Service ⑦</strong>: <code>debit(user_id=raj, amount=49, txn_id=abc123)</code>. Wallet talks to <strong>Aerospike ⑨</strong>, which was picked specifically because it does <em>strong-consistency single-record transactions</em> with sub-millisecond latency at the volumes we hit. The operation is atomic on the record's primary node:</p>
+<pre style="margin-top:.65rem"><span class="kw">BEGIN</span>
+  <span class="kw">READ</span> balance <span class="kw">for</span> raj         <span class="cmt">→ returns 49</span>
+  <span class="kw">IF</span> balance &lt; 49 <span class="kw">THEN FAIL</span> <span class="str">"insufficient"</span>
+  <span class="kw">WRITE</span> balance = 0
+  <span class="kw">APPEND</span> ledger {txn_id, type:<span class="str">"debit"</span>, amount:49, contest_id, ts}
+<span class="kw">COMMIT</span></pre>
+    <p style="margin-top:.55rem"><strong>Why not Postgres for the wallet?</strong> Postgres would also work — but at 100K concurrent debits during a contest deadline (8:00 PM, everyone joining at the last minute), Postgres row locks would queue up. Aerospike's CP mode handles ~200K ops/sec per node with single-digit-ms p99.</p>
+    <p style="margin-top:.55rem"><strong>The ledger entry is critical.</strong> The balance is <em>derivable</em> from the ledger (sum of all credits minus debits), so the ledger is the source of truth. The balance field is just a denormalized cache for fast reads. If we ever suspect corruption, we re-derive from the ledger.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 5 — The contest entry write (Postgres, the relational anchor)</h3>
+    <p>Wallet debit succeeded. Now Contest Service inserts into <strong>Postgres ⑧</strong>:</p>
+<pre style="margin-top:.65rem"><span class="kw">INSERT INTO</span> contest_entries (user_id, contest_id, team_id, paid_amount, txn_id, joined_at)
+<span class="kw">VALUES</span> (<span class="str">'raj'</span>, <span class="str">'mega-49'</span>, <span class="str">'team-987'</span>, <span class="num">49</span>, <span class="str">'abc123'</span>, now());</pre>
+    <p style="margin-top:.55rem">A <code>UNIQUE</code> constraint on <code>(user_id, contest_id, team_id)</code> means Raj cannot enter the same contest twice with the same team. If a race condition somehow slipped past the idempotency check (different node, clock skew), the DB rejects the second insert at the storage layer.</p>
+    <p style="margin-top:.55rem"><strong>On unique-constraint violation</strong> (Raj already joined): Contest Service has to <em>undo</em> the wallet debit. It calls Wallet: <code>credit(user_id=raj, amount=49, txn_id=abc123-refund)</code>. The refund txn references the original — so the ledger now has a debit + a credit that net to zero. This is the <strong>saga pattern</strong>: distributed rollback when you cannot use a 2-phase commit across Aerospike and Postgres.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 6 — Fire the Kafka event (handoff to the stream plane)</h3>
+    <p>With money debited and entry recorded, Contest Service emits to <strong>Kafka ⑩</strong>:</p>
+<pre style="margin-top:.65rem"><span class="cmt"># Topic: contest-join · Partition key: contest_id</span>
+{
+  <span class="str">"user_id"</span>:     <span class="str">"raj"</span>,
+  <span class="str">"contest_id"</span>:  <span class="str">"mega-49"</span>,
+  <span class="str">"team_id"</span>:     <span class="str">"team-987"</span>,
+  <span class="str">"roster"</span>:      [<span class="str">"Kohli"</span>, <span class="str">"Bumrah"</span>, <span class="str">"Rohit"</span>, ...],
+  <span class="str">"captain"</span>:      <span class="str">"Kohli"</span>,
+  <span class="str">"vice_captain"</span>: <span class="str">"Bumrah"</span>,
+  <span class="str">"joined_at"</span>:    <span class="str">"2026-05-28T19:24:11Z"</span>
+}</pre>
+    <p style="margin-top:.55rem">Notice the response to Raj has <em>not</em> gone back yet. But this Kafka publish is async and takes &lt; 5 ms — it is not on the critical path.</p>
+    <p style="margin-top:.55rem"><strong>Why Kafka here?</strong> Three reasons:</p>
+    <ul style="margin-top:.45rem">
+      <li><strong>Decoupling</strong> — Contest Service should not know about leaderboards, push notifications, or analytics. It just announces "Raj joined" and walks away.</li>
+      <li><strong>Replay</strong> — if our leaderboard Redis gets corrupted, we can rewind Kafka to the start of the contest and rebuild from scratch.</li>
+      <li><strong>Multi-consumer fan-out</strong> — Flink reads it for the leaderboard, Push Notifications reads it to send "you're in!" pushes, Analytics reads it for dashboards. One topic, many consumers.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 7 — Flink seeds the leaderboard</h3>
+    <p><strong>Flink ⑫</strong> consumes the <code>contest-join</code> event and runs a tiny job: "for every new join, add the team to the contest's sorted set at score 0":</p>
+<pre style="margin-top:.65rem"><span class="fn">ZADD</span> lb:mega-49 <span class="num">0</span> team-987</pre>
+    <p style="margin-top:.55rem">That single Redis command puts Raj's team on the leaderboard at zero points, ranked equal-last alongside the other ~12 M teams. Redis's sorted set (ZSET) is a skip-list internally, so this O(log N) insert is microseconds.</p>
+    <p style="margin-top:.55rem"><strong>Why not just have Contest Service write to Redis directly and skip Kafka + Flink?</strong> Because if Redis is down or slow during the join, you would either fail the join (bad UX — user already paid) or have an inconsistency (paid but not on board). By going through Kafka, the join <em>always succeeds</em> as long as Postgres + Aerospike are alive. The leaderboard seeding happens eventually — typically within 100 ms, but if Redis is degraded, it catches up when Redis recovers.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 8 — The HTTP response returns</h3>
+    <p>Contest Service returns success up the chain: → API Gateway → ALB → Raj's phone. The full round trip is typically <strong>250 ms end-to-end</strong> (~50 ms network + 150 ms processing + 50 ms response render). Raj sees: <em>"You're in! Match starts in 36 mins."</em></p>
+  </div>
+
+  <div class="highlight hl-green"><strong>Trace the planes (the key insight):</strong> Steps 4 + 5 (Aerospike + Postgres) are the <em>transaction plane</em> — synchronous, ACID, money-safe. Step 6 (Kafka) is the <em>stream plane</em> — async fire-and-forget. Step 7 (Redis ZSET) is the <em>real-time plane</em> — derived state, eventually consistent. If Kafka were down for 60 s, <strong>Raj's join still succeeds</strong> — the transaction plane is untouched. His name just shows up on the leaderboard 60 s later when Kafka recovers and Flink catches up. This is the entire point of separating the planes.</div>
+
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.35rem;margin:2.5rem 0 .5rem">Walkthrough 3 — Kohli hits a six</h3>
+  <p style="color:var(--text);font-size:.92rem;margin-bottom:1.2rem"><strong>Setting:</strong> It is 8:15 PM. Kohli is on strike, ball 12.3 in a death over. He smashes a six over deep midwicket. The stadium roars — and within 5 seconds, every team across India that picked Kohli sees their score jump. This is the most thrilling moment in the system because <em>one event fans out to update ~60 million team scores</em>. If you tried to do that synchronously, you would melt the database. Here is how we do not.</p>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 1 — The ball-by-ball feed arrives</h3>
+    <p>The official scoring partner (e.g. Sportradar or the BCCI feed) POSTs to our <strong>Score Ingestion ⑪</strong> endpoint:</p>
+<pre style="margin-top:.65rem"><span class="kw">POST</span> /v1/scores/match-{id}/event
+Signature: hmac-sha256=...
+{
+  <span class="str">"ball"</span>:      <span class="str">"12.3"</span>,
+  <span class="str">"batsman"</span>:   <span class="str">"Kohli"</span>,
+  <span class="str">"bowler"</span>:    <span class="str">"Cummins"</span>,
+  <span class="str">"runs"</span>:      <span class="num">6</span>,
+  <span class="str">"extras"</span>:    <span class="num">0</span>,
+  <span class="str">"wicket"</span>:    <span class="kw">null</span>,
+  <span class="str">"timestamp"</span>: <span class="str">"2026-05-28T20:15:32Z"</span>
+}</pre>
+    <p style="margin-top:.55rem">The HMAC signature is verified against a shared secret — only the official partner can write to this endpoint. Anything else gets 401.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 2 — Deduplication (because feeds re-send)</h3>
+    <p>Cricket feeds famously double-fire. The partner might re-send ball 12.3 if their network blipped, or send a correction after a third-umpire review. Ingestion keeps a 5-minute LRU cache of <code>(match_id, ball_id, version)</code> it has already seen.</p>
+    <ul style="margin-top:.45rem">
+      <li><strong>New ball</strong> → process and remember.</li>
+      <li><strong>Duplicate of an already-seen ball</strong> → drop silently, return 200.</li>
+      <li><strong>Correction</strong> (same ball_id, higher version) → process, and mark the previous one as superseded so downstream Flink can issue a compensating delta.</li>
+    </ul>
+    <p style="margin-top:.55rem">After dedup, ingestion publishes to <strong>Kafka topic <code>score-events</code></strong>, partitioned by <code>match_id</code> — all events for one match go to one partition, so Flink processes them strictly in order.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 3 — Flink Job A: scoring rules</h3>
+    <p><strong>Flink ⑫ Job A (Scoring)</strong> reads the event. It loads the <em>cricket scoring strategy</em> (a versioned rules config from a control-plane DB) and applies it:</p>
+<pre style="margin-top:.65rem"><span class="cmt"># Kohli scored 6 runs</span>
+<span class="num">+6</span> fantasy points <span class="kw">for</span> the runs
+<span class="num">+1</span> boundary bonus (any 4 or 6 gets a bonus)
+<span class="kw">if</span> this is his 50th run total: <span class="num">+8</span> milestone bonus
+<span class="kw">if</span> this is his 100th run total: <span class="num">+16</span> milestone bonus
+Total delta: <span class="num">7</span> points</pre>
+    <p style="margin-top:.55rem">It emits to topic <code>player-point-deltas</code>:</p>
+<pre style="margin-top:.65rem">{<span class="str">"match_id"</span>:<span class="str">"..."</span>, <span class="str">"player"</span>:<span class="str">"Kohli"</span>, <span class="str">"delta"</span>:<span class="num">7</span>, <span class="str">"reason"</span>:<span class="str">"six+bonus"</span>, <span class="str">"ball"</span>:<span class="str">"12.3"</span>}</pre>
+    <p style="margin-top:.55rem"><strong>Why a separate job for scoring?</strong> Because the rules change — Dream11 tweaks scoring across formats (T20 vs ODI vs Test). By having a pure "event → point delta" job, the <em>rules</em> live in one place. If we mis-scored a ball, we can replay this job alone, not the whole fan-out.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 4 — Flink Job B: the fan-out (the magic)</h3>
+    <p>This is the step that makes the system possible. <strong>Flink Job B (Fan-Out)</strong> reads the delta and asks: <em>which teams picked Kohli, and at what multiplier?</em></p>
+    <p style="margin-top:.55rem">It holds a <strong>broadcast state</strong> — a copy of "player → list of teams that picked them" — refreshed every 15 minutes from <strong>Cassandra ⑬</strong>. At match time, this broadcast is in every Flink subtask's memory. So when the Kohli delta arrives, the lookup is O(1) in-memory; <strong>no DB hit at runtime</strong>.</p>
+<pre style="margin-top:.65rem"><span class="cmt"># In-memory lookup (broadcast state)</span>
+Kohli → [team-101 (C), team-102 (VC), team-987 (C=Raj), ... 60M entries]</pre>
+    <p style="margin-top:.55rem">For each team, Flink computes the multiplier and emits a per-team delta:</p>
+<pre style="margin-top:.65rem">team-101  {captain: Kohli}      → delta = 7 × 2   = 14
+team-102  {vice_captain: Kohli} → delta = 7 × 1.5 = 10.5
+team-987  {captain: Kohli}      → delta = 7 × 2   = 14   <span class="cmt"># Raj</span>
+team-203  {regular pick}        → delta = 7 × 1   = 7
+... 60 M entries</pre>
+    <p style="margin-top:.55rem"><strong>Why broadcast state and not query Cassandra per event?</strong> A single Cassandra query is ~5 ms. 60 M queries serially = 83 hours. Even at 10K QPS in parallel = 100 minutes. Broadcast state collapses this to a single in-memory hash lookup per delta — done in microseconds across 200 parallel Flink subtasks.</p>
+    <p style="margin-top:.55rem">Flink's parallelism is the trick: Job B runs with parallelism 200. Each subtask owns a slice of teams (sharded by <code>hash(team_id) % 200</code>). For the Kohli event, the broadcast lets each subtask independently find its 300K teams and emit deltas. <strong>60 M deltas ÷ 200 subtasks = 300K per subtask = sub-second.</strong></p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 5 — Sharding the deltas to Kafka</h3>
+    <p>The 60 M output deltas are written to Kafka topic <code>team-point-deltas</code>, <strong>partitioned by <code>contest_id</code></strong>. This is important: it means all deltas affecting one contest's leaderboard land on the same partition — preserving ordering for that contest. Two consumers downstream pick this up in parallel.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 6 — Durable write to Cassandra</h3>
+    <p><strong>Sink 1: Cassandra ⑬.</strong> Each delta is appended:</p>
+<pre style="margin-top:.65rem"><span class="kw">INSERT INTO</span> team_points (contest_id, team_id, ball_id, delta, total_after, ts)
+<span class="kw">VALUES</span> (...);</pre>
+    <p style="margin-top:.55rem">The partition key is <code>contest_id</code>, so all of a contest's deltas live on one node. This is append-only — no updates, no deletes — Cassandra's perfect workload. We write <em>every</em> point delta and never overwrite.</p>
+    <p style="margin-top:.55rem"><strong>Why durable Cassandra at all if Redis has the leaderboard?</strong> Three reasons:</p>
+    <ul style="margin-top:.45rem">
+      <li><strong>Redis is a cache.</strong> If a Redis node dies, we restore the ZSET by replaying the Cassandra rows for that contest (single-partition scan, fast).</li>
+      <li><strong>Audit trail.</strong> Players dispute scores. "I should have got 14 from Kohli's six, but I see 7." We can prove every point with the ledger.</li>
+      <li><strong>Post-match reconstruction.</strong> The final leaderboard is computed by reading all rows for the contest and summing — Redis is just the live view.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 7 — Redis ZSET update (the leaderboard moves)</h3>
+    <p><strong>Sink 2: Redis ⑭.</strong> For each delta:</p>
+<pre style="margin-top:.65rem"><span class="fn">ZINCRBY</span> lb:{contest_id} {delta} {team_id}</pre>
+    <p style="margin-top:.55rem"><code>ZINCRBY</code> atomically adds the delta to the team's score AND re-sorts the ZSET. Both happen in O(log N) — for a 12 M-member ZSET, that is ~24 comparisons. Redis Cluster shards the ZSETs across nodes by <code>contest_id</code>, so even at 60 M total deltas, they distribute across maybe 50 contests × the Redis cluster.</p>
+    <p style="margin-top:.55rem">After this sink, <strong>the leaderboard is live and correct</strong>. Top-100 reads (<code>ZREVRANGE 0 99 WITHSCORES</code>) reflect Kohli's six immediately.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 8 — WebSocket Gateway pushes to clients</h3>
+    <p>Meanwhile, Raj's phone has had a WebSocket open since 7:24 PM, subscribed to <code>contest:mega-49</code>. The <strong>WebSocket Gateway ⑮</strong> runs a <strong>tick loop every 3 seconds</strong>:</p>
+<pre style="margin-top:.65rem"><span class="kw">for every</span> active contest:
+  top100 = <span class="fn">ZREVRANGE</span> lb:{contest_id} 0 99 WITHSCORES
+  <span class="kw">for every</span> connected user <span class="kw">in</span> this contest:
+    my_rank  = <span class="fn">ZREVRANK</span> lb:{contest_id} {user.team_id}
+    my_score = <span class="fn">ZSCORE</span>   lb:{contest_id} {user.team_id}
+    send WS frame: {top100, my_rank, my_score}</pre>
+    <p style="margin-top:.55rem"><strong>Why a tick loop and not push-per-delta?</strong> Because 60 M deltas in 1 second × 10 M live viewers = trillions of pushes. Instead, we batch: every 3 seconds we send each viewer one frame containing all the changes since the last tick. The user perceives "live"; the system survives.</p>
+  </div>
+
+  <div class="card">
+    <h3 style="color:var(--heading);font-size:1rem;margin-bottom:.4rem">Step 9 — Raj sees the magic</h3>
+    <p>Raj's phone receives the WS frame at 8:15:35 PM — about 3 seconds after the ball was bowled. His UI animates:</p>
+    <ul style="margin-top:.45rem">
+      <li><strong>Rank: 89,412 → 38,210</strong> (up 51,202 places)</li>
+      <li><strong>Score: 247 → 261</strong> (+14, Kohli × 2 captain bonus)</li>
+      <li>A little confetti burst.</li>
+    </ul>
+    <p style="margin-top:.55rem">He cheers along with the stadium. The end-to-end latency from "leather hits willow" to "Raj's screen updates" was about <strong>5 seconds</strong> — feed latency (1–2 s) + Kafka (~10 ms) + Flink processing (~500 ms) + Redis writes (~100 ms) + tick interval (up to 3 s).</p>
+  </div>
+
+  <div class="highlight hl-pink"><strong>Why fan-out at the stream layer, not at write time:</strong> if we tried <code>UPDATE teams SET points = points + 14 WHERE player_includes('Kohli')</code> synchronously on every six, the DB would melt — a 60 M-row write on a single statement, with row locks and index updates everywhere. Score lag would be minutes, not seconds, and one big match would knock the system over. By doing fan-out in Flink with a broadcast join + parallel sinks, we exploit horizontal compute: 60 M deltas distributed across 200 parallel Flink subtasks = 300 K deltas per subtask = sub-second. The DB and Redis just absorb the parallel writes from many sinks. <strong>Synchronous transaction plane for money, asynchronous stream plane for fan-out</strong> — the single most important architectural decision in the whole design.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 5: DATABASE PER SERVICE               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s5">
+  <span class="sec-tag tag-purple">Step 5</span>
+  <h2>Database Per Service — Why This DB, Not That</h2>
+  <p>This is the section the user asked for explicitly: <em>"if you use Postgres, tell me why not MySQL or Oracle."</em> Each datastore in the design solves a different problem; here is the reasoning for each pick, with the alternatives compared side-by-side.</p>
+
+  <!-- ── Postgres ── -->
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.18rem;margin:1.4rem 0 .6rem">5.1 Users, Contests, Entries → <span style="color:var(--purple)">Postgres</span></h3>
+  <p>The transactional, structured, relationship-heavy data — users, KYC, contests, contest entries, prize tiers — lives here. Reads dominate writes (~10:1) and the schema is highly relational (every contest entry FK-joins to a user, a contest, and a team).</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Option</th><th>What it gives us</th><th>What it costs</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Postgres 16</strong></td>
+          <td>True MVCC, real ACID, JSONB for flexible contest config, partial indexes, advanced index types (GIN for prize-tier JSON), logical replication, pg_partman for time-partitioning, pg_stat_statements for prod debugging, hot-standby replicas for read scaling.</td>
+          <td>Single-primary by default — multi-region writes need extensions (BDR) or Citus. Vacuum tuning required at scale.</td>
+          <td><span class="verdict v-pick">PICKED</span></td>
+        </tr>
+        <tr>
+          <td>MySQL 8</td>
+          <td>Faster simple reads via clustered InnoDB primary-key layout. Bigger ops talent pool in India. Group Replication for multi-primary.</td>
+          <td>Weaker transactional isolation in default config (repeatable-read has phantom-read quirks). JSON column type is slower than Postgres JSONB. No partial indexes. Online schema changes require gh-ost or pt-online-schema-change.</td>
+          <td><span class="verdict v-meh">VIABLE</span></td>
+        </tr>
+        <tr>
+          <td>Oracle</td>
+          <td>Mature, battle-tested, RAC for clustering.</td>
+          <td>Licensing cost is enormous at this scale (~$47K/core/year). Vendor lock-in. Slower ops cycle. Cloud-native tooling weaker.</td>
+          <td><span class="verdict v-skip">SKIP</span></td>
+        </tr>
+        <tr>
+          <td>CockroachDB</td>
+          <td>Postgres wire protocol + multi-region SERIALIZABLE writes out of the box. Horizontal scaling without sharding logic in app.</td>
+          <td>Higher write latency (consensus per write). Smaller community. We don't yet need multi-region writes — single region (Mumbai) + DR replica is enough.</td>
+          <td><span class="verdict v-meh">FUTURE</span></td>
+        </tr>
+        <tr>
+          <td>MongoDB</td>
+          <td>Schema flexibility, good aggregation framework.</td>
+          <td>Multi-document transactions are slow &amp; have caveats. No real foreign keys. We have relational data — forcing it into documents adds work, not removes it.</td>
+          <td><span class="verdict v-skip">SKIP</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The deciding factor:</strong> Postgres's <code>JSONB</code> + partial indexes let us store the prize-tier config as flexible JSON (top 1% gets X, top 10% gets Y) <em>and</em> index into it. MySQL's JSON is a second-class citizen here. We also get logical replication for change-data-capture into our analytics warehouse without an extra Debezium connector. The cost is vacuum tuning — solvable with autovacuum + pg_repack runs during off-peak.</div>
+
+  <!-- ── Aerospike ── -->
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.18rem;margin:1.8rem 0 .6rem">5.2 Wallet Ledger → <span style="color:var(--purple)">Aerospike</span></h3>
+  <p>200 K wallet ops/sec at p99 &lt; 5 ms, durable to disk, strongly consistent. This is the hardest single requirement in the entire system.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Option</th><th>What it gives us</th><th>What it costs</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Aerospike</strong></td>
+          <td>Hybrid memory architecture — indexes in RAM, data on NVMe SSD. Linear scaling, sub-ms ops, strong consistency (CP) mode, XDR (cross-datacenter replication). Battle-tested at this exact use case at PayPal, Snap, Adobe.</td>
+          <td>Niche skillset compared to Redis/Postgres. Commercial licence above 4 nodes. Operational tooling less polished than Postgres.</td>
+          <td><span class="verdict v-pick">PICKED</span></td>
+        </tr>
+        <tr>
+          <td>Redis (with AOF)</td>
+          <td>Familiar, ms-latency, in-memory.</td>
+          <td>AOF fsync-every-write is slow; fsync-every-second can lose up to 1 s of writes on crash — unacceptable for money. Cluster mode doesn't support multi-key transactions across shards.</td>
+          <td><span class="verdict v-skip">SKIP</span></td>
+        </tr>
+        <tr>
+          <td>DynamoDB</td>
+          <td>Managed, scales horizontally, transactional API.</td>
+          <td>Cost at 200 K ops/sec sustained is brutal — ~$60 K/month for the throughput alone. Multi-item transactions are 2× the cost. Vendor lock-in.</td>
+          <td><span class="verdict v-meh">EXPENSIVE</span></td>
+        </tr>
+        <tr>
+          <td>Postgres (sharded)</td>
+          <td>Strong consistency, familiar.</td>
+          <td>Caps around 20 K writes/sec per primary. To get 200 K we'd need 10+ shards just for the wallet, and cross-shard transactions for the contest-join saga become painful.</td>
+          <td><span class="verdict v-skip">SKIP</span></td>
+        </tr>
+        <tr>
+          <td>FoundationDB</td>
+          <td>True ACID across shards, sub-ms latency.</td>
+          <td>Schemaless KV — we'd build the ledger layer ourselves. Smaller community in India.</td>
+          <td><span class="verdict v-meh">VIABLE</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-purple"><strong>The deciding factor:</strong> Aerospike's combination of in-memory speed + on-disk durability + strong consistency is unique. Redis is fast but loses data on crash; Postgres is durable but slow; DynamoDB is both but expensive and AWS-locked. Aerospike is what PayU and PayPal use for their wallet workloads at India scale — and Dream11 publicly talks about using it for wallets too.</div>
+
+  <!-- ── Cassandra ── -->
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.18rem;margin:1.8rem 0 .6rem">5.3 team_points Wide Table → <span style="color:var(--pink)">Cassandra</span></h3>
+  <p>An append-mostly log of point deltas for every team in every contest. Write-heavy (~1 M writes/sec at peak), read-light (only at match end + occasional cache rebuild). Per-contest queries.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Option</th><th>What it gives us</th><th>What it costs</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Cassandra</strong></td>
+          <td>Write-optimised log-structured merge tree (LSM). Linear horizontal scaling. Tunable consistency (we use QUORUM on writes, ONE on reads). Partitioning by <code>contest_id</code> means contest-end queries hit a single partition.</td>
+          <td>Read-modify-write is awkward (no real transactions). Compaction tuning is an ops burden. Eventual consistency across replicas.</td>
+          <td><span class="verdict v-pick">PICKED</span></td>
+        </tr>
+        <tr>
+          <td>MongoDB</td>
+          <td>Document model, secondary indexes, ad-hoc queries.</td>
+          <td>Write throughput collapses with secondary indexes &amp; large collections. Sharding requires careful shard-key picking. Not built for append-mostly workloads.</td>
+          <td><span class="verdict v-skip">SKIP</span></td>
+        </tr>
+        <tr>
+          <td>DynamoDB</td>
+          <td>Managed, auto-scales, similar wide-column model.</td>
+          <td>Cost at 1 M writes/sec is &gt;$100 K/month. AWS lock-in.</td>
+          <td><span class="verdict v-meh">EXPENSIVE</span></td>
+        </tr>
+        <tr>
+          <td>ScyllaDB</td>
+          <td>Cassandra-compatible API, C++ implementation, 2–10× higher throughput per node.</td>
+          <td>Smaller ecosystem. Some Cassandra-specific tooling doesn't work yet.</td>
+          <td><span class="verdict v-meh">FUTURE</span></td>
+        </tr>
+        <tr>
+          <td>HBase</td>
+          <td>Wide-column, Hadoop ecosystem.</td>
+          <td>Operational complexity (HDFS + Zookeeper + RegionServer); slower than Cassandra for our pattern; weaker tunable consistency.</td>
+          <td><span class="verdict v-skip">SKIP</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-pink"><strong>The deciding factor:</strong> Cassandra's LSM-tree storage is purpose-built for write-heavy append workloads. Our access pattern — "lots of writes during the match, one big read per contest at match end" — fits its strengths perfectly. The fact that we control partitioning means the post-match leaderboard reconstruction for a 12 M-entry contest is a single-partition scan, not a fan-out.</div>
+
+  <!-- ── Redis ── -->
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.18rem;margin:1.8rem 0 .6rem">5.4 Live Leaderboard → <span style="color:var(--red)">Redis (Sorted Sets)</span></h3>
+  <p>The headline use case — see §9 for the deep dive. The decision here is short because the alternative ("SQL ORDER BY at scale") is simply not viable.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Option</th><th>What it gives us</th><th>What it costs</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Redis ZSET (Cluster)</strong></td>
+          <td>Skip-list backed sorted set, O(log N) insert/update, O(log N + K) range read. ZINCRBY / ZRANGE / ZREVRANK / ZSCORE are all sub-ms. Cluster mode shards by hash slot of the key, so different contests live on different nodes naturally.</td>
+          <td>In-memory only — losing a node loses that contest's leaderboard until rebuild from Cassandra. Mitigation: 2× replication + periodic snapshot + Cassandra as recovery source.</td>
+          <td><span class="verdict v-pick">PICKED</span></td>
+        </tr>
+        <tr>
+          <td>Memcached</td>
+          <td>Faster GET/SET than Redis.</td>
+          <td>No sorted-set primitive. We'd have to materialise top-N ourselves on every write — defeats the purpose.</td>
+          <td><span class="verdict v-skip">SKIP</span></td>
+        </tr>
+        <tr>
+          <td>Elasticsearch</td>
+          <td>Sortable, has full leaderboard semantics.</td>
+          <td>Indexing latency is seconds, not ms. Heavy resource footprint. Built for search, not ranked counters.</td>
+          <td><span class="verdict v-skip">SKIP</span></td>
+        </tr>
+        <tr>
+          <td>DragonflyDB</td>
+          <td>Redis-compatible API, much higher per-node throughput.</td>
+          <td>Newer; ZSET implementation slightly different in edge cases.</td>
+          <td><span class="verdict v-meh">FUTURE</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-red"><strong>The deciding factor:</strong> Redis ZSET <em>is</em> a leaderboard data structure. No translation needed — it's a 1-to-1 fit. Every other choice would mean building a leaderboard on top of a primitive that wasn't designed for it.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 6: LOAD BALANCER CHOICE               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s6">
+  <span class="sec-tag tag-blue">Step 6</span>
+  <h2>Load Balancer Choice — ALB vs NLB vs HAProxy</h2>
+  <p>The user asked: "if you use a load balancer, tell me which one — ALB, ELB — and where it fits." Short answer: we use <em>two different load balancers</em> for two different traffic patterns. Here is the breakdown.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>LB</th><th>Layer</th><th>Best for</th><th>Where we use it</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>AWS ALB</strong></td>
+          <td>L7 (HTTP/HTTPS)</td>
+          <td>Path-based routing, host-based routing, TLS termination, sticky cookies, WAF integration, gRPC support, content-aware health checks.</td>
+          <td>In front of the <strong>REST API tier</strong> — Team / Contest / Wallet services. We need path routing (<code>/team/*</code> → Team Svc) and HTTP-aware health checks.</td>
+          <td><span class="verdict v-pick">PICKED for REST</span></td>
+        </tr>
+        <tr>
+          <td><strong>AWS NLB</strong></td>
+          <td>L4 (TCP/UDP)</td>
+          <td>Extreme throughput (millions of req/sec), preserves source IP, static IPs, ultra-low latency, ideal for long-lived TCP / WebSocket connections.</td>
+          <td>In front of the <strong>WebSocket gateway</strong> — millions of long-lived connections for live leaderboards. We don't need L7 inspection once WS is established, and NLB scales further with less overhead.</td>
+          <td><span class="verdict v-pick">PICKED for WS</span></td>
+        </tr>
+        <tr>
+          <td>Classic ELB</td>
+          <td>L4/L7 (legacy)</td>
+          <td>Backwards compatibility.</td>
+          <td>Deprecated by AWS. Lower throughput than NLB, fewer features than ALB.</td>
+          <td><span class="verdict v-skip">SKIP — legacy</span></td>
+        </tr>
+        <tr>
+          <td>HAProxy / Envoy (self-hosted)</td>
+          <td>L4 + L7</td>
+          <td>Full control, advanced traffic shaping, on-prem hybrid.</td>
+          <td>We'd run this if we were not all-in on AWS, or needed Envoy's xDS / service-mesh integration. For our case, the managed ALB+NLB save ops time without losing capability.</td>
+          <td><span class="verdict v-meh">VIABLE OFF-CLOUD</span></td>
+        </tr>
+        <tr>
+          <td>Global Accelerator</td>
+          <td>Anycast routing</td>
+          <td>Sub-50ms TCP path optimisation globally.</td>
+          <td>We'd put this in front of both LBs for NRI users to reduce round-trip-time to Mumbai region. Optional add-on, not a replacement.</td>
+          <td><span class="verdict v-meh">ADD-ON</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-blue"><strong>Why two LBs and not one ALB everywhere?</strong> ALB does support WebSocket — but each WS upgrade keeps a connection open for the duration of the match. ALB charges per LCU (Load Balancer Capacity Unit), and active connections are a primary axis of that cost. At 10 M concurrent WebSockets, ALB costs roughly 3× NLB while offering no extra value after the HTTP upgrade completes. NLB is L4, charges per active flow at a flatter rate, supports millions of concurrent connections per LB, and preserves the source IP — useful for our rate-limiter to see the real client.</div>
+
+  <div class="highlight hl-orange"><strong>Routing rule on the ALB:</strong>
+    <pre style="margin-top:.65rem;background:rgba(0,0,0,.35);border:none">
+<span class="cmt"># ALB listener rules — evaluated top-down</span>
+<span class="kw">if</span> path starts <span class="str">/auth/*</span>      → target-group: auth-svc      <span class="cmt"># priority 100</span>
+<span class="kw">if</span> path starts <span class="str">/wallet/*</span>    → target-group: wallet-svc    <span class="cmt"># priority 110</span>
+<span class="kw">if</span> path starts <span class="str">/contest/*</span>   → target-group: contest-svc   <span class="cmt"># priority 120</span>
+<span class="kw">if</span> path starts <span class="str">/team/*</span>      → target-group: team-svc      <span class="cmt"># priority 130</span>
+<span class="kw">if</span> path starts <span class="str">/leaderboard/*</span> → target-group: leaderboard-svc <span class="cmt"># priority 140</span>
+default                          → target-group: gateway-svc</pre>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7: TEAM CREATION & DEADLINE LOCK      -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7">
+  <span class="sec-tag tag-green">Step 7</span>
+  <h2>Team Creation &amp; the Deadline Lock</h2>
+  <p>The hardest fairness requirement: once the match starts, no team can be edited. This is the line between a game and gambling fraud — if a user could edit their team after seeing the first over, they'd already know who's in form. We enforce it strictly in the data path, not as a UI hint.</p>
+
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.15rem;margin:1.2rem 0 .6rem">7.1 The write path</h3>
+  <p>Team save is high-frequency (users tweak their teams dozens of times before locking in) and bursty (peak in the last 5 min before toss). We don't write directly to a DB — that would die. Instead the write path is:</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor U as User
+  participant TS as Team Service
+  participant V as Validator
+  participant K as Kafka (team-saves)
+  participant CON as Cassandra Consumer
+  participant CA as Cassandra
+  participant R as Redis (current_team:user_id)
+
+  U->>TS: POST /team {match_id, player_ids[11], cap, vc}
+  TS->>V: validate(salary, roles, count)
+  alt valid &amp; before deadline
+    V-->>TS: OK
+    TS->>K: publish TeamSaved {user_id, match_id, version, ts}
+    TS->>R: SET current_team:{user_id}:{match_id} (TTL until deadline)
+    TS-->>U: 200 OK (optimistic)
+    K-->>CON: deliver event
+    CON->>CA: INSERT INTO teams (durable record)
+  else after deadline
+    V-->>TS: 423 LOCKED
+    TS-->>U: "Match has started — no edits allowed"
+  end
+</div>
+  </div>
+
+  <p>Notice the trick: the <em>response</em> goes back to the user as soon as Kafka acknowledges the event. The actual write to Cassandra happens asynchronously through the consumer. This is the only way we survive a 500 K writes/sec toss-time spike — Kafka is way faster than Cassandra at ingestion, and the durable record catches up within a second.</p>
+
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.15rem;margin:1.6rem 0 .6rem">7.2 Enforcing the lock — two layers</h3>
+
+  <div class="g2">
+    <div class="card">
+      <h3>🛡️ Layer 1: server-side deadline check</h3>
+      <p>Every team save reads <code>match.start_time</code> from a small in-memory cache (refreshed every 30 s from Postgres). If <code>now() ≥ start_time</code>, the validator returns 423 LOCKED and the event is rejected before it touches Kafka.</p>
+      <p style="margin-top:.55rem"><strong>Why this layer:</strong> the client can't be trusted. It can lie about the time, modify the request payload, or replay an old save. Server time is the only authority.</p>
+    </div>
+    <div class="card">
+      <h3>🛡️ Layer 2: idempotent late-arrival filter</h3>
+      <p>If an event somehow lands in Kafka past the deadline (e.g., it was in flight when the deadline ticked), the Cassandra consumer drops it. Cassandra's primary key includes the team version; only versions written before the deadline ever land.</p>
+      <p style="margin-top:.55rem"><strong>Why two layers:</strong> defense in depth. A clock skew between server boxes (typical: 50–100 ms via NTP) could let a save sneak through layer 1 — the consumer's idempotent check catches it.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-green"><strong>One more guard:</strong> the live leaderboard / score-fanout system reads each team's <em>last-known-version</em> stamped with a timestamp from Cassandra. Any team write with <code>ts ≥ deadline</code> is treated as if it never happened. Triple insurance — server-side check, consumer filter, downstream timestamp guard. Money + fairness don't trust one wall.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 8: SCORE INGESTION & FAN-OUT          -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s8">
+  <span class="sec-tag tag-cyan">Step 8</span>
+  <h2>Score Ingestion &amp; Fan-Out</h2>
+  <p>This is the most interesting pipeline in the system. A single ball event can mean updating points for 60 million teams in 5 seconds. Done naively, it's impossible. Done with Flink + broadcast joins + sharded sinks, it's routine.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  P([Sportradar Feed])
+  IG[Score Ingestion]
+  K1[Kafka<br/>score-events]
+  FA[Flink Job A<br/>Scoring]
+  K2[Kafka<br/>player-point-deltas]
+  FB[Flink Job B<br/>Fan-Out join]
+  K3[Kafka<br/>team-point-deltas]
+  CS1[Sink 1<br/>Cassandra writer]
+  CS2[Sink 2<br/>Redis ZSET updater]
+  CA[(Cassandra<br/>team_points)]
+  RZ[(Redis ZSET<br/>leaderboards)]
+
+  P -- webhook --> IG
+  IG --> K1
+  K1 --> FA
+  FA --> K2
+  K2 --> FB
+  FB --> K3
+  K3 --> CS1 --> CA
+  K3 --> CS2 --> RZ
+
+  style P fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style IG fill:#3cbfbf,stroke:#3cbfbf,color:#000
+  style FA fill:#3cbfbf,stroke:#3cbfbf,color:#000
+  style FB fill:#3cbfbf,stroke:#3cbfbf,color:#000
+  style K1 fill:#3cbfbf,stroke:#3cbfbf,color:#000
+  style K2 fill:#3cbfbf,stroke:#3cbfbf,color:#000
+  style K3 fill:#3cbfbf,stroke:#3cbfbf,color:#000
+  style CS1 fill:#38b265,stroke:#38b265,color:#fff
+  style CS2 fill:#38b265,stroke:#38b265,color:#fff
+  style CA fill:#ec5d8a,stroke:#ec5d8a,color:#fff
+  style RZ fill:#e05252,stroke:#e05252,color:#fff
+    </div>
+  </div>
+
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.15rem;margin:1.4rem 0 .6rem">8.1 The broadcast join — the magic trick</h3>
+  <p>Job B (Fan-Out) needs to answer: "given that player X just scored Y points, which teams have player X?" The naive way is to query a DB on every event — but that's 12 K queries/match against 150 M rows. The Flink way is a <strong>broadcast state</strong>:</p>
+
+  <div class="card">
+    <ol style="list-style:decimal;padding-left:1.4rem;color:var(--text);font-size:.88rem;line-height:2">
+      <li>Once per 15 minutes, a side job dumps "for each match, for each player, which team_ids picked them" from Cassandra and publishes it onto a Kafka topic <code>player-team-index</code>.</li>
+      <li>Flink Job B subscribes to <code>player-team-index</code> as a <em>broadcast stream</em>. Every Flink subtask keeps a local copy of the full player→team_ids map in RAM.</li>
+      <li>Job B's main stream is <code>player-point-deltas</code>. For each delta, it looks up the team_ids in the local broadcast state — O(1), no network call — and emits one delta per team.</li>
+      <li>Output deltas are keyed by <code>contest_id</code>, partitioned across Kafka, and consumed by the sinks in parallel.</li>
+    </ol>
+  </div>
+
+  <div class="highlight hl-cyan"><strong>Why broadcast state and not a Cassandra lookup per event?</strong> A Cassandra lookup is ~5 ms. 12 K events × 60 M teams average lookup volume = unworkable. The broadcast state pre-loads the data so the lookup is in-process memory. Trade-off: the map is up to 15 min stale, so team edits in the last 15 min are processed off a slightly outdated index — but team edits are <em>locked</em> at toss time anyway, so the index is fresh enough by definition.</div>
+
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.15rem;margin:1.4rem 0 .6rem">8.2 Captain &amp; vice-captain multipliers</h3>
+  <p>Each team picks one captain (2× points) and one vice-captain (1.5× points). The multiplier is applied <em>during fan-out</em>, not at the score event — because the multiplier is per-team, not per-player. Job B's broadcast map contains <code>player_id → [(team_id, role), …]</code> where <code>role ∈ {regular, vc, c}</code>, and emits the appropriate delta per team.</p>
+
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.15rem;margin:1.4rem 0 .6rem">8.3 Idempotency &amp; exactly-once</h3>
+  <p>Flink + Kafka with the transactional producer gives us exactly-once <em>across Kafka topics</em>. But the sinks (Cassandra, Redis) need to be idempotent. Each delta carries a unique <code>(match_id, ball_id, team_id)</code> tuple. Cassandra writes use this as a clustering key — duplicate insert just overwrites. Redis ZINCRBY isn't naturally idempotent, so we wrap it with a Lua script that records the processed <code>(ball_id, team_id)</code> in a small per-contest set; duplicate deltas are no-ops.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 9: LIVE LEADERBOARD                   -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s9">
+  <span class="sec-tag tag-red">Step 9</span>
+  <h2>Live Leaderboard — Redis ZSET Deep Dive</h2>
+  <p>The leaderboard is the user-facing payoff of the whole system. It must rank a 12 M-entry contest in real-time, show the user their own rank, and stream updates every few seconds. Every byte of every choice here is forced by Big-O.</p>
+
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.15rem;margin:1.4rem 0 .6rem">9.1 The data structure</h3>
+
+  <pre><span class="cmt"># One ZSET per contest. Sharded across Redis Cluster by contest_id.</span>
+<span class="kw">ZADD</span>     lb:c_8421  <span class="num">0</span>    t_91123   <span class="cmt"># seed at join</span>
+<span class="kw">ZINCRBY</span>  lb:c_8421  <span class="num">7</span>    t_91123   <span class="cmt"># Kohli six → +7</span>
+<span class="kw">ZREVRANGE</span> lb:c_8421 <span class="num">0</span> <span class="num">99</span> WITHSCORES   <span class="cmt"># top-100 → ~1ms at 12M members</span>
+<span class="kw">ZREVRANK</span> lb:c_8421 t_91123             <span class="cmt"># my rank → O(log N) ~100µs</span>
+<span class="kw">ZSCORE</span>   lb:c_8421 t_91123             <span class="cmt"># my score → O(1)</span></pre>
+
+  <p>Internally, Redis ZSET is a skip-list keyed by score (with a hash side-index for O(1) ZSCORE). Insert/update is O(log N); the top-K read is O(log N + K). At N = 12 M, log₂(N) ≈ 24 — fast.</p>
+
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.15rem;margin:1.4rem 0 .6rem">9.2 Sharding strategy</h3>
+  <p>Each ZSET lives on one shard (Redis Cluster doesn't split a single key across nodes). So the question is: <em>does a single contest's ZSET fit on one node?</em></p>
+  <p style="margin-top:.5rem">A 12 M-entry ZSET ≈ 12 M × (8-byte member + 8-byte score + skip-list overhead) ≈ 1.5 GB. A 64 GB Redis node holds ~40 of these. We have ~10 K contests/match — across the cluster we need ~250 nodes worth. Sharded by <code>CRC16(contest_id) mod 16384</code>, this distributes naturally across the cluster.</p>
+
+  <div class="highlight hl-red"><strong>Hot contest hazard:</strong> the IPL final Mega Contest has 12 M entries — it's a hot shard. We mitigate by (a) putting the largest 5 contests on their own dedicated shards (manual placement via hash tags), (b) keeping read replicas of those shards for ZRANGE queries.</div>
+
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.15rem;margin:1.4rem 0 .6rem">9.3 Read patterns the user actually sees</h3>
+
+  <div class="g3">
+    <div class="card">
+      <h3>🏆 Top-100</h3>
+      <p>Shown when you scroll to top. <code>ZREVRANGE lb:c_X 0 99 WITHSCORES</code> — single round-trip, ~1 ms, served from a read replica during heavy load.</p>
+    </div>
+    <div class="card">
+      <h3>📍 My rank + neighbours</h3>
+      <p>Show me my rank ±5. <code>ZREVRANK</code> then <code>ZREVRANGE rank-5 rank+5</code>. ~200 µs total.</p>
+    </div>
+    <div class="card">
+      <h3>📈 Rank history</h3>
+      <p>Show how my rank moved over the match. Not from Redis — sampled every 30 s into a small time-series in Cassandra. Cheap and recovered on demand.</p>
+    </div>
+  </div>
+
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.15rem;margin:1.4rem 0 .6rem">9.4 The WebSocket tick loop</h3>
+  <p>Each WebSocket Gateway node runs a tick every 3 seconds. For every active subscription (<code>user_id, contest_id</code>) on that node, it reads <code>(top-N + user's rank)</code> from Redis in pipelined batches (1 batch = 100 subscriptions = 200 ZSET ops), computes a diff against the last frame sent, and pushes the diff over the socket. A typical frame is &lt; 200 bytes — sustaining 10 M concurrent WS at 3-s ticks is ~7 MB/s aggregate per gateway node.</p>
+
+  <div class="highlight hl-yellow"><strong>Why 3 seconds, not real-time?</strong> A six can produce ~60 M Redis updates. Pushing the new top-N to every interested socket on every six would saturate the gateway. 3-second batching trades a tiny visible lag for tractable network usage — users perceive it as "live" because cricket events are bursty (one event every few seconds anyway, not continuous).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 10: CONTEST ENGINE                    -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s10">
+  <span class="sec-tag tag-green">Step 10</span>
+  <h2>Contest Engine &amp; Joining</h2>
+  <p>The most failure-mode-heavy operation in the system. A "join" must be atomic across two different storage systems (Aerospike wallet + Postgres entries) under retry-heavy mobile networks. We use the <strong>saga pattern</strong> with idempotency keys.</p>
+
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.15rem;margin:1.2rem 0 .6rem">10.1 The saga</h3>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor U as User
+  participant CS as Contest Service
+  participant ID as Idempotency Store (Redis)
+  participant W as Wallet Service
+  participant AS as Aerospike
+  participant PG as Postgres (contest_entries)
+  participant K as Kafka
+
+  U->>CS: POST /contest/join {contest_id, team_id, idempotency_key}
+  CS->>ID: GETSET key=ik:user_X result=PENDING NX
+  alt key already had result
+    ID-->>CS: existing result
+    CS-->>U: return cached result (idempotent retry)
+  else fresh request
+    CS->>W: debit(user, fee, txn_id=ik)
+    W->>AS: balance -= fee, write ledger entry
+    AS-->>W: OK
+    W-->>CS: OK
+    CS->>PG: INSERT contest_entries (txn_id=ik UNIQUE)
+    alt INSERT conflict (e.g., contest full)
+      PG-->>CS: 409
+      CS->>W: credit(user, fee, txn_id=ik+"-refund")
+      CS->>ID: SET ik:user_X = FAILED
+      CS-->>U: 409 Conflict
+    else success
+      PG-->>CS: OK
+      CS->>K: publish ContestJoined (for leaderboard seeding)
+      CS->>ID: SET ik:user_X = OK
+      CS-->>U: 200 OK
+    end
+  end
+</div>
+  </div>
+
+  <h3 style="color:var(--heading);font-family:'Playfair Display',serif;font-size:1.15rem;margin:1.2rem 0 .6rem">10.2 Why this design</h3>
+  <ul style="list-style:none;padding-left:0;margin-bottom:1rem">
+    <li style="padding-left:1.4rem;position:relative;margin-bottom:.4rem;color:var(--text)"><span style="position:absolute;left:0;color:var(--orange);font-weight:700">›</span> <strong>Idempotency key</strong> comes from the client (UUID generated at tap time). The same key replayed (network retry, app crash mid-request) returns the same result without re-debiting.</li>
+    <li style="padding-left:1.4rem;position:relative;margin-bottom:.4rem;color:var(--text)"><span style="position:absolute;left:0;color:var(--orange);font-weight:700">›</span> <strong>Compensating action</strong> — if the Postgres insert fails (contest full, duplicate join), we credit the wallet back with the <em>same</em> txn_id suffixed <code>-refund</code>. Aerospike's idempotency dedups this if it's retried.</li>
+    <li style="padding-left:1.4rem;position:relative;margin-bottom:.4rem;color:var(--text)"><span style="position:absolute;left:0;color:var(--orange);font-weight:700">›</span> <strong>No distributed transaction</strong> — we avoid 2PC because the participants (Aerospike + Postgres + Kafka) don't share a transaction manager and the latency cost of XA would be punitive at 200 K joins/sec.</li>
+    <li style="padding-left:1.4rem;position:relative;margin-bottom:.4rem;color:var(--text)"><span style="position:absolute;left:0;color:var(--orange);font-weight:700">›</span> <strong>Capacity check</strong> — contest size limit (<code>max_entries</code>) is enforced in Postgres with a <code>CHECK</code>-like constraint via a partial unique index + a row-count counter cached in Redis (precomputed, decremented atomically before INSERT, restored on rollback).</li>
+  </ul>
+
+  <div class="highlight hl-green"><strong>What about cross-contest atomicity?</strong> A user can join multiple contests for the same match. Each join is its own saga — they don't need to be atomic with each other. If one fails the wallet only reflects the successful ones, which is exactly right behaviour.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 11: WALLET                            -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s11">
+  <span class="sec-tag tag-purple">Step 11</span>
+  <h2>Wallet &amp; Payments</h2>
+  <p>The wallet is two things: (a) a high-throughput counter for in-app moves (contest entry, prize credit), (b) a regulated payment system for external moves (deposit via UPI / cards, withdraw to bank). The split between Aerospike (a) and a more careful flow (b) is intentional.</p>
+
+  <div class="g2">
+    <div class="card">
+      <h3>⚡ Internal moves — Aerospike</h3>
+      <p>Contest entry debits, prize credits. 200 K ops/sec at peak. Implemented as a <strong>double-entry ledger</strong>: every user-account debit has a matching contest-escrow credit. Sums across the system must equal zero (auditable invariant).</p>
+      <ul>
+        <li>Aerospike record per user: <code>{balance, version, last_txn_id}</code></li>
+        <li>Atomic update via Aerospike CAS (compare-and-swap on <code>version</code>)</li>
+        <li>Ledger entries stored in Cassandra for audit (append-only)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🏦 External moves — Saga + Razorpay / UPI</h3>
+      <p>Deposits go through Razorpay (or BillDesk, PayU); withdrawals settle to user's bank via IMPS/NEFT. These flow through the payment-system saga (see our <a href="payment-system-hld.html" style="color:var(--orange)">Payment System HLD</a>) — they're slower (seconds, not ms) but require KYC + RBI compliance.</p>
+      <ul>
+        <li>Deposit: user → Razorpay → webhook → wallet credit</li>
+        <li>Withdraw: KYC check → request to bank → settlement callback → wallet debit</li>
+        <li>Reconciliation: nightly job matches our ledger against Razorpay's settlement file</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight hl-purple"><strong>Why a separate wallet store at all?</strong> Mixing wallet rows into Postgres alongside contest data creates a hot table — every contest join hits both. Separating wallet into Aerospike lets each store scale on its own access pattern, and lets the wallet team operate independently (different on-call, different SLAs).</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 12: CACHING                           -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s12">
+  <span class="sec-tag tag-yellow">Step 12</span>
+  <h2>Caching Strategy — Five Tiers</h2>
+  <p>Caching is what turns a system that would melt under load into one that hums. We have five distinct cache layers, each with a different invalidation strategy.</p>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Tier</th><th>What it caches</th><th>Tech</th><th>TTL / Invalidation</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>1. CDN edge</td>
+          <td>Player photos, app bundle, match thumbnails</td>
+          <td>CloudFront</td>
+          <td>1 day–7 days; purge on rare content change</td>
+        </tr>
+        <tr>
+          <td>2. CDN dynamic</td>
+          <td>Player pool JSON, upcoming matches list</td>
+          <td>CloudFront w/ short TTL</td>
+          <td>60 s; or push-purged when admin updates</td>
+        </tr>
+        <tr>
+          <td>3. Service local</td>
+          <td>Player metadata (Caffeine in-JVM)</td>
+          <td>Caffeine / in-process LRU</td>
+          <td>5 min; bounded size (10 K entries)</td>
+        </tr>
+        <tr>
+          <td>4. Redis hot row</td>
+          <td>User profile, contest config, current team</td>
+          <td>Redis (separate cluster from leaderboard)</td>
+          <td>Write-through; invalidate on update</td>
+        </tr>
+        <tr>
+          <td>5. Read replica</td>
+          <td>Postgres reads (browse contests, team history)</td>
+          <td>Postgres standby replicas (3×)</td>
+          <td>Async replication; ~100 ms lag</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>Cache stampede protection:</strong> when a popular contest cache expires, we don't want 10 000 servers all hitting the DB at once. Each service uses <em>request coalescing</em> (singleflight) — only one request goes to the DB; the others wait on the same in-flight future. Combined with a <em>jittered TTL</em> (e.g. 300 s ± 30 s) so different cache keys don't expire at exactly the same moment.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 13: TRADE-OFFS                        -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s13">
+  <span class="sec-tag tag-orange">Step 13</span>
+  <h2>Trade-offs &amp; Interview Talking Points</h2>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Decision</th><th>Alternative</th><th>Why this choice</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Three-plane split (txn / stream / real-time)</td>
+          <td>One monolith with one DB</td>
+          <td>Each plane has different consistency &amp; latency targets — forcing them onto one store either crushes the DB or makes everything strongly consistent at the cost of latency.</td>
+        </tr>
+        <tr>
+          <td>Aerospike for wallet</td>
+          <td>Postgres + heavy sharding</td>
+          <td>200 K wallet-ops/sec at sub-ms with durability — Postgres can do durability but not the throughput; Redis can do throughput but loses writes on crash.</td>
+        </tr>
+        <tr>
+          <td>Redis ZSET for leaderboards</td>
+          <td>SQL <code>ORDER BY</code> over a contest table</td>
+          <td>SQL sort over 12 M rows is hundreds of ms even with index; ZSET reads top-100 in 1 ms by construction. Trade-off: leaderboard not durable — Cassandra is the source of truth for recovery.</td>
+        </tr>
+        <tr>
+          <td>Cassandra for team_points</td>
+          <td>DynamoDB</td>
+          <td>1 M writes/sec at DynamoDB's per-write pricing is &gt;$100 K/month. Cassandra at the same rate is operational cost only.</td>
+        </tr>
+        <tr>
+          <td>ALB for REST, NLB for WebSocket</td>
+          <td>One ALB for everything</td>
+          <td>ALB charges per active LCU which makes 10 M long-lived WS connections ~3× the cost of NLB; NLB does L4-only which is exactly what we need post-upgrade.</td>
+        </tr>
+        <tr>
+          <td>Flink (event-at-a-time) over Spark Streaming (micro-batch)</td>
+          <td>Spark Streaming</td>
+          <td>End-to-end 5-s SLA can't afford the multi-second micro-batch latency Spark introduces. Flink also has cleaner exactly-once via Kafka 2PC.</td>
+        </tr>
+        <tr>
+          <td>Kafka for event backbone</td>
+          <td>SQS / RabbitMQ / Kinesis</td>
+          <td>SQS lacks multi-consumer replay; RabbitMQ caps lower per-broker; Kinesis is AWS-locked and shard-rebalance is painful. Kafka's broker throughput + replayable log fits exactly.</td>
+        </tr>
+        <tr>
+          <td>Synchronous response on team save (before Cassandra write)</td>
+          <td>Wait for Cassandra durability</td>
+          <td>Cassandra at peak ingest is too slow for sub-300ms response. Kafka durability is enough — even if Cassandra is briefly down, the event is safe on Kafka and replays.</td>
+        </tr>
+        <tr>
+          <td>15-min refresh for player→teams broadcast state</td>
+          <td>Real-time DB lookup per event</td>
+          <td>Real-time lookup is impossible at 12K events × 60M teams. 15-min staleness is fine because team edits are locked at toss anyway.</td>
+        </tr>
+        <tr>
+          <td>Push leaderboard updates every 3 s</td>
+          <td>Push on every score event</td>
+          <td>A six produces 60M ZSET updates — pushing them all live would saturate the gateway. 3-s tick batches updates and gives users a "live" feel without melting the network.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 14: INTERVIEW Q&A                     -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s14">
+  <span class="sec-tag tag-blue">Step 14</span>
+  <h2>Interview Q&amp;A — The Questions That Get Asked</h2>
+
+  <div class="iq">How do you guarantee a user can't edit their team after the match starts?</div>
+  <div class="ans">Three layers of enforcement. <strong>(1)</strong> Server-side check in the Team Service against <code>match.start_time</code> on every save; rejection returns 423 LOCKED. <strong>(2)</strong> The Cassandra consumer drops any event with timestamp ≥ deadline — handles clock skew between app servers. <strong>(3)</strong> The score-fanout pipeline reads each team's last version <em>at or before</em> the deadline timestamp — so even if a write somehow lands, it's never used for scoring. Defense in depth, because cheating here is a regulatory + trust failure.</div>
+
+  <div class="iq">A user reports their wallet was debited but they aren't in the contest. What happened &amp; how do you fix?</div>
+  <div class="ans">Almost certainly the saga's compensating refund didn't fire — likely because Aerospike was briefly unreachable when the Postgres insert failed. Solution: <strong>(1)</strong> The Contest Service writes a <code>SagaState</code> row to Postgres before kicking off each step, so on restart a recovery worker can detect "wallet debited but no entry &amp; no refund" and replay the compensating action. <strong>(2)</strong> Idempotency keys make the replay safe — same <code>txn_id+"-refund"</code> hits Aerospike's dedup and credits exactly once.</div>
+
+  <div class="iq">What happens if Redis loses a contest's leaderboard ZSET (node crash)?</div>
+  <div class="ans">Two-layer recovery. <strong>(1)</strong> Redis Cluster replicates each master to 2 slaves; a slave is promoted in seconds. Most node failures are invisible. <strong>(2)</strong> If we lose master + slaves simultaneously, we rebuild the ZSET from Cassandra — a single-partition scan of <code>team_points WHERE contest_id = ?</code> returns all team_id+score pairs, which we <code>ZADD</code> back. For a 12 M-entry contest this takes ~30 seconds with parallel chunks. During rebuild, leaderboard reads return "loading" to clients.</div>
+
+  <div class="iq">Why not use a single Postgres with read replicas for everything?</div>
+  <div class="ans">Throughput math. Wallet alone is 200 K ops/sec. A Postgres primary tops out around 20 K writes/sec. Read replicas don't help with writes. Even with 16 shards we'd hit limits on cross-shard transactions for the join saga. Aerospike is purpose-built for the throughput; Postgres for the relational invariants. Use each where it earns its place.</div>
+
+  <div class="iq">How do you handle Sportradar sending the same ball event twice?</div>
+  <div class="ans">Score Ingestion maintains a 5-minute LRU of <code>(match_id, ball_id, sequence)</code>. Duplicates are dropped before they hit Kafka. Even if a duplicate sneaks through, Flink's exactly-once via Kafka 2PC ensures each event is processed once into the output topics, and the sinks themselves are idempotent (Cassandra primary key dedup, Redis Lua-wrapped ZINCRBY with a "processed" set).</div>
+
+  <div class="iq">Why ALB for REST but NLB for WebSocket — and why not just use ALB everywhere?</div>
+  <div class="ans">ALB does support WebSockets. The issue is cost &amp; value at our connection scale. ALB charges per LCU and "active connections" is one of the LCU dimensions — 10 M long-lived WS connections drive LCU sky-high. NLB charges per active flow at a flatter rate and is L4 (no per-packet HTTP inspection), so it scales further at lower cost. The L7 features ALB offers (path routing, header inspection) are useless after the WebSocket upgrade completes — the connection is just a TCP stream from then on.</div>
+
+  <div class="iq">How would you scale this 10× — say 100M concurrent users?</div>
+  <div class="ans">Three moves. <strong>(1)</strong> Region-shard by user geography — Mumbai region for west India, Bengaluru for south, etc. Each region runs an independent stack with its own DB shards. <strong>(2)</strong> Move Postgres to CockroachDB or AlloyDB for multi-region writes without app-level sharding logic. <strong>(3)</strong> Add a second Flink job tier specifically for the top-3 hot contests, with their own Kafka partitions and dedicated Redis shards — isolation prevents one viral contest from starving others.</div>
+
+  <div class="iq">Walk me through what happens if Kafka has a 60-second outage during a live match.</div>
+  <div class="ans">Score events get backlogged at the producer (Score Ingestion) — Kafka producers buffer up to a configurable limit. Team saves return success to the user but the Cassandra-write consumer is paused. Leaderboard updates pause — users see stale ranks. <em>Money is unaffected</em> — wallet ops go through Aerospike + Postgres directly, not Kafka. When Kafka recovers, consumers catch up in seconds (each Flink subtask processes thousands of events/sec). The hot-path that matters most (wallet, contest joins) keeps working; the experiential part (live leaderboard) gracefully degrades and recovers. This is exactly why the three-plane split exists.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 15: CHECKLIST                         -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s15">
+  <span class="sec-tag tag-green">Step 15</span>
+  <h2>Production Checklist</h2>
+
+  <ul class="checklist">
+    <li>Three-plane split (transaction / stream / real-time) — each with its own storage</li>
+    <li>Aerospike wallet with idempotency keys + double-entry ledger sum-to-zero check (alerts on drift)</li>
+    <li>Postgres for users / contests with logical replication into the analytics warehouse</li>
+    <li>Cassandra for team_points partitioned by contest_id (single-partition recovery for leaderboard rebuild)</li>
+    <li>Kafka topics partitioned by the right key per topic (user_id for team-saves, contest_id for contest-joins, match_id for score-events)</li>
+    <li>Flink jobs with exactly-once via Kafka transactional producer + idempotent sinks</li>
+    <li>Redis ZSET per contest, sharded by contest_id, with replication + Cassandra-backed rebuild path</li>
+    <li>ALB (L7) for REST API tier with path-based routing; NLB (L4) for WebSocket gateway</li>
+    <li>API Gateway in front of services for JWT auth + per-endpoint rate limits</li>
+    <li>CDN (CloudFront) for static assets + short-TTL dynamic data (player pool JSON)</li>
+    <li>Five-tier caching with stampede protection (singleflight + jittered TTL)</li>
+    <li>Saga + idempotency for contest join; <code>SagaState</code> table for recovery worker</li>
+    <li>Triple-layer deadline lock (server check + consumer filter + downstream timestamp guard)</li>
+    <li>Broadcast state in Flink for player→teams index (15-min refresh) to avoid per-event DB lookups</li>
+    <li>3-second tick loop on WebSocket Gateway pushing diffs, not full snapshots</li>
+    <li>Per-region failover path (active-passive across Mumbai &amp; Hyderabad)</li>
+    <li>Reconciliation jobs nightly: wallet ledger sum-to-zero, contest entries vs leaderboard count, wallet vs Razorpay settlement file</li>
+  </ul>
+
+  <div class="highlight hl-orange"><strong>One last test:</strong> for every box in your diagram, ask "what would break tomorrow if I removed this?" If you can't answer in a sentence, it doesn't belong. Every component on this page passed that test.</div>
+</div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+<div class="likes-row"><div id="likes"></div></div>
+
+</body>
+</html>

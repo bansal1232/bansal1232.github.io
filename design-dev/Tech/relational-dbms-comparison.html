@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MySQL vs Postgres vs Oracle — The Relational DBMS Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@400;500;700&family=Fraunces:wght@700;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="../../css/likes.css"/>
+<script src="../../js/likes.js" defer></script>
+<style>
+  :root {
+    --bg: #0e1117; --surface: #161b22; --surface-hover: #1c2230; --border: #30363d;
+    --text: #e6edf3; --text-muted: #8b949e;
+    --accent: #ea580c; --accent-dim: rgba(234,88,12,0.14);
+    --green: #3fb950; --green-dim: rgba(63,185,80,0.12);
+    --red: #f85149; --red-dim: rgba(248,81,73,0.12);
+    --blue: #58a6ff; --blue-dim: rgba(88,166,255,0.12);
+    --purple: #bc8cff; --purple-dim: rgba(188,140,255,0.12);
+    --yellow: #e3b341; --yellow-dim: rgba(227,179,65,0.12);
+    --orange: #f0883e; --orange-dim: rgba(240,136,62,0.12);
+    --cyan: #3cbfbf; --cyan-dim: rgba(60,191,191,0.12);
+    --code-bg: #0d1117; --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); line-height: 1.75; }
+  .layout { max-width: 1920px; margin: 0 auto; padding: 3rem 4rem 5rem; display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 4.5rem; align-items: start; }
+  @media (max-width: 1200px) { .layout { padding: 3rem 2rem 5rem; gap: 3rem; } }
+  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; gap: 1.5rem; padding: 2rem 1.2rem 4rem; } }
+  .sidebar { position: sticky; top: 2rem; font-size: 0.88rem; }
+  @media (max-width: 960px) { .sidebar { position: static; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem 1.4rem; } }
+  .sidebar h4 { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); margin-bottom: 0.85rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+  .sidebar ol { list-style: none; padding: 0; counter-reset: toc2; }
+  .sidebar ol li { counter-increment: toc2; margin-bottom: 0.35rem; }
+  .sidebar ol li::before { content: counter(toc2, decimal-leading-zero); display: inline-block; width: 1.8rem; color: var(--accent); font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
+  .sidebar a { color: var(--text-muted); text-decoration: none; transition: color 0.15s; font-size: 0.9rem; }
+  .sidebar a:hover { color: var(--accent); }
+  @media (max-width: 960px) { .sidebar ol { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem 1rem; } }
+  @media (max-width: 560px) { .sidebar ol { grid-template-columns: 1fr; } }
+  .content { min-width: 0; }
+  header { text-align: center; padding: 3rem 0 2.5rem; border-bottom: 1px solid var(--border); margin-bottom: 3rem; }
+  header .badge { display: inline-block; background: var(--accent-dim); color: var(--accent); font-weight: 700; font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.35rem 1rem; border-radius: 100px; margin-bottom: 1rem; }
+  header h1 { font-family: 'Fraunces', serif; font-weight: 900; font-size: 2.6rem; letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 0.5rem; }
+  header p { color: var(--text-muted); font-size: 1.05rem; }
+  .feature { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; margin-bottom: 1.75rem; transition: border-color 0.2s; scroll-margin-top: 1.5rem; }
+  .feature:hover { border-color: var(--accent); }
+  .feature-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+  .feature-num { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600; color: var(--accent); background: var(--accent-dim); padding: 0.2rem 0.6rem; border-radius: 6px; letter-spacing: 0.05em; }
+  .feature h2 { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.45rem; line-height: 1.3; }
+  .feature h3 { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1.05rem; margin: 1.5rem 0 0.5rem; color: var(--text); }
+  .feature p { color: var(--text); font-size: 0.95rem; margin-bottom: 0.85rem; }
+  .feature p.lead { color: var(--text); font-size: 1rem; margin-bottom: 1.2rem; }
+  .scene { background: linear-gradient(135deg, rgba(234,88,12,0.08), rgba(188,140,255,0.04)); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 1rem 1.2rem; margin: 0 0 1.4rem; font-size: 0.95rem; color: var(--text); font-style: italic; }
+  .scene::before { content: "Scene · "; font-style: normal; font-weight: 700; color: var(--accent); letter-spacing: 0.04em; font-size: 0.78rem; text-transform: uppercase; }
+  .interview-q { background: var(--blue-dim); border-left: 3px solid var(--blue); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; margin: 1.2rem 0 0.85rem; font-size: 0.92rem; color: var(--blue); font-weight: 600; }
+  .interview-q::before { content: "Q: "; font-weight: 800; }
+  .answer { color: var(--text); font-size: 0.95rem; margin-bottom: 0.85rem; }
+  .answer ul, .feature ul, .feature ol { margin: 0.5rem 0 0.9rem 1.3rem; color: var(--text); }
+  .answer li, .feature li { margin-bottom: 0.4rem; font-size: 0.93rem; }
+  .answer strong, .feature strong { color: var(--text); }
+  code, pre { font-family: 'JetBrains Mono', monospace; }
+  p code, li code, .answer code, td code { background: var(--code-bg); border: 1px solid var(--border); padding: 0.05rem 0.4rem; border-radius: 4px; font-size: 0.82rem; color: var(--accent); }
+  .code-block { position: relative; margin: 0.6rem 0 1rem; }
+  .code-label { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.35rem 0.8rem; border-radius: 8px 8px 0 0; display: inline-block; font-weight: 600; }
+  .code-label.example { background: var(--purple-dim); color: var(--purple); }
+  .code-label.bad     { background: var(--red-dim);    color: var(--red); }
+  .code-label.good    { background: var(--green-dim);  color: var(--green); }
+  .code-label.demo    { background: var(--blue-dim);   color: var(--blue); }
+  .code-label.note    { background: var(--yellow-dim); color: var(--yellow); }
+  .code-label.oracle  { background: var(--red-dim);    color: var(--red); }
+  .code-label.postgres{ background: var(--blue-dim);   color: var(--blue); }
+  .code-label.mysql   { background: var(--orange-dim); color: var(--orange); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 0 8px 8px 8px; padding: 1.1rem 1.25rem; overflow-x: auto; font-size: 0.82rem; line-height: 1.7; color: var(--text); }
+  pre .kw { color: #ff7b72; } pre .str { color: #a5d6ff; } pre .cmt { color: #8b949e; font-style: italic; } pre .fn { color: #d2a8ff; } pre .type { color: #79c0ff; } pre .num { color: #f0883e; } pre .ann { color: #ffa657; }
+  .tip { background: var(--green-dim); border-left: 3px solid var(--green); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.88rem; color: var(--green); margin-top: 0.5rem; }
+  .tip::before { content: "Interview Tip · "; font-weight: 700; }
+  .analogy { background: var(--purple-dim); border-left: 3px solid var(--purple); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.92rem; color: var(--text); margin: 0.5rem 0 1rem; }
+  .analogy::before { content: "Analogy · "; font-weight: 700; color: var(--purple); }
+  .gotcha { background: var(--red-dim); border-left: 3px solid var(--red); border-radius: 0 8px 8px 0; padding: 0.75rem 1rem; font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 1rem; }
+  .gotcha::before { content: "Gotcha · "; font-weight: 700; color: var(--red); }
+  .so-what { background: var(--accent-dim); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 0.85rem 1rem; font-size: 0.95rem; color: var(--text); margin: 1.4rem 0 0.5rem; font-weight: 500; }
+  .so-what::before { content: "So in short · "; font-weight: 700; color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin: 0.8rem 0 1rem; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 0.6rem 0.85rem; border: 1px solid var(--border); color: var(--text); vertical-align: top; }
+  th { background: var(--surface-hover); font-weight: 700; color: var(--accent); }
+  .quad { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  .quad .vs-card { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.1rem; }
+  .quad .vs-card h4 { font-family: 'Fraunces', serif; font-size: 1rem; margin-bottom: 0.5rem; }
+  .quad .vs-card.mysql h4    { color: var(--orange); }
+  .quad .vs-card.postgres h4 { color: var(--blue); }
+  .quad .vs-card.oracle h4   { color: var(--red); }
+  .quad .vs-card.mssql h4    { color: var(--purple); }
+  .quad .vs-card.sqlite h4   { color: var(--green); }
+  .quad .vs-card.mariadb h4  { color: var(--yellow); }
+  .quad .vs-card ul { margin-left: 1.1rem; font-size: 0.88rem; }
+  .quad .vs-card li { margin-bottom: 0.3rem; }
+  @media (max-width: 750px) { .quad { grid-template-columns: 1fr; } header h1 { font-size: 1.8rem; } .feature { padding: 1.5rem; } }
+</style>
+</head>
+<body>
+
+<header style="padding: 3rem 1.5rem 2.5rem;position:relative;">
+  <a href="../../design-development.html" style="position:absolute;top:1.2rem;left:1.5rem;display:inline-flex;align-items:center;gap:.4rem;color:var(--accent);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid rgba(255,255,255,.12);border-radius:100px;background:rgba(17,22,30,.5);backdrop-filter:blur(6px);transition:transform .2s;">← Back to Design &amp; Development</a>
+  <div class="badge">Databases · Relational DBMS Compared</div>
+  <h1>MySQL vs Postgres vs Oracle — And Everyone Else</h1>
+  <p>Storage engines · MVCC · Replication · Isolation · JSON · Full-Text · Sharding · NewSQL — every relational database, side-by-side, with examples</p>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">The Family Tree</a></li>
+      <li><a href="#s2">Storage Engines</a></li>
+      <li><a href="#s3">MVCC — Three Flavors</a></li>
+      <li><a href="#s4">Indexes &amp; Index Types</a></li>
+      <li><a href="#s5">Isolation Levels Compared</a></li>
+      <li><a href="#s6">Replication Mechanisms</a></li>
+      <li><a href="#s7">Data Types Beyond the Basics</a></li>
+      <li><a href="#s8">JSON Support Compared</a></li>
+      <li><a href="#s9">Stored Procedures &amp; SQL Dialects</a></li>
+      <li><a href="#s10">Full-Text &amp; Vector Search</a></li>
+      <li><a href="#s11">Concurrency &amp; Locking</a></li>
+      <li><a href="#s12">Partitioning &amp; Sharding</a></li>
+      <li><a href="#s13">High Availability</a></li>
+      <li><a href="#s14">Performance Profile</a></li>
+      <li><a href="#s15">SQLite — The Outlier</a></li>
+      <li><a href="#s16">MariaDB vs MySQL</a></li>
+      <li><a href="#s17">SQL Server &amp; Oracle Niches</a></li>
+      <li><a href="#s18">NewSQL — CockroachDB &amp; Spanner</a></li>
+      <li><a href="#s19">Migration Pitfalls</a></li>
+      <li><a href="#s20">Choosing Cheat Sheet &amp; Q&amp;A</a></li>
+    </ol>
+  </aside>
+
+  <main class="content">
+
+<!-- ===== 1 ===== -->
+<div class="feature" id="s1">
+  <div class="feature-header"><span class="feature-num">01</span><h2>The Family Tree — Why "All SQL Databases Are the Same" Is a Lie</h2></div>
+  <p class="lead">Every relational database speaks SQL, supports ACID, and stores tables of rows and columns. From the outside they look interchangeable. Then you actually use two of them, hit your first <code>UPSERT</code>, your first <code>JSON</code> column, your first replication setup — and discover they disagree about almost everything underneath.</p>
+
+  <div class="scene">Priya joined a team that runs MySQL in production. Her last job ran Postgres. Her first task — "add a queue table" — is straightforward. She writes <code>SELECT ... FOR UPDATE SKIP LOCKED</code>, the way she always did. It crashes on MySQL 5.7. She checks the version: SKIP LOCKED arrived in 8.0. She upgrades, retries, and now the query runs — but inserts use <code>AUTO_INCREMENT</code> instead of <code>SERIAL</code>, JSON queries need a different operator, and her favorite <code>RETURNING</code> clause doesn't exist. Same SQL standard, two different worlds.</div>
+
+  <div class="interview-q">What's the actual difference between MySQL, Postgres, Oracle, and SQL Server?</div>
+
+  <div class="answer">
+    <p>They all started from the same relational model (Codd, 1970s) but evolved under wildly different incentives:</p>
+    <ul>
+      <li><strong>Oracle (1979)</strong> — built for enterprises that pay six-figure license fees. Optimized for the hardest workloads (mixed OLTP/OLAP), every feature in the book, infamous price tag.</li>
+      <li><strong>MySQL (1995)</strong> — built to be the database of the LAMP web. Fast for simple reads, pluggable storage engines, "good enough" semantics. Now owned by Oracle.</li>
+      <li><strong>PostgreSQL (1996)</strong> — built by academics who took correctness seriously. Extensible types, MVCC done right, modern features arrive here first. The "Linux of databases".</li>
+      <li><strong>SQL Server (1989)</strong> — Microsoft's enterprise database, tightly integrated with .NET, Active Directory, and the Windows ecosystem. Now runs on Linux too.</li>
+      <li><strong>SQLite (2000)</strong> — not a server. A C library that puts the whole database in one file. Ships in every phone, browser, and IoT device on Earth.</li>
+      <li><strong>MariaDB (2009)</strong> — a fork of MySQL by the original author after Oracle bought MySQL. Mostly compatible, faster moving on features.</li>
+    </ul>
+  </div>
+
+  <table>
+    <tr><th>DB</th><th>First release</th><th>Maintainer</th><th>License</th><th>Default port</th></tr>
+    <tr><td>Oracle</td><td>1979</td><td>Oracle Corp.</td><td>Proprietary</td><td>1521</td></tr>
+    <tr><td>SQL Server</td><td>1989</td><td>Microsoft</td><td>Proprietary (free Express)</td><td>1433</td></tr>
+    <tr><td>MySQL</td><td>1995</td><td>Oracle Corp.</td><td>GPL / Commercial dual</td><td>3306</td></tr>
+    <tr><td>PostgreSQL</td><td>1996</td><td>PG Global Dev Group</td><td>PostgreSQL License (BSD-like)</td><td>5432</td></tr>
+    <tr><td>SQLite</td><td>2000</td><td>D. Richard Hipp</td><td>Public domain</td><td>N/A (file)</td></tr>
+    <tr><td>MariaDB</td><td>2009</td><td>MariaDB Foundation</td><td>GPL</td><td>3306</td></tr>
+  </table>
+
+  <div class="analogy">If relational databases were vehicles: <strong>Oracle</strong> is a fully-loaded enterprise truck — capable, expensive, needs a trained driver. <strong>SQL Server</strong> is a luxury sedan that only works well on Microsoft roads. <strong>MySQL</strong> is a reliable hatchback — fast, popular, gets you everywhere. <strong>Postgres</strong> is an electric SUV — quietly does everything the truck does, costs less, and arrives at the future first. <strong>SQLite</strong> is a folding bicycle — fits in your bag, takes you the last mile. <strong>MariaDB</strong> is the hatchback after a custom tuning shop got hold of it.</div>
+
+  <div class="so-what">"All SQL is SQL" is a lie that breaks the moment you write a non-trivial query. The differences are real, and they're in the engine, not the syntax.</div>
+</div>
+
+<!-- ===== 2 ===== -->
+<div class="feature" id="s2">
+  <div class="feature-header"><span class="feature-num">02</span><h2>Storage Engines — How Each One Actually Writes to Disk</h2></div>
+  <p class="lead">The biggest mental model gap between MySQL and Postgres is at the storage layer. Postgres has one storage model. MySQL has a marketplace of them. Oracle has its own block format that's been refined for 40+ years. Once you understand this, half the "why does X behave differently?" questions answer themselves.</p>
+
+  <div class="scene">Rahul is benchmarking a write-heavy workload — 10K inserts/sec across 50 tables. Postgres holds steady at 8K/sec, MySQL InnoDB does 12K/sec, MySQL MyISAM (his colleague suggested) does 28K/sec — and then loses three rows when the box reboots. "Oh, MyISAM isn't crash-safe." This is the moment storage engines stop being trivia.</div>
+
+  <div class="interview-q">What is a storage engine, and why does it matter?</div>
+
+  <div class="answer">
+    <p>A storage engine is the part of the database that decides <em>how rows actually live on disk</em>: the file format, the index layout, how writes are made durable, how concurrent readers see consistent data. The SQL parser and query planner sit above it. The engine is what gives you (or denies you) crash safety, MVCC, foreign keys, and transactions.</p>
+  </div>
+
+  <h3>MySQL — Pluggable engines</h3>
+  <p>MySQL uniquely lets you pick an engine <em>per table</em>. This was revolutionary in 2003 and is the source of a lot of MySQL's quirks.</p>
+  <ul>
+    <li><strong>InnoDB</strong> — the default since MySQL 5.5. Row-level locking, MVCC, foreign keys, crash recovery via redo log. Use this. Always.</li>
+    <li><strong>MyISAM</strong> — older, table-level locks, no transactions, no FKs, but very fast for read-only workloads. Used in legacy MediaWiki/WordPress setups.</li>
+    <li><strong>MEMORY</strong> — RAM-only, lost on restart. Useful for temp tables.</li>
+    <li><strong>Archive</strong> — write-only compressed log table.</li>
+    <li><strong>NDB</strong> — MySQL Cluster's distributed engine. Different beast entirely.</li>
+    <li><strong>MyRocks</strong> — RocksDB (LSM-tree) packaged as a MySQL engine, originally by Facebook. Better for write-heavy SSD workloads.</li>
+  </ul>
+
+  <h3>PostgreSQL — One engine, no choice</h3>
+  <p>Postgres has exactly one storage format: <strong>heap tables with MVCC tuples</strong>. Every row gets <code>xmin</code> (transaction that inserted it) and <code>xmax</code> (transaction that deleted/updated it) hidden columns. Updates are <em>never</em> in-place — they write a new tuple and mark the old one dead. Background <code>VACUUM</code> reclaims the dead ones.</p>
+
+  <h3>Oracle — Blocks, segments, tablespaces</h3>
+  <p>Oracle organizes data into <strong>blocks</strong> (typically 8KB) grouped into <strong>extents</strong>, which form <strong>segments</strong> stored in <strong>datafiles</strong> belonging to <strong>tablespaces</strong>. Heap-organized tables are default; Index-Organized Tables (IOT) cluster data inside the primary key index. Undo segments power read-consistency (Oracle's MVCC).</p>
+
+  <h3>SQL Server — Pages and extents too</h3>
+  <p>SQL Server stores data in 8KB pages, grouped into 64KB extents. Clustered indexes <em>are</em> the table — like InnoDB. Heap tables exist but are uncommon; almost everyone has a clustered index, usually on the primary key.</p>
+
+  <table>
+    <tr><th>Engine</th><th>On-disk shape</th><th>Updates</th><th>Reclamation</th></tr>
+    <tr><td>InnoDB (MySQL)</td><td>Clustered B-tree on PK; rows live in the leaf</td><td>In-place when possible; otherwise pointer to new location</td><td>Purge thread cleans old MVCC versions from rollback segments</td></tr>
+    <tr><td>Postgres heap</td><td>Unordered heap + separate index pages</td><td>Always insert new tuple, mark old dead</td><td>VACUUM (manual or auto) reclaims dead tuples</td></tr>
+    <tr><td>Oracle</td><td>Blocks within tablespaces; heap or IOT</td><td>In-place when row fits; chains/migrates otherwise</td><td>Undo segments age out; no global vacuum</td></tr>
+    <tr><td>SQL Server</td><td>8KB pages, clustered B-tree on PK by default</td><td>In-place; row-overflow pages if needed</td><td>Tempdb + ghost cleanup task</td></tr>
+  </table>
+
+  <div class="gotcha">The Postgres "no in-place update" choice means a heavily-updated table accumulates bloat. <code>UPDATE users SET last_seen = now()</code> for every user, every minute, creates millions of dead tuples. Autovacuum eventually catches up — until it doesn't, and you wake up to a 200GB table that should be 20GB.</div>
+
+  <div class="so-what">MySQL has many engines, InnoDB is the answer. Postgres has one engine and pays for elegance with VACUUM. Oracle and SQL Server live in the middle with block-organized in-place updates. None of this is visible in your SQL — all of it shapes your operations.</div>
+</div>
+
+<!-- ===== 3 ===== -->
+<div class="feature" id="s3">
+  <div class="feature-header"><span class="feature-num">03</span><h2>MVCC — Three Different Implementations of "Readers Don't Block Writers"</h2></div>
+  <p class="lead">Every modern relational database promises <strong>Multi-Version Concurrency Control</strong>: readers see a consistent snapshot, writers don't have to wait for them, writers don't have to lock the world. <em>How</em> each implements it is wildly different — and that difference shows up in your monitoring.</p>
+
+  <div class="interview-q">What is MVCC, in plain language?</div>
+
+  <div class="answer">
+    <p>Imagine you're reading page 50 of a book. Someone else wants to rewrite page 50. Without MVCC, you'd either block them ("don't touch the book while I'm reading") or get a mangled page. <strong>With MVCC, the writer creates a fresh copy of page 50, and you keep reading the original until you're done.</strong> Old copies are cleaned up later, once no one needs them.</p>
+    <p>That metaphor maps almost perfectly to the database: every row exists as multiple <em>versions</em>, each tagged with the transaction ID that created it. Your <code>SELECT</code> sees only versions visible to your transaction's snapshot. Writers create new versions. Old versions are reclaimed when no live transaction needs them.</p>
+  </div>
+
+  <h3>Postgres — Version chains inside the heap</h3>
+  <p>Every tuple carries <code>(xmin, xmax)</code>. A new <code>UPDATE</code> writes a fresh tuple with <code>xmin = current_txn</code> and updates the old one's <code>xmax</code>. The old tuple lives on until <code>VACUUM</code>. Visibility: "I can see this row if my snapshot includes xmin and excludes xmax."</p>
+
+  <div class="code-block">
+    <span class="code-label postgres">Postgres MVCC — what's actually in the heap</span>
+<pre><span class="cmt">-- Initial insert (txn 100):</span>
+ROW: { id=1, name=<span class="str">'Alice'</span>, xmin=<span class="num">100</span>, xmax=<span class="num">0</span> }
+
+<span class="cmt">-- UPDATE users SET name='Alicia' WHERE id=1; (txn 105)</span>
+<span class="cmt">-- Now the heap contains TWO physical rows:</span>
+ROW1: { id=1, name=<span class="str">'Alice'</span>,  xmin=<span class="num">100</span>, xmax=<span class="num">105</span> }   <span class="cmt">-- dead to txns &gt; 105</span>
+ROW2: { id=1, name=<span class="str">'Alicia'</span>, xmin=<span class="num">105</span>, xmax=<span class="num">0</span>   }   <span class="cmt">-- the live version</span>
+
+<span class="cmt">-- VACUUM eventually deletes ROW1 once no snapshot needs it.</span></pre>
+  </div>
+
+  <h3>InnoDB (MySQL) — Versions live in the undo log</h3>
+  <p>InnoDB stores the <em>current</em> row in-place, and pushes the old version into the <strong>undo log</strong> (also used for rollback). Each row carries a 6-byte transaction ID and a 7-byte rollback pointer. When you SELECT under <code>REPEATABLE READ</code>, InnoDB walks the undo chain backward until it finds a version your snapshot can see.</p>
+
+  <h3>Oracle — Undo segments, same idea</h3>
+  <p>Oracle invented this approach in the 1980s. Old row versions live in <strong>undo segments</strong>. Long-running reports get the famous <code>ORA-01555: snapshot too old</code> error when the undo they need has been overwritten.</p>
+
+  <h3>SQL Server — Optional MVCC</h3>
+  <p>By default, SQL Server uses lock-based concurrency — readers block writers and vice versa. You opt into MVCC by enabling <code>READ_COMMITTED_SNAPSHOT</code> or <code>ALLOW_SNAPSHOT_ISOLATION</code>, after which old versions go to <strong>tempdb</strong>. Tempdb sizing is a whole career.</p>
+
+  <table>
+    <tr><th>DB</th><th>Where old versions live</th><th>How they're reclaimed</th><th>Failure mode</th></tr>
+    <tr><td>Postgres</td><td>Inline in the heap as dead tuples</td><td>VACUUM (autovacuum process)</td><td>Table bloat, transaction-ID wraparound</td></tr>
+    <tr><td>InnoDB</td><td>Undo log (system tablespace or per-table)</td><td>Purge thread once trx no longer needed</td><td>Undo grows unboundedly under long transactions</td></tr>
+    <tr><td>Oracle</td><td>UNDO tablespace</td><td>Aged out by undo retention policy</td><td>ORA-01555 snapshot too old</td></tr>
+    <tr><td>SQL Server</td><td>tempdb (when snapshot isolation enabled)</td><td>Version-store cleanup task</td><td>tempdb fills, queries spill, server stalls</td></tr>
+  </table>
+
+  <div class="analogy">Postgres = <em>writing your edits in the margins of the same book</em> — you can see all the history, but you need a librarian to come prune it. InnoDB/Oracle = <em>keeping the current page clean and storing the old draft in a side folder</em> — neat in the book, but lose the folder and old readers crash. SQL Server (default) = <em>everyone passes the book around one at a time</em>; snapshot mode = "okay fine, photocopies in the back room."</div>
+
+  <div class="tip">If asked "why is my Postgres table 5× the size it should be?" — the answer is almost always dead tuples. <code>SELECT n_dead_tup FROM pg_stat_user_tables WHERE relname = 'users'</code> tells you. <code>VACUUM FULL</code> rewrites it, but locks the table; <code>pg_repack</code> does it online.</div>
+
+  <div class="so-what">Every relational DB solves "readers don't block writers" with MVCC. Postgres stores old versions inline (and pays via VACUUM). InnoDB and Oracle store them in undo (and pay via undo growth). SQL Server reluctantly uses tempdb. All four can melt down if you keep a transaction open for hours.</div>
+</div>
+
+<!-- ===== 4 ===== -->
+<div class="feature" id="s4">
+  <div class="feature-header"><span class="feature-num">04</span><h2>Indexes — B-Tree Everywhere, But the Side Dishes Differ</h2></div>
+  <p class="lead">Every relational DB uses a B-Tree (or B+Tree) as the workhorse index. What separates them is the <em>specialized</em> index types — and on Postgres, the variety is staggering. If you've only ever used B-Trees, you've been leaving free performance on the table.</p>
+
+  <h3>What everyone has</h3>
+  <ul>
+    <li><strong>B-Tree</strong> — ordered, supports equality + range + ORDER BY. The default.</li>
+    <li><strong>Unique</strong> — B-Tree with a uniqueness constraint.</li>
+    <li><strong>Composite</strong> — multi-column B-Tree. Order of columns matters (the "leftmost prefix" rule).</li>
+    <li><strong>Covering / Included columns</strong> — extra columns stored in the index leaf so the table is never read.</li>
+  </ul>
+
+  <h3>What Postgres uniquely has</h3>
+  <table>
+    <tr><th>Type</th><th>What it's for</th><th>Example</th></tr>
+    <tr><td><strong>Hash</strong></td><td>Equality-only lookups (rarely used — B-Tree usually wins)</td><td><code>CREATE INDEX ... USING HASH (col)</code></td></tr>
+    <tr><td><strong>GiST</strong></td><td>Generalized search tree — geospatial, ranges, full-text, kNN</td><td>PostGIS uses it; range types use it</td></tr>
+    <tr><td><strong>GIN</strong></td><td>Inverted index — JSONB, arrays, full-text, trigrams</td><td><code>CREATE INDEX ... USING GIN (jsonb_col)</code></td></tr>
+    <tr><td><strong>BRIN</strong></td><td>Block-range index — tiny, perfect for huge sorted tables (logs, time-series)</td><td><code>CREATE INDEX ... USING BRIN (created_at)</code></td></tr>
+    <tr><td><strong>SP-GiST</strong></td><td>Space-partitioned GiST — quad-trees, kd-trees, IP ranges</td><td>Rarely used directly</td></tr>
+    <tr><td><strong>Bloom</strong></td><td>Multi-column equality with low false-positive rate (extension)</td><td><code>CREATE EXTENSION bloom</code></td></tr>
+    <tr><td><strong>pgvector / HNSW</strong></td><td>Vector similarity for AI/embeddings</td><td><code>CREATE INDEX ... USING hnsw (embedding vector_cosine_ops)</code></td></tr>
+  </table>
+
+  <div class="code-block">
+    <span class="code-label postgres">A real-world Postgres index for a logs table — 100GB / 500M rows</span>
+<pre><span class="cmt">-- BRIN over the timestamp column: ~5 MB instead of ~15 GB B-tree</span>
+<span class="kw">CREATE INDEX</span> idx_logs_ts <span class="kw">ON</span> logs <span class="kw">USING</span> BRIN (created_at);
+
+<span class="cmt">-- GIN over JSONB metadata for "find rows where meta contains tag X"</span>
+<span class="kw">CREATE INDEX</span> idx_logs_meta <span class="kw">ON</span> logs <span class="kw">USING</span> GIN (meta jsonb_path_ops);
+
+<span class="cmt">-- Partial index: only "error" rows, which are 0.5% of the table</span>
+<span class="kw">CREATE INDEX</span> idx_logs_errors <span class="kw">ON</span> logs (created_at)
+  <span class="kw">WHERE</span> level = <span class="str">'ERROR'</span>;</pre>
+  </div>
+
+  <h3>MySQL InnoDB — Clustered index = the table</h3>
+  <p>The PRIMARY KEY index <em>is</em> the table. Rows live in the leaf nodes of the PK B-tree. Secondary indexes store the PK value (not a row pointer), so every secondary lookup is two B-tree traversals. This is why a sequential <code>BIGINT</code> PK ("autoincrement") is so important in MySQL — it keeps inserts at the right edge of the tree.</p>
+
+  <h3>Oracle — Index-Organized Tables (IOT)</h3>
+  <p>Standard tables are heap-organized (rows scattered, row IDs reference physical location). IOTs cluster the table inside the PK index (like InnoDB). Oracle also has <strong>bitmap indexes</strong> — brilliant for low-cardinality columns in warehouses, terrible under concurrent writes.</p>
+
+  <h3>SQL Server — Columnstore for OLAP</h3>
+  <p>For analytical workloads, SQL Server's <strong>columnstore indexes</strong> store data column-by-column with compression, giving 10× compression and 100× query speed for star-schema queries. Postgres has cstore_fdw and the citus extension for similar; MySQL has no native columnstore.</p>
+
+  <div class="gotcha">"Add an index" is not a free lunch in any DB. Every write touches every relevant index. A table with 12 indexes does 12× the work on each INSERT. The cheapest index is the one you didn't add.</div>
+
+  <div class="so-what">B-Tree everywhere. Postgres adds GIN/GiST/BRIN for JSON, full-text, and time-series. MySQL InnoDB clusters by PK. Oracle has bitmap + IOT. SQL Server has columnstore for analytics. Match the index type to the access pattern, not the DB's default.</div>
+</div>
+
+<!-- ===== 5 ===== -->
+<div class="feature" id="s5">
+  <div class="feature-header"><span class="feature-num">05</span><h2>Isolation Levels — Same Words, Different Behavior</h2></div>
+  <p class="lead">The SQL standard defines four isolation levels — READ UNCOMMITTED, READ COMMITTED, REPEATABLE READ, SERIALIZABLE. Every relational database claims to support them. None of them implement them the same way. Knowing the gaps is the difference between code that works in dev and code that mysteriously double-charges your customers in production.</p>
+
+  <h3>The standard's four levels and what they forbid</h3>
+  <table>
+    <tr><th>Level</th><th>Dirty read</th><th>Non-repeatable read</th><th>Phantom read</th><th>Lost update</th></tr>
+    <tr><td>READ UNCOMMITTED</td><td>Allowed</td><td>Allowed</td><td>Allowed</td><td>Allowed</td></tr>
+    <tr><td>READ COMMITTED</td><td>Prevented</td><td>Allowed</td><td>Allowed</td><td>Allowed</td></tr>
+    <tr><td>REPEATABLE READ</td><td>Prevented</td><td>Prevented</td><td>Allowed</td><td>Prevented*</td></tr>
+    <tr><td>SERIALIZABLE</td><td>Prevented</td><td>Prevented</td><td>Prevented</td><td>Prevented</td></tr>
+  </table>
+
+  <h3>What actually happens, by DB</h3>
+  <table>
+    <tr><th>DB</th><th>Default</th><th>READ COMMITTED</th><th>REPEATABLE READ</th><th>SERIALIZABLE</th></tr>
+    <tr><td>Postgres</td><td>READ COMMITTED</td><td>Statement-level snapshot</td><td>Transaction-level snapshot; phantoms blocked by side effect</td><td>True serializable via Serializable Snapshot Isolation (SSI)</td></tr>
+    <tr><td>MySQL InnoDB</td><td>REPEATABLE READ</td><td>Statement snapshot</td><td>Transaction snapshot + next-key locks block phantoms</td><td>Full table-level S-locks; rarely used</td></tr>
+    <tr><td>Oracle</td><td>READ COMMITTED</td><td>Statement snapshot</td><td>Not supported (skipped to Serializable)</td><td>True snapshot isolation</td></tr>
+    <tr><td>SQL Server</td><td>READ COMMITTED (lock-based)</td><td>Locks unless snapshot enabled</td><td>Range locks held to commit</td><td>Strict 2PL with key-range locks</td></tr>
+  </table>
+
+  <div class="gotcha">"REPEATABLE READ" in MySQL is not the same as "REPEATABLE READ" in Postgres. MySQL's blocks phantoms (via next-key locks); Postgres's allows them. Postgres's SERIALIZABLE is "true" serializable; MySQL's serializes via table locks and is rarely used. Always benchmark the actual behavior, not the label.</div>
+
+  <div class="code-block">
+    <span class="code-label demo">Lost update — same code, different outcome</span>
+<pre><span class="cmt">-- Session A:</span>
+<span class="kw">BEGIN</span>;
+<span class="kw">SELECT</span> balance <span class="kw">FROM</span> accounts <span class="kw">WHERE</span> id = <span class="num">1</span>;  <span class="cmt">-- reads 100</span>
+
+<span class="cmt">-- Session B (concurrently):</span>
+<span class="kw">BEGIN</span>;
+<span class="kw">UPDATE</span> accounts <span class="kw">SET</span> balance = balance - <span class="num">30</span> <span class="kw">WHERE</span> id = <span class="num">1</span>;
+<span class="kw">COMMIT</span>;  <span class="cmt">-- balance now 70</span>
+
+<span class="cmt">-- Session A (still in transaction, naive update):</span>
+<span class="kw">UPDATE</span> accounts <span class="kw">SET</span> balance = <span class="num">100</span> - <span class="num">50</span> <span class="kw">WHERE</span> id = <span class="num">1</span>;  <span class="cmt">-- writes 50</span>
+<span class="kw">COMMIT</span>;
+<span class="cmt">-- Final balance: 50 — but should be 20! Session B's deduction is LOST.</span></pre>
+  </div>
+
+  <p>The fix in every DB is the same: use <code>SELECT ... FOR UPDATE</code>, or use a write that doesn't depend on the read (<code>UPDATE ... SET balance = balance - 50</code>), or use SERIALIZABLE. Knowing which one your isolation level forces is the trick.</p>
+
+  <div class="tip">Default isolation differs! Postgres = READ COMMITTED. MySQL = REPEATABLE READ. Code that "works" on MySQL because of next-key locks may have silent races when ported to Postgres. Always test the same isolation level you'll run in prod.</div>
+
+  <div class="so-what">Same level names, different guarantees. Postgres SERIALIZABLE uses SSI and is fast enough for real use. MySQL REPEATABLE READ blocks phantoms. Oracle skips REPEATABLE READ entirely. SQL Server is lock-based unless you opt in to snapshot. Treat isolation labels as starting points, not promises.</div>
+</div>
+
+<!-- ===== 6 ===== -->
+<div class="feature" id="s6">
+  <div class="feature-header"><span class="feature-num">06</span><h2>Replication — Statement, Row, WAL, Redo — Pick Your Poison</h2></div>
+  <p class="lead">Every production database has a replica. How that replica is kept in sync defines what you can do (read scaling, failover, point-in-time recovery, logical CDC) and what can break (replication lag, conflicts, data loss).</p>
+
+  <h3>The two families</h3>
+  <ul>
+    <li><strong>Physical replication</strong> — ship the literal bytes of the change log. Replicas are byte-for-byte identical. Fast, simple, but no cross-version or cross-platform replication and you can only replicate the entire cluster.</li>
+    <li><strong>Logical replication</strong> — ship a logical description of the change ("row X changed column Y from A to B"). Replicas can be different versions, can subscribe to a subset of tables, can transform data. More flexible, more failure modes.</li>
+  </ul>
+
+  <h3>By database</h3>
+  <table>
+    <tr><th>DB</th><th>Native physical</th><th>Native logical</th><th>Common tooling</th></tr>
+    <tr><td>Postgres</td><td>Streaming replication (WAL shipping)</td><td>Logical replication (since 10), <code>pglogical</code></td><td>Patroni, Stolon, repmgr, pg_basebackup</td></tr>
+    <tr><td>MySQL</td><td>Binary log replication (statement, row, or mixed format)</td><td>Same binlog in ROW format is effectively logical</td><td>MHA, Orchestrator, Group Replication, ProxySQL</td></tr>
+    <tr><td>Oracle</td><td>Data Guard (redo apply)</td><td>GoldenGate</td><td>RAC + Data Guard</td></tr>
+    <tr><td>SQL Server</td><td>Always On Availability Groups</td><td>Transactional / merge replication, CDC</td><td>Always On listener, log shipping</td></tr>
+  </table>
+
+  <h3>MySQL binlog formats — the source of subtle bugs</h3>
+  <table>
+    <tr><th>Format</th><th>What's shipped</th><th>Pros</th><th>Cons</th></tr>
+    <tr><td>STATEMENT</td><td>The SQL text</td><td>Compact, readable</td><td>Non-deterministic functions (<code>NOW()</code>, <code>UUID()</code>) drift between primary and replica</td></tr>
+    <tr><td>ROW</td><td>Before/after row images</td><td>Always correct, replication-safe</td><td>Bigger logs; harder to debug</td></tr>
+    <tr><td>MIXED</td><td>Statement, fall back to row when unsafe</td><td>Best of both</td><td>Subtle when you check what was logged</td></tr>
+  </table>
+
+  <div class="code-block">
+    <span class="code-label postgres">Postgres replica setup — one line</span>
+<pre><span class="cmt"># On the primary's postgresql.conf:</span>
+wal_level = replica          <span class="cmt"># or 'logical' for logical replication</span>
+max_wal_senders = <span class="num">10</span>
+hot_standby = on             <span class="cmt"># replicas accept read queries</span>
+
+<span class="cmt"># On the replica, after pg_basebackup:</span>
+primary_conninfo = <span class="str">'host=primary.db port=5432 user=replicator'</span>
+<span class="cmt"># Streaming replication is now live. Replica catches up by reading WAL.</span></pre>
+  </div>
+
+  <div class="gotcha">Replication lag is the silent killer of "read from the replica" architectures. If you write and then immediately read from a replica, you may not see your own write. Solutions: read-your-writes routing (write-then-read uses primary), session pinning, or causal consistency tokens (PostgreSQL 14+ has <code>pg_current_wal_lsn()</code> handoff).</div>
+
+  <div class="so-what">Physical replication = identical byte copies, simple, all-or-nothing. Logical = flexible, table-level, cross-version, but more failure modes. MySQL binlog ROW format is effectively logical. Postgres ≥10 has logical replication baked in. Oracle's GoldenGate is the gold standard but costs accordingly.</div>
+</div>
+
+<!-- ===== 7 ===== -->
+<div class="feature" id="s7">
+  <div class="feature-header"><span class="feature-num">07</span><h2>Data Types — Beyond <code>INT</code> and <code>VARCHAR</code></h2></div>
+  <p class="lead">Every database has the same basic types. The interesting differences live in the <em>extras</em> — and Postgres is the clear winner here, with built-in support for things that need third-party libraries everywhere else.</p>
+
+  <table>
+    <tr><th>Type</th><th>Postgres</th><th>MySQL</th><th>Oracle</th><th>SQL Server</th></tr>
+    <tr><td>Auto-increment PK</td><td><code>BIGSERIAL</code>, <code>GENERATED AS IDENTITY</code></td><td><code>AUTO_INCREMENT</code></td><td><code>SEQUENCE</code> + trigger or <code>IDENTITY</code> (12c+)</td><td><code>IDENTITY(1,1)</code></td></tr>
+    <tr><td>Boolean</td><td>Native <code>BOOLEAN</code></td><td><code>TINYINT(1)</code> (no real bool)</td><td>No native bool; <code>NUMBER(1)</code> or <code>CHAR(1)</code></td><td><code>BIT</code></td></tr>
+    <tr><td>UUID</td><td>Native <code>UUID</code> type</td><td><code>BINARY(16)</code> or <code>CHAR(36)</code></td><td><code>RAW(16)</code> or <code>VARCHAR2(36)</code></td><td>Native <code>UNIQUEIDENTIFIER</code></td></tr>
+    <tr><td>JSON</td><td><code>JSONB</code> (binary, indexed)</td><td><code>JSON</code> (binary)</td><td><code>JSON</code> (21c) or <code>CLOB</code></td><td><code>NVARCHAR(MAX)</code> with JSON functions</td></tr>
+    <tr><td>Array</td><td>Native (any type)</td><td>JSON-encoded only</td><td><code>VARRAY</code> / nested tables</td><td>Table types, JSON, XML</td></tr>
+    <tr><td>Range types</td><td>Native (<code>int4range</code>, <code>tstzrange</code>, ...)</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>Network address</td><td>Native <code>INET</code>, <code>CIDR</code></td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>Geospatial</td><td>PostGIS (de facto standard)</td><td>Spatial types (basic)</td><td>Oracle Spatial</td><td>geometry / geography</td></tr>
+    <tr><td>Money</td><td><code>NUMERIC</code> (recommended) / <code>MONEY</code></td><td><code>DECIMAL</code></td><td><code>NUMBER</code></td><td><code>MONEY</code> / <code>DECIMAL</code></td></tr>
+    <tr><td>Enum</td><td>Native <code>CREATE TYPE ... AS ENUM</code></td><td><code>ENUM('a','b')</code> column</td><td>—</td><td>—</td></tr>
+    <tr><td>Vector (embeddings)</td><td><code>pgvector</code> extension</td><td>—</td><td>23ai native</td><td>—</td></tr>
+  </table>
+
+  <div class="code-block">
+    <span class="code-label postgres">Postgres-only types that earn their keep</span>
+<pre><span class="cmt">-- Range type: a booking that occupies a time interval</span>
+<span class="kw">CREATE TABLE</span> bookings (
+  id    <span class="type">BIGSERIAL PRIMARY KEY</span>,
+  room  <span class="type">INT</span>,
+  span  <span class="type">TSTZRANGE</span>,
+  <span class="cmt">-- exclusion constraint: no two bookings for the same room can overlap</span>
+  <span class="kw">EXCLUDE USING</span> GIST (room <span class="kw">WITH</span> =, span <span class="kw">WITH</span> &amp;&amp;)
+);
+
+<span class="cmt">-- Array column: store tags inline without a join table</span>
+<span class="kw">CREATE TABLE</span> posts (
+  id   <span class="type">BIGSERIAL PRIMARY KEY</span>,
+  tags <span class="type">TEXT</span>[]
+);
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> posts <span class="kw">WHERE</span> tags @&gt; <span class="kw">ARRAY</span>[<span class="str">'java'</span>, <span class="str">'kafka'</span>];
+
+<span class="cmt">-- INET: store IPs natively, query by subnet</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> requests <span class="kw">WHERE</span> client_ip &lt;&lt;= <span class="str">'10.0.0.0/8'</span>::<span class="type">INET</span>;</pre>
+  </div>
+
+  <div class="gotcha">MySQL has no real boolean. <code>TINYINT(1)</code> is just an integer that conventionally stores 0/1. <code>WHERE active = TRUE</code> compares against the integer 1; <code>WHERE active = 'TRUE'</code> coerces 'TRUE' to 0 and silently returns rows where active = 0. Use explicit integers and you'll thank yourself.</div>
+
+  <div class="so-what">Postgres has built-in types for half the things you'd otherwise model with extra tables or string-coding. MySQL's type system is plainer. Oracle is rich but its NUMBER type and lack of native BOOLEAN make porting painful. SQL Server lands in the middle.</div>
+</div>
+
+<!-- ===== 8 ===== -->
+<div class="feature" id="s8">
+  <div class="feature-header"><span class="feature-num">08</span><h2>JSON Support — Same Word, Very Different Capabilities</h2></div>
+  <p class="lead">Every modern relational DB stores JSON. None of them are equivalent. Knowing the differences before you bet a project on "we'll just use JSON columns" is worth its weight in incident postmortems.</p>
+
+  <h3>Postgres — <code>JSONB</code> is the gold standard</h3>
+  <p>Two types: <code>JSON</code> (stored as text, preserves whitespace and key order) and <code>JSONB</code> (binary, parsed once, indexed, fast). Almost everyone uses JSONB. You get path queries, containment operators, indexing via GIN, and full JSONPath since version 12.</p>
+
+  <div class="code-block">
+    <span class="code-label postgres">Postgres JSONB — queryable, indexable, fast</span>
+<pre><span class="kw">CREATE TABLE</span> events (id <span class="type">BIGSERIAL</span>, payload <span class="type">JSONB</span>);
+<span class="kw">CREATE INDEX</span> idx_payload <span class="kw">ON</span> events <span class="kw">USING</span> GIN (payload jsonb_path_ops);
+
+<span class="cmt">-- Query: events where payload.type = 'login' AND payload.region = 'IN'</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> events
+<span class="kw">WHERE</span> payload @&gt; <span class="str">'{"type":"login","region":"IN"}'</span>;
+
+<span class="cmt">-- Extract a field</span>
+<span class="kw">SELECT</span> payload-&gt;&gt;<span class="str">'user_id'</span> <span class="kw">AS</span> user_id <span class="kw">FROM</span> events;
+
+<span class="cmt">-- Update a nested value (returns a new JSONB; you write it back)</span>
+<span class="kw">UPDATE</span> events <span class="kw">SET</span> payload = jsonb_set(payload, <span class="str">'{status}'</span>, <span class="str">'"ok"'</span>) <span class="kw">WHERE</span> id = <span class="num">42</span>;</pre>
+  </div>
+
+  <h3>MySQL — Decent JSON, fewer index tricks</h3>
+  <p>MySQL 5.7+ has a native <code>JSON</code> type stored as binary. You query with <code>JSON_EXTRACT()</code> or the <code>-&gt;</code>/<code>-&gt;&gt;</code> operators. Indexing requires <em>generated columns</em> — you create a virtual column from a JSON expression and index that.</p>
+
+  <div class="code-block">
+    <span class="code-label mysql">MySQL JSON — works, but indexing is a dance</span>
+<pre><span class="kw">CREATE TABLE</span> events (
+  id <span class="type">BIGINT AUTO_INCREMENT PRIMARY KEY</span>,
+  payload <span class="type">JSON</span>,
+  user_id <span class="type">BIGINT GENERATED ALWAYS AS</span> (payload-&gt;&gt;<span class="str">'$.user_id'</span>) STORED,
+  <span class="kw">INDEX</span> idx_user (user_id)
+);
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> events <span class="kw">WHERE</span> JSON_EXTRACT(payload, <span class="str">'$.type'</span>) = <span class="str">'login'</span>;</pre>
+  </div>
+
+  <h3>Oracle — JSON inside <code>CLOB</code> / <code>BLOB</code>, or native in 21c+</h3>
+  <p>Pre-21c, JSON was a constraint on a CLOB column. From 21c, JSON is a first-class native type with binary storage and indexing. Query syntax uses JSON path (<code>$.field</code>) similar to MySQL.</p>
+
+  <h3>SQL Server — JSON as text</h3>
+  <p>SQL Server has JSON <em>functions</em> (<code>JSON_VALUE</code>, <code>OPENJSON</code>, <code>FOR JSON PATH</code>) but no native JSON type. You store it in <code>NVARCHAR(MAX)</code> and index via computed columns. Functional, not luxurious.</p>
+
+  <table>
+    <tr><th>Capability</th><th>Postgres JSONB</th><th>MySQL JSON</th><th>Oracle 21c JSON</th><th>SQL Server</th></tr>
+    <tr><td>Native binary</td><td>Yes</td><td>Yes</td><td>Yes (21c+)</td><td>No (text)</td></tr>
+    <tr><td>Generic index</td><td>GIN</td><td>—</td><td>JSON search index</td><td>—</td></tr>
+    <tr><td>Indexable via computed col</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>Containment <code>@&gt;</code></td><td>Yes</td><td><code>JSON_CONTAINS()</code></td><td><code>JSON_EXISTS</code></td><td><code>OPENJSON</code></td></tr>
+    <tr><td>Partial in-place update</td><td>Hot updates via JSONB ops</td><td>Yes (5.7+)</td><td>Yes</td><td>No</td></tr>
+  </table>
+
+  <div class="gotcha">"Just put it in JSON" is a debt that compounds. Querying nested JSON without an index = full table scan. Aggregating JSON fields = parse on every row. If you query a JSON field often, lift it to a column. JSON is great for <em>occasionally-read</em> or <em>schemaless-by-nature</em> data — not as a substitute for proper modeling.</div>
+
+  <div class="so-what">Postgres JSONB is the only relational JSON story you'd build a product on. MySQL JSON works for moderate use. Oracle joined the party properly in 21c. SQL Server treats JSON as text with helper functions. If JSON is your primary access pattern, consider a document DB — but if it's a 10–20% slice, JSONB is plenty.</div>
+</div>
+
+<!-- ===== 9 ===== -->
+<div class="feature" id="s9">
+  <div class="feature-header"><span class="feature-num">09</span><h2>Stored Procedures &amp; SQL Dialects — Where Vendor Lock-in Lives</h2></div>
+  <p class="lead">SQL itself is mostly portable. The <em>procedural language</em> built around it isn't. PL/SQL (Oracle), T-SQL (SQL Server), PL/pgSQL (Postgres), and MySQL's stored procedure dialect are all different. Code that lives in the database is the hardest code to migrate.</p>
+
+  <table>
+    <tr><th>DB</th><th>Procedural language</th><th>External languages allowed</th></tr>
+    <tr><td>Oracle</td><td>PL/SQL — the most mature, can do almost anything</td><td>Java (stored Java procedures)</td></tr>
+    <tr><td>SQL Server</td><td>T-SQL — close cousin to PL/SQL</td><td>CLR (C#, VB) procedures</td></tr>
+    <tr><td>Postgres</td><td>PL/pgSQL (default) + PL/Python, PL/Perl, PL/V8 (JS), PL/Java, PL/R</td><td>Anything — extensible</td></tr>
+    <tr><td>MySQL</td><td>SQL stored procedures (limited, deprecated by Oracle's stewardship)</td><td>No external langs</td></tr>
+  </table>
+
+  <h3>Same logic, four dialects — auto-incremented sequence</h3>
+  <div class="code-block">
+    <span class="code-label oracle">Oracle PL/SQL</span>
+<pre><span class="kw">CREATE SEQUENCE</span> order_seq <span class="kw">START WITH</span> <span class="num">1</span>;
+
+<span class="kw">CREATE OR REPLACE TRIGGER</span> orders_bi
+<span class="kw">BEFORE INSERT ON</span> orders
+<span class="kw">FOR EACH ROW</span>
+<span class="kw">BEGIN</span>
+  :NEW.id := order_seq.NEXTVAL;
+<span class="kw">END</span>;</pre>
+  </div>
+
+  <div class="code-block">
+    <span class="code-label postgres">Postgres</span>
+<pre><span class="kw">CREATE TABLE</span> orders (
+  id <span class="type">BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY</span>,
+  ...
+);
+<span class="cmt">-- Or simpler: BIGSERIAL is shorthand for "INT + sequence + default"</span></pre>
+  </div>
+
+  <div class="code-block">
+    <span class="code-label mysql">MySQL</span>
+<pre><span class="kw">CREATE TABLE</span> orders (
+  id <span class="type">BIGINT AUTO_INCREMENT PRIMARY KEY</span>,
+  ...
+);</pre>
+  </div>
+
+  <h3>Returning the inserted row</h3>
+  <p>This is a perfect example of "looks portable, isn't":</p>
+  <div class="code-block">
+    <span class="code-label postgres">Postgres — RETURNING is built into INSERT</span>
+<pre><span class="kw">INSERT INTO</span> users (email) <span class="kw">VALUES</span> (<span class="str">'p@x.com'</span>)
+<span class="kw">RETURNING</span> id, created_at;</pre>
+  </div>
+  <div class="code-block">
+    <span class="code-label mysql">MySQL — two-step</span>
+<pre><span class="kw">INSERT INTO</span> users (email) <span class="kw">VALUES</span> (<span class="str">'p@x.com'</span>);
+<span class="kw">SELECT</span> LAST_INSERT_ID();</pre>
+  </div>
+  <div class="code-block">
+    <span class="code-label oracle">Oracle — RETURNING ... INTO</span>
+<pre><span class="kw">INSERT INTO</span> users (email) <span class="kw">VALUES</span> (<span class="str">'p@x.com'</span>)
+<span class="kw">RETURNING</span> id <span class="kw">INTO</span> :v_id;</pre>
+  </div>
+
+  <h3>UPSERT — every DB's favorite party trick</h3>
+  <div class="code-block">
+    <span class="code-label postgres">Postgres — ON CONFLICT</span>
+<pre><span class="kw">INSERT INTO</span> counters (key, n) <span class="kw">VALUES</span> (<span class="str">'a'</span>, <span class="num">1</span>)
+<span class="kw">ON CONFLICT</span> (key) <span class="kw">DO UPDATE SET</span> n = counters.n + <span class="num">1</span>;</pre>
+  </div>
+  <div class="code-block">
+    <span class="code-label mysql">MySQL — ON DUPLICATE KEY UPDATE</span>
+<pre><span class="kw">INSERT INTO</span> counters (`key`, n) <span class="kw">VALUES</span> (<span class="str">'a'</span>, <span class="num">1</span>)
+<span class="kw">ON DUPLICATE KEY UPDATE</span> n = n + <span class="num">1</span>;</pre>
+  </div>
+  <div class="code-block">
+    <span class="code-label oracle">Oracle — MERGE statement</span>
+<pre><span class="kw">MERGE INTO</span> counters c
+<span class="kw">USING</span> (<span class="kw">SELECT</span> <span class="str">'a'</span> <span class="kw">AS</span> k, <span class="num">1</span> <span class="kw">AS</span> v <span class="kw">FROM</span> dual) src
+<span class="kw">ON</span> (c.key = src.k)
+<span class="kw">WHEN MATCHED THEN UPDATE SET</span> c.n = c.n + <span class="num">1</span>
+<span class="kw">WHEN NOT MATCHED THEN INSERT</span> (key, n) <span class="kw">VALUES</span> (src.k, src.v);</pre>
+  </div>
+
+  <div class="gotcha">Stored-procedure code is the deepest form of vendor lock-in. A 50K-line PL/SQL codebase is essentially un-migratable; companies pay Oracle license fees for decades because of this. If portability matters, keep business logic in your app, not in the DB.</div>
+
+  <div class="so-what">SQL is 80% portable. Procedural code is 0% portable. Auto-increment, UPSERT, RETURNING, sequences — every common pattern looks different in every DB. Standardize on one and learn its dialect; or stay in plain SQL and accept some duplication in your app.</div>
+</div>
+
+<!-- ===== 10 ===== -->
+<div class="feature" id="s10">
+  <div class="feature-header"><span class="feature-num">10</span><h2>Full-Text Search &amp; Vector Search — The Modern Asks</h2></div>
+  <p class="lead">"Search" used to mean Elasticsearch. Now relational DBs have caught up enough that for many products, you can skip the extra service.</p>
+
+  <h3>Full-text search</h3>
+  <table>
+    <tr><th>DB</th><th>Native FTS</th><th>Notes</th></tr>
+    <tr><td>Postgres</td><td><code>tsvector</code> + <code>tsquery</code>, ranking via <code>ts_rank</code></td><td>GIN-indexed. Multilingual dictionaries. Production-grade.</td></tr>
+    <tr><td>MySQL</td><td><code>FULLTEXT</code> indexes (InnoDB and MyISAM)</td><td>Boolean + natural-language modes; weaker stemming than PG</td></tr>
+    <tr><td>Oracle</td><td>Oracle Text — extremely powerful</td><td>Enterprise feature, full linguistic suite</td></tr>
+    <tr><td>SQL Server</td><td>Full-text indexes with stemming &amp; thesaurus</td><td>Decent but quirky setup</td></tr>
+    <tr><td>SQLite</td><td>FTS5 module — built-in</td><td>Surprisingly good for what it is</td></tr>
+  </table>
+
+  <div class="code-block">
+    <span class="code-label postgres">Postgres FTS — production-ready in 5 lines</span>
+<pre><span class="kw">ALTER TABLE</span> articles <span class="kw">ADD COLUMN</span> tsv <span class="type">TSVECTOR</span>
+  <span class="kw">GENERATED ALWAYS AS</span> (to_tsvector(<span class="str">'english'</span>, title || <span class="str">' '</span> || body)) STORED;
+<span class="kw">CREATE INDEX</span> idx_articles_tsv <span class="kw">ON</span> articles <span class="kw">USING</span> GIN(tsv);
+
+<span class="kw">SELECT</span> id, title, ts_rank(tsv, query) <span class="kw">AS</span> rank
+<span class="kw">FROM</span> articles, plainto_tsquery(<span class="str">'english'</span>, <span class="str">'replication lag'</span>) query
+<span class="kw">WHERE</span> tsv @@ query
+<span class="kw">ORDER BY</span> rank <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">10</span>;</pre>
+  </div>
+
+  <h3>Vector search — the AI/embeddings era</h3>
+  <table>
+    <tr><th>DB</th><th>Vector support</th><th>Index type</th></tr>
+    <tr><td>Postgres</td><td><code>pgvector</code> extension (now installed by AWS RDS, GCP CloudSQL, Azure)</td><td>HNSW, IVFFlat</td></tr>
+    <tr><td>Oracle 23ai</td><td>Native <code>VECTOR</code> type and similarity functions</td><td>Native HNSW</td></tr>
+    <tr><td>SQL Server 2025+</td><td>Native vector type and similarity search (preview)</td><td>Limited</td></tr>
+    <tr><td>MySQL HeatWave</td><td>Vector support in HeatWave (cloud only)</td><td>Limited</td></tr>
+    <tr><td>SQLite</td><td><code>sqlite-vec</code> extension</td><td>Brute-force + IVF</td></tr>
+  </table>
+
+  <div class="code-block">
+    <span class="code-label postgres">pgvector — search by semantic similarity</span>
+<pre><span class="kw">CREATE EXTENSION</span> vector;
+
+<span class="kw">CREATE TABLE</span> docs (
+  id <span class="type">BIGSERIAL</span>,
+  content <span class="type">TEXT</span>,
+  embedding <span class="type">VECTOR</span>(<span class="num">1536</span>)            <span class="cmt">-- e.g. OpenAI ada</span>
+);
+<span class="kw">CREATE INDEX</span> idx_docs_embedding <span class="kw">ON</span> docs
+  <span class="kw">USING</span> hnsw (embedding vector_cosine_ops);
+
+<span class="cmt">-- Find the 5 docs closest to a query embedding</span>
+<span class="kw">SELECT</span> id, content
+<span class="kw">FROM</span> docs
+<span class="kw">ORDER BY</span> embedding &lt;=&gt; <span class="str">'[0.012, -0.004, ...]'</span>::<span class="type">VECTOR</span>
+<span class="kw">LIMIT</span> <span class="num">5</span>;</pre>
+  </div>
+
+  <div class="so-what">For most apps in 2026, "Postgres + pgvector + tsvector" replaces both Elasticsearch and a vector DB. Oracle 23ai is closing the gap aggressively. MySQL and SQL Server lag for now. SQLite even has both — perfect for on-device RAG apps.</div>
+</div>
+
+<!-- ===== 11 ===== -->
+<div class="feature" id="s11">
+  <div class="feature-header"><span class="feature-num">11</span><h2>Concurrency &amp; Locking — Where Deadlocks Are Born</h2></div>
+  <p class="lead">Two transactions modifying the same data is the source of every interesting database story. The locking strategies differ in granularity (row, page, table), in scope (data + index keys?), and in whether reads block writes (lock-based) or coexist (MVCC).</p>
+
+  <h3>Lock granularity</h3>
+  <table>
+    <tr><th>DB</th><th>Default lock granularity</th><th>Escalation</th></tr>
+    <tr><td>Postgres</td><td>Row-level for writes (no page locks). Table-level for DDL.</td><td>None — Postgres tracks locks per-row in shared memory; you can run out of <code>max_locks_per_transaction</code></td></tr>
+    <tr><td>MySQL InnoDB</td><td>Row-level + next-key (gap) locks under RR</td><td>None — but gap locks can lock more than you expect</td></tr>
+    <tr><td>Oracle</td><td>Row-level, no lock escalation, no lock manager (locks stored in data blocks)</td><td>None — Oracle's "locks are free" boast</td></tr>
+    <tr><td>SQL Server</td><td>Row → page → table lock escalation (default ~5000 row locks)</td><td>Lock escalation can surprise; <code>ALTER TABLE ... SET (LOCK_ESCALATION = DISABLE)</code></td></tr>
+  </table>
+
+  <h3>Lock modes you'll encounter</h3>
+  <ul>
+    <li><strong>Shared (S)</strong> — multiple readers can hold it.</li>
+    <li><strong>Exclusive (X)</strong> — only one holder, blocks all others.</li>
+    <li><strong>Update (U)</strong> (SQL Server, MySQL) — intent-to-write, prevents lock upgrade deadlocks.</li>
+    <li><strong>Intent (IS, IX)</strong> — at the parent level (table) declaring that some child (row) is locked.</li>
+    <li><strong>Gap / next-key</strong> (InnoDB) — locks the range between index keys to block phantom inserts under RR.</li>
+  </ul>
+
+  <h3>Explicit row locking — almost portable</h3>
+  <div class="code-block">
+    <span class="code-label good">Worker queue, the cross-DB way</span>
+<pre><span class="cmt">-- Postgres / MySQL 8.0 / Oracle / SQL Server (with READPAST)</span>
+<span class="kw">SELECT</span> id, payload <span class="kw">FROM</span> jobs
+<span class="kw">WHERE</span> status = <span class="str">'pending'</span>
+<span class="kw">ORDER BY</span> created_at
+<span class="kw">LIMIT</span> <span class="num">1</span>
+<span class="kw">FOR UPDATE SKIP LOCKED</span>;
+<span class="cmt">-- The row is yours; other workers skip past it.</span></pre>
+  </div>
+
+  <div class="gotcha">MySQL added <code>SKIP LOCKED</code> in 8.0. Postgres has had it since 9.5. SQL Server uses <code>WITH (UPDLOCK, READPAST)</code> as the hint syntax. Worker-queue code written on one is rarely portable to another without rewrites.</div>
+
+  <h3>Deadlocks</h3>
+  <p>Every DB detects deadlocks (cycles in the lock graph) and aborts one transaction. The differences:</p>
+  <ul>
+    <li><strong>Postgres &amp; MySQL InnoDB</strong> — detect after a short timeout, pick the cheapest victim (least work done) and roll it back. Your client gets a deadlock error and must retry.</li>
+    <li><strong>Oracle</strong> — detects via a cycle-finder thread; rolls back the transaction that closed the cycle.</li>
+    <li><strong>SQL Server</strong> — fastest detector; you can set <code>DEADLOCK_PRIORITY</code> to influence the victim choice.</li>
+  </ul>
+
+  <div class="so-what">Every relational DB locks rows for writes and detects deadlocks. The differences live in lock escalation (SQL Server), gap locks (InnoDB), and lock storage (Oracle puts locks in data blocks; everyone else uses a lock manager). Always handle deadlock errors with retry logic.</div>
+</div>
+
+<!-- ===== 12 ===== -->
+<div class="feature" id="s12">
+  <div class="feature-header"><span class="feature-num">12</span><h2>Partitioning &amp; Sharding — Living Past a Single Box</h2></div>
+  <p class="lead">Every database eventually outgrows one machine. The relational world splits into two answers: <strong>partition the table</strong> (still one DB, split internally) and <strong>shard the database</strong> (multiple DBs, one logical table). Built-in support for each varies wildly.</p>
+
+  <h3>Partitioning — built-in</h3>
+  <table>
+    <tr><th>DB</th><th>Partition types</th><th>Notes</th></tr>
+    <tr><td>Postgres</td><td>Range, list, hash (since 10)</td><td>Native declarative since 10; mature since 12. Foreign keys to partitioned tables since 12.</td></tr>
+    <tr><td>MySQL</td><td>Range, list, hash, key, columns variants</td><td>InnoDB only (since 5.7). Limit ~8K partitions per table.</td></tr>
+    <tr><td>Oracle</td><td>Range, list, hash, composite, interval, reference, system</td><td>Most flexible by far; partition advisor and online operations</td></tr>
+    <tr><td>SQL Server</td><td>Range only (via partition functions)</td><td>Up to 15K partitions; integrates with partition switching for fast loads</td></tr>
+  </table>
+
+  <div class="code-block">
+    <span class="code-label postgres">Postgres declarative partitioning</span>
+<pre><span class="kw">CREATE TABLE</span> events (
+  id <span class="type">BIGINT</span>,
+  ts <span class="type">TIMESTAMPTZ NOT NULL</span>,
+  body <span class="type">JSONB</span>
+) <span class="kw">PARTITION BY RANGE</span> (ts);
+
+<span class="kw">CREATE TABLE</span> events_2026_01 <span class="kw">PARTITION OF</span> events
+  <span class="kw">FOR VALUES FROM</span> (<span class="str">'2026-01-01'</span>) <span class="kw">TO</span> (<span class="str">'2026-02-01'</span>);
+<span class="kw">CREATE TABLE</span> events_2026_02 <span class="kw">PARTITION OF</span> events
+  <span class="kw">FOR VALUES FROM</span> (<span class="str">'2026-02-01'</span>) <span class="kw">TO</span> (<span class="str">'2026-03-01'</span>);
+
+<span class="cmt">-- Inserts route automatically; queries with ts predicate prune partitions</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> events <span class="kw">WHERE</span> ts &gt;= <span class="str">'2026-02-01'</span>;</pre>
+  </div>
+
+  <h3>Sharding — bring your own</h3>
+  <p>Built-in horizontal scale across machines is where the open-source relational DBs <em>don't</em> shine. The common answers:</p>
+  <table>
+    <tr><th>DB</th><th>Sharding option</th><th>What it gives you</th></tr>
+    <tr><td>Postgres</td><td>Citus extension (now part of Microsoft Azure)</td><td>Distributed Postgres — transparent sharding, distributed JOINs</td></tr>
+    <tr><td>MySQL</td><td>Vitess (used by YouTube, Slack, Pinterest)</td><td>Sharding middleware with online resharding</td></tr>
+    <tr><td>Oracle</td><td>Oracle Sharding (12.2+)</td><td>Native — system-managed or user-defined</td></tr>
+    <tr><td>SQL Server</td><td>Elastic Database / sharded pools on Azure</td><td>Cloud-managed sharding</td></tr>
+    <tr><td>NewSQL</td><td>CockroachDB, Spanner, TiDB, YugabyteDB</td><td>Sharding built into the storage layer from day one</td></tr>
+  </table>
+
+  <div class="analogy">Partitioning = <em>splitting one filing cabinet into labeled drawers</em>. The cabinet (DB) stays in one room. Sharding = <em>putting drawers in different buildings</em>. Now you need a routing service to find anything, and cross-building queries get expensive.</div>
+
+  <div class="gotcha">Sharding kills cross-shard transactions. If your invariant spans shards (e.g., transfer money between two users on different shards), you need two-phase commit, sagas, or to redesign so the invariant fits on one shard. This is the most common reason teams abandon sharding mid-project.</div>
+
+  <div class="so-what">Partitioning is straightforward in all four major DBs. True sharding is an extension/middleware story (Citus, Vitess) or requires moving to NewSQL. Avoid sharding as long as one big machine handles your load — modern hardware pushes that ceiling much higher than people assume.</div>
+</div>
+
+<!-- ===== 13 ===== -->
+<div class="feature" id="s13">
+  <div class="feature-header"><span class="feature-num">13</span><h2>High Availability &amp; Failover — Who Becomes Primary When?</h2></div>
+  <p class="lead">Replication gives you copies. HA decides what happens when the primary dies — who promotes a replica, when, and how do you stop two primaries from existing at once (split-brain).</p>
+
+  <table>
+    <tr><th>DB</th><th>Native HA</th><th>How it elects a new primary</th></tr>
+    <tr><td>Postgres</td><td>None native — Patroni, repmgr, Stolon</td><td>Patroni uses a DCS (etcd/Consul/Zookeeper) for leader election; promotes the most caught-up replica</td></tr>
+    <tr><td>MySQL</td><td>Group Replication, InnoDB Cluster (with MySQL Router)</td><td>Group Replication uses Paxos-style consensus; usually quorum of 3 or 5</td></tr>
+    <tr><td>Oracle</td><td>Data Guard (replicas) + RAC (active-active on shared storage)</td><td>Fast Start Failover via Data Guard observer; RAC has no failover — all nodes are active</td></tr>
+    <tr><td>SQL Server</td><td>Always On Availability Groups</td><td>Windows Server Failover Cluster + AG listener</td></tr>
+  </table>
+
+  <h3>Synchronous vs asynchronous replication</h3>
+  <p>The core trade-off is durability vs latency:</p>
+  <ul>
+    <li><strong>Async</strong> — primary commits, ships WAL to replicas later. Fast. If primary dies after commit but before ship, those commits are lost.</li>
+    <li><strong>Sync</strong> — primary waits for at least one replica to acknowledge before returning success. Slower. No data loss on primary failure.</li>
+    <li><strong>Semi-sync</strong> (MySQL) — wait for at least one replica's <em>receipt</em>, not full apply. Middle ground.</li>
+    <li><strong>Quorum</strong> (Group Replication, Spanner, Postgres with quorum committee) — wait for majority. Tolerates one failure with no data loss.</li>
+  </ul>
+
+  <div class="code-block">
+    <span class="code-label postgres">Postgres synchronous_commit options</span>
+<pre><span class="cmt"># In postgresql.conf:</span>
+synchronous_commit = on              <span class="cmt"># default — fsync to local WAL</span>
+synchronous_commit = remote_write    <span class="cmt"># wait for replica receipt</span>
+synchronous_commit = remote_apply    <span class="cmt"># wait for replica replay</span>
+synchronous_commit = off             <span class="cmt"># fastest, may lose ~3 commits on crash</span>
+
+synchronous_standby_names = <span class="str">'ANY 2 (replica1, replica2, replica3)'</span>
+<span class="cmt"># Commit succeeds when any 2 of these 3 replicas ack.</span></pre>
+  </div>
+
+  <div class="gotcha">A common pattern: enable sync replication to a single specific replica. The day that replica goes down, every write blocks indefinitely waiting for an ack that never comes. Always specify <code>ANY N</code> or have explicit failover for the sync replica too.</div>
+
+  <div class="so-what">Async = fast, can lose commits. Sync to one = blocks on replica failure. Quorum (ANY N of M) is the modern answer — Postgres, MySQL Group Replication, NewSQL all support it. Oracle RAC sidesteps the question by being active-active on shared storage (expensive but no failover at all).</div>
+</div>
+
+<!-- ===== 14 ===== -->
+<div class="feature" id="s14">
+  <div class="feature-header"><span class="feature-num">14</span><h2>Performance Profile — Who's Faster, and at What?</h2></div>
+  <p class="lead">"X is faster than Y" is meaningless without the workload. Here's the workload-by-workload truth — each row of the table below is a deep story about what the database is actually doing under the hood. Skim the table; read the subsection that matches your real workload.</p>
+
+  <table>
+    <tr><th>Workload</th><th>Winner</th><th>One-line why</th></tr>
+    <tr><td>Single-row PK lookup, very high QPS</td><td>MySQL InnoDB</td><td>Clustered PK + sequential autoinc + adaptive hash index</td></tr>
+    <tr><td>Complex analytical queries (joins, window funcs)</td><td>Postgres, SQL Server, Oracle</td><td>Mature cost-based planners + parallel query + JIT</td></tr>
+    <tr><td>Write-heavy with random keys</td><td>MyRocks (LSM), Postgres tuned</td><td>LSM trees absorb random writes; B-trees thrash</td></tr>
+    <tr><td>Mixed OLTP + reporting (HTAP)</td><td>Oracle, SQL Server</td><td>Resource governors + columnstore prevent noisy-neighbor</td></tr>
+    <tr><td>JSON-heavy with queries</td><td>Postgres JSONB</td><td>Binary format + GIN indexes = indexed path queries</td></tr>
+    <tr><td>Time-series</td><td>TimescaleDB / BRIN</td><td>Hypertables + tiny BRIN indexes on naturally-sorted data</td></tr>
+    <tr><td>Embedded / on-device</td><td>SQLite</td><td>No server, no IPC; function calls into a C library</td></tr>
+    <tr><td>Geospatial</td><td>Postgres + PostGIS</td><td>20+ years of mature R-tree / GiST spatial indexing</td></tr>
+  </table>
+
+  <h3 style="margin-top:2rem">① Single-row PK lookup at very high QPS — MySQL InnoDB</h3>
+  <p>This is the workload InnoDB was built for, and the design decisions compound. Each one is small; together they explain the 30–40% edge MySQL holds on point reads.</p>
+
+  <p><strong>The clustered index IS the table.</strong> In InnoDB, the primary key B+Tree's leaf nodes contain the actual row data — not pointers to it. A lookup like <code>SELECT * FROM users WHERE id = 42</code> is one B+Tree traversal and the row is right there. Postgres splits this into two structures: a separate heap (unordered rows) and a B-Tree index that points into it. Index lookup → heap fetch = two cache lines touched instead of one.</p>
+
+  <p><strong>Sequential <code>AUTO_INCREMENT</code> keeps the hot region tiny.</strong> Monotonic keys (1, 2, 3, …) mean every insert lands at the rightmost leaf of the B+Tree. The next ~1000 rows live in one 16KB page, that page stays pinned in the buffer pool, and new rows are written sequentially to disk — no page splits, no fragmentation. Switch the PK to a UUID and every insert lands at a random spot in the tree; throughput drops 3–5×. This is why <em>"use BIGINT AUTO_INCREMENT, never UUID v4 as your PK"</em> is the loudest community rule in MySQL.</p>
+
+  <p><strong>The Adaptive Hash Index — the silent weapon.</strong> InnoDB watches access patterns. When certain PK values get hit repeatedly, it builds an in-memory hash index on top of the B+Tree, transparently. Subsequent lookups become O(1) hash hits, skipping the B-tree entirely. You don't configure it. You don't see it in <code>EXPLAIN</code>. It just sits there making hot reads faster. Postgres has no equivalent.</p>
+
+  <div class="code-block">
+    <span class="code-label mysql">SHOW ENGINE INNODB STATUS — the AHI in action</span>
+<pre>INSERT BUFFER AND ADAPTIVE HASH INDEX
+-------------------------------------
+Hash table size <span class="num">4425293</span>, node heap has <span class="num">1234</span> buffer(s)
+<span class="num">139.93</span> hash searches/s, <span class="num">12.41</span> non-hash searches/s</pre>
+  </div>
+  <p>That ratio (~92% hash hits) is the AHI catching most PK lookups before they ever touch the B-tree.</p>
+
+  <p><strong>Tiny per-row overhead.</strong> InnoDB rows carry 6 bytes of transaction ID + 7 bytes of rollback pointer = 13 bytes of MVCC header. Postgres tuples carry a 24-byte header (xmin, xmax, cmin, cmax, ctid, infomask). For a small row, that's 30% more on-disk size in Postgres — fewer rows per page, more I/O per lookup.</p>
+
+  <p><strong>No version-chain walk for the live row.</strong> At <code>READ COMMITTED</code>, InnoDB reads the current row in-place; only if your snapshot needs an older version does it walk the undo log. Postgres always reads the heap tuple, then checks visibility, then potentially walks HOT chains — extra bookkeeping per read.</p>
+
+  <div class="gotcha">InnoDB's clustering elegance has a cost: secondary indexes store the PK, not a row pointer. So <code>WHERE email = ?</code> is <em>two</em> B+Tree traversals (email index → PK → row). If your PK is a 36-byte UUID string, every secondary index is bloated by carrying it in every leaf. Yet another reason narrow integer PKs matter in MySQL even more than in Postgres.</div>
+
+  <p><strong>Numbers, single 32-core / NVMe / all-in-RAM box:</strong> InnoDB ~250K point-read QPS, Postgres ~180K. Sequential inserts: InnoDB ~150K/s, Postgres ~110K/s. The edge is real and consistent — and disappears the moment your query is more complex than <code>WHERE id = ?</code>.</p>
+
+  <h3 style="margin-top:2rem">② Complex analytical queries — Postgres, SQL Server, Oracle</h3>
+  <p>The moment a query has 5+ joins, window functions, CTEs, or aggregations across millions of rows, the bottleneck stops being storage and becomes the <strong>query planner</strong>. This is where Postgres, SQL Server, and Oracle pull ahead — sometimes by 10× or more — over MySQL.</p>
+
+  <p><strong>Cost-based optimization with deep statistics.</strong> All four DBs are cost-based, but the depth of statistics differs. Postgres tracks column histograms, n-distinct estimates, most-common-value lists, and (since 10) extended statistics over correlated columns. Oracle's optimizer has 40 years of accumulated hints, hashes, and heuristics. SQL Server has cardinality-estimation versions you can choose between. MySQL 8's optimizer is improving — hash joins arrived in 8.0.18, after Postgres had them for two decades — but the planner still chokes on queries that the other three handle without breaking a sweat.</p>
+
+  <p><strong>Join algorithms.</strong> Postgres, SQL Server, and Oracle implement nested-loop, hash-join, and merge-join, and the planner picks dynamically based on row estimates. MySQL was nested-loop-only until 8.0.18 (yes, you read that right). A query like "join 50M orders to 100K customers on a non-indexed column" was effectively O(N×M) in MySQL — minutes — while Postgres did a hash join in seconds.</p>
+
+  <p><strong>Parallel query.</strong> Postgres added parallel sequential scan in 9.6 and now parallelizes joins, aggregates, and index scans. Oracle and SQL Server have parallelized everything for decades. MySQL's parallel execution arrived in 8.0 but only for specific operations (CHECK TABLE, parallel index reads in 8.0.14). For a 1B-row aggregate, Postgres with <code>max_parallel_workers_per_gather = 8</code> finishes in 1/6th the wall time of single-threaded execution.</p>
+
+  <p><strong>JIT compilation.</strong> Postgres 11+ compiles query expressions to native code via LLVM for queries above a cost threshold — a 30M-row aggregation that interprets one tuple at a time can become a tight machine-code loop. SQL Server and Oracle have their own equivalent (batch-mode execution + adaptive memory grants). MySQL has none.</p>
+
+  <p><strong>Window functions, recursive CTEs, lateral joins.</strong> All standard since SQL:2003. Postgres has had window functions since 8.4 (2009); SQL Server and Oracle have had them longer. MySQL added them in 8.0 (2018). Code written against PG/SQL Server/Oracle often won't even parse on older MySQL.</p>
+
+  <div class="code-block">
+    <span class="code-label demo">A query that runs in seconds on Postgres, minutes on MySQL 5.7</span>
+<pre><span class="cmt">-- "Find each customer's top 3 orders by value, plus a running total"</span>
+<span class="kw">SELECT</span> customer_id, order_id, amount,
+       <span class="kw">RANK</span>() <span class="kw">OVER</span> (<span class="kw">PARTITION BY</span> customer_id <span class="kw">ORDER BY</span> amount <span class="kw">DESC</span>) <span class="kw">AS</span> rk,
+       <span class="kw">SUM</span>(amount) <span class="kw">OVER</span> (<span class="kw">PARTITION BY</span> customer_id <span class="kw">ORDER BY</span> placed_at) <span class="kw">AS</span> running_total
+<span class="kw">FROM</span> orders
+<span class="kw">WHERE</span> placed_at &gt;= <span class="kw">NOW</span>() - <span class="kw">INTERVAL</span> <span class="str">'90 days'</span>;</pre>
+  </div>
+
+  <p><strong>Numbers:</strong> on a 100M-row analytical workload (TPC-H Q5-style), Postgres 16 with parallel query routinely runs 5–10× faster than MySQL 8 on the same hardware. Oracle and SQL Server typically beat both — at the cost of license fees.</p>
+
+  <div class="gotcha">"My MySQL query is slow" almost always means the planner picked a bad plan. <code>FORCE INDEX</code> hints are a common smell. Same query on Postgres rarely needs hints because the planner has more options to consider. If your roadmap has growing analytical complexity and you're on MySQL, plan the Postgres migration before the query latency becomes a crisis.</div>
+
+  <h3 style="margin-top:2rem">③ Write-heavy with random keys — MyRocks, Postgres (tuned)</h3>
+  <p>The default storage in every relational DB is a <strong>B-Tree</strong>. B-Trees are wonderful for ordered access and range scans — and a disaster for sustained random writes at scale. This is the workload that LSM trees (Log-Structured Merge) were invented to handle.</p>
+
+  <p><strong>Why B-Trees suffer.</strong> Every insert finds its position in the tree (an O(log n) lookup), reads the page, modifies it, and writes it back. If your keys are random (UUIDs, hashed IDs), every insert lands on a different page. The buffer pool churns — pages get pulled in, dirtied, evicted, pulled in again. Page splits cascade. SSDs feel <em>some</em> of this pain less than spinning disks but they still pay the write amplification cost (10–20× more bytes written than logical data).</p>
+
+  <p><strong>How LSM trees fix it.</strong> An LSM tree accepts writes into an in-memory sorted structure (memtable). When that fills, it's flushed to disk as a sorted file (SSTable). New SSTables stack on top of older ones. A background process <em>compacts</em> them — merging and discarding overwrites. Writes are always sequential. Random updates become append-only.</p>
+
+  <div class="code-block">
+    <span class="code-label good">LSM write path — sequential, always</span>
+<pre>WRITE arrives:
+  1. Append to WAL on disk    <span class="cmt">// sequential — fast</span>
+  2. Insert into memtable      <span class="cmt">// in-memory sorted</span>
+
+Memtable fills (~64MB):
+  3. Flush to SSTable on disk  <span class="cmt">// sequential write of sorted data</span>
+
+Background:
+  4. Compact older SSTables    <span class="cmt">// merge + dedupe + drop tombstones</span></pre>
+  </div>
+
+  <p><strong>MyRocks</strong> packages RocksDB as a MySQL engine. Originally built by Facebook to shrink their UserDB MySQL footprint; they reported ~50% space savings and ~50% write reduction vs InnoDB. For SSD-heavy write workloads (1M+ writes/sec), MyRocks does 3–5× the sustained throughput of InnoDB with random keys.</p>
+
+  <p><strong>Postgres's middle ground.</strong> Postgres is B-Tree-based, but it has tricks that soften random-write pain: HOT (Heap-Only Tuples) updates avoid index updates when no indexed column changed; <code>fillfactor &lt; 100</code> leaves slack in pages so updates stay in-place; partitioning lets you drop entire chunks instead of deleting row-by-row. With these dials tuned, Postgres can handle very heavy writes — just not at the scale where MyRocks shines.</p>
+
+  <table>
+    <tr><th>Engine</th><th>Type</th><th>Random-write strength</th><th>Read penalty</th></tr>
+    <tr><td>InnoDB</td><td>B+Tree</td><td>Moderate (page churn under random keys)</td><td>None</td></tr>
+    <tr><td>Postgres heap</td><td>Heap + B-Tree index</td><td>Moderate (HOT updates help)</td><td>None</td></tr>
+    <tr><td>MyRocks</td><td>LSM (RocksDB)</td><td>Excellent — sequential always</td><td>Slight — reads may check multiple SSTables</td></tr>
+    <tr><td>Cassandra / ScyllaDB</td><td>LSM</td><td>Excellent (write-optimized DB)</td><td>Higher for ranges</td></tr>
+  </table>
+
+  <p><strong>The catch:</strong> LSM reads are slower because a key may live in the memtable, in any of several SSTables, or have been deleted (tombstoned). Bloom filters mitigate this but don't eliminate it. If your workload is 80% writes / 20% reads, LSM wins. If it's 80% reads / 20% writes, B-Tree wins. For 50/50, benchmark both — there's no shortcut.</p>
+
+  <h3 style="margin-top:2rem">④ Mixed OLTP + reporting (HTAP) — Oracle, SQL Server</h3>
+  <p>"Real-time dashboards on the production database" is the dream that haunts every architect. The problem is the <strong>noisy-neighbor effect</strong>: a reporting query that scans 50M rows starves the buffer pool of OLTP-relevant pages, holds shared locks under lock-based isolation, and saturates I/O bandwidth. OLTP latency spikes from 2ms to 200ms while the report is running.</p>
+
+  <p><strong>Oracle's answer: Resource Manager + Materialized Views with Query Rewrite.</strong> Resource Manager lets you guarantee CPU, I/O, and parallelism per consumer group — analytics gets capped at 20% CPU, OLTP gets the rest. Materialized views with automatic refresh pre-compute reporting answers; the optimizer can transparently rewrite <code>SELECT SUM(...)</code> queries to hit the MV instead of the base table. Oracle's <strong>In-Memory Column Store</strong> (12c+) caches the same data in both row format (for OLTP) and columnar format (for analytics) — same buffer pool, two representations.</p>
+
+  <p><strong>SQL Server's answer: Resource Governor + Columnstore indexes.</strong> Resource Governor is similar to Oracle's. Columnstore indexes are the killer feature — <em>same table, both rowstore (for OLTP) and columnstore (for analytics) indexes</em>. Analytical queries hit the columnstore and get 10–100× speedup with 5–10× compression; OLTP keeps using the clustered rowstore. SQL Server tracks which rows have been recently modified and merges deltas into the columnstore lazily.</p>
+
+  <div class="code-block">
+    <span class="code-label demo">SQL Server — clustered rowstore + nonclustered columnstore on one table</span>
+<pre><span class="cmt">-- Clustered rowstore for OLTP point reads</span>
+<span class="kw">CREATE TABLE</span> orders (
+  id <span class="type">BIGINT IDENTITY PRIMARY KEY</span>,
+  customer_id <span class="type">BIGINT</span>,
+  amount <span class="type">DECIMAL</span>(<span class="num">19</span>,<span class="num">4</span>),
+  placed_at <span class="type">DATETIME2</span>
+);
+
+<span class="cmt">-- Nonclustered columnstore for analytics on same table</span>
+<span class="kw">CREATE NONCLUSTERED COLUMNSTORE INDEX</span> idx_orders_cs
+  <span class="kw">ON</span> orders (customer_id, amount, placed_at);
+
+<span class="cmt">-- Point read uses the clustered rowstore (~1ms)</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> id = <span class="num">42</span>;
+
+<span class="cmt">-- Aggregate uses the columnstore (~100ms instead of 30s)</span>
+<span class="kw">SELECT</span> customer_id, <span class="kw">SUM</span>(amount)
+<span class="kw">FROM</span> orders <span class="kw">WHERE</span> placed_at &gt;= <span class="str">'2026-01-01'</span>
+<span class="kw">GROUP BY</span> customer_id;</pre>
+  </div>
+
+  <p><strong>Why Postgres and MySQL struggle here.</strong> Postgres has parallel query (great) but no resource governor (a runaway analytical query <em>can</em> exhaust connections and slow OLTP). Native columnstore is missing — extensions like <code>citus columnar</code> and <code>hydra</code> are still maturing. MySQL has none of these, plus a weaker planner — running heavy analytics on the OLTP master is genuinely dangerous.</p>
+
+  <p><strong>The modern alternatives.</strong> If HTAP is the requirement, the realistic options in 2026 are: SQL Server with columnstore, Oracle with In-Memory, <strong>SingleStore</strong> (purpose-built HTAP), or <strong>TiDB</strong> with its TiKV (rowstore) + TiFlash (columnstore) split. Postgres shops usually solve it by streaming CDC to a separate analytics warehouse (ClickHouse, BigQuery, Snowflake) — works well but adds operational complexity.</p>
+
+  <div class="gotcha">"We'll just run analytics on a read replica" is the common fallback, and it works — until the analytics query holds an open transaction for 20 minutes and replication lag spirals because the replica can't apply WAL until the transaction releases. The same problem in different clothing.</div>
+
+  <h3 style="margin-top:2rem">⑤ JSON-heavy with queries — Postgres JSONB</h3>
+  <p>Storing JSON is easy in every DB. <em>Querying it with index speed</em> is where Postgres pulls ahead by a margin that's actually hard to overstate.</p>
+
+  <p><strong>JSONB is a parsed binary tree.</strong> When you <code>INSERT '{"user":"alice","tags":["a","b"]}'</code> as JSONB, Postgres parses it once, validates it, and stores it as a binary structure where keys are interned and values are typed. Every subsequent read avoids re-parsing. MySQL JSON does the same. SQL Server's <code>NVARCHAR(MAX)</code> + JSON functions does <em>not</em> — every query re-parses the text.</p>
+
+  <p><strong>GIN indexes — the real superpower.</strong> A GIN (Generalized Inverted iNdex) on a JSONB column indexes every key, every value, and every path inside the document. The containment operator <code>@&gt;</code> can then satisfy queries like "find all docs whose <code>type</code> is <code>'login'</code> AND <code>region</code> is <code>'IN'</code>" in milliseconds against 100M-row tables.</p>
+
+  <div class="code-block">
+    <span class="code-label postgres">Postgres JSONB + GIN — production speed</span>
+<pre><span class="kw">CREATE INDEX</span> idx_events_payload <span class="kw">ON</span> events
+  <span class="kw">USING</span> GIN (payload jsonb_path_ops);
+
+<span class="cmt">-- Indexed lookup on nested JSON keys — milliseconds even at 100M rows</span>
+<span class="kw">SELECT</span> id, payload-&gt;&gt;<span class="str">'user_id'</span> <span class="kw">AS</span> uid
+<span class="kw">FROM</span> events
+<span class="kw">WHERE</span> payload @&gt; <span class="str">'{"type":"login","region":"IN"}'</span>
+  <span class="kw">AND</span> created_at &gt;= <span class="kw">NOW</span>() - <span class="kw">INTERVAL</span> <span class="str">'1 day'</span>;</pre>
+  </div>
+
+  <p><strong>What the others can do.</strong> MySQL JSON requires generated virtual columns to be indexable: extract the field into a column, index that column. Works, but you need to know up front which fields you'll query. SQL Server is in the same boat. Oracle 21c added a proper JSON search index (similar to GIN); pre-21c it was CLOB + function-based indexes.</p>
+
+  <table>
+    <tr><th>Capability</th><th>Postgres JSONB</th><th>MySQL JSON</th><th>Oracle 21c+</th><th>SQL Server</th></tr>
+    <tr><td>Re-parse on each query</td><td>No (parsed once)</td><td>No</td><td>No</td><td>Yes (text-based)</td></tr>
+    <tr><td>Indexed without knowing field</td><td>Yes (GIN over everything)</td><td>No</td><td>Yes (search index)</td><td>No</td></tr>
+    <tr><td>Indexed for specific field</td><td>Yes (expression index)</td><td>Yes (generated column)</td><td>Yes</td><td>Yes (computed column)</td></tr>
+    <tr><td>Partial in-place update</td><td>Limited (rewrites whole value)</td><td>Yes (5.7.22+)</td><td>Yes</td><td>No</td></tr>
+  </table>
+
+  <p><strong>Numbers:</strong> a containment query (<code>WHERE payload @&gt; '{...}'</code>) against a 50M-row JSONB table with a GIN index typically returns in 5–30ms. Without the index it's a 30-second sequential scan. Same query against MySQL JSON without a generated column = 30+ seconds; with the right generated column + index = ~10ms (but only for that specific extracted field).</p>
+
+  <div class="gotcha">JSONB's catch: <strong>updates rewrite the whole document.</strong> If you have a <code>views</code> counter inside a 50KB JSONB blob and you increment it 1000×/sec, you're writing 50MB/sec of WAL. Lift hot counters into their own columns or Redis. JSONB is for <em>occasionally-mutated, frequently-read</em> shapes — not for hot path partial updates.</div>
+
+  <h3 style="margin-top:2rem">⑥ Time-series — TimescaleDB &amp; BRIN indexes</h3>
+  <p>Time-series workloads have a very specific shape: data arrives in time order, queries are almost always range scans by time, you aggregate over windows, and old data is rarely updated. Every part of a general-purpose DB can be specialized around that shape.</p>
+
+  <p><strong>BRIN indexes — tiny indexes for sorted data.</strong> A B-Tree index on a 100GB time-series table is typically 15–20GB. A BRIN (Block Range INdex) on the same column is ~5MB. BRIN works by storing, for each contiguous block range, just the min/max value of the indexed column. When the column is naturally sorted (like <code>created_at</code> in an append-only logs table), BRIN can skip 99% of pages with a tiny memory footprint. The trade-off: if data isn't sorted, BRIN is useless.</p>
+
+  <div class="code-block">
+    <span class="code-label postgres">BRIN over a timestamp — 5 MB instead of 20 GB</span>
+<pre><span class="kw">CREATE INDEX</span> idx_logs_ts <span class="kw">ON</span> logs <span class="kw">USING</span> BRIN (created_at) <span class="kw">WITH</span> (pages_per_range = <span class="num">128</span>);
+<span class="cmt">-- Query: "last 1 hour of logs" scans &lt; 1% of the table</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> logs <span class="kw">WHERE</span> created_at &gt;= <span class="kw">NOW</span>() - <span class="kw">INTERVAL</span> <span class="str">'1 hour'</span>;</pre>
+  </div>
+
+  <p><strong>TimescaleDB — Postgres turned into a time-series DB.</strong> A Postgres extension that introduces <em>hypertables</em>: virtual tables that automatically partition by time into many child tables (chunks). The optimizer routes queries to relevant chunks only, parallelizes across them, and supports continuous aggregates (materialized rollups refreshed incrementally). Add native columnar compression (8–15× compression ratio) for old chunks and you have a serious time-series engine wearing Postgres clothing.</p>
+
+  <p><strong>Why purpose-built time-series DBs still win at extreme scale.</strong> ClickHouse, InfluxDB, and QuestDB are built ground-up for this workload. ClickHouse routinely ingests millions of rows/sec on a single node and aggregates billions of rows in seconds via vectorized execution + columnar storage. For pure metrics at extreme scale, they outperform TimescaleDB. The trade-off: SQL dialect quirks, weaker transactional semantics, separate operational stack.</p>
+
+  <table>
+    <tr><th>Option</th><th>Strength</th><th>Weakness</th></tr>
+    <tr><td>Postgres + BRIN</td><td>Zero new dependencies, "just an index"</td><td>No automatic partitioning, no columnar compression</td></tr>
+    <tr><td>TimescaleDB</td><td>SQL-compatible, transactional, hypertables, compression</td><td>Adds an extension to operate</td></tr>
+    <tr><td>ClickHouse</td><td>Insane aggregation speed, columnar, vectorized</td><td>SQL dialect, weak updates/deletes</td></tr>
+    <tr><td>InfluxDB</td><td>Purpose-built API, retention policies, downsampling</td><td>Storage engine has churned across versions</td></tr>
+  </table>
+
+  <p><strong>Heuristic:</strong> if you're under ~1B rows / 1TB / 100K writes-per-sec, BRIN or TimescaleDB inside Postgres is the right answer — one database to operate. Beyond that, a dedicated TS engine pays for itself in ingestion throughput and query latency.</p>
+
+  <h3 style="margin-top:2rem">⑦ Embedded / on-device — SQLite</h3>
+  <p>SQLite isn't competing with the others — it's a different category of database. Every characteristic that "limits" it (no server, no network, one writer at a time) is actually an asset for the workloads it owns.</p>
+
+  <p><strong>No IPC means microsecond latency.</strong> A query in Postgres or MySQL is a network round-trip (even on localhost: serialize → kernel socket → deserialize → parse → execute → serialize back). A SQLite query is a function call into a C library — nanoseconds of overhead. For "open file, read 1000 rows, close" patterns (browser history, app preferences, IoT sensor log), SQLite is 10–100× faster than client/server DBs on the same hardware.</p>
+
+  <p><strong>WAL mode + memory-mapped I/O.</strong> Default journal mode (rollback journal) serializes everything. WAL mode lets multiple readers proceed concurrently with one writer — and writers no longer block readers. Add <code>PRAGMA mmap_size = 30GB</code> and SQLite memory-maps the database file directly, bypassing kernel buffers. Reads become pointer dereferences. Insert throughput on a local NVMe with WAL + <code>synchronous = NORMAL</code> routinely hits 100K rows/sec.</p>
+
+  <div class="code-block">
+    <span class="code-label good">SQLite production-tuning pragmas</span>
+<pre><span class="kw">PRAGMA</span> journal_mode = WAL;
+<span class="kw">PRAGMA</span> synchronous = NORMAL;     <span class="cmt">-- still crash-safe, fsync less often</span>
+<span class="kw">PRAGMA</span> cache_size = -<span class="num">100000</span>;     <span class="cmt">-- 100 MB of page cache</span>
+<span class="kw">PRAGMA</span> temp_store = MEMORY;
+<span class="kw">PRAGMA</span> mmap_size = <span class="num">30000000000</span>;   <span class="cmt">-- 30 GB mmap window</span>
+<span class="kw">PRAGMA</span> foreign_keys = ON;
+<span class="kw">PRAGMA</span> wal_autocheckpoint = <span class="num">1000</span>;</pre>
+  </div>
+
+  <p><strong>The one-writer ceiling.</strong> SQLite serializes writes globally — even in WAL mode. For a single-user app or a low-write web service, this never matters. For a multi-tenant SaaS doing 10K writes/sec, it's a hard wall. Litestream and LiteFS work around it for some patterns (single-writer + replicated readers), and "one SQLite database per tenant" is a legitimate architecture used by Notion-style products — but at that point you're sharding manually.</p>
+
+  <p><strong>Numbers:</strong> on a MacBook Pro NVMe with WAL: ~100K simple inserts/sec, ~500K simple reads/sec, query latency consistently under 10µs. No setup, no daemon, no port, no auth. Just a file.</p>
+
+  <div class="gotcha">"SQLite is for toy projects" is a myth that won't die. The Linux kernel, every iOS app, every Android app, every Chrome and Firefox install, Tailscale's control plane, Expensify's transaction system — all SQLite. It's the most deployed database in human history by orders of magnitude. Know its constraints (one writer; no network) and respect them, and it scales further than people expect.</div>
+
+  <h3 style="margin-top:2rem">⑧ Geospatial — Postgres + PostGIS</h3>
+  <p>If you're doing anything with maps, locations, polygons, routing, or "find everything within 5km of here", <strong>PostGIS</strong> is the answer. It's the only choice with the depth of features and ecosystem maturity for serious geospatial work — and it's been the answer for 20+ years.</p>
+
+  <p><strong>R-tree indexing via GiST.</strong> A B-Tree can't index 2D points or polygons (there's no total ordering of shapes in 2D space). PostGIS uses Postgres's GiST (Generalized Search Tree) infrastructure to build R-tree indexes that bound geometries in rectangles, then recursively bound those rectangles. A "find everything within this polygon" query becomes a tree pruning operation that visits a tiny fraction of the table.</p>
+
+  <p><strong>The function library is exhaustive.</strong> PostGIS implements the full OGC Simple Features SQL standard (300+ <code>ST_*</code> functions): distance, intersection, union, buffer, convex hull, nearest-neighbor, raster operations, network analysis (via the pgRouting extension). Anything you can express on a 2D plane or a sphere, there's a function for it.</p>
+
+  <div class="code-block">
+    <span class="code-label postgres">PostGIS — restaurants within 1km of a user, ordered by distance</span>
+<pre><span class="kw">CREATE EXTENSION</span> postgis;
+
+<span class="kw">CREATE TABLE</span> restaurants (
+  id   <span class="type">BIGSERIAL PRIMARY KEY</span>,
+  name <span class="type">TEXT</span>,
+  geom <span class="type">GEOGRAPHY</span>(POINT, <span class="num">4326</span>)   <span class="cmt">-- WGS84 lat/lng</span>
+);
+<span class="kw">CREATE INDEX</span> idx_rest_geom <span class="kw">ON</span> restaurants <span class="kw">USING</span> GIST (geom);
+
+<span class="cmt">-- Find restaurants within 1km of Bangalore, sorted by distance</span>
+<span class="kw">SELECT</span> id, name, ST_Distance(geom, user_loc) <span class="kw">AS</span> meters
+<span class="kw">FROM</span> restaurants,
+     (<span class="kw">SELECT</span> ST_MakePoint(<span class="num">77.5946</span>, <span class="num">12.9716</span>)::<span class="type">GEOGRAPHY</span> <span class="kw">AS</span> user_loc) u
+<span class="kw">WHERE</span> ST_DWithin(geom, user_loc, <span class="num">1000</span>)
+<span class="kw">ORDER BY</span> geom &lt;-&gt; user_loc          <span class="cmt">-- kNN operator — uses GIST index</span>
+<span class="kw">LIMIT</span> <span class="num">20</span>;</pre>
+  </div>
+
+  <p><strong>Alternatives, briefly:</strong></p>
+  <ul>
+    <li><strong>Oracle Spatial</strong> — comparable depth, proprietary, expensive. Used in defense/government.</li>
+    <li><strong>SQL Server geometry/geography</strong> — solid but smaller function library; well integrated with Power BI.</li>
+    <li><strong>MySQL spatial types</strong> — basic; lacks the depth of PostGIS function library; geographic (vs Cartesian) computations are limited.</li>
+    <li><strong>SQLite + Spatialite</strong> — bring PostGIS-like spatial functions to SQLite; great for offline maps in apps.</li>
+    <li><strong>MongoDB 2dsphere</strong> — adequate for point-in-radius queries; not a real geospatial DB beyond that.</li>
+  </ul>
+
+  <p><strong>Numbers:</strong> PostGIS routinely handles 100M+ polygon tables (parcel data, country boundaries, road networks) on commodity hardware. Spatial joins between two such tables complete in seconds with proper GiST indexes. Uber, Airbnb, Strava, and every mapping startup of the last 15 years has had PostGIS somewhere in the stack.</p>
+
+  <h3 style="margin-top:2rem">Numbers people quote (rough, single-node, well-tuned)</h3>
+  <ul>
+    <li><strong>Postgres 16</strong> — 50K–100K TPS for OLTP; pgbench routinely shows 100K+ TPS on modern hardware. Complex analytics 5–10× MySQL.</li>
+    <li><strong>MySQL 8</strong> — 200K+ QPS for simple PK reads; clustered index + AHI give it the edge for that pattern. Loses ground as queries get complex.</li>
+    <li><strong>SQLite</strong> — 100K+ inserts/sec on local NVMe with WAL mode; single-writer ceiling.</li>
+    <li><strong>MyRocks</strong> — 3–5× InnoDB write throughput on random-key workloads with SSDs; ~50% space saving.</li>
+    <li><strong>Oracle / SQL Server</strong> — depend entirely on hardware and edition. They scale further vertically (NUMA-aware, parallel everything) than open-source counterparts; In-Memory / Columnstore tilt HTAP workloads decisively in their favor.</li>
+    <li><strong>TimescaleDB</strong> — 1M+ time-series rows/sec ingest on a single node; queries on compressed chunks 10–100× the equivalent on vanilla Postgres tables.</li>
+  </ul>
+
+  <div class="tip">If a benchmark says "X is 3× faster than Y", check the workload. Single-row lookups, OLAP queries, write-heavy, JSON-heavy, time-series, geospatial — each has a completely different winner. A blog-post benchmark rarely matches your workload. Always benchmark <em>your</em> top 5 queries on representative data sizes.</div>
+
+  <div class="so-what">There's no universal "fastest" relational database. MySQL InnoDB wins simple PK reads via clustered index + AHI. Postgres wins complex queries, JSON, full-text, geospatial, and modern features. Oracle and SQL Server win HTAP (mixed OLTP + analytics) via resource governors and columnstore. SQLite wins embedded and on-device. MyRocks wins random-write workloads. TimescaleDB wins moderate-scale time-series. Match the engine to the workload — never the other way round.</div>
+</div>
+
+<!-- ===== 15 ===== -->
+<div class="feature" id="s15">
+  <div class="feature-header"><span class="feature-num">15</span><h2>SQLite — The Relational DB You Use Every Day Without Noticing</h2></div>
+  <p class="lead">SQLite is the most widely deployed database engine in the world. It runs in every iPhone, every Android, every Chrome and Firefox install, on every airplane (literally — it's in Airbus avionics). Not a server. Not a "lightweight version" of anything. A different category of relational DB entirely.</p>
+
+  <h3>What makes it different</h3>
+  <ul>
+    <li><strong>No server process.</strong> A C library you link in. The "database" is a single file. To connect, you <code>fopen()</code> that file.</li>
+    <li><strong>Serverless (the original meaning).</strong> No network protocol, no auth, no port. Your process talks to the file directly via the library.</li>
+    <li><strong>Whole-file locking</strong> — only one writer at a time. Multiple readers under WAL mode.</li>
+    <li><strong>Dynamic typing</strong> — columns have "type affinity" not strict types. You can put a string into an INTEGER column (it'll store as text). This is unique and divisive.</li>
+    <li><strong>Public domain.</strong> Use anywhere, commercial or not, no attribution. Hipp does not believe in licenses.</li>
+  </ul>
+
+  <h3>When SQLite is the right answer</h3>
+  <ul>
+    <li>Embedded apps — phones, IoT, browser local state, desktop apps.</li>
+    <li>Low-concurrency websites — Litestream/LiteFS now make SQLite viable for production web apps (Tailscale, Pieter Levels' projects).</li>
+    <li>Test fixtures — spin up an in-memory DB in 5ms, run tests, throw it away.</li>
+    <li>File format — Apple, Adobe, and dozens of others use SQLite as a structured file format. Better than inventing your own.</li>
+    <li>Analytics on local files — modern SQLite + DuckDB-style analytics is great for desktop data crunching.</li>
+  </ul>
+
+  <h3>When it's not</h3>
+  <ul>
+    <li>High write concurrency — only one writer at a time.</li>
+    <li>Network access — you can't connect across machines (technically you can via NFS, but you shouldn't).</li>
+    <li>Fine-grained auth — there's no user system.</li>
+  </ul>
+
+  <div class="code-block">
+    <span class="code-label good">SQLite — production-grade in WAL mode</span>
+<pre><span class="kw">PRAGMA</span> journal_mode = WAL;       <span class="cmt">-- writers don't block readers</span>
+<span class="kw">PRAGMA</span> synchronous = NORMAL;     <span class="cmt">-- fsync less often, still durable on crash</span>
+<span class="kw">PRAGMA</span> foreign_keys = ON;        <span class="cmt">-- off by default, surprisingly</span>
+<span class="kw">PRAGMA</span> temp_store = MEMORY;
+<span class="kw">PRAGMA</span> mmap_size = <span class="num">30000000000</span>;   <span class="cmt">-- memory-mapped I/O</span></pre>
+  </div>
+
+  <div class="gotcha">SQLite's "type affinity" means <code>CREATE TABLE t (n INTEGER)</code> happily accepts <code>INSERT INTO t VALUES ('hello')</code>. The 'hello' is stored as TEXT in that column. Use the <code>STRICT</code> table flag (added 3.37) to enforce real types.</div>
+
+  <div class="so-what">SQLite isn't a "small Postgres" — it's a different kind of tool. Embedded, file-format, serverless. With WAL mode and Litestream, it now powers real production websites. Don't dismiss it.</div>
+</div>
+
+<!-- ===== 16 ===== -->
+<div class="feature" id="s16">
+  <div class="feature-header"><span class="feature-num">16</span><h2>MariaDB vs MySQL — The Fork That Stuck</h2></div>
+  <p class="lead">Oracle bought Sun in 2010, inheriting MySQL. Monty Widenius (MySQL's original author) didn't trust Oracle and forked MySQL into MariaDB. Fifteen years later, MariaDB is everywhere — but the projects have diverged enough that "they're the same" is no longer true.</p>
+
+  <table>
+    <tr><th>Feature</th><th>MySQL 8</th><th>MariaDB 11</th></tr>
+    <tr><td>Default storage engine</td><td>InnoDB</td><td>InnoDB (their own fork) + Aria for system tables</td></tr>
+    <tr><td>JSON</td><td>Binary native JSON type</td><td>JSON is an alias for LONGTEXT with helper functions</td></tr>
+    <tr><td>UUID type</td><td>Function only (8.0.13+)</td><td>Native UUID column type (10.7+)</td></tr>
+    <tr><td>Sequences</td><td>—</td><td>Yes (Oracle-compatible <code>CREATE SEQUENCE</code>)</td></tr>
+    <tr><td>System-versioned tables</td><td>—</td><td>Yes — full SQL:2011 temporal tables</td></tr>
+    <tr><td>Oracle compatibility mode</td><td>—</td><td>Yes (PL/SQL subset)</td></tr>
+    <tr><td>Group replication / clustering</td><td>Group Replication, InnoDB Cluster</td><td>Galera Cluster (sync multi-master)</td></tr>
+    <tr><td>License</td><td>GPL / commercial dual</td><td>GPL only</td></tr>
+    <tr><td>Roadmap driver</td><td>Oracle Corporation</td><td>MariaDB Foundation (non-profit)</td></tr>
+  </table>
+
+  <div class="gotcha">"MariaDB is a drop-in replacement for MySQL" was true around MariaDB 5.5 / 10.0. It is no longer true at MariaDB 11 / MySQL 8. JSON behavior differs, replication protocol changes have appeared, and authentication plugins differ. Always test a migration; never assume.</div>
+
+  <div class="so-what">If you started on MySQL pre-2015 and want to escape Oracle's ownership, MariaDB is a natural path — Galera clustering and sequences are real wins. If you're starting fresh in 2026, MySQL 8 is more widely deployed and its tooling ecosystem is bigger. Most cloud providers offer both.</div>
+</div>
+
+<!-- ===== 17 ===== -->
+<div class="feature" id="s17">
+  <div class="feature-header"><span class="feature-num">17</span><h2>SQL Server &amp; Oracle — Where Enterprise Workloads Live</h2></div>
+  <p class="lead">Open-source DBs dominate web. Proprietary enterprise DBs dominate banks, telcos, ERPs, governments. The features that justify their license fees are less about raw speed and more about <em>completeness</em> — every analytics tool, every compliance feature, every migration path is bundled.</p>
+
+  <h3>SQL Server — Microsoft's Swiss-army knife</h3>
+  <ul>
+    <li><strong>T-SQL</strong> — the procedural language is genuinely powerful (window functions, recursive CTEs, table-valued parameters).</li>
+    <li><strong>SSAS / SSIS / SSRS</strong> — bundled OLAP cubes, ETL, and reporting.</li>
+    <li><strong>Columnstore indexes</strong> — game-changing for data-warehouse workloads.</li>
+    <li><strong>Always On AGs</strong> — HA story is one of the smoothest.</li>
+    <li><strong>Linux support since 2017</strong> — used to be Windows-only, now happily on Linux containers.</li>
+    <li><strong>Editions</strong> — Express (free, 10GB), Developer (free, full features for non-prod), Standard, Enterprise (very expensive).</li>
+  </ul>
+
+  <h3>Oracle — The big iron</h3>
+  <ul>
+    <li><strong>RAC (Real Application Clusters)</strong> — multiple instances share one storage layer. Active-active. The only way to "scale up" a single Oracle DB across machines without rewriting your app.</li>
+    <li><strong>PL/SQL</strong> — most powerful procedural language of any RDBMS.</li>
+    <li><strong>Partitioning</strong> — best-in-class.</li>
+    <li><strong>Data Guard + GoldenGate</strong> — physical and logical replication respectively, both mature.</li>
+    <li><strong>Exadata</strong> — Oracle's purpose-built hardware/software stack. Pricey, fast, all-in-one.</li>
+    <li><strong>23ai</strong> — adds native vector search, property graph, JSON-relational duality. Oracle catching up on modern features.</li>
+    <li><strong>License complexity</strong> — per-core, per-named-user, per-processor with multipliers; LMS audits are legendary.</li>
+  </ul>
+
+  <h3>Why anyone still pays</h3>
+  <ul>
+    <li>30-year-old codebases written in PL/SQL or T-SQL. Re-platforming is a $10M+ project.</li>
+    <li>Compliance certifications (HIPAA, FedRAMP at the highest levels) come pre-built.</li>
+    <li>Vendor support contracts — when production is down, having a paid escalation path matters.</li>
+    <li>Specific features no open-source DB matches yet (RAC for true shared-storage multi-master, Exadata Smart Scan, Oracle Text linguistic features).</li>
+  </ul>
+
+  <div class="so-what">SQL Server is for shops standardized on Microsoft. Oracle is for legacy enterprise stacks where migration costs outweigh license fees. Both have legitimate niches; neither is the right choice for a new startup in 2026 unless you have a very specific reason.</div>
+</div>
+
+<!-- ===== 18 ===== -->
+<div class="feature" id="s18">
+  <div class="feature-header"><span class="feature-num">18</span><h2>NewSQL — CockroachDB, Spanner, TiDB, YugabyteDB</h2></div>
+  <p class="lead">Postgres scales vertically. Sharding scales horizontally but breaks transactions. NewSQL is the answer to "can we have SQL + ACID + horizontal scale, please?" — and as of 2026, the answer is "yes, with some caveats."</p>
+
+  <h3>The contenders</h3>
+  <table>
+    <tr><th>DB</th><th>Wire protocol</th><th>Consensus</th><th>Notes</th></tr>
+    <tr><td>Google Spanner</td><td>Custom SQL dialect</td><td>Paxos + TrueTime atomic clocks</td><td>Multi-region external consistency. Cloud-only.</td></tr>
+    <tr><td>CockroachDB</td><td>Postgres wire protocol</td><td>Raft per range</td><td>"Survive anything." Open source until BSL change in 2024.</td></tr>
+    <tr><td>TiDB</td><td>MySQL wire protocol</td><td>Raft + Percolator</td><td>HTAP — separate TiKV (OLTP) + TiFlash (columnar OLAP).</td></tr>
+    <tr><td>YugabyteDB</td><td>Postgres-compatible (YSQL) + Cassandra-compatible (YCQL)</td><td>Raft</td><td>Open source. Postgres-derived query layer.</td></tr>
+    <tr><td>Vitess</td><td>MySQL wire protocol</td><td>Custom (uses MySQL replicas)</td><td>Sharding layer, not a new storage engine. Powers YouTube.</td></tr>
+    <tr><td>Citus (PG ext)</td><td>Postgres</td><td>Standard PG replication</td><td>Distributed Postgres tables via co-location. Microsoft Azure.</td></tr>
+  </table>
+
+  <h3>What you give up</h3>
+  <ul>
+    <li><strong>Single-node latency.</strong> A simple insert that's 0.1ms in single-node Postgres becomes 2–5ms in CockroachDB (consensus round-trip).</li>
+    <li><strong>Full feature parity.</strong> Stored procedures, exotic data types, some indexes — usually a subset of what their wire-compatible parent supports.</li>
+    <li><strong>Operational simplicity.</strong> Now you're running a distributed system. Backups, restores, schema changes are different beasts.</li>
+  </ul>
+
+  <h3>What you gain</h3>
+  <ul>
+    <li><strong>Geographic distribution</strong> with strong consistency. A row in Mumbai stays consistent with reads in San Francisco.</li>
+    <li><strong>Linear scale-out.</strong> Add a node, get more capacity. No sharding decisions.</li>
+    <li><strong>Survive failures.</strong> Lose a node (or a whole region) — no downtime.</li>
+    <li><strong>One database, many regions.</strong> Compliance scenarios where data residency matters.</li>
+  </ul>
+
+  <div class="analogy">Postgres = <em>one excellent restaurant</em>. Add chefs (CPU), bigger kitchen (RAM) — but only one location. NewSQL = <em>a restaurant chain with synchronized menus</em>. Every branch agrees on what's served. More overhead per dish (consensus), but you can open a branch in any city, and any branch closing doesn't shut the chain.</div>
+
+  <div class="so-what">If you fit on one Postgres, use one Postgres. If you need multi-region strong consistency or true horizontal scale without sharding pain, NewSQL is genuinely the answer in 2026. CockroachDB and YugabyteDB are the realistic open-source-ish options; Spanner is the cloud-managed gold standard.</div>
+</div>
+
+<!-- ===== 19 ===== -->
+<div class="feature" id="s19">
+  <div class="feature-header"><span class="feature-num">19</span><h2>Migration Pitfalls — Moving From One to Another</h2></div>
+  <p class="lead">"Just port the SQL" is the optimist's plan. Real migrations break on the dialect differences, the data-type coercions, the procedural code, and the operational habits.</p>
+
+  <h3>The classic landmines</h3>
+  <ul>
+    <li><strong>Quoting and case sensitivity.</strong> Postgres folds unquoted identifiers to lowercase; MySQL is case-sensitive on Linux, case-insensitive on Mac/Windows. Code that "works locally" breaks in prod.</li>
+    <li><strong>Auto-increment semantics.</strong> MySQL's <code>AUTO_INCREMENT</code> never reuses values; Postgres sequences can have gaps. Code that depends on contiguous IDs breaks.</li>
+    <li><strong>Empty string vs NULL.</strong> Oracle treats <code>''</code> as NULL; Postgres and MySQL treat them as distinct. Migrations Oracle → anything else surface this immediately.</li>
+    <li><strong>Date/time semantics.</strong> MySQL stores <code>TIMESTAMP</code> in UTC and converts on read; Postgres's <code>TIMESTAMPTZ</code> is similar but the conversion rules differ. <code>DATETIME</code> in MySQL has no timezone at all.</li>
+    <li><strong>Boolean type.</strong> Postgres has it; MySQL fakes it with <code>TINYINT</code>; Oracle has none. Cross-DB ORMs handle this differently.</li>
+    <li><strong>NULL ordering.</strong> Postgres: NULLs LAST in ASC by default. MySQL: NULLs FIRST. <code>ORDER BY x ASC NULLS LAST</code> works on Postgres only.</li>
+    <li><strong>Concurrency hot-spots.</strong> A pattern that survives in MySQL InnoDB (auto-increment hot-spot) may underperform in Postgres (sequence cache contention) — and vice versa.</li>
+    <li><strong>Stored procedures.</strong> See section 9 — basically rewrite from scratch.</li>
+  </ul>
+
+  <h3>What a real migration looks like</h3>
+  <ol>
+    <li><strong>Schema port</strong> — types, constraints, indexes (1–2 days for small, weeks for large).</li>
+    <li><strong>SQL port</strong> — replace dialect-specific syntax. Tools: pgloader, Ora2Pg, AWS SCT.</li>
+    <li><strong>Procedural code rewrite</strong> — the long pole. Often easier to move to application code.</li>
+    <li><strong>Data move</strong> — bulk load + ongoing CDC until cutover.</li>
+    <li><strong>Cutover with rollback plan</strong> — usually a freeze window.</li>
+    <li><strong>Operational re-learning</strong> — monitoring, backups, alerting all need re-instrumentation.</li>
+  </ol>
+
+  <div class="gotcha">Migrations that fail rarely fail at the database level. They fail because the team underestimates how much business logic lives in stored procedures, triggers, and unspoken behaviors of the old DB. Audit those <em>first</em>, not last.</div>
+
+  <div class="so-what">SQL is 80% portable, the DB itself is 20% portable. Plan for the 20%: dialect, procedures, ops. Use tooling (pgloader, Ora2Pg) for mechanical work. Budget more time for the cultural shift than the technical one.</div>
+</div>
+
+<!-- ===== 20 ===== -->
+<div class="feature" id="s20">
+  <div class="feature-header"><span class="feature-num">20</span><h2>Choosing Cheat Sheet &amp; Rapid-Fire Q&amp;A</h2></div>
+  <p class="lead">Distilled. If you remember nothing else from this page, remember this.</p>
+
+  <h3>Picking the database — by what you're building</h3>
+  <table>
+    <tr><th>What you're building</th><th>Default pick</th><th>Why</th></tr>
+    <tr><td>Startup MVP, anything in 2026</td><td>Postgres</td><td>Features, JSON, vectors, FTS, modern SQL — out of the box</td></tr>
+    <tr><td>High-volume read-heavy web app</td><td>MySQL 8 or Postgres</td><td>Both handle it; pick the one your team knows</td></tr>
+    <tr><td>Mobile / desktop / embedded</td><td>SQLite</td><td>No server, single file, ubiquitous</td></tr>
+    <tr><td>Enterprise with existing PL/SQL</td><td>Oracle</td><td>Migrating off is a years-long project</td></tr>
+    <tr><td>Shop standardized on .NET / Microsoft</td><td>SQL Server</td><td>Tooling and integration win it</td></tr>
+    <tr><td>Need multi-region strong consistency</td><td>CockroachDB / Spanner</td><td>NewSQL solves this; nothing else does</td></tr>
+    <tr><td>Time-series at scale</td><td>TimescaleDB or InfluxDB</td><td>TS-specific compression and partitioning</td></tr>
+    <tr><td>Geospatial-heavy</td><td>Postgres + PostGIS</td><td>The reference implementation</td></tr>
+    <tr><td>Existing MySQL but want better governance</td><td>MariaDB or stay on MySQL 8</td><td>Both are fine; differences are subtle</td></tr>
+  </table>
+
+  <div class="interview-q">In one sentence, when should I pick Postgres over MySQL in 2026?</div>
+  <p>Default to Postgres unless you have a specific reason not to — it has caught up on read performance, surpassed on features (JSON, FTS, vectors, types, transactional DDL), and the operational tooling is now first-class on every cloud.</p>
+
+  <div class="interview-q">Why does anyone still use Oracle?</div>
+  <p>Existing code and existing contracts. PL/SQL codebases, certified compliance bundles, mission-critical apps with seven-figure replacement costs. New greenfield projects rarely pick Oracle unless they're inside an Oracle-shop already.</p>
+
+  <div class="interview-q">Is MySQL still relevant in 2026?</div>
+  <p>Yes. It powers a huge slice of the internet (Booking, Uber, Slack via Vitess, GitHub, WordPress sites). It's faster than Postgres at the simplest read patterns and the ecosystem is enormous. The "Postgres is universally better" narrative is overstated — both are excellent.</p>
+
+  <div class="interview-q">What's the single biggest behavioral difference I'd notice porting from MySQL to Postgres?</div>
+  <p>Default isolation. MySQL = REPEATABLE READ (with phantom prevention). Postgres = READ COMMITTED (looser). Code that quietly relied on RR semantics will race on Postgres unless you also set <code>SET TRANSACTION ISOLATION LEVEL REPEATABLE READ</code>.</p>
+
+  <div class="interview-q">When would I pick Cockroach over Postgres?</div>
+  <p>Multi-region, strong-consistency requirement; or you genuinely outgrew a single beefy Postgres (rare — modern hardware pushes that ceiling very high). For most apps, vertical-scaled Postgres + read replicas beats CockroachDB.</p>
+
+  <div class="interview-q">Are stored procedures still a good idea?</div>
+  <p>Rarely. They lock you to one DB, are hard to test and version, and modern app servers are fast enough that the round-trip cost is negligible. Use them only when truly latency-critical (set-based operations on millions of rows) or for security boundaries.</p>
+
+  <div class="interview-q">SQLite for production websites — is that a real thing?</div>
+  <p>Yes, with caveats. Combined with WAL mode + Litestream/LiteFS for replication, SQLite powers production sites at moderate scale (Tailscale's coordination plane, Pieter Levels' projects, Expensify's internal services). One-writer-at-a-time is the ceiling.</p>
+
+  <div class="interview-q">What's the most overrated database feature?</div>
+  <p>"Schemaless" / no-migration-needed. Every long-lived schema converges on a contract — the only question is whether the DB enforces it or your app does. Migrations are not the problem; pretending you don't need them is.</p>
+
+  <div class="interview-q">What's the most underrated relational feature?</div>
+  <p>CHECK constraints and partial indexes. A <code>CHECK (status IN ('open','closed','cancelled'))</code> or a <code>CREATE INDEX ... WHERE status = 'open'</code> can replace whole classes of application bugs and queries. Free correctness/performance. Use them.</p>
+
+  <div class="interview-q">If I had to learn one DB deeply in 2026 — which?</div>
+  <p>Postgres. It's the database with the most feature breadth, the most active development, the best modern ecosystem (pgvector, TimescaleDB, Citus, PostGIS, pgRouting, FDW), and the lowest cost-of-knowledge — your skills transfer to managed cloud services on AWS, GCP, Azure, and dozens of hosted providers.</p>
+
+  <div class="so-what">There is no single "best relational database". There's the one whose <em>access patterns, scale ceiling, operational model, and ecosystem</em> match your project. In 2026, Postgres is the safest default for greenfield work; MySQL is fine if you're already there; SQLite is undersold for embedded and low-concurrency web; Oracle and SQL Server are enterprise legacies; NewSQL solves problems most teams don't have yet but might tomorrow.</p>
+</div>
+
+  </main>
+</div>
+
+<div class="likes-row"><div id="likes"></div></div>
+
+</body>
+</html>
