@@ -184,6 +184,7 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
       <li><a href="#s5">Database Design</a></li>
       <li><a href="#s6">High-Level Architecture</a></li>
       <li><a href="#s7">Encoding vs. KGS — Algorithm</a></li>
+      <li><a href="#s7b">KGS Deep Dive — Flow &amp; Internals</a></li>
       <li><a href="#s8">Data Partitioning</a></li>
       <li><a href="#s9">Cache</a></li>
       <li><a href="#s10">Load Balancer</a></li>
@@ -333,7 +334,7 @@ Headers: { "X-API-Dev-Key": "abc123..." }
 
   <div class="highlight hl-blue"><strong>Why <code>302 Found</code> and not <code>301 Moved Permanently</code>?</strong> 301 lets the browser cache the redirect target and skip our server on the next click — great for latency, terrible for click-counting analytics. 302 makes the browser re-ask us each time, so every click flows through our telemetry. Trade-off: ~10ms per redirect we wouldn't otherwise spend, in exchange for accurate metrics.</div>
 
-  <div class="highlight hl-orange"><strong>Abuse prevention via <code>api_dev_key</code>:</strong> a malicious user could exhaust our 68 billion 6-character keys by spamming creates. We tie every create to a developer key and rate-limit per key (e.g., 1000 URLs/hour). Anonymous users go through a captcha-gated UI flow.</div>
+  <div class="highlight hl-orange"><strong>Abuse prevention via <code>api_dev_key</code>:</strong> a malicious user could exhaust our 56.8 billion 6-character keys by spamming creates. We tie every create to a developer key and rate-limit per key (e.g., 1000 URLs/hour). Anonymous users go through a captcha-gated UI flow.</div>
 </div>
 
 <div class="divider"></div>
@@ -518,13 +519,13 @@ flowchart TB
     </div>
     <div class="card">
       <h3><span class="comp-num purple">⑤</span> Key Generation Service (KGS)</h3>
-      <p>A standalone service whose only job is to pre-generate random 6-character base64 keys and stockpile them in the Key DB. It runs on its own cadence — say batches of 10K keys every minute — and serves keys to write app servers from an in-memory queue. When a key is handed out, it's atomically moved from the "unused" pool to the "used" pool. With 68.7 billion possible keys and 200 writes/sec, the pool will outlast 5 years easily.</p>
+      <p>A standalone service whose only job is to pre-generate random 6-character base62 keys and stockpile them in the Key DB. It runs on its own cadence — say batches of 10K keys every minute — and serves keys to write app servers from an in-memory queue. When a key is handed out, it's atomically moved from the "unused" pool to the "used" pool. With 56.8 billion possible keys and 200 writes/sec, the pool will outlast 5 years easily.</p>
       <p><strong>Solves:</strong> the core write-path problem. Without KGS, every write must do "generate hash → check DB for collision → retry if dup → insert", which is two round trips minimum and gets worse as the namespace fills up. With KGS, the write path is one round trip with zero collision risk by construction.</p>
       <p><strong>What if KGS dies?</strong> Single point of failure — solved by running an active-standby pair. Each write app server also caches a small batch of keys locally (~100 keys), so a 30-second KGS outage doesn't stop creates.</p>
     </div>
     <div class="card">
       <h3><span class="comp-num purple">⑥</span> Key DB (KGS storage)</h3>
-      <p>Two tables: <code>unused_keys</code> (the pool waiting to be claimed) and <code>used_keys</code> (already assigned). At 6 bytes per key × 68.7B keys this is <strong>~412GB</strong> if we ever fully populate it — but in practice we only keep maybe 1M unused keys ahead of demand, so it's tiny. A simple key-value store works fine.</p>
+      <p>Two tables: <code>unused_keys</code> (the pool waiting to be claimed) and <code>used_keys</code> (already assigned). At 6 bytes per key × 56.8B keys this is <strong>~341GB</strong> if we ever fully populate it — but in practice we only keep maybe 1M unused keys ahead of demand, so it's tiny. A simple key-value store works fine.</p>
       <p><strong>Solves:</strong> persisting the pool so KGS can restart without losing keys. If KGS held keys only in memory and crashed, we'd lose 10K unallocated keys per restart — acceptable, but persisting them lets us also support fancier schemes like "reserve a key for 5 minutes for a logged-in user".</p>
     </div>
     <div class="card">
@@ -595,7 +596,7 @@ flowchart TB
   <p>How do we actually produce a 6-character key? Two approaches; the PDF reference walks through both. We'll explain why production systems pick KGS.</p>
 
   <h3 class="subh">Approach A — Hash &amp; encode the URL</h3>
-  <p>Compute a hash (MD5 or SHA-256) of the long URL, base64-encode it, take the first 6 characters. <strong>Why 6?</strong> Base64 has 64 characters (<code>A-Z, a-z, 0-9, -, _</code>), so <code>64⁶ = 68.7 billion</code> possible keys — comfortably more than the 30 billion we need over 5 years.</p>
+  <p>Compute a hash (MD5 or SHA-256) of the long URL, base62-encode it, take the first 6 characters. <strong>Why 6?</strong> Base62 has 62 characters (<code>A-Z, a-z, 0-9</code>), so <code>62⁶ = 56.8 billion</code> possible keys — comfortably more than the 30 billion we need over 5 years. (Base62 deliberately drops base64's <code>-</code> and <code>_</code>, which hurt readability and double-click-to-select in URLs.)</p>
 
   <div class="card" style="border-color:rgba(224,82,82,.4)">
     <h3 style="color:var(--red)">⚠️ Three problems with this approach</h3>
@@ -647,12 +648,253 @@ sequenceDiagram
       <ul>
         <li><strong>Single point of failure</strong> — solved with an active-standby replica that takes over via failover</li>
         <li><strong>Concurrency</strong> — two write apps must not get the same key. Solved by an atomic <code>POP</code> from a Redis set, or a row-level <code>SELECT FOR UPDATE</code> on the unused table</li>
-        <li><strong>Lost keys on crash</strong> — if KGS hands a key to a write app that then crashes before INSERT, the key is gone. Acceptable: 68.7B keys, losing a few thousand to crashes is rounding error</li>
+        <li><strong>Lost keys on crash</strong> — if KGS hands a key to a write app that then crashes before INSERT, the key is gone. Acceptable: 56.8B keys, losing a few thousand to crashes is rounding error</li>
       </ul>
     </div>
   </div>
 
   <div class="highlight hl-yellow"><strong>The interview move:</strong> volunteer Approach A first ("simplest thing that could work"), then walk through its three failure modes, then introduce KGS as the production answer. This shows you understand <em>why</em> KGS exists, not just that it exists.</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- SECTION 7b: KGS DEEP DIVE                       -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="sec" id="s7b">
+  <span class="sec-tag tag-purple">Deep Dive</span>
+  <h2>KGS Deep Dive — How Key Generation Actually Works in Production</h2>
+  <p>Section 7 told you <em>why</em> we pick a Key Generation Service over inline hashing. This section opens the box and shows you <em>how it runs in production</em> — and it starts by killing the most common misconception. Picture the write app server in the middle of a 200-requests-per-second storm, and on each request it asks: "give me a key nobody has ever used." The naive answer — "generate a random string right now and check the database" — is exactly what a good KGS is built to <strong>never</strong> do. Let's see why, and then build up the real machinery one idea at a time.</p>
+
+  <div class="highlight hl-purple"><strong>The one sentence to remember:</strong> a production KGS does <em>not</em> generate a key per request. It manufactures unique keys <em>ahead of time</em>, proves they're unique <em>once</em>, and then just hands them out — so the write path becomes a pop off a pile that's already guaranteed collision-free.</div>
+
+  <h3 class="subh">Pass 1 — The naive KGS (generate-on-request) and why it breaks</h3>
+  <p>The simplest "key service" generates a random 6-character string the moment a write arrives, then asks the database "is this taken?" before using it. Here's that flow:</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  W[Write App] -->|"need a key"| G[Generate random 6 chars]
+  G -->|"SELECT where hash=?"| DB[("URL DB")]
+  DB -->|"taken!"| G
+  DB -->|"free"| INS[INSERT mapping]
+
+  style W fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style G fill:#171d27,stroke:#e05252,color:#d4dae5
+  style DB fill:#171d27,stroke:#38b265,color:#d4dae5
+  style INS fill:#171d27,stroke:#38b265,color:#d4dae5
+    </div>
+  </div>
+
+  <p>Two things go wrong the instant real traffic and real scale show up:</p>
+  <div class="g2">
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">💥 A read-before-write on every single create</h3>
+      <p>Every shorten request now pays for at least one extra DB round trip just to ask "is this key free?" As the keyspace fills (30B of 56.8B keys used), collisions get more frequent, so some requests loop "generate &rarr; check &rarr; collision &rarr; regenerate &rarr; check" several times. The 60ms write budget blows up under collision-retry storms.</p>
+    </div>
+    <div class="card" style="border-color:rgba(224,82,82,.4)">
+      <h3 style="color:var(--red)">💥 A race condition the check can't catch</h3>
+      <p>Two write servers generate the same key at the same millisecond. Both run "SELECT where hash=X" → both see "free" → both INSERT. One silently overwrites the other, and a user who just shortened a link finds it now points somewhere else. The existence check is <em>not</em> atomic with the insert, so it can never fully prevent this.</p>
+    </div>
+  </div>
+
+  <p>Both failures share one root cause: <strong>we're doing uniqueness work on the hot path, under concurrency.</strong> The fix is to move that work off the hot path entirely.</p>
+
+  <h3 class="subh">Pass 2 — The mental model: pre-generate, then hand out disjoint blocks</h3>
+  <p>The KGS idea is to flip an expensive per-request problem into a cheap one-time background job. There are two production-grade ways to manufacture the keys, and then one crucial pattern for handing them out safely.</p>
+
+  <div class="g2">
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">🎲 Strategy A — Pre-generated random pool</h3>
+      <p>A background job generates random 6-char base62 keys using a cryptographically-secure RNG (<code>SecureRandom</code>), and inserts each into an <code>unused_keys</code> table with a <strong>UNIQUE constraint</strong>. Duplicate generations simply fail the insert and are skipped — and because this runs offline, that collision check costs nobody any request latency.</p>
+      <p><strong>Pro:</strong> keys are genuinely unpredictable (unguessable). <strong>Con:</strong> you must store the pool of unused keys.</p>
+    </div>
+    <div class="card" style="border-color:rgba(155,114,207,.4)">
+      <h3 style="color:var(--purple)">🔢 Strategy B — Counter + base62 encode</h3>
+      <p>Keep a single monotonic counter and <strong>base62-encode the integer</strong> to get the key: <code>1 &rarr; "b"</code>, <code>125000000 &rarr; "8M0kX"</code>. Collisions are <em>mathematically impossible</em> — each integer maps to exactly one string — so no existence check ever runs.</p>
+      <p><strong>Pro:</strong> zero storage (just an integer), zero collisions ever. <strong>Con:</strong> raw counters are sequential and guessable, so you run the counter through a reversible scramble (Feistel / multiply-by-large-coprime mod 62⁶) so output <em>looks</em> random while staying unique.</p>
+    </div>
+  </div>
+
+  <div class="highlight hl-yellow"><strong>Why "random" is misleading.</strong> Even Strategy A doesn't generate randomly <em>per request</em> — it generates randomly <em>in advance</em>. The randomness is a CSPRNG run by a background batch job, or (Strategy B) a deterministic scramble applied to a counter. Either way, uniqueness is proven <em>before</em> the key ever reaches a request.</div>
+
+  <p>Now the part that makes KGS actually scale across many app servers: <strong>block (range) allocation.</strong> If every write server asked KGS for one key at a time, KGS would be hit 200 times a second and become the bottleneck — and you'd still need locking to stop two servers getting the same key. Instead, each app server claims a whole <em>block</em> of keys at once and serves them from local memory.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart LR
+  A1["Write App 1<br/>holds block [1 – 1,000,000]"] -->|"block exhausted,<br/>give me the next block"| KGS["KGS<br/>(owns the counter)"]
+  A2["Write App 2<br/>holds block [1,000,001 – 2,000,000]"] -->|"give me the next block"| KGS
+  KGS -->|"atomic INCRBY 1,000,000"| CNT[("Counter / Key DB")]
+
+  style A1 fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style A2 fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style KGS fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style CNT fill:#171d27,stroke:#9b72cf,color:#d4dae5
+    </div>
+  </div>
+
+  <p>Think of it like a deli counter. KGS is the ticket dispenser. Instead of every customer (request) walking up to the dispenser one at a time, each <em>cashier</em> (app server) grabs a whole roll of 1,000,000 tickets up front and hands them out from their own roll. The dispenser is touched once per roll — roughly <strong>once per million URLs</strong> instead of once per URL. And because each cashier holds a different roll, two customers can <em>never</em> get the same ticket number. That disjoint-by-construction property is what eliminates both the collision check <em>and</em> the race condition from Pass 1.</p>
+
+  <h3 class="subh">Pass 3 — The production shape</h3>
+  <p>Here's the full KGS internals. Every node is numbered — match it to the card below to see what it does and what would break without it.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+flowchart TB
+  WAPP["① Write App Server<br/>(holds in-memory block)"]
+
+  subgraph KGSBOX["Key Generation Service"]
+    ALLOC["② Block Allocator<br/>(atomic counter bump)"]
+    GEN["③ Background Generator<br/>(random pool / scramble)"]
+    PRIMARY["④ Active KGS"]
+    STANDBY["⑤ Standby KGS"]
+  end
+
+  CNT[("⑥ Counter Row / Key DB<br/>unused + used pools")]
+  RECYCLE["⑦ Recycled-Key Feed<br/>(from Cleanup Service)"]
+
+  WAPP -->|"need a block"| ALLOC
+  ALLOC -->|"atomic INCRBY / SELECT FOR UPDATE"| CNT
+  GEN -->|"prefill unused pool"| CNT
+  PRIMARY -.failover.-> STANDBY
+  RECYCLE -.expired keys back to unused.-> CNT
+  ALLOC -->|"block [N … N+blk]"| WAPP
+
+  style WAPP fill:#171d27,stroke:#e8743b,color:#d4dae5
+  style ALLOC fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style GEN fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style PRIMARY fill:#171d27,stroke:#9b72cf,color:#d4dae5
+  style STANDBY fill:#171d27,stroke:#7b8599,color:#d4dae5
+  style CNT fill:#171d27,stroke:#38b265,color:#d4dae5
+  style RECYCLE fill:#171d27,stroke:#d4a838,color:#d4dae5
+    </div>
+  </div>
+
+  <h3 class="subh">Component-by-component — what each numbered box does</h3>
+  <div class="g2">
+    <div class="card">
+      <h3><span class="comp-num orange">①</span> Write App Server (key consumer)</h3>
+      <p>The stateless service handling <code>POST /api/v1/urls</code>. It does <strong>not</strong> call KGS per request — it holds a block of keys (say 1,000) in local memory and pops one per create. When its local block runs low (e.g. 10% remaining), it asks the allocator for the next block <em>in the background</em>, so it never blocks a user while topping up.</p>
+      <p><strong>Solves:</strong> turning a network call into a memory read. Without local blocks, every create is a synchronous round-trip to KGS — adding latency and making KGS a 200 req/sec choke point.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">②</span> Block Allocator</h3>
+      <p>The only contended operation in the whole service: "give out the next block." It performs one atomic step — <code>INCRBY counter 1000</code> in Redis, or <code>SELECT … FOR UPDATE</code> on a counter row in SQL — and returns the range <code>[N … N+1000)</code>. Sub-millisecond, and it runs only once per ~1,000 creates.</p>
+      <p><strong>Solves:</strong> the race condition from Pass 1. Because the bump is atomic and ranges are disjoint, two app servers can never receive overlapping keys — uniqueness is guaranteed by construction, with zero existence checks.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">③</span> Background Generator</h3>
+      <p>For the random-pool strategy (A), this batch job runs on its own clock — generate 10K random base62 keys, bulk-insert into <code>unused_keys</code> with a UNIQUE constraint, skip the rare duplicate. For the counter strategy (B), there's no pool to fill; this box is just the scramble function applied at hand-out time.</p>
+      <p><strong>Solves:</strong> moving collision-checking off the hot path. All the "is this key taken?" work happens here, offline, where latency doesn't matter and a retry costs nobody anything.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num purple">④⑤</span> Active + Standby KGS</h3>
+      <p>KGS is a single point of failure — if it's the only thing that can mint keys, its death stops every create on the platform. So we run an <strong>active-standby pair</strong>: the standby watches the active via heartbeat and takes over the counter (which is persisted in ⑥) within seconds if the active dies.</p>
+      <p><strong>Solves:</strong> availability of the write path. Combined with the app-server local block cache (①), even a 30-second failover window doesn't drop a single create.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num green">⑥</span> Counter Row / Key DB</h3>
+      <p>The durable source of truth. For strategy B it's literally one integer (the high-water mark of allocated blocks); for strategy A it's two tables — <code>unused_keys</code> and <code>used_keys</code>. Persisting it means a KGS restart resumes from the last <em>allocated block</em>, never from the last <em>used key</em>.</p>
+      <p><strong>Solves:</strong> not re-issuing keys after a crash. If the counter lived only in memory, a restart could replay block <code>[1…1M]</code> twice and hand the same keys to two different URLs — silent overwrites again.</p>
+    </div>
+    <div class="card">
+      <h3><span class="comp-num yellow">⑦</span> Recycled-Key Feed</h3>
+      <p>When the Cleanup Service (§11) expires a URL, its key is freed and pushed back into the <code>unused_keys</code> pool (strategy A only — counter-based keys aren't recycled, the space is large enough not to bother).</p>
+      <p><strong>Solves:</strong> the namespace never permanently fills. Without recycling, every expired link would burn a key forever; with it, the 56.8B keyspace effectively never runs dry.</p>
+    </div>
+  </div>
+
+  <h3 class="subh">The end-to-end hand-out sequence</h3>
+  <p>This is what actually happens when a write server's local block is exhausted and it needs more keys, then serves a create:</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+sequenceDiagram
+  actor Sarah
+  participant W as Write App (local block)
+  participant K as KGS Block Allocator
+  participant C as Counter / Key DB
+  participant U as URL DB
+
+  Note over W: Local block nearly empty (10 keys left)
+  W->>K: Allocate next block (background, non-blocking)
+  K->>C: Atomic INCRBY counter 1000  →  returns 5,000,000
+  C-->>K: block [5,000,000 … 5,001,000)
+  K-->>W: here is your block
+  Note over W: Now holds 1,000 fresh keys in memory
+
+  Sarah->>W: POST /urls  (shorten long URL)
+  W->>W: pop next key from local block → encode → "8M0kX"
+  W->>U: INSERT (8M0kX, original_url, ...)
+  U-->>W: OK
+  W-->>Sarah: https://tinyurl.com/8M0kX  (≈60ms, zero KGS call on this request)
+    </div>
+  </div>
+
+  <h3 class="subh">The lifecycle of a single key</h3>
+  <p>Each key moves through a small state machine. The interesting edges are the failure ones — what happens when a server dies mid-flight.</p>
+
+  <div class="diagram-box">
+    <div class="mermaid">
+stateDiagram-v2
+  [*] --> UNUSED : generated / counter not yet reached
+  UNUSED --> RESERVED : block handed to an app server
+  RESERVED --> USED : INSERTed into URL DB
+  RESERVED --> LOST : app server crashed before INSERT
+  USED --> EXPIRED : expiration_date passed
+  EXPIRED --> UNUSED : recycled by Cleanup Service
+  LOST --> [*] : abandoned (acceptable waste)
+  USED --> [*] : permanent link
+    </div>
+  </div>
+
+  <div class="highlight hl-red"><strong>On the <code>LOST</code> state — do NOT try to reclaim it.</strong> If an app server grabs block <code>[5,000,000 … 5,001,000)</code> and crashes after using only 300 keys, the remaining 700 are simply gone. That's fine: the keyspace is 56.8 billion, so leaking a few thousand keys per crash is a rounding error. Trying to detect and reclaim partially-used blocks reintroduces exactly the coordination and race problems KGS exists to avoid. <strong>Waste is cheaper than coordination.</strong></div>
+
+  <h3 class="subh">A tiny reference implementation</h3>
+  <p>Strategy B (counter + base62), the simplest production-grade approach — no pool to store, collisions impossible:</p>
+
+  <span class="code-label cl-purple">KGS — counter + base62 (Java-ish pseudocode)</span>
+<pre><span class="kw">class</span> <span class="ty">KeyGenerationService</span> {
+  <span class="cmt">// The ONE contended resource — bumped atomically, once per block.</span>
+  <span class="kw">private</span> <span class="kw">final</span> <span class="ty">RedisClient</span> redis;   <span class="cmt">// or a SQL counter row</span>
+  <span class="kw">static</span> <span class="kw">final</span> <span class="ty">long</span> BLOCK = <span class="num">1_000</span>;
+  <span class="kw">static</span> <span class="kw">final</span> <span class="ty">String</span> ALPHABET =
+     <span class="str">"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"</span>; <span class="cmt">// 62</span>
+
+  <span class="cmt">// Called by an app server ONLY when its local block runs low.</span>
+  <span class="ty">long</span>[] <span class="fn">allocateBlock</span>() {
+    <span class="ty">long</span> end = redis.<span class="fn">incrBy</span>(<span class="str">"url:counter"</span>, BLOCK); <span class="cmt">// atomic, returns new value</span>
+    <span class="kw">return</span> <span class="kw">new</span> <span class="ty">long</span>[]{ end - BLOCK, end };          <span class="cmt">// [start, end) — disjoint per caller</span>
+  }
+
+  <span class="cmt">// Pure function — no DB, no collision check, runs in the app server's memory.</span>
+  <span class="ty">String</span> <span class="fn">encode</span>(<span class="ty">long</span> id) {
+    id = <span class="fn">scramble</span>(id);            <span class="cmt">// reversible mix so keys look random, stay unique</span>
+    <span class="ty">StringBuilder</span> sb = <span class="kw">new</span> <span class="ty">StringBuilder</span>();
+    <span class="kw">do</span> { sb.<span class="fn">append</span>(ALPHABET.<span class="fn">charAt</span>((<span class="ty">int</span>)(id % <span class="num">62</span>))); id /= <span class="num">62</span>; }
+    <span class="kw">while</span> (id > <span class="num">0</span>);
+    <span class="kw">return</span> sb.<span class="fn">reverse</span>().<span class="fn">toString</span>();   <span class="cmt">// e.g. 5_000_000 → "JpL2"</span>
+  }
+}</pre>
+
+  <p>Notice what's <em>absent</em>: there is no <code>SELECT … WHERE hash = ?</code> anywhere on the create path. The app server pops the next <code>id</code> from its in-memory block, calls <code>encode(id)</code>, and inserts. The only network call to KGS is the once-per-1,000 <code>allocateBlock()</code>, done in the background before the block empties.</p>
+
+  <h3 class="subh">Failure modes at a glance</h3>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>What fails</th><th>What happens</th><th>How we handle it</th></tr></thead>
+      <tbody>
+        <tr><td>App server crashes mid-block</td><td>Unused keys in its block are lost</td><td>Do nothing — keyspace is huge, leak is negligible</td></tr>
+        <tr><td>KGS active node dies</td><td>No new blocks can be allocated</td><td>Standby fails over in seconds; app servers run on cached local block meanwhile</td></tr>
+        <tr><td>Counter not persisted before crash</td><td>Risk of re-issuing a block</td><td>Persist the counter durably; resume from last <em>allocated</em> value, never last <em>used</em></td></tr>
+        <tr><td>Two app servers request a block at once</td><td>Could overlap</td><td>Impossible — the <code>INCRBY</code> / <code>SELECT FOR UPDATE</code> is atomic, ranges are disjoint</td></tr>
+        <tr><td>Random pool (strategy A) generates a dup</td><td>Insert fails</td><td>UNIQUE constraint rejects it offline; generator skips and continues</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight hl-purple"><strong>So what:</strong> in production, KGS doesn't "randomly generate a key" when you click shorten. It pre-computes uniqueness offline — either a CSPRNG-filled pool or an atomic counter you base62-encode — and hands app servers <em>disjoint blocks</em> they serve from memory. That single design move deletes the collision check, the race condition, <em>and</em> the per-request network hop all at once. The write path becomes: pop an integer, encode it, insert — collision-free by construction, no database question ever asked.</div>
 </div>
 
 <div class="divider"></div>
@@ -812,7 +1054,7 @@ flowchart LR
     </div>
     <div class="card">
       <h3>🔒 Unguessable keys</h3>
-      <p>KGS-generated keys are random 6-character base64, not sequential. An attacker can't enumerate <code>/aaaaaa, /aaaaab, ...</code> to discover private URLs — the keyspace is 68.7B, sparsely populated, so brute force is infeasible.</p>
+      <p>KGS-generated keys are random 6-character base62, not sequential. An attacker can't enumerate <code>/aaaaaa, /aaaaab, ...</code> to discover private URLs — the keyspace is 56.8B, sparsely populated, so brute force is infeasible.</p>
     </div>
   </div>
 </div>
@@ -839,7 +1081,7 @@ flowchart LR
   <div class="ans"><strong>The cache + CDN absorb it entirely.</strong> A viral link is the definition of "hot" — it's in every CDN edge POP and every Memcached node. Origin DB sees zero traffic from it. The only choke point is bandwidth out of CDN, which is what CDNs are explicitly built to handle. Click telemetry is async via Kafka, which buffers the spike without dropping events.</div>
 
   <div class="iq">How do you prevent collisions in the KGS unused pool?</div>
-  <div class="ans">KGS generates random keys (not sequential), then INSERTs into the unused table with a UNIQUE constraint. Duplicates fail and are skipped. With 68.7B keyspace and only 30B keys ever issued over 5 years, the birthday-paradox collision rate during generation is negligible (under 1 collision per 100K generated). Pool prefill makes this completely invisible to the write path.</div>
+  <div class="ans">KGS generates random keys (not sequential), then INSERTs into the unused table with a UNIQUE constraint. Duplicates fail and are skipped. With 56.8B keyspace and only 30B keys ever issued over 5 years, the birthday-paradox collision rate during generation is negligible (under 1 collision per 100K generated). Pool prefill makes this completely invisible to the write path.</div>
 
   <div class="iq">How do you scale globally for low-latency reads?</div>
   <div class="ans"><strong>Two layers.</strong> (1) <strong>CDN</strong> caches the 302 response at edge POPs in 200+ cities — a Tokyo user hits a Tokyo edge node, not US-East. (2) <strong>Multi-region DB replicas</strong> for cache misses — Cassandra/DynamoDB Global Tables replicate writes to EU and APAC within seconds. Read app servers in each region hit their local replica. Trade-off: writes are still single-region with global replication lag (~1-5s), so a URL just created in US-East might 404 in Tokyo for a few seconds. Acceptable for our use case.</div>

@@ -515,7 +515,8 @@ flowchart TB
   LB -->|"POST tweet"| WS
   LB -->|"GET timeline"| TR
   LB -->|"GET search"| SR
-  LB -->|"upload media"| MEDIA
+  LB -->|"1. get pre-signed URL"| WS
+  CL -.->|"2. upload bytes direct (bypasses LB)"| MEDIA
 
   WS --> TDB
   WS --> FQ
@@ -545,6 +546,8 @@ flowchart TB
   style MON fill:#171d27,stroke:#3cbfbf,color:#d4dae5
     </div>
   </div>
+
+  <div class="highlight hl-orange"><strong>About that media-upload arrow:</strong> notice the upload is two steps, and the bytes don't go through the Load Balancer. <strong>Step 1</strong> (solid): the client asks our app — through the LB ② — for a <em>pre-signed URL</em>, a temporary signed S3 address. <strong>Step 2</strong> (dotted): the client uploads the 2 MB photo <em>directly</em> to <strong>Media Storage</strong> ⑤, bypassing the LB and app servers entirely. A load balancer is a reverse proxy for <em>your</em> services — it never store-and-forwards user media into S3. Routing 30 MB videos through it would re-create the exact egress bottleneck the CDN exists to avoid.</div>
 
   <h3 class="subh">Component-by-component — what each numbered box does</h3>
   <p>Use the numbers in the diagram above to find the matching card. Each one answers <em>what is this</em>, <em>why is it here</em>, and <em>what would break without it</em>.</p>
@@ -640,6 +643,86 @@ flowchart TB
       </ol>
     </div>
   </div>
+
+  <h3 class="subh">The write flow, step by step — what really happens when Sarah taps "Tweet"</h3>
+  <p>The six-line summary above is the map. Here is the territory. Sarah is a normal user — 1,000 followers, a photo attached, posting at 14:02:06 on a Tuesday. Follow her tweet through every box it touches and notice that <strong>the part she waits for is tiny, and the expensive part happens after she's already moved on.</strong></p>
+
+  <p>The tweet travels through six stages. The first four are <strong>synchronous</strong> — Sarah's app is waiting on them, so they have to be fast (~60ms total). The last two are <strong>asynchronous</strong> — they happen after Sarah already saw "Tweet posted," so they can take their time (~2 seconds).</p>
+
+  <p><span class="comp-num orange">①</span> <strong>The photo goes up first — before the tweet even exists.</strong> The instant Sarah picks a photo, her phone asks our servers for a <strong>pre-signed URL</strong>: a one-time, time-limited web address that says "you may upload exactly one file to this exact spot in <strong>Media Storage</strong> ⑤, for the next 5 minutes." The phone uploads the image bytes <em>directly</em> to S3 using that URL — the photo never touches our application servers.</p>
+  <ul style="margin:.2rem 0 1.1rem 1.3rem;line-height:1.78">
+    <li>A photo is ~2 MB; a tweet is ~280 bytes. Routing 2 MB through the app tier would tie up an app server for the whole transfer.</li>
+    <li>S3 swallows the bytes and hands back a short id like <code>img_92af</code>. Think of a <em>coat check</em> — Sarah hands her heavy coat (the photo) straight to the cloakroom (S3) and walks into the party carrying only the ticket (<code>img_92af</code>).</li>
+  </ul>
+
+  <p><span class="comp-num orange">②</span> <strong>The tiny tweet payload hits the front door.</strong> Now the app sends the actual tweet — <code>POST /api/v1/tweet</code> with a body of just <code>{ text: "...", media_ids: ["img_92af"] }</code>. Notice it carries the photo's <em>id</em>, not the photo. The request lands first on the <strong>Load Balancer</strong> ②, the traffic cop that terminates the secure connection (HTTPS/TLS) and forwards it to whichever <strong>Tweet Write Service</strong> ③ pod is least busy.</p>
+  <ul style="margin:.2rem 0 1.1rem 1.3rem;line-height:1.78">
+    <li>The write service is <em>stateless</em> — no pod "owns" Sarah. Any of the 50 write pods handles her tweet identically.</li>
+    <li>If a pod crashes mid-request, the LB just routes the retry to another. The tier scales by adding pods, with zero coordination.</li>
+  </ul>
+
+  <p><span class="comp-num orange">③</span> <strong>A time-sortable ID is minted, and the row is written.</strong> The write service generates <code>tweet_id = 1648773726000_4271</code>. That number isn't random: the left half is the <strong>epoch timestamp</strong> (the exact second Sarah posted) and the right half is a per-server <strong>sequence counter</strong> to break ties when two tweets land in the same millisecond (see §7). It then inserts one row into <strong>Tweet Storage</strong> ④ (Cassandra) — text, Sarah's user_id, timestamp, and the reference <code>img_92af</code> — replicated to 3 zones, acknowledged once 2 of 3 confirm (<code>W=2</code>).</p>
+  <ul style="margin:.2rem 0 1.1rem 1.3rem;line-height:1.78">
+    <li>Embedding the timestamp in the id makes recent tweets physically cluster on the same shards — exactly what timeline reads ask for later.</li>
+    <li>The "2 of 3" rule means a single dead replica never blocks Sarah's write — we trade a sliver of consistency for always-on availability.</li>
+  </ul>
+
+  <p><span class="comp-num orange">④</span> <strong>Sarah gets her "201 Created" — and she's done.</strong> The write service drops a <code>NewTweet</code> event onto a <strong>Kafka</strong> topic ⑥ and immediately returns <code>201 Created</code>. <strong>Total elapsed: ~60ms.</strong> Her tweet pops into her own timeline instantly; she is <em>not</em> waiting for her 1,000 followers to receive it. <strong>This is where the whole trick lives</strong> — publishing to Kafka is the moment we "hide the bill."</p>
+  <ul style="margin:.2rem 0 1.1rem 1.3rem;line-height:1.78">
+    <li>Before this split, a tweet POST blocked until every follower write finished — a user with 50K followers would stare at a spinner for 5+ seconds.</li>
+    <li>After the split, posting is always ~60ms no matter how many followers you have. The delivery is now "someone else's problem, later."</li>
+  </ul>
+
+  <p><span class="comp-num orange">⑤</span> <strong>In the background — fan-out delivers to 1,000 timelines.</strong> A pool of <strong>Fan-out workers</strong> ⑥ consumes the <code>NewTweet</code> event off Kafka, asks the <strong>User Graph</strong> ⑨ "who follows Sarah?" (1,000 user_ids), and for each follower does an <code>LPUSH</code> — pushing Sarah's <code>tweet_id</code> onto the front of that follower's list in the <strong>Timeline Cache</strong> ⑦ (Redis). This is <strong>fan-out-on-write</strong>: do the merge-and-sort work <em>now</em>, once, so 1,000 future reads are each a single cheap lookup. <strong>Total: ~2 seconds.</strong></p>
+  <ul style="margin:.2rem 0 1.1rem 1.3rem;line-height:1.78">
+    <li>Sarah has only 1,000 followers, so this is cheap.</li>
+    <li>This is exactly the step we <em>skip</em> for a celebrity like Elon (100M followers) — pushing to 100M Redis lists per tweet would melt the cluster. Celebrities are handled the opposite way, at read time (step ③ of the read flow below).</li>
+  </ul>
+
+  <p><span class="comp-num orange">⑥</span> <strong>Also in parallel — search index and trending counters.</strong> While the timeline fan-out runs, the same worker feeds two other systems: it writes the tweet text into <strong>Search</strong> ⑩ (Elasticsearch) so it's findable within seconds, and it extracts hashtags and bumps their counters in <strong>Trending Topics</strong> ⑪. If Sarah used <code>#WorldCup</code>, that tag's 5-minute sliding-window count ticks up by one.</p>
+  <ul style="margin:.2rem 0 1.1rem 1.3rem;line-height:1.78">
+    <li>Nobody is blocking on these — search being a few seconds behind is fine; trending being a minute stale is fine.</li>
+    <li>By hanging them off the same async event, we get them for free without adding a millisecond to Sarah's post.</li>
+  </ul>
+
+  <div class="highlight hl-orange"><strong>Write flow in one line:</strong> Sarah waits ~60ms for steps ①–④ (the synchronous path); steps ⑤–⑥ (the expensive fan-out) happen in the ~2 seconds after she's already seen "Tweet posted." The architecture's entire job on the write side is to make the part the user waits for as small as physically possible.</div>
+
+  <h3 class="subh">The read flow, step by step — what happens when Raj pulls to refresh</h3>
+  <p>68 seconds later, at 14:03:14, Raj opens the app. He follows ~200 people, including Sarah <em>and</em> Elon. His read has to feel instant, and it has to include both Sarah's just-posted tweet and Elon's latest — even though those two tweets got into his feed by completely different mechanisms.</p>
+
+  <p>Raj's read touches five stages, and the headline is that <strong>almost none of it hits a database.</strong> The hard work was already done when each author tweeted — Raj is mostly just collecting the results.</p>
+
+  <p><span class="comp-num blue">①</span> <strong>The request lands on a read pod.</strong> Raj's app fires <code>GET /api/v1/timeline?user_id=raj</code>. The <strong>Load Balancer</strong> ② routes it to a <strong>Timeline Read Service</strong> ⑧ pod — using <em>least-connections</em> routing this time, because timelines vary wildly in cost to assemble (following 2,000 people is more work than following 50).</p>
+  <ul style="margin:.2rem 0 1.1rem 1.3rem;line-height:1.78">
+    <li>The read tier is the biggest deployment in the whole system, because reads outnumber writes ~280-to-1.</li>
+    <li>Every optimization below exists to keep this tier from touching a database on the common path.</li>
+  </ul>
+
+  <p><span class="comp-num blue">②</span> <strong>The pre-computed timeline is fetched in one shot.</strong> The read service makes a single Redis call to <strong>Timeline Cache</strong> ⑦ and gets back Raj's ready-made list of ~800 <code>tweet_id</code>s — already merged from everyone he follows, already sorted newest-first. Sarah's tweet from 68 seconds ago is near the top, because her fan-out worker <code>LPUSH</code>ed it there in step ⑤ of the write flow. <strong>This read is ~5ms.</strong></p>
+  <ul style="margin:.2rem 0 1.1rem 1.3rem;line-height:1.78">
+    <li><strong>This is the payoff:</strong> the hard problem ("merge 200 people's recent tweets, sorted") was already solved at <em>write</em> time. Raj's read just collects a list someone else pre-built for him.</li>
+    <li>Before this design, this step was a multi-shard fan-in query no database could serve at 325K/sec. After, it's a single key lookup.</li>
+  </ul>
+
+  <p><span class="comp-num blue">③</span> <strong>The celebrity exception — Elon is pulled live.</strong> The cached list holds tweets from Raj's <em>normal</em> follows. But Elon was never fanned-out to anyone (100M followers — we deliberately skipped him). So the read service asks the <strong>User Graph</strong> ⑨ "does Raj follow any celebrities?" → Elon. It then pulls Elon's last ~20 tweets <em>live</em> from <strong>Tweet Storage</strong> ④ and merges them into the cached list, re-sorting by timestamp.</p>
+  <ul style="margin:.2rem 0 1.1rem 1.3rem;line-height:1.78">
+    <li><strong>This is the hybrid model in action:</strong> normal users are <strong>push</strong> (work done at write time, sitting in Raj's cache); celebrities are <strong>pull</strong> (work done at read time, fetched fresh). One request blends both.</li>
+    <li>This single decision lets the system handle a user with 5 followers and a user with 100M followers without either one breaking it.</li>
+  </ul>
+
+  <p><span class="comp-num blue">④</span> <strong>IDs become real tweets — hydration.</strong> So far Raj only has a list of <em>ids</em>. The read service "hydrates" the top 20: it fetches the full tweet rows (text, author name, counters) for those ids, mostly from the <strong>Tweet Object Cache</strong> (a viral tweet is cached once and reused across millions of timelines), falling through to <strong>Tweet Storage</strong> ④ only on a miss. For any tweet with media, it resolves <code>img_92af</code> into a real <strong>CDN</strong> ⑤ URL pointing at the edge node nearest Raj.</p>
+  <ul style="margin:.2rem 0 1.1rem 1.3rem;line-height:1.78">
+    <li>We hydrate only the 20 tweets Raj will actually see on screen, not all 800 in his list — lazy work.</li>
+    <li>Because media resolves to a CDN path, Raj streams Sarah's photo from a nearby edge server, not from our origin data center across the world.</li>
+  </ul>
+
+  <p><span class="comp-num blue">⑤</span> <strong>The assembled feed comes back.</strong> The read service packages the 20 hydrated tweets into one timeline JSON response and returns it. <strong>Total elapsed: ~80ms.</strong> On Raj's screen, Elon's latest renders 1st (most recent), and Sarah's photo tweet renders 4th — 68 seconds after she hit post.</p>
+  <ul style="margin:.2rem 0 1.1rem 1.3rem;line-height:1.78">
+    <li>Raj has no idea those two tweets arrived via entirely different paths (one pushed, one pulled).</li>
+    <li>All the complexity — the write/read split, the push/pull hybrid, the multi-tier caching — is invisible. That invisibility <em>is</em> the design goal.</li>
+  </ul>
+
+  <div class="highlight hl-blue"><strong>Read flow in one line:</strong> Raj's ~80ms read is almost entirely a single Redis fetch (step ②) plus hydration of just the 20 visible tweets (step ④). The only database touch on the hot path is the small celebrity pull (step ③) — everything else was pre-computed when each author tweeted.</div>
 
   <div class="highlight hl-orange"><strong>So what:</strong> the architecture is built around three insights — (1) <strong>reads outnumber writes 280-to-1</strong>, so we pre-compute timelines at write time and reads become a single cache fetch; (2) <strong>fan-out has a long tail</strong> (Elon's 100M followers), so we split into push-for-normal-users + pull-for-celebrities, bounding worker cost; (3) <strong>media is its own beast</strong>, so it lives in object storage + CDN, never traveling our application path. Every box in the diagram exists to remove one of those failure modes from Pass 1.</div>
 

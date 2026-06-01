@@ -1,40 +1,38 @@
-One of the biggest misconceptions in system design is:
+Need SQL? Use Postgres.
+Need scale? Move to NoSQL.
 
-Need SQL, then use Postgres.
-Need scale, then move to NoSQL.
+For years, that was the default system design advice.
 
-Well in 2026, you dont' need this!
+But in 2026, that tradeoff is no longer mandatory.
 
-A modern category of databases as "Distributed SQL" combines relational database features with horizontal scalability.
+A new class of databases called **Distributed SQL** combines the reliability of relational databases with the scalability of distributed systems.
 
-Yes you read it right, we can also scale SQL horizontally.
+That means you can keep:
 
-Solutions like CockroachDB, YugabyteDB, and TiDB provide the familiar relational database model while scaling horizontally across multiple nodes.
+* SQL
+* ACID transactions
+* Strong consistency
+* Joins and indexes
 
-You still get:
-✅ SQL queries
-✅ ACID transactions
-✅ Strong consistency
-✅ Joins and indexes
+While also getting:
 
-And additionally:
-✅ Automatic sharding
-✅ Built-in replication
-✅ Multi-region deployments
-✅ Automatic failover
+* Automatic sharding
+* Built-in replication
+* Multi-region deployments
+* Automatic failover
 
-The tradeoff is higher write latency because every write must be coordinated across replicas. That's the price paid for fault tolerance and distributed scale.
+Platforms like CockroachDB, YugabyteDB, and TiDB make this possible by distributing data across multiple nodes while preserving the SQL experience developers already know.
 
-In system design discussions, the interesting question is no longer:
+Of course, nothing comes for free.
 
-"Can Postgres scale?
+Writes are typically slower because changes must be coordinated across replicas before they're committed. That's the cost of fault tolerance and distributed scale.
 
-It's:
+And for many applications, Postgres is still the right answer.
 
-At what point does a single-node database become the bottleneck, and what tradeoffs are acceptable to remove that bottleneck?
+But if you're hitting the limits of a single machine and need global scale without giving up SQL, Distributed SQL is worth understanding.
 
-For many workloads, Postgres remains the best choice.
+Want the complete breakdown of architecture, trade-offs, migrations, and when you should simply stay on Postgres? Link in the comments.
 
-But when you need to scale across multiple regions and servers while still keeping SQL and ACID transactions, distributed SQL databases are a great option.
+📌 More backend engineering deep-dives on my Design & Development page: https://lnkd.in/gYBPJVTS
 
-Have written a long b
+#DistributedSQL #SystemDesign #DatabaseEngineering #BackendEngineering #Scalability #CockroachDB #YugabyteDB #TiDB #SoftwareEngineering
