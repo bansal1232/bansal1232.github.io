@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>intervue.io Java Backend Interview — Questions & Answers</title>
+<meta name="description" content="Every question asked of a candidate interviewing for a Java application role — sourced from the intervue.io question bank: caching, Spring Boot, microservices, event-driven architecture, Java/DSA, databases, and communication — answered the way you'd say it in the room."/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<link rel="stylesheet" href="../../css/likes.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script src="../../js/likes.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --pink:#ec5d8a;--pink-d:rgba(236,93,138,.12);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:780px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+.tag-pink{background:var(--pink-d);color:var(--pink)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:820px}
+.sec h3{font-size:1.2rem;font-weight:700;color:var(--heading);margin:1.6rem 0 .8rem}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.88rem;color:var(--text);line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+.card code,.ans code,.sec>p code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.05rem .35rem;border-radius:3px}
+
+pre{background:#090d12;border:1px solid var(--border);border-radius:8px;padding:1.1rem 1.3rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.8;color:var(--text);margin:.6rem 0 1rem;tab-size:2}
+.kw{color:#ff7b72}.str{color:#a5d6ff}.cmt{color:#545d6e;font-style:italic}.fn{color:#d2a8ff}.ty{color:#79c0ff}.num{color:#e8743b}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3{grid-template-columns:1fr}.hero h1{font-size:2.1rem}}
+
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+.highlight{border-radius:var(--r);padding:1.05rem 1.3rem;margin-bottom:.85rem;font-size:.88rem}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--cyan)}
+.highlight strong{font-weight:700}
+.highlight code{font-family:'JetBrains Mono',monospace;font-size:.78rem;background:rgba(0,0,0,.25);padding:.05rem .35rem;border-radius:3px;color:inherit}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.8rem 1.1rem;margin:1.4rem 0 .55rem;font-size:.95rem;color:var(--blue);font-weight:700}
+.iq::before{content:'Q · ';font-weight:800;letter-spacing:.05em}
+.ans{background:var(--surface);border-radius:var(--r);padding:1.1rem 1.35rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.72}
+.ans strong{color:var(--heading)}
+.ans em{color:var(--muted);font-style:italic}
+.ans p+p{margin-top:.7rem}
+.ans ul{margin:.4rem 0 .25rem;padding-left:1.1rem}
+.ans ul li{margin-bottom:.25rem}
+.ans pre{margin:.7rem 0}
+
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.55rem .8rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+.askedby{display:inline-block;font-size:.62rem;font-weight:600;letter-spacing:.04em;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:.12rem .6rem;margin-left:.5rem;vertical-align:middle}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">intervue.io Question Bank · Q&amp;A Compilation</div>
+  <h1>intervue.io Java Backend — <span>Every Question, Answered</span></h1>
+  <p class="sub">A consolidated Q&amp;A from the <strong>intervue.io</strong> question bank — the set of questions put to a candidate interviewing for a Java application role. Every question that came up — caching, Spring, microservices, event-driven systems, Java/DSA, databases, and stakeholder communication — written the way you'd actually answer it in the room.</p>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">Caching strategies &amp; Redis</a></li>
+      <li><a href="#s2">Spring Boot &amp; core Spring</a></li>
+      <li><a href="#s3">Microservices design &amp; patterns</a></li>
+      <li><a href="#s4">Event-driven architecture &amp; Kafka</a></li>
+      <li><a href="#s5">Java &amp; DSA coding</a></li>
+      <li><a href="#s6">Databases &amp; SQL</a></li>
+      <li><a href="#s7">Communication &amp; articulation</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+    <div class="highlight hl-cyan" style="margin-bottom:2rem">
+      <strong>How to read this page.</strong> This is the full bank of questions from the <strong>intervue.io</strong> question bank — asked of a candidate interviewing for a Java application role — deduplicated and grouped by skill. Each question appears as a <code>Q · </code> block followed by an answer you can deliver in 60–120 seconds. The recurring theme the panel kept probing: <em>can you go past the textbook definition into trade-offs, failure modes, and a concrete implementation?</em> That's exactly where the answers below aim.
+    </div>
+
+    <!-- ============================ S1 ============================ -->
+    <div class="sec" id="s1">
+      <span class="sec-tag tag-orange">01 · Caching Frameworks</span>
+      <h2>Caching strategies &amp; Redis</h2>
+      <p>This was the "must-have" skill on every scorecard. The interviewers rarely wanted a definition — they wanted you to pick a strategy <em>and defend the trade-off</em>: durability vs throughput, consistency vs latency, and what happens the moment the cache lets you down at 3 a.m.</p>
+
+      <div class="iq">You're designing a payment system where transaction updates must never be lost. High write volume, cache + database. You need durability, cache–DB consistency, and high write throughput. Would you use Write-Through or Write-Behind caching, and how do you decide?</div>
+      <div class="ans">
+        <p>Start by naming the one constraint that dominates: <strong>"transaction updates must never be lost."</strong> That phrase alone settles the debate before I weigh throughput.</p>
+        <ul>
+          <li><strong>Write-Through</strong> — the write goes to the cache <em>and</em> the database synchronously, and only then do I ack the client. Durability is guaranteed because the DB has the record before the user ever sees "success." The cost is write latency: every write pays for the slower of the two stores.</li>
+          <li><strong>Write-Behind (write-back)</strong> — the write lands in the cache, I ack immediately, and a background flush persists to the DB later. Throughput is excellent and latency is tiny, but there's a window where data lives <em>only</em> in the cache. If that node dies before the flush, the write is gone.</li>
+        </ul>
+        <p><strong>Decision: for a payment system, Write-Through.</strong> "Never lost" is non-negotiable, and a payment write at human speed (clicking Pay) doesn't need sub-millisecond latency — a few extra milliseconds to hit the DB is a fine price for not losing money.</p>
+        <p>The nuance that scores points: I wouldn't actually treat the cache as the durability layer at all. The real durability pattern for payments is <strong>write to the database first (the system of record), then update or invalidate the cache</strong> — and for the high-throughput requirement I'd batch the <em>reads</em> through cache-aside, not force every write through the cache. If someone insists on write-behind for throughput, the only safe version uses a <strong>durable write-ahead buffer</strong> (e.g. an append-only log or Kafka) so the "behind" part survives a crash. That's the honest comparison the scorecards said candidates skipped: write-behind isn't wrong, it's just only safe when the buffer itself is durable.</p>
+      </div>
+
+      <div class="iq">A very popular product page caches for 60 minutes. At the exact second it expires, 10,000 concurrent users hit the page. The cache is empty, so all 10,000 requests hit the database at once and crash it. How do you design the caching layer to prevent this?</div>
+      <div class="ans">
+        <p>This is the classic <strong>cache stampede</strong> (a.k.a. thundering herd / dog-piling). The fix is layered — I'd mention all four because each closes a different gap:</p>
+        <ul>
+          <li><strong>1. Request coalescing / mutex lock.</strong> When the key is missing, only the <em>first</em> request acquires a short lock (<code>SET key LOCK NX PX 5000</code> in Redis) and goes to the DB; the other 9,999 either wait briefly and re-read, or are served the stale value. One DB hit instead of 10,000.</li>
+          <li><strong>2. Stale-while-revalidate.</strong> Don't hard-expire. Keep serving the old value past TTL while a single background job refreshes it. Users never see an empty cache; the DB sees exactly one refresh query.</li>
+          <li><strong>3. Randomized / jittered TTL.</strong> Instead of every entry expiring at the same 60-minute mark, set <code>TTL = 3600 + random(0, 300)</code>. This spreads expirations so a whole population of keys never expires in the same second.</li>
+          <li><strong>4. Background pre-warming.</strong> For known-hot keys (the famous product page), a scheduled job refreshes the entry <em>before</em> it expires, so it's never actually cold.</li>
+        </ul>
+        <p>So-what: the lock handles the single-key spike, jitter handles the many-keys-at-once case, and stale-while-revalidate means the user never pays for the miss.</p>
+      </div>
+
+      <div class="iq">During a big sale, the application suddenly receives heavy traffic. The database CPU reaches 100% because a large set of cache entries expired simultaneously. How would you solve this?</div>
+      <div class="ans">
+        <p>This is the sibling problem — <strong>cache avalanche</strong>. Stampede is many requests for <em>one</em> expired key; avalanche is many <em>different</em> keys all expiring together and collectively burying the DB.</p>
+        <p>The primary fix is <strong>TTL jitter</strong> — never let a batch of keys share an exact expiry. Add the same coalescing lock per key so each key only triggers one rebuild. Beyond that, the avalanche-specific defenses:</p>
+        <ul>
+          <li><strong>Tiered TTLs:</strong> a short logical TTL plus a longer physical TTL, so even "expired" data is still physically present to serve stale during the rebuild.</li>
+          <li><strong>A circuit breaker / rate limiter in front of the DB</strong> so that even if the cache fully misses, the DB receives a bounded query rate and sheds the rest (serve stale or a graceful "try again") instead of toppling.</li>
+          <li><strong>Replicate the cache</strong> (Redis cluster + replicas) so a single node failing doesn't dump all its keyspace onto the DB at once.</li>
+        </ul>
+      </div>
+
+      <div class="iq">Your e-commerce app uses Redis to cache product and session data. How do you handle it when the cache is destroyed (Redis goes down or restarts cold)?</div>
+      <div class="ans">
+        <p>Two failure modes, two answers.</p>
+        <p><strong>Product data is regenerable</strong> — it lives in the DB. A cold cache means a burst of misses, so I protect the DB exactly as above: request coalescing, a rate limiter / circuit breaker in front of the DB, and gradual <strong>cache warming</strong> (re-populate top SKUs on startup rather than letting organic traffic stampede). The app should treat a Redis outage as "degraded but alive" — fall back to the DB, don't 500.</p>
+        <p><strong>Session data is the dangerous one</strong> — if it's only in Redis and Redis is wiped, every user is logged out. Mitigations: enable Redis <strong>persistence (AOF + RDB)</strong> so a restart reloads state, run Redis in a <strong>replicated cluster with Sentinel/failover</strong> so a single node loss doesn't lose the keyspace, and for true resilience make sessions <strong>stateless via signed JWTs</strong> so they don't depend on a server-side store at all. The headline: the cache must be a performance layer, never the only copy of anything that matters.</p>
+      </div>
+
+      <div class="iq">How does the <code>@Cacheable</code> annotation work internally in Spring Boot?</div>
+      <div class="ans">
+        <p><code>@Cacheable</code> is AOP under the hood — it isn't magic, it's a proxy. At startup Spring wraps the bean in a proxy; when you call the annotated method, the proxy intercepts the call <em>before</em> your code runs:</p>
+        <ul>
+          <li>It computes a <strong>cache key</strong> from the method arguments (via a <code>KeyGenerator</code>, or a SpEL <code>key</code> you specify).</li>
+          <li>It asks the configured <code>CacheManager</code> (e.g. <code>RedisCacheManager</code>, Caffeine) for that key. <strong>Cache hit</strong> → it returns the cached value and your method body never executes. <strong>Cache miss</strong> → it invokes the real method, stores the return value under the key, then returns it.</li>
+        </ul>
+        <p>The two gotchas worth naming (the scorecard flagged this): because it's proxy-based, <strong>self-invocation</strong> (calling an <code>@Cacheable</code> method from another method in the same class via <code>this.</code>) bypasses the proxy and the cache does nothing — same trap as <code>@Transactional</code>. And <code>@CachePut</code> always executes and updates the cache, while <code>@CacheEvict</code> removes entries — those three are the trio for read/write/invalidate.</p>
+      </div>
+
+      <div class="iq">What are caching strategies like LRU and LFU? When two entries have the same frequency and one must be evicted, which one goes?</div>
+      <div class="ans">
+        <p>These are <strong>eviction policies</strong> — they decide what to drop when the cache is full.</p>
+        <ul>
+          <li><strong>LRU (Least Recently Used)</strong> — evict the entry that hasn't been <em>accessed</em> for the longest time. Bets that "recently used → likely used again soon." Implemented with a HashMap + doubly-linked list for O(1).</li>
+          <li><strong>LFU (Least Frequently Used)</strong> — evict the entry with the lowest <em>access count</em>. Bets that "popular over time → stays popular."</li>
+        </ul>
+        <p>The tie-break the interviewer was fishing for: <strong>when two LFU entries have the same frequency, you fall back to LRU among them</strong> — evict the one that was accessed least recently. That's exactly how a proper LFU (e.g. LeetCode 460) is specified, and it's why a real LFU keeps a recency ordering <em>within</em> each frequency bucket. Practical note: LRU is the default for most caches (Redis offers both via <code>maxmemory-policy</code>) because it's cheaper and resists "cache pollution" from a one-time burst that would inflate LFU counts.</p>
+      </div>
+
+      <div class="iq">Why choose Redis over other caching systems?</div>
+      <div class="ans">
+        <p>Three reasons I'd give, in order of weight:</p>
+        <ul>
+          <li><strong>Rich data structures.</strong> Memcached stores opaque strings; Redis has lists, hashes, sets, <strong>sorted sets</strong>, bitmaps, streams, HyperLogLog. A sorted set gives you a leaderboard or a rate-limiter or a delay queue for free — no read-modify-write round trips.</li>
+          <li><strong>Atomic operations + single-threaded command loop.</strong> Because Redis executes commands one at a time, operations like <code>INCR</code>, <code>SETNX</code>, and Lua scripts are atomic without you taking a distributed lock. That's why it's the go-to for counters, locks, and idempotency keys.</li>
+          <li><strong>Persistence &amp; replication.</strong> Unlike a pure in-memory cache, Redis can persist (RDB snapshots / AOF) and replicate with failover, so it doubles as a durable-ish store when you need it.</li>
+        </ul>
+        <p>I'd be honest about the flip side: Memcached's multi-threaded model can edge out Redis for dead-simple, massive-scale string GET/SET, and it's leaner on memory per key. The choice is "do I need structures and atomicity (Redis) or just a big fast blob store (Memcached)?"</p>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <!-- ============================ S2 ============================ -->
+    <div class="sec" id="s2">
+      <span class="sec-tag tag-green">02 · Spring Boot</span>
+      <h2>Spring Boot &amp; core Spring</h2>
+      <p>The Spring questions clustered around two things the proxy model makes counter-intuitive: <strong>transactions</strong> and <strong>AOP</strong>. Almost every candidate hit the self-invocation trap, so it's worth being airtight here.</p>
+
+      <div class="iq">A DB operation is supposed to roll back automatically when an exception occurs. But in production, even after an exception is thrown, the transaction still commits. How would you debug why the rollback isn't happening?</div>
+      <div class="ans">
+        <p>I'd walk a checklist of the usual culprits, most-likely first:</p>
+        <ul>
+          <li><strong>1. Checked vs unchecked exception.</strong> This is the #1 cause. By default Spring only rolls back on <code>RuntimeException</code> and <code>Error</code> — <em>not</em> on checked exceptions. If the code throws a checked <code>Exception</code> (e.g. <code>IOException</code>), the transaction commits. Fix: <code>@Transactional(rollbackFor = Exception.class)</code>.</li>
+          <li><strong>2. The exception is swallowed.</strong> A <code>try/catch</code> inside the method catches it and doesn't rethrow — Spring never sees an exception, so it commits. Either rethrow or call <code>setRollbackOnly()</code>.</li>
+          <li><strong>3. Self-invocation.</strong> The <code>@Transactional</code> method is called from another method <em>in the same class</em> via <code>this.method()</code>, bypassing the proxy — so no transaction exists to roll back.</li>
+          <li><strong>4. Method not <code>public</code>.</strong> Spring's proxy-based <code>@Transactional</code> only applies to public methods; on a private/protected method it's silently ignored.</li>
+          <li><strong>5. Wrong setup.</strong> The DB engine doesn't support transactions (e.g. MyISAM in MySQL), or the call runs on a different thread/connection than the transactional one.</li>
+        </ul>
+        <p>How I'd actually debug it: turn on <code>logging.level.org.springframework.transaction=DEBUG</code> to see whether a transaction is even being created and where the commit/rollback boundary is. Nine times out of ten the log shows "no transaction" (self-invocation / non-public) or "committing" after a checked exception.</p>
+      </div>
+
+      <div class="iq">You have a <code>@Service</code> class. Method A is not annotated; Method B has <code>@Transactional</code>. If Method A calls Method B internally via <code>this.methodB()</code>, will the transaction start?</div>
+      <div class="ans">
+        <p><strong>No.</strong> The transaction will not start. Spring's <code>@Transactional</code> works through a <strong>proxy</strong> that wraps the bean. The transactional behavior is applied when a call comes <em>through</em> that proxy from outside. When A calls <code>this.methodB()</code>, the call goes directly to the target object — the proxy is never involved — so the transactional advice never fires.</p>
+        <p>Fixes I'd offer:</p>
+        <ul>
+          <li><strong>Move B to a separate bean</strong> and inject it — now the call crosses a proxy boundary. (Cleanest.)</li>
+          <li><strong>Self-inject the proxy</strong> (<code>@Autowired private MyService self;</code>) and call <code>self.methodB()</code>.</li>
+          <li>Use <code>AopContext.currentProxy()</code> (requires <code>exposeProxy = true</code>) — works but ugly.</li>
+        </ul>
+        <p>The same proxy rule explains why <code>@Cacheable</code> and <code>@Async</code> also silently do nothing on self-invocation.</p>
+      </div>
+
+      <div class="iq">This code has architectural flaws around bean scopes and self-invocation. Fix it: a <code>@Scope("prototype")</code> <code>DataProcessor</code> is <code>@Autowired</code> into a singleton <code>ReportService</code> (and should be new every call), and a <code>completeTask()</code> method calls <code>this.updateDatabase()</code> which is <code>@Transactional</code>.</div>
+      <div class="ans">
+        <p>Two distinct bugs, both rooted in how Spring wires beans.</p>
+        <p><strong>Flaw 1 — prototype injected into a singleton.</strong> <code>ReportService</code> is a singleton, created once. The <code>@Autowired DataProcessor</code> is injected <em>once</em> at startup, so even though <code>DataProcessor</code> is prototype-scoped, <code>generateReport()</code> reuses the same instance forever — defeating "new every time." Fix: don't inject the instance, inject a factory:</p>
+        <pre><span class="kw">@Autowired</span>
+<span class="kw">private</span> <span class="ty">ObjectProvider</span>&lt;<span class="ty">DataProcessor</span>&gt; processorProvider;
+
+<span class="kw">public void</span> <span class="fn">generateReport</span>() {
+    <span class="ty">DataProcessor</span> processor = processorProvider.<span class="fn">getObject</span>(); <span class="cmt">// fresh prototype each call</span>
+    processor.<span class="fn">process</span>();
+}</pre>
+        <p>(<code>ObjectProvider</code> / <code>@Lookup</code> method injection / a <code>Provider&lt;T&gt;</code> all work; <code>ObjectProvider</code> is the modern idiom.)</p>
+        <p><strong>Flaw 2 — self-invocation on <code>@Transactional</code>.</strong> <code>completeTask()</code> calls <code>this.updateDatabase()</code>, so the proxy is bypassed and the DB update is <em>not</em> transactional. Fix: move <code>updateDatabase()</code> to a separate bean and call it through the injected dependency, or self-inject the proxy and call <code>self.updateDatabase()</code>.</p>
+        <p>The third "flaw" the prompt hints at: a stateful prototype bean (<code>id = UUID</code>) being treated as if it resets per call — which is really the same scope-mismatch lesson. Net: never hold prototype state behind a singleton without a provider.</p>
+      </div>
+
+      <div class="iq">What is AOP and how do you use it in Spring Boot? Explain Join Point, Advice, and Pointcut, and the types of advice.</div>
+      <div class="ans">
+        <p><strong>AOP (Aspect-Oriented Programming)</strong> lets you pull out <em>cross-cutting concerns</em> — logging, security, transactions, metrics — that would otherwise be copy-pasted across every method, and centralize them in one place called an <strong>aspect</strong>. Spring implements it with runtime proxies.</p>
+        <p>The vocabulary, with a mental model:</p>
+        <ul>
+          <li><strong>Join Point</strong> — a point in execution where an aspect <em>could</em> be applied. In Spring, that's always a method execution.</li>
+          <li><strong>Pointcut</strong> — an expression that <em>selects which</em> join points to advise, e.g. <code>execution(* com.app.service..*(..))</code>. It's the "where."</li>
+          <li><strong>Advice</strong> — the code that <em>runs</em> at a matched join point. It's the "what."</li>
+          <li><strong>Aspect</strong> — the class (<code>@Aspect</code>) bundling pointcuts + advice together.</li>
+        </ul>
+        <p>The five advice types:</p>
+        <ul>
+          <li><code>@Before</code> — runs before the method.</li>
+          <li><code>@AfterReturning</code> — runs after it returns successfully (can read the return value).</li>
+          <li><code>@AfterThrowing</code> — runs if it throws.</li>
+          <li><code>@After</code> — runs always (finally-style).</li>
+          <li><code>@Around</code> — wraps the method; gets a <code>ProceedingJoinPoint</code> and decides whether/when to call <code>proceed()</code>. This is the most powerful — it's how you time a method or short-circuit it.</li>
+        </ul>
+      </div>
+
+      <div class="iq">Implement logging + performance metrics for all service methods <em>except</em> one specific package — and log execution time of every service method without modifying the service classes.</div>
+      <div class="ans">
+        <p>This is the canonical "use <code>@Around</code> advice" answer — and the "without modifying the service classes" phrase is the giveaway that AOP is the intended tool. One aspect handles both:</p>
+        <pre><span class="kw">@Aspect</span>
+<span class="kw">@Component</span>
+<span class="kw">public class</span> <span class="ty">MetricsAspect</span> {
+
+  <span class="cmt">// match all service methods EXCEPT the excluded package</span>
+  <span class="kw">@Around</span>(<span class="str">"execution(* com.app.service..*(..)) "</span> +
+          <span class="str">"&amp;&amp; !execution(* com.app.service.internal..*(..))"</span>)
+  <span class="kw">public</span> <span class="ty">Object</span> <span class="fn">logAndTime</span>(<span class="ty">ProceedingJoinPoint</span> pjp) <span class="kw">throws</span> <span class="ty">Throwable</span> {
+    <span class="kw">long</span> start = <span class="ty">System</span>.<span class="fn">nanoTime</span>();
+    <span class="kw">try</span> {
+      <span class="ty">Object</span> result = pjp.<span class="fn">proceed</span>();          <span class="cmt">// run the real method</span>
+      <span class="kw">return</span> result;
+    } <span class="kw">finally</span> {
+      <span class="kw">long</span> ms = (<span class="ty">System</span>.<span class="fn">nanoTime</span>() - start) / <span class="num">1_000_000</span>;
+      log.<span class="fn">info</span>(<span class="str">"{} took {} ms"</span>, pjp.<span class="fn">getSignature</span>(), ms);
+    }
+  }
+}</pre>
+        <p>The exclusion is done right in the pointcut with <code>&amp;&amp; !execution(... .internal..*(..))</code>. Because it's a proxy aspect, none of the service classes are touched — exactly the requirement. For real metrics I'd push the timing to Micrometer (<code>@Timed</code> or a <code>Timer</code>) so it lands in Prometheus/Grafana instead of just logs.</p>
+      </div>
+
+      <div class="iq">What are auto-configurations in Spring Boot?</div>
+      <div class="ans">
+        <p>Auto-configuration is the mechanism that makes Spring Boot "just work" without XML. At startup, <code>@EnableAutoConfiguration</code> (folded into <code>@SpringBootApplication</code>) scans the classpath and <strong>conditionally</strong> registers beans based on what it finds.</p>
+        <p>The engine is <strong>conditional annotations</strong>: <code>@ConditionalOnClass</code> (is the library on the classpath?), <code>@ConditionalOnMissingBean</code> (did the developer not already define one?), <code>@ConditionalOnProperty</code>, etc. So if it sees <code>spring-boot-starter-data-jpa</code> + an H2 driver and you haven't defined a <code>DataSource</code>, it wires a sensible one for you. The candidate gets credit for naming the key principle: <strong>your beans always win</strong> — auto-config backs off (<code>@ConditionalOnMissingBean</code>) the moment you define your own. The list of auto-config classes lives in <code>META-INF/spring/...AutoConfiguration.imports</code> (formerly <code>spring.factories</code>), and you can debug what fired with <code>--debug</code> (the "conditions evaluation report").</p>
+      </div>
+
+      <div class="iq">How many types of dependency injection exist in Spring?</div>
+      <div class="ans">
+        <p>Three:</p>
+        <ul>
+          <li><strong>Constructor injection</strong> — dependencies passed to the constructor. <em>Preferred.</em> It makes dependencies mandatory and final (immutable), prevents the object from existing in a half-built state, and makes the class trivially unit-testable. Spring injects it without even needing <code>@Autowired</code> if there's a single constructor.</li>
+          <li><strong>Setter injection</strong> — via setter methods. Good for optional or reconfigurable dependencies.</li>
+          <li><strong>Field injection</strong> — <code>@Autowired</code> directly on the field. Concise but discouraged: you can't make the field <code>final</code>, it hides dependencies, and it can't be set in a plain unit test without reflection.</li>
+        </ul>
+        <p>The senior signal is recommending constructor injection and explaining <em>why</em> — and noting it also surfaces circular-dependency problems at startup instead of hiding them.</p>
+      </div>
+
+      <div class="iq">How do you handle circular dependency issues in Spring?</div>
+      <div class="ans">
+        <p>A circular dependency is A needs B and B needs A. With <strong>constructor injection</strong> Spring can't build either (neither can be constructed first) and fails fast at startup with <code>BeanCurrentlyInCreationException</code> — which is actually a good thing, it's telling you the design is wrong.</p>
+        <p>Options, best to worst:</p>
+        <ul>
+          <li><strong>Refactor</strong> — the real fix. A circular dependency usually means a missing third class. Extract the shared logic into a new bean both depend on, breaking the cycle. This is what I'd push for.</li>
+          <li><strong>Setter / field injection on one side</strong> — Spring can create both beans then wire the setter afterward, breaking the construction deadlock.</li>
+          <li><code>@Lazy</code> on one dependency — Spring injects a proxy and resolves the real bean on first use.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <!-- ============================ S3 ============================ -->
+    <div class="sec" id="s3">
+      <span class="sec-tag tag-purple">03 · Software Architecture</span>
+      <h2>Microservices design &amp; patterns</h2>
+      <p>This was the most decisive section on the scorecards — strong candidates moved past naming a pattern into <em>when</em> to use it and <em>what breaks without it</em>. The recurring gap was implementation-level depth on resilience: timeouts, retries, and circuit breakers.</p>
+
+      <div class="iq">In a microservices system, one service calls another over the network. Calls can be slow or fail intermittently, and a stuck dependency shouldn't bring down the whole system. How do you implement cross-service communication with proper timeout and retry logic?</div>
+      <div class="ans">
+        <p>I'd build defense in three layers and explain the order they fire:</p>
+        <ul>
+          <li><strong>1. Timeouts (the floor).</strong> Every network call gets an explicit connect + read timeout. Without one, a hung dependency holds your thread forever and the failure cascades — your thread pool fills, you stop serving healthy requests too. A timeout is the single most important line of defense.</li>
+          <li><strong>2. Retries with exponential backoff + jitter.</strong> For <em>transient</em> failures (a blip, a timeout), retry — but only on idempotent operations, with backoff (100ms, 200ms, 400ms…) and randomized jitter so retries don't synchronize into a self-inflicted DDoS. Cap at 2–3 attempts.</li>
+          <li><strong>3. Circuit breaker (the bulkhead).</strong> If a dependency is failing consistently, retrying just piles on. The circuit breaker tracks the failure rate and, past a threshold, <strong>opens</strong> — failing fast for a cooldown window instead of waiting on timeouts. After the window it goes <strong>half-open</strong>, lets a trial request through, and closes again if it succeeds. This is what stops one sick service from dragging down its callers.</li>
+        </ul>
+        <p>In Spring I'd implement all three with <strong>Resilience4j</strong> (annotations <code>@TimeLimiter</code>, <code>@Retry</code>, <code>@CircuitBreaker</code>) plus a <code>fallback</code> method that returns cached/default data so the user sees graceful degradation, not a 500. Pair it with a <strong>bulkhead</strong> (separate thread pool per dependency) so a slow dependency can't exhaust the shared pool.</p>
+      </div>
+
+      <div class="iq">What is the purpose of the Circuit Breaker pattern, and how do you implement fault tolerance in microservices?</div>
+      <div class="ans">
+        <p><strong>Purpose:</strong> prevent <em>cascading failure</em>. Analogy: it's an electrical fuse. If a downstream service is down, naively every caller keeps sending requests that pile up on timeouts, exhaust thread pools, and the failure spreads upstream until the whole system is down. The circuit breaker detects the failure and "trips," failing fast so callers stay healthy and the struggling service gets breathing room to recover.</p>
+        <p><strong>Three states:</strong> <em>Closed</em> (normal, requests flow, failures counted) → trips to <em>Open</em> when failure rate crosses a threshold (requests fail instantly, no call made) → after a timeout moves to <em>Half-Open</em> (a few trial requests; success → Closed, failure → back to Open).</p>
+        <p><strong>Fault tolerance beyond the breaker:</strong> timeouts, retries with backoff, <strong>bulkheads</strong> (isolate resources per dependency), <strong>fallbacks</strong> (serve cached/default responses), and <strong>rate limiting</strong>. In code, Resilience4j wires it up:</p>
+        <pre><span class="kw">@CircuitBreaker</span>(name = <span class="str">"inventory"</span>, fallbackMethod = <span class="str">"fallbackStock"</span>)
+<span class="kw">@Retry</span>(name = <span class="str">"inventory"</span>)
+<span class="kw">public</span> <span class="ty">Stock</span> <span class="fn">getStock</span>(<span class="ty">String</span> sku) { <span class="kw">return</span> client.<span class="fn">call</span>(sku); }
+
+<span class="kw">public</span> <span class="ty">Stock</span> <span class="fn">fallbackStock</span>(<span class="ty">String</span> sku, <span class="ty">Throwable</span> t) {
+    <span class="kw">return</span> <span class="ty">Stock</span>.<span class="fn">unknown</span>(sku); <span class="cmt">// graceful degradation</span>
+}</pre>
+      </div>
+
+      <div class="iq">There are two endpoints, <code>/getDetails</code> and <code>/updateDetails</code>, and traffic is high. What changes would you make to the database/services so the API never shows latency?</div>
+      <div class="ans">
+        <p>The key insight: these two endpoints have <em>opposite</em> profiles — <code>/getDetails</code> is read-heavy, <code>/updateDetails</code> is write-heavy — so I'd stop treating them as one workload. This is a <strong>read/write separation (CQRS-lite)</strong> story:</p>
+        <ul>
+          <li><strong>Cache the reads.</strong> Put <code>/getDetails</code> behind Redis (cache-aside). Most reads never touch the DB — this is the single biggest latency win.</li>
+          <li><strong>Read replicas.</strong> Route <code>/getDetails</code> to read replicas and <code>/updateDetails</code> to the primary. Reads no longer compete with writes for the same box.</li>
+          <li><strong>Async the writes.</strong> If <code>/updateDetails</code> doesn't need a synchronous result, accept it, drop it on a queue (Kafka/SQS), ack immediately, and process it with consumers. The user-facing latency becomes "enqueue time."</li>
+          <li><strong>Invalidate / update the cache on write</strong> so <code>/getDetails</code> doesn't serve stale data after an update — and accept eventual consistency if you're reading from a replica.</li>
+          <li><strong>Connection pooling + horizontal scaling</strong> of stateless service instances behind a load balancer to absorb the concurrency.</li>
+        </ul>
+        <p>So-what: reads get faster by never hitting the DB, writes get faster by not blocking on a response, and the two stop interfering with each other.</p>
+      </div>
+
+      <div class="iq">What is the SAGA design pattern, and when do you implement it?</div>
+      <div class="ans">
+        <p>A <strong>Saga</strong> manages a transaction that spans <em>multiple microservices</em>, each with its own database. You can't use a single ACID transaction across services (no shared DB, and distributed 2-phase commit is slow and brittle), so a Saga breaks the work into a <strong>sequence of local transactions</strong>, where each step publishes an event that triggers the next. If a step fails, the Saga runs <strong>compensating transactions</strong> to undo the prior steps — semantic rollback, not a DB rollback.</p>
+        <p>Hotel-booking example: Reserve Room → Charge Payment → Issue Confirmation. If payment fails, the compensating action is "release the room." Two flavors:</p>
+        <ul>
+          <li><strong>Choreography</strong> — each service listens for events and reacts. Decentralized, no coordinator; great for a few steps, but the flow becomes hard to follow as it grows.</li>
+          <li><strong>Orchestration</strong> — a central orchestrator tells each service what to do and tracks state. Easier to reason about and monitor; the orchestrator is one more thing to run.</li>
+        </ul>
+        <p><strong>When:</strong> any business workflow that must stay consistent across service boundaries — order processing, booking, payments — where you accept <em>eventual</em> consistency in exchange for service autonomy.</p>
+      </div>
+
+      <div class="iq">What is the CQRS design pattern, and when would you use it?</div>
+      <div class="ans">
+        <p><strong>CQRS = Command Query Responsibility Segregation.</strong> You split the model into two: a <strong>write side (commands)</strong> that handles state changes, and a <strong>read side (queries)</strong> that handles reads — often backed by <em>different</em> data stores optimized for each. The write model might be a normalized Postgres optimized for integrity; the read model might be a denormalized Elasticsearch or a materialized view optimized for fast queries, kept in sync via events.</p>
+        <p><strong>When to use it:</strong> when reads and writes have wildly different scale or shape — e.g. a system that's read 100× more than it's written, or where the query needs a denormalized view that's expensive to compute on the write model. It pairs naturally with event sourcing and with the read/write-separation answer above.</p>
+        <p><strong>When NOT to:</strong> simple CRUD. CQRS adds eventual consistency between the two sides and real operational complexity — it's over-engineering for a basic app. I'd name that trade-off explicitly; that's the maturity the panel looks for.</p>
+      </div>
+
+      <div class="iq">What deployment strategy do you follow, and what is blue-green deployment?</div>
+      <div class="ans">
+        <p><strong>Blue-green</strong> runs two identical production environments. "Blue" is live and serving all traffic. You deploy the new version to "Green" (idle), smoke-test it in isolation, then flip the load balancer to send all traffic to Green. Blue stays warm as an instant rollback — if Green misbehaves, flip back in seconds. The benefit is <strong>zero-downtime releases</strong> and a trivial rollback path; the cost is running double the infrastructure during the switch, plus handling DB migrations carefully (they must be backward-compatible since both versions may briefly read the same schema).</p>
+        <p>I'd contrast it with the two main alternatives to show range — every strategy is really juggling the same three things: <strong>blast radius</strong> (how many users a bad release hits), <strong>rollback speed</strong>, and <strong>infra cost</strong>.</p>
+        <ul>
+          <li><strong>Canary</strong> — instead of flipping everyone at once, route a <em>small slice</em> (say 5%) of real production traffic to the new version, watch its metrics (error rate, p99, business KPIs), and ramp up gradually 5% → 25% → 100% only if it stays healthy. Its superpower is the <strong>smallest blast radius</strong>: a bug hurts 5% of users for a few minutes, not everyone. The cost is it's the <em>slowest</em> rollout and needs real traffic-splitting (a service mesh / smart ingress) plus strong observability to actually read the canary's health.</li>
+          <li><strong>Rolling</strong> — the Kubernetes default. No second environment; you just upgrade your existing instances in small batches (take 2 down, bring them up on the new version, wait for health checks, repeat). The win is <strong>no extra infra</strong> — you reuse the same servers. The catch is there's no untouched old environment standing by, so a rollback means running another rolling deploy <em>in reverse</em> (minutes, not the seconds blue-green gives you), and because old + new run <em>simultaneously</em> during the rollout, the new version must be backward-compatible (same DB schema, compatible APIs) or the old instances start erroring mid-deploy.</li>
+        </ul>
+        <table class="tbl">
+          <tr><th>Strategy</th><th>Blast radius</th><th>Rollback</th><th>Extra infra</th></tr>
+          <tr><td>Blue-Green</td><td>Everyone, until you flip back</td><td><strong>Instant</strong></td><td>High (2× during cutover)</td></tr>
+          <tr><td>Canary</td><td><strong>Tiny (~5%)</strong></td><td>Fast (reroute the slice)</td><td>Low–moderate</td></tr>
+          <tr><td>Rolling</td><td>Grows as batches flip</td><td>Slow (reverse rollout)</td><td><strong>None</strong></td></tr>
+        </table>
+        <p>So the choice comes down to risk tolerance vs budget: need <strong>instant rollback</strong> and can afford double infra → blue-green; need <strong>minimum blast radius</strong> on high-stakes user traffic → canary; want <strong>zero downtime at no extra cost</strong> for routine releases → rolling. They also compose — a common pattern is canary-on-top-of-rolling — and the thread tying all of them together is <strong>backward-compatible DB migrations</strong>, since every strategy except a clean blue-green cut runs two versions against one database at some point.</p>
+      </div>
+
+      <div class="iq">Explain a scalable microservice architecture and its components. (Also: design an inventory service — high-level design.)</div>
+      <div class="ans">
+        <p>I'd draw it and narrate each box by what it solves — the panel explicitly rewarded structure (requirements → components → trade-offs) and dinged answers that listed services with "no API gateway, no cache, no DB."</p>
+        <div class="diagram-box"><div class="mermaid">
+flowchart LR
+  U([① Client])
+  CDN[② CDN]
+  GW[③ API Gateway<br/>auth · rate-limit · routing]
+  ORD[④ Order svc]
+  INV[④ Inventory svc]
+  PAY[④ Payment svc]
+  CACHE[⑤ Redis]
+  MQ[(⑥ Kafka)]
+  DB[(⑦ Postgres<br/>+ replicas)]
+  OBS[⑧ Observability<br/>logs · traces · metrics]
+
+  U --> CDN --> GW
+  GW --> ORD & INV & PAY
+  INV --> CACHE
+  ORD --> DB
+  INV --> DB
+  PAY --> DB
+  ORD --> MQ --> INV
+  ORD -.metrics.-> OBS
+  INV -.metrics.-> OBS
+
+  style U fill:#171d27,stroke:#4dfeee,color:#d4dae5
+  style CDN fill:#e8743b,stroke:#e8743b,color:#fff
+  style GW fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style ORD fill:#38b265,stroke:#38b265,color:#fff
+  style INV fill:#38b265,stroke:#38b265,color:#fff
+  style PAY fill:#38b265,stroke:#38b265,color:#fff
+  style CACHE fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style MQ fill:#d4a838,stroke:#d4a838,color:#fff
+  style DB fill:#3cbfbf,stroke:#3cbfbf,color:#fff
+  style OBS fill:#ec5d8a,stroke:#ec5d8a,color:#fff
+        </div></div>
+        <ul>
+          <li><strong>② CDN</strong> — caches static + public reads at the edge; without it, every read pays cross-region latency.</li>
+          <li><strong>③ API Gateway</strong> — single entry point: TLS termination, JWT auth, rate limiting, routing. Without it every service re-implements auth and there's no central throttle.</li>
+          <li><strong>④ Services</strong> — each owns its data and deploy cadence (database-per-service). The inventory service owns the stock table; nobody else touches it directly.</li>
+          <li><strong>⑤ Redis</strong> — hot stock lookups, sessions, idempotency keys; without it the DB takes 10× the read load.</li>
+          <li><strong>⑥ Kafka</strong> — async backbone so the order service doesn't block on inventory; without it, a slow downstream topples the chain.</li>
+          <li><strong>⑦ Postgres + replicas</strong> — system of record, writes on primary, reads on replicas.</li>
+          <li><strong>⑧ Observability</strong> — centralized logs (ELK), distributed tracing (Zipkin/Jaeger), metrics + alerting (Prometheus/Grafana). The scorecard flagged that strong answers proactively mention <strong>alerting on P99 latency</strong>, not just dashboards.</li>
+        </ul>
+
+        <p style="margin-top:1.1rem">Naming the boxes isn't enough — the panel also probed <strong>what travels along each arrow</strong>. Trace one customer, <strong>Riya, buying the last pair of shoes</strong>, and narrate every hop:</p>
+        <ul>
+          <li><strong>① Client → ② CDN</strong> — Riya's phone hits the <em>nearest edge node</em>, not your origin. If it's a static/public read (image, product JSON), the CDN answers from its edge cache and <strong>the request dies here</strong> — ~95% of read traffic never goes further. Without this hop every read pays full cross-region latency.</li>
+          <li><strong>② CDN → ③ API Gateway</strong> — only <em>dynamic</em> calls (a write, live stock) the CDN can't answer get forwarded. The request carries Riya's JWT; the gateway terminates TLS → validates the token → checks the rate limit → routes by path. One place for auth + throttling so no service re-implements it.</li>
+          <li><strong>③ API Gateway → ④ Order svc</strong> — <code>GW --&gt; ORD &amp; INV &amp; PAY</code> means it routes to <em>whichever</em> service owns the path, not all three. For "Buy" → <code>POST /orders</code> to Order svc. The gateway only ever calls a service's public API — never its DB.</li>
+          <li><strong>④ Inventory svc → ⑤ Redis</strong> — before reserving, Inventory asks the cache first (<code>GET stock:shoes-123</code>, sub-millisecond). Redis also holds <strong>idempotency keys</strong>, so Riya's double-tap on "Buy" is caught as a duplicate. Without it the DB takes ~10× the read load.</li>
+          <li><strong>④ Order / Inventory / Payment → ⑦ Postgres</strong> — each service writes <em>its own</em> tables (database-per-service). <em>Writes</em> hit the <strong>primary</strong>; <em>reads</em> (history, reports) hit <strong>replicas</strong> so reporting doesn't slow live writes. The cache is fast but volatile — Postgres is the durable truth.</li>
+          <li><strong>④ Order → ⑥ Kafka → ④ Inventory</strong> — <em>the arrow most people draw wrong.</em> Order does <strong>not</strong> call Inventory over HTTP. It commits the order, <em>publishes</em> <code>OrderCreated</code> to Kafka, and instantly returns "200 OK" to Riya. Inventory is a <em>consumer</em> that pulls the event on its own schedule and reserves stock. So if Inventory is slow or down, Riya's checkout still succeeds and the event waits in the queue — and the queue absorbs Black-Friday spikes. The price is <strong>eventual consistency</strong> (brief window where the order exists but stock isn't reserved yet → see the outbox / idempotency Q below).</li>
+          <li><strong>④ Order / Inventory ⤏ ⑧ Observability</strong> — the <em>dotted</em> arrows are deliberately different: fire-and-forget logs, trace spans (a trace ID following Riya across every hop), and metrics. Dotted because if observability is down, the order must still succeed — telemetry never blocks business logic. When checkout latency spikes, the trace ID tells you <em>which</em> hop was slow.</li>
+        </ul>
+
+        <div class="highlight hl-cyan"><strong>The whole flow in one breath:</strong> Riya taps Buy → <strong>CDN</strong> can't answer a write so forwards to the <strong>Gateway</strong> → Gateway authenticates &amp; routes to <strong>Order svc</strong> → Order writes to <strong>Postgres</strong>, publishes <code>OrderCreated</code> to <strong>Kafka</strong>, and instantly tells Riya "Order placed" → meanwhile <strong>Inventory svc</strong> consumes that event, checks <strong>Redis</strong> for stock, reserves it, writes the new count to <strong>Postgres</strong> → every hop fires a trace span into <strong>Observability</strong>. The tie-together line: <em>solid arrows are the synchronous path Riya waits on; the Kafka &amp; Observability arrows are async — that's how the system stays fast and debuggable without making the customer wait for everything.</em></div>
+
+        <p>Close with scaling levers: stateless services behind a load balancer + autoscaling (Kubernetes), DB read replicas then sharding, and the next bottleneck named out loud.</p>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <!-- ============================ S4 ============================ -->
+    <div class="sec" id="s4">
+      <span class="sec-tag tag-yellow">04 · Event-Driven Architecture</span>
+      <h2>Event-driven architecture &amp; Kafka</h2>
+      <p>EDA was where candidates generally scored highest — the panel wanted the consistency and reliability patterns: the <strong>transactional outbox</strong>, ordering guarantees, idempotent consumers, and what to do with poison messages.</p>
+
+      <div class="iq">What is EDA, when should you implement it, and why?</div>
+      <div class="ans">
+        <p><strong>Event-Driven Architecture</strong> is a style where services communicate by producing and consuming <em>events</em> ("OrderPlaced", "PaymentCaptured") through a message broker (Kafka, SQS, RabbitMQ), instead of calling each other synchronously over HTTP. The producer fires an event and moves on; consumers react independently.</p>
+        <p><strong>Why / when:</strong></p>
+        <ul>
+          <li><strong>Decoupling</strong> — the order service doesn't know or care who consumes "OrderPlaced." You can add a new consumer (analytics, notifications) without touching the producer.</li>
+          <li><strong>Resilience</strong> — if a consumer is down, events queue up and are processed when it recovers; in a synchronous call that downstream outage would fail the whole request.</li>
+          <li><strong>Scalability / load-leveling</strong> — the queue absorbs traffic spikes; consumers drain at their own pace instead of being overwhelmed.</li>
+          <li><strong>Async work</strong> — anything that doesn't need to be in the request path (email, invoices, shipping labels) belongs here.</li>
+        </ul>
+        <p><strong>When not to:</strong> when you need an immediate synchronous answer (e.g. "is this card valid right now?"), or for simple flows where the added complexity (eventual consistency, debugging across async hops, duplicate handling) isn't worth it.</p>
+      </div>
+
+      <div class="iq">Your company is moving from a synchronous REST order-processing system to event-driven. Order placement, payment, inventory reservation, and shipping must operate independently but maintain a consistent order lifecycle. How do you design it?</div>
+      <div class="ans">
+        <p>Design it as a <strong>Saga over Kafka</strong> — each service does its local transaction and emits an event that drives the next step, with compensations for failure.</p>
+        <div class="diagram-box"><div class="mermaid">
+sequenceDiagram
+  actor User
+  participant Order as Order Service
+  participant Bus as Kafka
+  participant Pay as Payment
+  participant Inv as Inventory
+  participant Ship as Shipping
+  User->>Order: Place order
+  Order->>Bus: OrderCreated
+  Bus->>Pay: consume OrderCreated
+  Pay->>Bus: PaymentCaptured
+  Bus->>Inv: consume PaymentCaptured
+  Inv->>Bus: InventoryReserved
+  Bus->>Ship: consume InventoryReserved
+  Ship->>Bus: Shipped
+  Note over Pay,Inv: On failure → emit<br/>compensating event<br/>(PaymentRefunded / OrderCancelled)
+        </div></div>
+        <ul>
+          <li><strong>Order service</strong> creates the order in <code>PENDING</code> and emits <code>OrderCreated</code>. It owns the <em>lifecycle state</em> and advances it as events come back.</li>
+          <li><strong>Payment</strong> consumes <code>OrderCreated</code>, charges, emits <code>PaymentCaptured</code> (or <code>PaymentFailed</code>).</li>
+          <li><strong>Inventory</strong> consumes <code>PaymentCaptured</code>, reserves stock, emits <code>InventoryReserved</code> (or <code>OutOfStock</code> → compensate: refund payment).</li>
+          <li><strong>Shipping</strong> consumes <code>InventoryReserved</code>, emits <code>Shipped</code>; order moves to <code>COMPLETED</code>.</li>
+        </ul>
+        <p><strong>Three things that make it actually consistent</strong> (and that the scorecard wanted to hear): (1) the <strong>transactional outbox</strong> so the DB write and the event publish can't diverge; (2) <strong>idempotent consumers</strong> keyed on event ID so a redelivery doesn't double-charge; (3) <strong>compensating transactions</strong> for each step so a late failure unwinds cleanly. I'd choose orchestration if the flow is long enough that tracing choreographed events gets painful.</p>
+      </div>
+
+      <div class="iq">A Spring Boot service updates a record in PostgreSQL and then must publish a "Success Event" to Kafka. How do you guarantee the event is sent only if the DB transaction commits, and that it isn't lost if the Kafka broker is temporarily down?</div>
+      <div class="ans">
+        <p>This is the <strong>dual-write problem</strong>, and the answer is the <strong>Transactional Outbox pattern</strong> — the candidates who named it scored 8/10 here.</p>
+        <p>The trap: if you write to the DB and then publish to Kafka as two separate operations, they can diverge. If the DB commits but Kafka is down → event lost. If Kafka publishes but the DB rolls back → phantom event. You can't wrap two different systems in one atomic transaction reliably.</p>
+        <p><strong>The fix:</strong> turn two writes into one. In the <em>same</em> local DB transaction, write the business record <em>and</em> insert the event into an <code>outbox</code> table. Because it's one transaction, they commit or roll back together — the event exists if and only if the data changed.</p>
+        <pre><span class="kw">@Transactional</span>
+<span class="kw">public void</span> <span class="fn">placeOrder</span>(<span class="ty">Order</span> o) {
+    orderRepo.<span class="fn">save</span>(o);                          <span class="cmt">// business write</span>
+    outboxRepo.<span class="fn">save</span>(<span class="kw">new</span> <span class="ty">OutboxEvent</span>(<span class="str">"OrderPlaced"</span>, o)); <span class="cmt">// same txn</span>
+}                                            <span class="cmt">// both commit atomically</span></pre>
+        <p>A separate <strong>relay</strong> process then reads unpublished rows from the outbox and pushes them to Kafka, marking them sent. If Kafka is down, the rows simply stay in the outbox and the relay retries — nothing is lost. The relay is implemented either by polling the table or, better, with <strong>Change Data Capture (Debezium)</strong> tailing the Postgres WAL. Consumers must be idempotent because the relay guarantees at-least-once delivery.</p>
+      </div>
+
+      <div class="iq">Your inventory service must react to order creation asynchronously. (1) How do you design the producer–consumer flow? (2) How do you prevent duplicate event processing? (3) How do you guarantee ordering? (4) What if the consumer crashes after processing but before committing the offset?</div>
+      <div class="ans">
+        <p><strong>(1) Producer–consumer flow:</strong> the order service produces an <code>OrderCreated</code> event to a Kafka topic; the inventory service is a consumer in a consumer group that reads it and reserves stock. Use the outbox pattern on the producer side so the event reflects a committed order.</p>
+        <p><strong>(2) Prevent duplicates (idempotency):</strong> Kafka is at-least-once, so duplicates <em>will</em> happen. Make the consumer idempotent — give every event a unique ID and track processed IDs (a <code>processed_events</code> table or a Redis set). Before processing, check "have I seen this ID?"; if yes, skip. Alternatively make the operation itself naturally idempotent (e.g. set stock to an absolute value rather than decrementing).</p>
+        <p><strong>(3) Guarantee ordering:</strong> Kafka only guarantees order <em>within a partition</em>. So I partition by a key that must stay ordered — here <code>orderId</code> (or <code>productId</code>). All events for the same order go to the same partition and are consumed in order. There's no global ordering across partitions, and that's a deliberate trade for parallelism.</p>
+        <p><strong>(4) Consumer crashes after processing, before committing offset:</strong> on restart, the consumer re-reads from the last committed offset and <em>reprocesses</em> that event — which is exactly why (2) matters. The combination is <strong>"process the work, then commit the offset, and make processing idempotent"</strong> so the inevitable reprocessing is harmless. For stronger guarantees you can use Kafka transactions (exactly-once semantics) tying the processing write and the offset commit together, but idempotent consumer + manual offset commit after processing covers the vast majority of cases.</p>
+      </div>
+
+      <div class="iq">How do you maintain message order in Kafka, and how do you implement it?</div>
+      <div class="ans">
+        <p>The rule: <strong>Kafka preserves order only within a single partition</strong>, not across a topic. So to keep related messages ordered, you must route them to the same partition — and Kafka does that by hashing the <strong>message key</strong>. Same key → same partition → ordered.</p>
+        <pre><span class="cmt">// all events for an order keep their relative order</span>
+producer.<span class="fn">send</span>(<span class="kw">new</span> <span class="ty">ProducerRecord</span>&lt;&gt;(<span class="str">"orders"</span>, order.<span class="fn">getId</span>(), event));
+                                  <span class="cmt">//        ^ key = orderId</span></pre>
+        <p>Two implementation gotchas worth naming: (1) set <code>max.in.flight.requests.per.connection=1</code> (or enable the idempotent producer) so retries don't reorder messages; (2) ordering means events for one key are serialized to one partition, so a hot key limits parallelism — you trade throughput for order. If you need both, you pick a key granularity that's ordered <em>enough</em> (per-order) while still spreading load across partitions (many orders).</p>
+      </div>
+
+      <div class="iq">A malformed event keeps crashing the consumer. How do you handle this?</div>
+      <div class="ans">
+        <p>This is the <strong>poison pill</strong> problem: a bad message that can't be processed, so the consumer fails, retries the same message, fails again, and is stuck — blocking the whole partition and never advancing.</p>
+        <p>The fix is a <strong>Dead Letter Queue (DLQ)</strong>:</p>
+        <ul>
+          <li>Wrap processing in try/catch. On a <em>transient</em> error, retry with backoff a bounded number of times (e.g. 3).</li>
+          <li>On a <em>non-recoverable</em> error (malformed payload, deserialization failure) — or after retries are exhausted — <strong>publish the bad message to a dedicated DLQ topic</strong> and commit the offset so the consumer moves on. The partition is unblocked; healthy messages keep flowing.</li>
+          <li>The DLQ is then inspected, alerted on, fixed, and optionally re-driven. In Spring Kafka this is a few lines: a <code>DefaultErrorHandler</code> + <code>DeadLetterPublishingRecoverer</code>.</li>
+        </ul>
+        <p>Also harden the deserializer (Spring's <code>ErrorHandlingDeserializer</code>) so a single un-parseable record doesn't throw before your handler even runs. So-what: one bad apple should cost you one message in a DLQ, not your whole consumer.</p>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <!-- ============================ S5 ============================ -->
+    <div class="sec" id="s5">
+      <span class="sec-tag tag-cyan">05 · Java &amp; DSA</span>
+      <h2>Java &amp; DSA coding</h2>
+      <p>This was the section that most often pulled scores down — several candidates had the right approach for LRU but couldn't finish the pointer handling. The coding answers below are complete and compile; the concept questions are answered tightly.</p>
+
+      <div class="iq">Design an in-memory cache supporting <code>get(key)</code> and <code>put(key, value)</code>, evicting the Least Recently Used item at capacity, with O(1) for both operations.</div>
+      <div class="ans">
+        <p>The winning data structure is a <strong>HashMap + doubly-linked list</strong>. The map gives O(1) lookup; the linked list maintains recency order — most-recently-used at the head, least-recently-used at the tail. On every access I unlink the node and move it to the head; eviction just drops the tail. The doubly-linked part is essential: it lets me unlink any node in O(1) (a singly-linked list would be O(n) to find the previous node).</p>
+        <pre><span class="kw">class</span> <span class="ty">LRUCache</span> {
+  <span class="kw">class</span> <span class="ty">Node</span> { <span class="kw">int</span> key, val; <span class="ty">Node</span> prev, next;
+    <span class="ty">Node</span>(<span class="kw">int</span> k, <span class="kw">int</span> v){ key=k; val=v; } }
+
+  <span class="kw">private final int</span> capacity;
+  <span class="kw">private final</span> <span class="ty">Map</span>&lt;<span class="ty">Integer</span>,<span class="ty">Node</span>&gt; map = <span class="kw">new</span> <span class="ty">HashMap</span>&lt;&gt;();
+  <span class="kw">private final</span> <span class="ty">Node</span> head, tail;          <span class="cmt">// dummy sentinels</span>
+
+  <span class="ty">LRUCache</span>(<span class="kw">int</span> capacity){
+    <span class="kw">this</span>.capacity = capacity;
+    head = <span class="kw">new</span> <span class="ty">Node</span>(<span class="num">0</span>,<span class="num">0</span>); tail = <span class="kw">new</span> <span class="ty">Node</span>(<span class="num">0</span>,<span class="num">0</span>);
+    head.next = tail; tail.prev = head;
+  }
+  <span class="kw">private void</span> <span class="fn">remove</span>(<span class="ty">Node</span> n){ n.prev.next = n.next; n.next.prev = n.prev; }
+  <span class="kw">private void</span> <span class="fn">addFront</span>(<span class="ty">Node</span> n){
+    n.next = head.next; n.prev = head;
+    head.next.prev = n; head.next = n;
+  }
+  <span class="kw">public int</span> <span class="fn">get</span>(<span class="kw">int</span> key){
+    <span class="kw">if</span>(!map.<span class="fn">containsKey</span>(key)) <span class="kw">return</span> -<span class="num">1</span>;
+    <span class="ty">Node</span> n = map.<span class="fn">get</span>(key);
+    <span class="fn">remove</span>(n); <span class="fn">addFront</span>(n);          <span class="cmt">// mark most-recently-used</span>
+    <span class="kw">return</span> n.val;
+  }
+  <span class="kw">public void</span> <span class="fn">put</span>(<span class="kw">int</span> key, <span class="kw">int</span> value){
+    <span class="kw">if</span>(map.<span class="fn">containsKey</span>(key)){
+      <span class="ty">Node</span> n = map.<span class="fn">get</span>(key); n.val = value;
+      <span class="fn">remove</span>(n); <span class="fn">addFront</span>(n);
+    } <span class="kw">else</span> {
+      <span class="kw">if</span>(map.<span class="fn">size</span>() == capacity){
+        <span class="ty">Node</span> lru = tail.prev;       <span class="cmt">// evict from tail</span>
+        <span class="fn">remove</span>(lru); map.<span class="fn">remove</span>(lru.key);
+      }
+      <span class="ty">Node</span> n = <span class="kw">new</span> <span class="ty">Node</span>(key, value);
+      <span class="fn">addFront</span>(n); map.<span class="fn">put</span>(key, n);
+    }
+  }
+}</pre>
+        <p>The two sentinel nodes (<code>head</code>/<code>tail</code>) are the trick that kills the edge cases — there's never a null prev/next to special-case. For a thread-safe production version I'd guard the methods, or just use <code>Collections.synchronizedMap(new LinkedHashMap&lt;&gt;(cap, 0.75f, true){ removeEldestEntry... })</code> which gives LRU out of the box.</p>
+      </div>
+
+      <div class="iq">In a high-reliability payment API, a user clicks "Pay," their internet drops, and they click "Pay" again — now you have two identical requests. How do you ensure the user is charged only once?</div>
+      <div class="ans">
+        <p>This is <strong>idempotency</strong>. The client generates a unique <strong>idempotency key</strong> (a UUID) for the logical payment attempt and sends it on <em>both</em> retries (e.g. an <code>Idempotency-Key</code> header). The server uses that key to recognize the duplicate.</p>
+        <ul>
+          <li>On the first request, the server atomically records the key (e.g. <code>INSERT</code> with a unique constraint, or Redis <code>SET key NX</code>), processes the charge, and stores the response against the key.</li>
+          <li>On the retry with the <em>same</em> key, the unique constraint / <code>SETNX</code> fails — the server detects "already processed," skips the charge, and returns the <em>stored</em> response. The user sees success once, is charged once.</li>
+        </ul>
+        <p>The critical detail: the dedup check and the charge must be effectively atomic, and the key must be stored <em>before or with</em> the charge — otherwise two near-simultaneous requests both pass the check. A unique DB constraint on the idempotency key is the simplest correct backstop because the database enforces the atomicity for you.</p>
+      </div>
+
+      <div class="iq">Why is <code>Executors.newFixedThreadPool(n)</code> sometimes considered dangerous in high-load production? Explain back pressure.</div>
+      <div class="ans">
+        <p>Because <code>newFixedThreadPool(n)</code> is backed by an <strong>unbounded <code>LinkedBlockingQueue</code></strong>. When tasks arrive faster than <code>n</code> threads can finish them, they pile up in that queue with <em>no limit</em>. Under sustained high load the queue grows until you hit <strong>OutOfMemoryError</strong> and the JVM dies — and worse, latency balloons silently long before that because tasks sit in the queue for ages. There's no signal to the producer that the system is overwhelmed.</p>
+        <p><strong>Back pressure</strong> is the missing piece: a mechanism for a slow consumer to tell a fast producer "slow down, I can't keep up." The fix is a <strong>bounded</strong> queue plus an explicit rejection policy:</p>
+        <pre><span class="kw">new</span> <span class="ty">ThreadPoolExecutor</span>(core, max, keepAlive, <span class="ty">SECONDS</span>,
+    <span class="kw">new</span> <span class="ty">ArrayBlockingQueue</span>&lt;&gt;(<span class="num">1000</span>),        <span class="cmt">// bounded!</span>
+    <span class="kw">new</span> <span class="ty">ThreadPoolExecutor</span>.<span class="ty">CallerRunsPolicy</span>()); <span class="cmt">// back pressure</span></pre>
+        <p>With <code>CallerRunsPolicy</code>, when the queue is full the submitting thread runs the task itself — which naturally <em>slows the producer down</em> (it can't submit more while busy). Other policies: <code>AbortPolicy</code> (throw — shed load), <code>DiscardPolicy</code>, etc. The principle: bound your queues and decide explicitly what happens at the limit, rather than letting an unbounded queue absorb load until it kills the process.</p>
+      </div>
+
+      <div class="iq">Rotate an array to the right by k steps. e.g. <code>[1,2,3,4,5]</code>, k=2 → <code>[4,5,1,2,3]</code>.</div>
+      <div class="ans">
+        <p>The elegant O(n) time, O(1) space trick is the <strong>three reversals</strong>: reverse the whole array, then reverse the first k, then reverse the rest. (First normalize <code>k % n</code>.)</p>
+        <pre><span class="kw">void</span> <span class="fn">rotate</span>(<span class="kw">int</span>[] a, <span class="kw">int</span> k){
+  <span class="kw">int</span> n = a.length; k %= n;
+  <span class="fn">reverse</span>(a, <span class="num">0</span>, n-<span class="num">1</span>);     <span class="cmt">// [5,4,3,2,1]</span>
+  <span class="fn">reverse</span>(a, <span class="num">0</span>, k-<span class="num">1</span>);     <span class="cmt">// [4,5,3,2,1]</span>
+  <span class="fn">reverse</span>(a, k, n-<span class="num">1</span>);     <span class="cmt">// [4,5,1,2,3]</span>
+}
+<span class="kw">void</span> <span class="fn">reverse</span>(<span class="kw">int</span>[] a, <span class="kw">int</span> i, <span class="kw">int</span> j){
+  <span class="kw">while</span>(i &lt; j){ <span class="kw">int</span> t=a[i]; a[i++]=a[j]; a[j--]=t; }
+}</pre>
+        <p>Why it works: the last k elements need to wrap to the front; reversing everything brings them to the front (but backwards), and the two sub-reversals fix the order of each half.</p>
+      </div>
+
+      <div class="iq">Coin Change — given coin denominations and an amount, return the fewest coins to make that amount, or −1 if impossible. (Infinite supply of each coin.)</div>
+      <div class="ans">
+        <p>This is a classic <strong>unbounded knapsack / bottom-up DP</strong>. <code>dp[i]</code> = fewest coins to make amount <code>i</code>. Initialize to "infinity," <code>dp[0]=0</code>, and for each amount try every coin.</p>
+        <pre><span class="kw">int</span> <span class="fn">coinChange</span>(<span class="kw">int</span>[] coins, <span class="kw">int</span> amount){
+  <span class="kw">int</span>[] dp = <span class="kw">new int</span>[amount+<span class="num">1</span>];
+  <span class="ty">Arrays</span>.<span class="fn">fill</span>(dp, amount+<span class="num">1</span>);   <span class="cmt">// "infinity"</span>
+  dp[<span class="num">0</span>] = <span class="num">0</span>;
+  <span class="kw">for</span>(<span class="kw">int</span> i=<span class="num">1</span>; i&lt;=amount; i++)
+    <span class="kw">for</span>(<span class="kw">int</span> c : coins)
+      <span class="kw">if</span>(c &lt;= i) dp[i] = <span class="ty">Math</span>.<span class="fn">min</span>(dp[i], dp[i-c]+<span class="num">1</span>);
+  <span class="kw">return</span> dp[amount] &gt; amount ? -<span class="num">1</span> : dp[amount];
+}</pre>
+        <p>O(amount × coins) time. The interviewer who scored this 8/10 also accepted a BFS framing — treat each amount as a node, each coin as an edge of weight 1, BFS from 0; the first time you reach <code>amount</code> is the fewest coins. Both are correct; DP is the more standard answer.</p>
+      </div>
+
+      <div class="iq">Find the first non-repeating character in a string, e.g. <code>"aabbcdde"</code> → <code>c</code>.</div>
+      <div class="ans">
+        <p>Two passes with a count map (insertion-ordered so I can return the first):</p>
+        <pre><span class="ty">Character</span> <span class="fn">firstNonRepeating</span>(<span class="ty">String</span> s){
+  <span class="ty">Map</span>&lt;<span class="ty">Character</span>,<span class="ty">Integer</span>&gt; cnt = <span class="kw">new</span> <span class="ty">LinkedHashMap</span>&lt;&gt;();
+  <span class="kw">for</span>(<span class="kw">char</span> c : s.<span class="fn">toCharArray</span>())
+    cnt.<span class="fn">merge</span>(c, <span class="num">1</span>, <span class="ty">Integer</span>::sum);
+  <span class="kw">for</span>(<span class="kw">var</span> e : cnt.<span class="fn">entrySet</span>())
+    <span class="kw">if</span>(e.<span class="fn">getValue</span>() == <span class="num">1</span>) <span class="kw">return</span> e.<span class="fn">getKey</span>();
+  <span class="kw">return</span> <span class="kw">null</span>;
+}</pre>
+        <p>O(n) time. <code>LinkedHashMap</code> preserves insertion order so the second pass naturally yields the <em>first</em> unique character. For <code>"aabbcdde"</code>: a,b,d repeat; c and e are unique; c comes first → <code>c</code>.</p>
+      </div>
+
+      <div class="iq">Check whether two strings are anagrams.</div>
+      <div class="ans">
+        <p>Two clean approaches. Sort both and compare (O(n log n)), or — better — count characters (O(n)):</p>
+        <pre><span class="kw">boolean</span> <span class="fn">isAnagram</span>(<span class="ty">String</span> a, <span class="ty">String</span> b){
+  <span class="kw">if</span>(a.length() != b.length()) <span class="kw">return false</span>;
+  <span class="kw">int</span>[] freq = <span class="kw">new int</span>[<span class="num">26</span>];
+  <span class="kw">for</span>(<span class="kw">int</span> i=<span class="num">0</span>; i&lt;a.length(); i++){
+    freq[a.<span class="fn">charAt</span>(i)-<span class="str">'a'</span>]++;
+    freq[b.<span class="fn">charAt</span>(i)-<span class="str">'a'</span>]--;
+  }
+  <span class="kw">for</span>(<span class="kw">int</span> f : freq) <span class="kw">if</span>(f != <span class="num">0</span>) <span class="kw">return false</span>;
+  <span class="kw">return true</span>;
+}</pre>
+        <p>Increment for one string, decrement for the other; if every count nets to zero they're anagrams. (Use a <code>HashMap</code> instead of <code>int[26]</code> for Unicode.)</p>
+      </div>
+
+      <div class="iq">What are the advantages and disadvantages of parallel streams, and when should you use them?</div>
+      <div class="ans">
+        <p><strong>What they are:</strong> <code>stream().parallel()</code> splits the data and processes chunks across multiple threads using the shared <strong>ForkJoinPool.commonPool</strong>.</p>
+        <p><strong>Advantages:</strong> on large datasets with CPU-bound, independent work, they use all cores and can give a real speed-up for free.</p>
+        <p><strong>Disadvantages / dangers</strong> (the scorecard flagged that strong answers know the fork-join internals):</p>
+        <ul>
+          <li>They use the <em>common</em> pool shared by the whole JVM — one slow parallel stream can starve everything else. Blocking/IO work in a parallel stream is especially bad: it ties up common-pool threads.</li>
+          <li>Overhead of splitting + merging often makes them <em>slower</em> than a sequential stream for small datasets.</li>
+          <li>Order-sensitive or stateful/shared-mutable operations break or need synchronization, killing the benefit and risking race conditions.</li>
+        </ul>
+        <p><strong>When to use:</strong> large dataset (rough rule: 10k+ elements), CPU-bound, stateless, associative operations, and you've measured a benefit. Otherwise default to sequential. For IO-bound parallelism, use a dedicated executor, not parallel streams.</p>
+      </div>
+
+      <div class="iq">Difference between the Factory and Strategy design patterns? Explain with a real-time example.</div>
+      <div class="ans">
+        <p>Both use polymorphism, but they answer different questions.</p>
+        <ul>
+          <li><strong>Factory (creational)</strong> — <em>"which object do I create?"</em> It centralizes object <em>creation</em> so the caller doesn't use <code>new</code> directly. Example: a <code>PaymentFactory.create("UPI")</code> returns a <code>UpiPayment</code>, <code>create("CARD")</code> returns a <code>CardPayment</code>. The factory's job ends once the object is made.</li>
+          <li><strong>Strategy (behavioral)</strong> — <em>"which algorithm do I run?"</em> It lets you swap an interchangeable <em>behavior</em> at runtime. Example: a <code>ShippingCostCalculator</code> that takes a <code>PricingStrategy</code> — <code>StandardPricing</code>, <code>SurgePricing</code>, <code>WeekendPricing</code> — and you inject whichever you need; the calculator delegates to it.</li>
+        </ul>
+        <p>The crisp distinction: Factory decides <em>what to instantiate</em>; Strategy decides <em>how to behave</em>. They compose well — a factory often <em>creates</em> the strategy object you then plug in.</p>
+      </div>
+
+      <div class="iq">Define the SOLID principles with real examples.</div>
+      <div class="ans">
+        <ul>
+          <li><strong>S — Single Responsibility.</strong> A class has one reason to change. A <code>UserService</code> shouldn't also format emails and write to disk — split those out.</li>
+          <li><strong>O — Open/Closed.</strong> Open for extension, closed for modification. Add a new payment type by adding a class, not editing a giant <code>switch</code>. (Strategy pattern embodies this.)</li>
+          <li><strong>L — Liskov Substitution.</strong> A subclass must be usable wherever its parent is, without surprises. The classic violation: <code>Square extends Rectangle</code> breaks code that sets width and height independently.</li>
+          <li><strong>I — Interface Segregation.</strong> Many small focused interfaces beat one fat one. Don't force a <code>SimplePrinter</code> to implement <code>fax()</code> and <code>scan()</code> it'll never use.</li>
+          <li><strong>D — Dependency Inversion.</strong> Depend on abstractions, not concretions. Inject a <code>PaymentGateway</code> interface, not a concrete <code>StripeGateway</code> — this is literally what Spring's DI gives you.</li>
+        </ul>
+        <p>So-what: SOLID is the toolkit for keeping code changeable. The two that show up most in interviews are O (extend without editing) and D (program to interfaces) — both directly enabled by Spring's IoC container.</p>
+      </div>
+
+      <div class="iq">What are the trade-offs of switching from 4 separate REST calls (property → room types → rate plans → prices) to GraphQL?</div>
+      <div class="ans">
+        <p>The pain GraphQL solves here is real: nested data over REST means <strong>multiple round trips</strong> (the N+1 / under-fetching problem) or <strong>over-fetching</strong> fat payloads. GraphQL lets the client ask for the exact nested shape in <strong>one request</strong>, getting property + room types + rate plans + prices in a single round trip with no extra fields.</p>
+        <p><strong>Advantages:</strong> one round trip, client-specified fields (no over/under-fetching), a strongly-typed schema, and easy evolution (add fields without versioning).</p>
+        <p><strong>Trade-offs to name (this is what scores):</strong></p>
+        <ul>
+          <li><strong>Caching is harder</strong> — REST gets free HTTP/CDN caching on GET URLs; GraphQL is typically one POST to <code>/graphql</code>, so you need client-side or field-level caching instead.</li>
+          <li><strong>Server complexity</strong> — resolvers can reintroduce N+1 queries against the DB unless you add batching (DataLoader).</li>
+          <li><strong>Expensive/abusive queries</strong> — a client can request deeply nested data; you need query depth/complexity limits.</li>
+          <li><strong>Tooling/monitoring</strong> — standard HTTP status-code monitoring doesn't map cleanly (GraphQL often returns 200 with an errors array).</li>
+        </ul>
+        <p>Verdict: for a read-heavy, deeply-nested UI like this, GraphQL is a good fit — but I'd weigh the lost CDN caching, since property data is also a great caching candidate.</p>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <!-- ============================ S6 ============================ -->
+    <div class="sec" id="s6">
+      <span class="sec-tag tag-blue">06 · Database Knowledge</span>
+      <h2>Databases &amp; SQL</h2>
+      <p>The DB questions split into scaling/optimization theory and hands-on SQL. The theory answers rewarded depth — indexing <em>and</em> EXPLAIN <em>and</em> read replicas <em>and</em> the trade-offs between replication and sharding.</p>
+
+      <div class="iq">A large-scale system's database has grown over time; queries that once performed well are now slow. How do you approach database optimization?</div>
+      <div class="ans">
+        <p>I'd work outside-in, cheapest-fix-first:</p>
+        <ul>
+          <li><strong>1. Measure before touching anything.</strong> Turn on the <strong>slow-query log</strong>, find the worst offenders, and run <code>EXPLAIN</code> / <code>EXPLAIN ANALYZE</code> on them. Optimizing blind is the classic mistake.</li>
+          <li><strong>2. Indexing.</strong> The most common culprit is a missing index causing a <strong>full table scan</strong>. Add indexes on columns in <code>WHERE</code>, <code>JOIN</code>, and <code>ORDER BY</code> — and use <strong>composite</strong> and <strong>covering</strong> indexes for hot queries. (But not too many: each index slows writes.)</li>
+          <li><strong>3. Query rewriting.</strong> Eliminate <code>SELECT *</code>, avoid functions on indexed columns (kills index use), fix N+1 patterns, paginate with keyset instead of huge <code>OFFSET</code>.</li>
+          <li><strong>4. Caching.</strong> Put Redis in front of hot read queries so they never hit the DB.</li>
+          <li><strong>5. Scale the architecture.</strong> <strong>Read replicas</strong> to offload reads; <strong>partitioning</strong> (e.g. by date) so queries hit a smaller slice; <strong>archive cold data</strong> out of the hot table; and ultimately <strong>sharding</strong> for write scale.</li>
+        </ul>
+        <p>The maturity signal the scorecard wanted: tie it to <strong>monitoring and real production data</strong> — "I'd look at the slow-query log and p99 over the last week," not just recite the list.</p>
+      </div>
+
+      <div class="iq">Explain the difference between Read Replicas and Database Sharding. If your problem is a high volume of INSERTs and UPDATEs, which one would you choose and why?</div>
+      <div class="ans">
+        <p><strong>Read Replicas</strong> — copies of the database that stay in sync via replication. They scale <em>reads</em>: you route SELECTs to replicas, writes still go to the single primary. Simple to add, but they do <em>nothing</em> for write scaling — every write still bottlenecks on the one primary — and replicas are eventually consistent (replication lag).</p>
+        <p><strong>Sharding</strong> — horizontally partitioning the data across multiple databases by a shard key (e.g. <code>user_id</code>). Each shard holds a subset and handles its <em>own</em> reads <em>and</em> writes. This scales writes because the write load is spread across many primaries.</p>
+        <p><strong>For high INSERT/UPDATE volume: sharding.</strong> Read replicas can't help — the write bottleneck is the single primary, and adding replicas just adds more copies fed by that same overloaded primary. Sharding splits the writes across N shards, so each handles 1/N of the write traffic.</p>
+        <p>I'd name the cost honestly (the scorecard flagged this as the missing piece): sharding adds real complexity — choosing a good shard key to avoid hot spots, cross-shard queries and joins become hard, transactions across shards need a Saga, and resharding/rebalancing is painful. So I'd shard only when a single beefy primary genuinely can't keep up with writes.</p>
+      </div>
+
+      <div class="iq">This query takes 10 seconds on a 5-million-row table. How do you fix it?
+      <code>SELECT order_id, customer_name, total_amount FROM orders WHERE status='COMPLETED' AND order_date &gt; '2023-01-01' ORDER BY total_amount DESC LIMIT 10;</code></div>
+      <div class="ans">
+        <p>First, <code>EXPLAIN</code> it — I'd bet it's a full table scan plus a filesort. The fix is the right index. The query filters on <code>status</code> + <code>order_date</code> and sorts by <code>total_amount</code>, so a <strong>composite index</strong> that serves the filter and the sort:</p>
+        <pre><span class="kw">CREATE INDEX</span> idx_orders_status_amount
+  <span class="kw">ON</span> orders (status, total_amount <span class="kw">DESC</span>, order_date);</pre>
+        <p>Reasoning: lead with the equality predicate (<code>status</code>) so the index narrows to COMPLETED rows, then <code>total_amount DESC</code> lets the DB read the top rows <em>already sorted</em> — it can stop after 10 (no filesort), which is the whole game with <code>LIMIT 10</code>. <code>order_date</code> is a range predicate so it goes last (range columns can't be followed by useful sort columns).</p>
+        <p>To make it a <strong>covering index</strong> (so it never touches the table), I could include <code>order_id</code> and <code>customer_name</code> (<code>INCLUDE</code> in Postgres). Other levers if the table keeps growing: partition by <code>order_date</code>, or archive old completed orders out of the hot table.</p>
+      </div>
+
+      <div class="iq">Given <code>orders(id, user_id, amount, created_at)</code> and <code>users(id, country)</code>, write a query for the top 5 countries by revenue in the last 30 days.</div>
+      <div class="ans">
+        <p>Join, filter the date window, group by country, sum, sort, limit:</p>
+        <pre><span class="kw">SELECT</span>   u.country,
+         <span class="fn">SUM</span>(o.amount) <span class="kw">AS</span> revenue
+<span class="kw">FROM</span>     orders o
+<span class="kw">JOIN</span>     users  u <span class="kw">ON</span> u.id = o.user_id
+<span class="kw">WHERE</span>    o.created_at &gt;= <span class="ty">CURRENT_DATE</span> - <span class="ty">INTERVAL</span> <span class="str">'30 days'</span>
+<span class="kw">GROUP BY</span> u.country
+<span class="kw">ORDER BY</span> revenue <span class="kw">DESC</span>
+<span class="kw">LIMIT</span>    <span class="num">5</span>;</pre>
+        <p>The bug the scorecard saw candidates hit: putting the date condition in <code>HAVING</code> instead of <code>WHERE</code>, or forgetting that everything not aggregated must be in <code>GROUP BY</code>. Filter rows in <code>WHERE</code> (before grouping), aggregate, then sort by the aggregate.</p>
+      </div>
+
+      <div class="iq">Write a query to find the third-highest salaried employee.</div>
+      <div class="ans">
+        <p>The robust, duplicate-safe way uses <code>DENSE_RANK()</code> (so two people tied for #1 don't push #3 off):</p>
+        <pre><span class="kw">SELECT</span> name, salary
+<span class="kw">FROM</span> (
+  <span class="kw">SELECT</span> name, salary,
+         <span class="fn">DENSE_RANK</span>() <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> salary <span class="kw">DESC</span>) <span class="kw">AS</span> rnk
+  <span class="kw">FROM</span> employees
+) t
+<span class="kw">WHERE</span> rnk = <span class="num">3</span>;</pre>
+        <p>The simpler-but-flawed version is <code>ORDER BY salary DESC LIMIT 1 OFFSET 2</code> — fine if salaries are unique, but it returns the wrong row when there are ties. <code>DENSE_RANK</code> handles "third-highest <em>distinct</em> salary" correctly, which is what the question really means.</p>
+      </div>
+
+      <div class="iq">Given <code>employees(emp_id, emp_name, manager_id, salary)</code>, find employees earning more than their manager.</div>
+      <div class="ans">
+        <p>A <strong>self-join</strong> — join the table to itself, employee row to manager row, then compare salaries:</p>
+        <pre><span class="kw">SELECT</span> e.emp_name <span class="kw">AS</span> employee, e.salary, m.emp_name <span class="kw">AS</span> manager
+<span class="kw">FROM</span>   employees e
+<span class="kw">JOIN</span>   employees m <span class="kw">ON</span> e.manager_id = m.emp_id
+<span class="kw">WHERE</span>  e.salary &gt; m.salary;</pre>
+        <p>The mental model: alias the same table twice — <code>e</code> is the employee, <code>m</code> is their manager (matched by <code>e.manager_id = m.emp_id</code>) — then the <code>WHERE</code> keeps only the rows where the employee out-earns the manager.</p>
+      </div>
+
+      <div class="iq">How is MongoDB different from SQL (relational) databases?</div>
+      <div class="ans">
+        <table class="tbl">
+          <tr><th>Dimension</th><th>SQL (e.g. Postgres)</th><th>MongoDB (NoSQL)</th></tr>
+          <tr><td>Data model</td><td>Tables, rows, fixed schema</td><td>Collections of flexible JSON-like documents</td></tr>
+          <tr><td>Schema</td><td>Rigid, enforced, migrations needed</td><td>Schema-less / flexible per document</td></tr>
+          <tr><td>Relationships</td><td>Joins across normalized tables</td><td>Embedded documents / denormalized; no native joins (limited <code>$lookup</code>)</td></tr>
+          <tr><td>Scaling</td><td>Primarily vertical; sharding is bolt-on</td><td>Built for horizontal sharding</td></tr>
+          <tr><td>Transactions</td><td>Strong ACID, mature</td><td>ACID added later, single-doc strong; multi-doc available but heavier</td></tr>
+          <tr><td>Best for</td><td>Structured data, complex queries, strong consistency (payments, ledgers)</td><td>Evolving/unstructured data, high write throughput, document-shaped reads (catalogs, profiles)</td></tr>
+        </table>
+        <p>The senior framing: it's not "better vs worse," it's <strong>"do I need relational integrity and complex joins (SQL), or flexible schema and horizontal scale (MongoDB)?"</strong> Many systems use both — Postgres for the transactional core, MongoDB for the flexible document parts.</p>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <!-- ============================ S7 ============================ -->
+    <div class="sec" id="s7">
+      <span class="sec-tag tag-red">07 · Communication</span>
+      <h2>Communication &amp; articulation</h2>
+      <p>The "good-to-have" skill — but it appeared in every interview, and it's where structure beats jargon. The panel wanted to see you simplify for a non-technical audience and stay calm under a production fire.</p>
+
+      <div class="iq">You're leading a critical production deployment and an unexpected issue occurs after the release. You need to communicate the situation to non-technical stakeholders while managing expectations and next steps. How do you explain it?</div>
+      <div class="ans">
+        <p>I'd use a tight four-part structure and lead with <strong>impact, not internals</strong> — stakeholders care about the business effect, not the stack trace.</p>
+        <ul>
+          <li><strong>1. State the impact in their language.</strong> "Since the 2 p.m. release, roughly 15% of customers can't complete checkout. We're aware and actively on it." No jargon — translate "the payment service is throwing 500s" into "some customers can't pay."</li>
+          <li><strong>2. Reassure with action + scope.</strong> What we're doing right now, and what's <em>not</em> affected ("existing orders and data are safe; this only affects new checkouts"). Bounding the problem calms people.</li>
+          <li><strong>3. Set a realistic timeline with a buffer.</strong> "We expect a fix within the hour; I'll send an update in 30 minutes regardless." Adding buffer and committing to a <em>next update time</em> manages expectations — the scorecard specifically rewarded this.</li>
+          <li><strong>4. Be honest and follow up.</strong> If we decide to roll back, say so plainly. Afterward, a short blameless post-mortem on root cause and prevention.</li>
+        </ul>
+        <p>The meta-skill: under a production fire, stakeholders mostly need to feel that <em>someone competent is in control and communicating</em>. Calm, regular, jargon-free updates do that.</p>
+      </div>
+
+      <div class="iq">How do you handle technical debt in Agile teams while still maintaining delivery pace?</div>
+      <div class="ans">
+        <p>The framing I'd give: tech debt isn't a cleanup project you do "someday" — it's managed continuously, like financial debt, by paying it down a bit each sprint.</p>
+        <ul>
+          <li><strong>Make it visible.</strong> Track debt items in the same backlog as features, not a hidden TODO list. You can't prioritize what you can't see.</li>
+          <li><strong>Prioritize by impact × risk.</strong> Not all debt is equal — debt in a hot, frequently-changed, high-risk area gets paid first; debt in stable code that nobody touches can wait. This impact/priority framing is exactly what the scorecard credited.</li>
+          <li><strong>Budget a fixed slice.</strong> Allocate ~15–20% of each sprint to debt/refactoring so it's continuous, never a big-bang rewrite that blocks delivery.</li>
+          <li><strong>Boy-scout rule + definition of done.</strong> Leave code cleaner than you found it; bake quality (tests, review) into "done" so new debt accrues slower.</li>
+          <li><strong>Speak business language to stakeholders.</strong> Frame paydown as "this refactor cuts our bug rate and speeds up the next three features," not "the code is ugly." That's how you get buy-in to spend the time.</li>
+        </ul>
+        <p>So-what: you maintain pace precisely <em>by</em> servicing debt steadily — unmanaged debt is what eventually grinds delivery to a halt.</p>
+      </div>
+    </div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+<div class="likes-row"><div id="likes"></div></div>
+
+</body>
+</html>

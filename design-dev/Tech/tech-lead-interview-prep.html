@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Tech Lead Interview — Solutions &amp; Talking Points</title>
+<meta name="description" content="Tech-lead interview prep, answered from a tech lead's chair — system design under judgment, architecture trade-offs, mentoring, conflict, delivery, and culture. STAR-structured model answers for every question."/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<link rel="stylesheet" href="../../css/likes.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script src="../../js/likes.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --pink:#ec5d8a;--pink-d:rgba(236,93,138,.12);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:760px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+.tag-pink{background:var(--pink-d);color:var(--pink)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:820px}
+.sec h3{font-size:1.2rem;font-weight:700;color:var(--heading);margin:1.6rem 0 .8rem}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.88rem;color:var(--text);line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+.card code,.ans code,.sec>p code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.05rem .35rem;border-radius:3px}
+
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3{grid-template-columns:1fr}.hero h1{font-size:2.1rem}}
+
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+.highlight{border-radius:var(--r);padding:1.05rem 1.3rem;margin-bottom:.85rem;font-size:.88rem}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--cyan)}
+.highlight strong{font-weight:700}
+.highlight code{font-family:'JetBrains Mono',monospace;font-size:.78rem;background:rgba(0,0,0,.25);padding:.05rem .35rem;border-radius:3px;color:inherit}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+.iq{background:var(--blue-d);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:.8rem 1.1rem;margin:1.4rem 0 .55rem;font-size:.95rem;color:var(--blue);font-weight:700}
+.iq::before{content:'Q · ';font-weight:800;letter-spacing:.05em}
+.ans{background:var(--surface);border-radius:var(--r);padding:1.1rem 1.35rem;margin-bottom:1rem;font-size:.9rem;color:var(--text);border:1px solid var(--border);line-height:1.72}
+.ans strong{color:var(--heading)}
+.ans p+p{margin-top:.7rem}
+.ans ul{margin:.4rem 0 .25rem;padding-left:1.1rem}
+.ans ul li{margin-bottom:.25rem}
+.ans em{color:var(--muted)}
+
+.probe{display:inline-block;font-size:.66rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--purple);background:var(--purple-d);padding:.2rem .6rem;border-radius:5px;margin-bottom:.5rem}
+
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.55rem .8rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text)}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+.comp-num{display:inline-flex;align-items:center;justify-content:center;width:1.7rem;height:1.7rem;border-radius:50%;font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:800;margin-right:.55rem;flex-shrink:0;line-height:1}
+.comp-num.orange{background:var(--orange-d);color:var(--orange);border:1px solid var(--orange)}
+.comp-num.blue  {background:var(--blue-d);  color:var(--blue);  border:1px solid var(--blue)}
+.comp-num.green {background:var(--green-d); color:var(--green); border:1px solid var(--green)}
+.comp-num.purple{background:var(--purple-d);color:var(--purple);border:1px solid var(--purple)}
+.comp-num.yellow{background:var(--yellow-d);color:var(--yellow);border:1px solid var(--yellow)}
+.comp-num.cyan  {background:var(--cyan-d);  color:var(--cyan);  border:1px solid var(--cyan)}
+.comp-num.red   {background:var(--red-d);   color:var(--red);   border:1px solid var(--red)}
+
+.star{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin:1rem 0}
+@media(max-width:700px){.star{grid-template-columns:1fr 1fr}}
+.star-box{border:1px solid var(--border);border-radius:8px;padding:.85rem 1rem;background:var(--surface)}
+.star-box b{display:block;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.3rem}
+.star-box span{font-size:.82rem;color:var(--text)}
+.star-box.s b{color:var(--blue)} .star-box.t b{color:var(--cyan)}
+.star-box.a b{color:var(--orange)} .star-box.r b{color:var(--green)}
+.star-box.a{border-color:rgba(232,116,59,.35)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">Tech Lead Interview · Solutions &amp; Talking Points</div>
+  <h1>The Tech Lead Loop — <span>Answered from the Lead's Chair</span></h1>
+  <p class="sub">A tech-lead loop tests the intersection: can you make a sound technical call <em>and</em> move a group of engineers toward it? Every question here is answered the way a real tech lead would say it — trade-offs named, ownership owned, people lifted.</p>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">How the loop is scored</a></li>
+      <li><a href="#s2">System design under judgment</a></li>
+      <li><a href="#s3">Architecture &amp; judgment calls</a></li>
+      <li><a href="#s4">Mentoring &amp; growing people</a></li>
+      <li><a href="#s5">Conflict &amp; disagreement</a></li>
+      <li><a href="#s6">Ownership &amp; delivery</a></li>
+      <li><a href="#s7">Influence &amp; culture</a></li>
+      <li><a href="#s8">Curveballs</a></li>
+      <li><a href="#s9">Final prep checklist</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+    <!-- Intro callout -->
+    <div class="highlight hl-cyan" style="margin-bottom:2rem">
+      <strong>How to read this page.</strong> A tech-lead loop is <em>not</em> a senior-engineer loop with nicer words. It scores the intersection of technical judgment and people leadership. The two halves below mirror that: <strong>technical &amp; system design</strong> (where you're judged on trade-off reasoning, not the "right" answer) and <strong>leadership &amp; people</strong> (where every answer should be a real <code>STAR</code> story with the Action doing 60% of the work). Each question carries a <span class="probe" style="margin:0">what it probes</span> note so you know what the interviewer is actually listening for, then a model answer in the voice you'd use in the room.
+    </div>
+
+    <!-- ============================ S1 ============================ -->
+    <div class="sec" id="s1">
+      <span class="sec-tag tag-orange">01 · How the loop is scored</span>
+      <h2>What they're actually grading</h2>
+      <p>Interviewers rarely care whether you land the "right" architecture or have the perfect anecdote. They're building a rubric in their head, and at tech-lead level it has two axes: <strong>can you reason about a hard technical problem out loud</strong>, and <strong>can you move people toward a decision without a title forcing them</strong>. Everything below is in service of those two axes. Internalize the rubric and the individual questions stop feeling like a quiz — they're just different windows onto the same two skills.</p>
+
+      <div class="diagram-box"><div class="mermaid">
+flowchart TB
+  TL([Tech Lead loop])
+  TL --> TECH[Technical &amp; System Design]
+  TL --> PEOPLE[Leadership &amp; People]
+
+  TECH --> T1[Requirements discipline<br/>clarify before drawing]
+  TECH --> T2[Trade-off reasoning<br/>2-3 options + why]
+  TECH --> T3[Depth on demand<br/>real detail when zoomed in]
+  TECH --> T4[Failure thinking<br/>what breaks + what then]
+
+  PEOPLE --> P1[Influence w/o authority]
+  PEOPLE --> P2[Raising the team's bar]
+  PEOPLE --> P3[Owning delivery + outcomes]
+  PEOPLE --> P4[Owning failures, blamelessly]
+
+  style TL fill:#e8743b,stroke:#e8743b,color:#fff
+  style TECH fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style PEOPLE fill:#38b265,stroke:#38b265,color:#fff
+  style T1 fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style T2 fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style T3 fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style T4 fill:#171d27,stroke:#4a90d9,color:#d4dae5
+  style P1 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style P2 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style P3 fill:#171d27,stroke:#38b265,color:#d4dae5
+  style P4 fill:#171d27,stroke:#38b265,color:#d4dae5
+      </div></div>
+
+      <div class="g2">
+        <div class="card">
+          <h3><span class="comp-num blue">SD</span> The system-design rubric</h3>
+          <p>For any design prompt, the interviewer is scoring five things — and the architecture itself is the least of them:</p>
+          <ul>
+            <li><strong>Requirements discipline</strong> — did you clarify scope, scale, and constraints before drawing boxes?</li>
+            <li><strong>Trade-off reasoning</strong> — can you name 2–3 options and say <em>why</em> you chose one?</li>
+            <li><strong>Depth on demand</strong> — when they zoom into a component, do you have real detail?</li>
+            <li><strong>Failure thinking</strong> — what breaks, and what happens when it does?</li>
+            <li><strong>Communication</strong> — can a room follow your reasoning?</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num green">★</span> The behavioral rubric (STAR)</h3>
+          <p>Every people question wants a <strong>specific</strong> story, structured as STAR — and the <em>Action</em> is where the points are:</p>
+          <ul>
+            <li><strong>Situation</strong> — two sentences, max. Set the stage and stop.</li>
+            <li><strong>Task</strong> — what was <em>your</em> responsibility in it?</li>
+            <li><strong>Action</strong> — ~60% of the answer. What <em>you</em> did, step by step. Not "the team", not "we" — <em>you</em>.</li>
+            <li><strong>Result</strong> — a measurable outcome, plus what you'd carry forward.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="highlight hl-orange">
+        <strong>The reusable system-design spine.</strong> When a design prompt lands, walk this every time: <code>clarify → estimate → high-level design → deep dive → bottlenecks &amp; failure modes → trade-offs you'd revisit</code>. Saying the last step out loud — "here's what I'd revisit with more time / more scale" — is one of the most senior signals you can send.
+      </div>
+      <div class="highlight hl-green">
+        <strong>The throughline interviewers reward,</strong> across every question: clear trade-off reasoning, ownership of outcomes (including failures), and lifting the people around you. When in doubt, be specific and tell the truth — fabricated stories collapse under one follow-up.
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S2 ============================ -->
+    <div class="sec" id="s2">
+      <span class="sec-tag tag-blue">02 · System design under judgment</span>
+      <h2>Five prompts, and how a lead attacks them</h2>
+      <p>At tech-lead level the design round isn't testing whether you've memorized the Kafka docs. It's testing whether you drive the conversation: clarify scope first, name the deciding trade-off, go deep where it matters, and stay honest about what breaks. Below are the five canonical prompt shapes with the <em>moves</em> that score, not full architectures (those live in the <a href="../HLD/hld-interview-framework.html" style="color:var(--blue);text-decoration:underline">HLD framework</a> and the case studies).</p>
+
+      <div class="iq">Design a system to ingest and process a high-volume event stream — clickstream, IoT telemetry, payment events.</div>
+      <span class="probe">Probes · partitioning, back-pressure, delivery semantics, scaling ceiling, poison messages</span>
+      <div class="ans">
+        <p>Start by refusing to draw anything until you've pinned three numbers: <strong>peak events/sec, average payload size, and the consistency requirement</strong> (is a lost clickstream event a shrug, or is a lost payment event a lawsuit?). Those answers change the whole design — clickstream tolerates at-least-once and sampling; payments demand exactly-once-effective.</p>
+        <p>The spine: <strong>producers → partitioned log (Kafka) → consumer groups → sink</strong>. The senior signals are in the follow-ups:</p>
+        <ul>
+          <li><strong>Partitioning is your scaling unit and your ordering unit.</strong> Order is only guaranteed within a partition, so you pick the partition key to match what must stay ordered (e.g. <code>user_id</code> for a session). Be ready to say the hard part out loud: <em>throughput is capped by partition count</em>, and you can't reduce partitions without a reshard.</li>
+          <li><strong>What do you do at the ceiling?</strong> Repartition to a new topic and dual-write during cutover, or shard by a composite key. Naming this before they ask is the move.</li>
+          <li><strong>Back-pressure</strong> — if consumers fall behind, you don't drop silently. You let lag build in the log (it's durable), autoscale consumers on <em>lag</em> not CPU, and shed or sample at the producer only as a last resort.</li>
+          <li><strong>Delivery semantics</strong> — at-least-once + idempotent consumer (dedupe on an event id) gets you exactly-once <em>effects</em> without the cost of true exactly-once. Say why you'd rather make the consumer idempotent than chase EOS.</li>
+          <li><strong>Poison messages</strong> — a bad event can't wedge a partition forever. Retry with backoff N times, then route to a dead-letter topic and alert. The pipeline keeps moving.</li>
+        </ul>
+      </div>
+
+      <div class="iq">Design a URL shortener / rate limiter / notification service.</div>
+      <span class="probe">Probes · the classic fundamentals — key generation, caching, read/write ratio, hot keys</span>
+      <div class="ans">
+        <p>These are the "fundamentals" prompts, and the trap is breadth — candidates sprawl across every component shallowly. <strong>Pick depth over breadth.</strong> Lead with the read/write ratio because it dictates everything: a URL shortener is ~100:1 read-heavy, so you optimize the read path (cache + CDN) and can afford a slower, collision-safe write path.</p>
+        <p>For a shortener, go deep on <em>one</em> hard thing: key generation. Counter + base62 gives you guaranteed-unique short keys with no collision check; a Key Generation Service pre-generates keys offline so the write path never blocks. For a rate limiter, go deep on the <em>algorithm choice</em> (token bucket vs sliding window) and the atomic-increment race that forces a Redis Lua script. The interviewer would rather hear one component defended to the metal than seven sketched.</p>
+        <p style="margin-top:.6rem">→ Full treatments: <a href="../HLD/url-shortener-hld.html" style="color:var(--blue);text-decoration:underline">URL Shortener</a> · <a href="../HLD/rate-limiter-hld.html" style="color:var(--blue);text-decoration:underline">Rate Limiter</a> · <a href="../LLD/notification-service-lld.html" style="color:var(--blue);text-decoration:underline">Notification Service</a>.</p>
+      </div>
+
+      <div class="iq">Design a system that needs strong consistency in one place and high availability in another.</div>
+      <span class="probe">Probes · whether you understand CAP as a per-operation spectrum, not one global switch</span>
+      <div class="ans">
+        <p>This is a trap for anyone who memorized "CAP: pick two." The right framing: <strong>CAP is a choice you make per operation, not once for the whole system.</strong> Make that explicit with a concrete split.</p>
+        <p>Take an e-commerce order: <strong>the wallet debit / inventory decrement must be strongly consistent</strong> — you cannot oversell the last unit or double-spend, so that path uses a single-primary transactional store (Postgres, <code>SELECT … FOR UPDATE</code>) and accepts that a partition makes it briefly unavailable. <strong>The product catalog and reviews can be highly available</strong> — a stale price for 200ms is fine, so that path uses replicated, eventually-consistent reads served from cache/replicas and stays up through a partition.</p>
+        <p>The senior close: "So the system as a whole is neither CP nor AP — it's CP on the money path and AP on the browse path, and the art is drawing that line in the right place." That sentence is the answer they're fishing for.</p>
+      </div>
+
+      <div class="iq">A service is at p99 latency 10× its p50. Walk me through diagnosing it.</div>
+      <span class="probe">Probes · methodical debugging — measure before you change, isolate, know the tail-latency suspects</span>
+      <div class="ans">
+        <p>The discipline they're testing: <strong>you measure before you touch anything.</strong> A p99/p50 gap of 10× means most requests are fine and a tail is suffering — so this is <em>not</em> a "make everything faster" problem, it's a "find what makes <em>some</em> requests slow" problem.</p>
+        <p>Walk it as a funnel, narrowing each step:</p>
+        <ul>
+          <li><strong>1 — Confirm it's real, not measurement.</strong> Check the metric source; a coarse histogram bucket can fake a tail. Look at p99.9 too.</li>
+          <li><strong>2 — Is it the service or a downstream?</strong> Split the latency into in-service time vs time-waiting-on-dependencies (distributed tracing). A slow downstream at p99 is the most common culprit and changes the whole investigation.</li>
+          <li><strong>3 — If it's in-service, run the tail-latency suspect list:</strong> GC pauses (correlate the tail with GC logs), lock contention (thread dumps show threads parked on the same monitor), connection-pool exhaustion (requests waiting to <em>get</em> a connection, not to use it), and noisy-neighbor / CPU throttling on shared hosts.</li>
+          <li><strong>4 — Look for the load-correlation.</strong> Does the tail appear only at peak? Then it's queuing/saturation. Is it constant? Then it's a code path (e.g. a cache-miss branch hitting cold storage).</li>
+        </ul>
+        <p>Close with the meta-point: "I'd change <em>one</em> thing, measure, and only then move on — chasing tail latency by changing five knobs at once is how you fix it by accident and can't reproduce it."</p>
+      </div>
+
+      <div class="iq">Design for a 100× growth scenario.</div>
+      <span class="probe">Probes · what scales linearly vs what doesn't — and whether you over-engineer for scale you don't have</span>
+      <div class="ans">
+        <p>The first move is to <strong>resist the bait</strong>: "Before I design for 100×, what's the timeline — is this 100× by next quarter, or a 'what if we got acquired' hypothetical? Because the answer changes whether I build it now or just make sure nothing blocks it later." That single question signals seniority more than any architecture.</p>
+        <p>Then split the system into <strong>what scales linearly</strong> (stateless app tier — just add pods; cache — add nodes via consistent hashing) and <strong>what doesn't</strong> (the single write primary, anything requiring global coordination or a global lock, anything with a per-request fan-out that grows with data size). The non-linear pieces are where 100× actually hurts, so that's where the design effort goes: shard the write path by tenant, pre-compute fan-out, replace coordination with idempotency.</p>
+        <p>End with the discipline line: "I'd build the seams now — shard keys chosen, idempotent writes, stateless services — so the migration is <em>ready</em>, but I wouldn't stand up 50 shards for traffic we don't have. Premature scale is just complexity you pay for before you need it."</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S3 ============================ -->
+    <div class="sec" id="s3">
+      <span class="sec-tag tag-cyan">03 · Architecture &amp; judgment calls</span>
+      <h2>The "it depends" questions — and how to make "it depends" sound senior</h2>
+      <p>These questions have no right answer, which is the point. They're checking whether you reason from constraints instead of dogma, whether you can make a cost <em>visible</em> to a business, and whether you think past the merge button. The losing answer is a strong opinion with no constraint attached ("microservices, always"). The winning answer always starts "it depends on …" and then names exactly what it depends on.</p>
+
+      <div class="iq">When would you choose a monolith over microservices — and vice versa?</div>
+      <span class="probe">Probes · resists dogma; ties the choice to team size, deploy independence, ops maturity, domain boundaries</span>
+      <div class="ans">
+        <p>Open by reframing it as an <strong>organizational</strong> decision before a technical one: "Microservices are a solution to a team-scaling and deploy-independence problem first, and a technical scaling problem second. So I start from the team, not the diagram."</p>
+        <div class="tbl-wrap"><table class="tbl">
+          <thead><tr><th>Choose monolith when…</th><th>Choose microservices when…</th></tr></thead>
+          <tbody>
+            <tr><td>Small team (&lt; ~15–20 eng), one repo, no merge pain</td><td>Many teams stepping on each other; deploys need 4 sign-offs</td></tr>
+            <tr><td>Domain still fluid — boundaries not yet clear</td><td>Stable, well-understood bounded contexts</td></tr>
+            <tr><td>Low ops maturity — no service mesh, weak observability</td><td>Mature ops: tracing, on-call, CI/CD per service</td></tr>
+            <tr><td>Strong consistency needed (ACID for free, in-process)</td><td>Divergent scaling shapes (one module 10K RPS, another 50 RPS)</td></tr>
+          </tbody>
+        </table></div>
+        <p>The line that lands: "Microservices trade <em>code</em> complexity for <em>operational and distributed-systems</em> complexity — network hops, partial failure, sagas instead of transactions. That trade is worth it past a certain org size and a ruinous deal below it. My default for a new product is a well-modularized monolith, then extract services when a specific pain — deploy coupling or a divergent scaling need — forces it."</p>
+      </div>
+
+      <div class="iq">How do you decide whether to pay down tech debt or ship the feature?</div>
+      <span class="probe">Probes · frames it as a business trade-off with data, not a moral crusade; makes the cost visible</span>
+      <div class="ans">
+        <p>The amateur move is to fight for tech debt on principle ("we <em>must</em> refactor"). The lead move is to <strong>make the cost legible to the business and let the data decide.</strong> "I don't frame debt as good or bad — I quantify the interest we're paying on it."</p>
+        <p>Concretely, I attach numbers to the debt: <em>incident rate</em> traceable to that module, <em>velocity drag</em> (how much longer features in that area take vs elsewhere), and <em>blast radius</em> (what's the worst outage this debt enables). Then I put the feature and the paydown on the same backlog with those numbers attached, and let the PM/stakeholders prioritize with eyes open.</p>
+        <p>The senior nuance: "Most debt I'd rather pay down <em>opportunistically</em> — when we're already in that code for a feature, we leave it better. I reserve the dedicated 'stop and fix' for debt that's actively causing incidents or has become a velocity tax the whole team feels. And I make that cost visible in sprint reviews rather than fighting for it silently — silence is how debt loses every prioritization meeting."</p>
+      </div>
+
+      <div class="iq">Walk me through a technical decision you got wrong. What happened, and what did you change?</div>
+      <span class="probe">Probes · self-awareness and genuine learning. Have a real one — fabrications die on the follow-up.</span>
+      <div class="ans">
+        <p>Use STAR, and resist the fake-humble "I worked too hard" non-answer. The structure that works: <strong>the reasoning at the time</strong> (show it wasn't dumb given what you knew) → <strong>the signal it was wrong</strong> → <strong>the concrete change to how you decide now</strong>.</p>
+        <div class="star">
+          <div class="star-box s"><b>Situation</b><span>We picked a document DB for an orders service to "move fast" early on.</span></div>
+          <div class="star-box t"><b>Task</b><span>I made the call as the lead; the team trusted it.</span></div>
+          <div class="star-box a"><b>Action</b><span>When we needed multi-entity transactional integrity (order + payment + inventory), the lack of cross-document ACID bit us — we hand-rolled buggy consistency. I owned it publicly, ran a spike comparing migration paths, and led a phased move of the transactional core to Postgres while keeping the flexible catalog on the document store.</span></div>
+          <div class="star-box r"><b>Result</b><span>Consistency bugs went to zero; I now ask "what's the strongest consistency requirement in the next 18 months?" <em>before</em> picking a store.</span></div>
+        </div>
+        <p>The point isn't the database — it's that you can name the signal that you were wrong and the durable change to your decision process. That's the learning they're scoring.</p>
+      </div>
+
+      <div class="iq">How do you evaluate build vs. buy vs. adopt open source?</div>
+      <span class="probe">Probes · total-cost-of-ownership thinking — maintenance, hiring, lock-in, core vs peripheral</span>
+      <div class="ans">
+        <p>Anchor the whole decision on one question: <strong>is this capability core to our business, or peripheral?</strong> "We build what differentiates us and buy/adopt everything else — because every line of code we own is a line we maintain, staff, and secure forever."</p>
+        <ul>
+          <li><strong>Build</strong> when it's a core differentiator, or no off-the-shelf option fits, <em>and</em> we can staff its maintenance for years. The hidden cost is the ongoing team, not the initial write.</li>
+          <li><strong>Buy</strong> (managed/SaaS) when it's peripheral and our time is better spent elsewhere — accept the cost and the vendor lock-in as the price of not maintaining it. Weigh exit cost up front.</li>
+          <li><strong>Adopt open source</strong> when there's a healthy community and we have the in-house depth to operate and patch it. "Free" software has a real operational and security-patching cost — there's no free lunch, just a different bill.</li>
+        </ul>
+        <p>Close on TCO: "I total the 3-year cost — license + ops + people + the cost of being locked in or having to migrate later — not the day-one price. The cheapest thing to start is often the most expensive to live with."</p>
+      </div>
+
+      <div class="iq">What does "done" mean for a feature on your team?</div>
+      <span class="probe">Probes · whether your definition includes tests, observability, docs, rollback, on-call — i.e. past the merge</span>
+      <div class="ans">
+        <p>This is a quick tell for whether you think like an owner or a code-writer. "Done" is never "the PR merged." On my team done means it's <strong>safe to be woken up for</strong>:</p>
+        <ul>
+          <li><strong>Tested</strong> — unit + integration at the level that matters, not 100% coverage theater.</li>
+          <li><strong>Observable</strong> — metrics, logs, and at least one alert so we find out it's broken before the customer tells us.</li>
+          <li><strong>Documented</strong> — enough that the next person (or on-call you at 3am) can understand it.</li>
+          <li><strong>Reversible</strong> — a rollback plan or feature flag, so a bad deploy is a 30-second toggle, not an incident.</li>
+          <li><strong>On-call ready</strong> — the person carrying the pager knows it shipped and how it can fail.</li>
+        </ul>
+        <p>The line: "A feature isn't done when it works on my machine — it's done when it can fail safely in production at 3am and someone who didn't write it can recover it."</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S4 ============================ -->
+    <div class="sec" id="s4">
+      <span class="sec-tag tag-green">04 · Mentoring &amp; growing people</span>
+      <h2>The multiplier questions</h2>
+      <p>At tech-lead level, "leadership" is mostly <strong>technical leadership</strong>: influence without (or with light) authority, raising the team's bar, and growing the people around you. These questions want a <em>specific person</em>, a <em>specific gap</em>, and what you did <em>beyond</em> "I gave feedback." Vague answers ("I always mentor my juniors") score zero. Name names (anonymized), name the gap, name the intervention, name the result.</p>
+
+      <div class="iq">Tell me about a time you helped an engineer level up.</div>
+      <span class="probe">Probes · a specific person, a specific gap, action beyond "feedback", a measurable outcome</span>
+      <div class="ans">
+        <div class="star">
+          <div class="star-box s"><b>Situation</b><span>A mid-level engineer wrote correct code but his designs never accounted for failure — happy-path only.</span></div>
+          <div class="star-box t"><b>Task</b><span>Help him grow into someone who could own a service end-to-end, not just close tickets.</span></div>
+          <div class="star-box a"><b>Action</b><span>I didn't just "give feedback." I paired with him on one design doc, asking "what happens if this downstream is down?" at each step so he found the gaps himself. Then I gave him a stretch assignment — own the design review for the next feature — with me as a safety net, and a structured rubric (failure modes, observability, rollback) to self-check against.</span></div>
+          <div class="star-box r"><b>Result</b><span>Within two quarters he was running design reviews for others and caught a cascading-failure risk in someone else's design. He's now the go-to for resilience questions.</span></div>
+        </div>
+        <p>The key signal: the action was a <em>system</em> — pairing + stretch + rubric — not a one-off comment. Growing people is repeatable, not lucky.</p>
+      </div>
+
+      <div class="iq">How do you give feedback on code or a design you think is wrong — without demoralizing the person?</div>
+      <span class="probe">Probes · separating the idea from the person; asking before asserting; letting them arrive at the better answer</span>
+      <div class="ans">
+        <p>Three habits, in order:</p>
+        <ul>
+          <li><strong>Attack the idea, never the person.</strong> "This design has a race condition under concurrent writes" — not "you forgot about concurrency again." The code is wrong; the engineer isn't.</li>
+          <li><strong>Ask before you assert.</strong> "What happens if two requests hit this at the same instant?" lets them find it themselves — which both teaches and protects their ownership. People defend conclusions they're handed and embrace conclusions they reach.</li>
+          <li><strong>Praise in public, correct in private (for anything weighty).</strong> A line-comment on a PR is fine; a re-think of someone's whole approach happens in a 1:1, not in front of the team.</li>
+        </ul>
+        <p>The framing line: "My goal isn't to be right — it's for the <em>code</em> to be right and the person to be more capable next time. If I win the argument but they stop bringing me their ideas, I've lost."</p>
+      </div>
+
+      <div class="iq">You have a strong engineer who's a poor collaborator. How do you handle it?</div>
+      <span class="probe">Probes · you address it directly; tie behavior to team impact; don't let "but they're productive" excuse it</span>
+      <div class="ans">
+        <p>The trap is the rationalization "but they ship so much." A lead names the real math: <strong>a brilliant engineer who makes three other engineers slower or miserable is a net negative, even if their individual output is high.</strong></p>
+        <p>How I handle it: address it <em>directly and early</em> in a 1:1, with specific behaviors, not labels. Not "you're not a team player" but "in the last design review you shut down two ideas before they were finished, and I noticed people stopped contributing." Tie it explicitly to <strong>team impact</strong>: "your code is excellent and I want you here — and the team is going quieter around you, which is costing us ideas." Then I set a concrete, observable expectation and follow up. If it improves, great. If "I'm right and they're slow" persists despite coaching, it becomes a performance conversation — because culture is what you tolerate, and tolerating it tells everyone else the rules don't apply to high performers.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S5 ============================ -->
+    <div class="sec" id="s5">
+      <span class="sec-tag tag-purple">05 · Conflict &amp; disagreement</span>
+      <h2>Disagree, commit, and what you do when you lose</h2>
+      <p>These are the questions that most separate a tech lead from a senior engineer. The interviewer is listening for two things people consistently fumble: <strong>do you understand the other side before pushing</strong>, and <strong>what do you do once a decision goes against your preference</strong>. "Disagree and commit" is the phrase to know — but only if you can show you actually <em>committed</em>, not sulked.</p>
+
+      <div class="iq">Describe a serious technical disagreement with a peer. How did it resolve?</div>
+      <span class="probe">Probes · "disagree and commit", letting data/a spike settle it, and what you did when it went against you</span>
+      <div class="ans">
+        <p>Pick a story where <strong>you lost</strong> — that's the more impressive one, because it shows you can commit to a decision you argued against. Structure:</p>
+        <div class="star">
+          <div class="star-box s"><b>Situation</b><span>A peer and I disagreed on sync vs async for a new integration — I wanted async via a queue, he wanted simple synchronous calls.</span></div>
+          <div class="star-box t"><b>Task</b><span>We had to ship one approach and the team was split.</span></div>
+          <div class="star-box a"><b>Action</b><span>Instead of arguing opinions, I proposed a time-boxed spike: we'd load-test both against the real downstream's latency. The data showed his synchronous approach met our SLA at current scale with far less complexity. I'd been designing for scale we didn't have. I said so, dropped my position, and helped him ship <em>his</em> way — committing fully, not grudgingly.</span></div>
+          <div class="star-box r"><b>Result</b><span>Shipped two weeks faster; we added a "revisit if p99 &gt; X" trigger so the async option stayed on the table for when scale actually arrived.</span></div>
+        </div>
+        <p>The close: "The way I resolve technical disagreements is to make them empirical when I can — a spike or a benchmark beats two senior engineers' intuitions arguing. And once we decide, I commit visibly, because a team that sees the lead sulk after losing a debate learns to stop debating."</p>
+      </div>
+
+      <div class="iq">A senior engineer keeps blocking a decision the rest of the team supports. What do you do?</div>
+      <span class="probe">Probes · understand the objection first, surface it explicitly, escalate constructively if needed — don't steamroll or capitulate</span>
+      <div class="ans">
+        <p>The two failure modes are <strong>steamrolling</strong> (override them, lose a senior voice and breed resentment) and <strong>capitulating</strong> (let one person veto the team forever). The path between:</p>
+        <ul>
+          <li><strong>1 — Understand the objection first, genuinely.</strong> A persistent senior blocker usually sees a real risk the team is hand-waving. I sit with them 1:1: "Walk me through what you're worried about — I want to make sure we're not missing something." Often they're right about something.</li>
+          <li><strong>2 — Surface it explicitly to the group.</strong> Put the objection on the table by name so it's debated openly, not in hallway grumbling. Sometimes the team's "support" was just because no one voiced the risk.</li>
+          <li><strong>3 — If it's a genuine standoff, make the call or escalate constructively.</strong> "We've heard the concern, we've weighed it, here's the decision and why — and here's the tripwire that would make us revisit." If it's above my authority, I escalate <em>with</em> them, framing both views fairly, not behind their back.</li>
+        </ul>
+        <p>The principle: "Disagreement is a feature, not a bug — my job is to make sure the objection is fully heard and then make sure the team isn't held hostage by it indefinitely."</p>
+      </div>
+
+      <div class="iq">How do you push back on a manager or PM who wants something you think is a mistake?</div>
+      <span class="probe">Probes · framing pushback in their terms (risk, cost, timeline), bringing options not just objections, committing once decided</span>
+      <div class="ans">
+        <p>Rule one: <strong>translate the pushback into their language.</strong> A PM doesn't care that the code is ugly; they care about risk, cost, and timeline. So I don't say "this is bad engineering" — I say "this path means we'll likely miss the launch date by two weeks and carry a 1-in-5 chance of a data-loss incident; here's why."</p>
+        <p>Rule two: <strong>bring options, not just objections.</strong> "I don't think we should do X. Here are two alternatives: A is faster but cuts scope; B hits the date with a known risk we flag to leadership. I recommend A — but it's your call on the trade-off." This turns me from a blocker into a partner.</p>
+        <p>Rule three: <strong>once it's decided, commit.</strong> "If they choose a path I argued against, I make sure the risk is documented — not to say 'I told you so' later, but so we all share the decision — and then I execute it like it was my own idea. Undermining a decision I disagreed with is how a team stops trusting both me and the PM."</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S6 ============================ -->
+    <div class="sec" id="s6">
+      <span class="sec-tag tag-red">06 · Ownership &amp; delivery</span>
+      <h2>Behind schedule, on fire, or drowning in "priority 1"</h2>
+      <p>This cluster is about whether you own outcomes — including the ugly ones — and whether you have <em>frameworks</em> rather than heroics. The tells: do you spot trouble early, do you re-scope instead of just adding people, do you stay calm and communicate in an incident, and do you run blameless postmortems that fix systems instead of blaming people.</p>
+
+      <div class="iq">Tell me about a project that was behind schedule. What did you do?</div>
+      <span class="probe">Probes · early signal-spotting, re-scope vs add people (Brooks's law), transparent comms — not "we worked harder"</span>
+      <div class="ans">
+        <p>The weak answer is "we put in extra hours and pulled it off." The lead answer shows you <strong>caught it early, re-scoped honestly, and communicated transparently</strong>.</p>
+        <div class="star">
+          <div class="star-box s"><b>Situation</b><span>Three weeks into a six-week project, our burn-up showed we'd land ~40% late.</span></div>
+          <div class="star-box t"><b>Task</b><span>Hit a hard external launch date that marketing had committed to.</span></div>
+          <div class="star-box a"><b>Action</b><span>I flagged it to stakeholders <em>immediately</em> rather than hoping to recover — surprises late are far worse than bad news early. I did <em>not</em> throw engineers at it (Brooks's law: adding people to a late project makes it later via ramp-up and coordination cost). Instead I sat with the PM and cut scope: we shipped the core flow on time and moved two nice-to-haves to a fast-follow, behind a feature flag.</span></div>
+          <div class="star-box r"><b>Result</b><span>Hit the date with the core feature; the fast-follow shipped two weeks later with no drama. The PM later said the early heads-up was what saved the launch.</span></div>
+        </div>
+        <p>The principle: "Schedules slip — what separates a lead is catching it at 20% slip not 90%, and treating scope as the variable, not the team's weekend."</p>
+      </div>
+
+      <div class="iq">Walk me through a production incident you led.</div>
+      <span class="probe">Probes · calm under pressure, mitigate-before-diagnose, clear comms, a blameless postmortem with systemic fixes</span>
+      <div class="ans">
+        <p>The single most important instinct to demonstrate: <strong>mitigate first, diagnose second.</strong> Customers don't care <em>why</em> it's down while it's down. Walk the timeline:</p>
+        <div class="diagram-box"><div class="mermaid">
+flowchart LR
+  A[① Detect<br/>alert fires] --> B[② Declare<br/>+ assign IC]
+  B --> C[③ Mitigate<br/>rollback / flag off]
+  C --> D[④ Diagnose<br/>root cause]
+  D --> E[⑤ Resolve<br/>+ verify]
+  E --> F[⑥ Blameless<br/>postmortem]
+  F --> G[⑦ Systemic fix<br/>+ action items]
+
+  style A fill:#e05252,stroke:#e05252,color:#fff
+  style B fill:#d4a838,stroke:#d4a838,color:#fff
+  style C fill:#e8743b,stroke:#e8743b,color:#fff
+  style D fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style E fill:#38b265,stroke:#38b265,color:#fff
+  style F fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style G fill:#3cbfbf,stroke:#3cbfbf,color:#fff
+      </div></div>
+        <ul>
+          <li><strong>① Detect / ② Declare</strong> — alert fired; I declared an incident and took the incident-commander role so there was one clear coordinator, freeing engineers to investigate.</li>
+          <li><strong>③ Mitigate before diagnose</strong> — we'd deployed 20 min earlier, so I called a rollback <em>before</em> we understood the bug. Service restored in 8 minutes; the investigation continued with no customer impact.</li>
+          <li><strong>④–⑤ Diagnose &amp; resolve</strong> — found a missing null-check on a new code path, fixed forward, verified with the same trigger.</li>
+          <li><strong>Comms throughout</strong> — a status update every 15 minutes to stakeholders even when there was "nothing new," because silence during an incident reads as chaos.</li>
+          <li><strong>⑥–⑦ Blameless postmortem</strong> — the fix was never "the engineer should've been careful." It was systemic: we added the missing test class, a canary deploy stage, and an alert that would've caught it 18 minutes sooner.</li>
+        </ul>
+        <p>The close: "A postmortem that ends with 'be more careful' is a postmortem that guarantees a repeat. The output has to be a change to the <em>system</em> — a test, a guardrail, an alert — so the same human mistake can't reach production again."</p>
+      </div>
+
+      <div class="iq">How do you decide what the team works on when everything is "priority 1"?</div>
+      <span class="probe">Probes · a real framework (impact vs effort, reversibility, dependencies), explicit trade-offs, protecting the team from thrash</span>
+      <div class="ans">
+        <p>"Everything is priority 1" means nothing is — so my first job is to <strong>force the ranking</strong>, because if I don't, the team context-switches itself into the ground. I use a lightweight framework out loud:</p>
+        <ul>
+          <li><strong>Impact vs effort</strong> — the classic 2×2. High-impact / low-effort goes first; high-effort / low-impact gets killed or deferred openly.</li>
+          <li><strong>Reversibility</strong> — irreversible, hard-to-undo decisions get more care and go earlier; reversible ones we can move fast on and fix later (Bezos's one-way vs two-way doors).</li>
+          <li><strong>Dependencies</strong> — what unblocks the most other work? A thing three teams are waiting on outranks a bigger thing nobody's blocked on.</li>
+        </ul>
+        <p>Then the political-but-essential part: <strong>make the trade-off explicit to stakeholders.</strong> "If we do A this sprint, B slips to next — confirm that's the call you want." This forces the people calling everything P1 to actually choose, and it <strong>protects the team from thrash</strong> by giving them a stable, defended priority list instead of a daily reshuffle."</p>
+      </div>
+
+      <div class="iq">How do you keep quality high without slowing to a crawl?</div>
+      <span class="probe">Probes · lightweight process that scales — review norms, automated gates, definition of done — not heroics or bureaucracy</span>
+      <div class="ans">
+        <p>The answer lives between two failure modes: <strong>heroics</strong> (quality depends on a few careful people staying up late — doesn't scale) and <strong>bureaucracy</strong> (five sign-offs per change — kills velocity). The middle is <strong>automate the floor, reserve humans for judgment</strong>:</p>
+        <ul>
+          <li><strong>Automated gates</strong> do the boring checks every time, with zero human latency: CI tests, linters, coverage thresholds, security scans. A machine never forgets and never gets tired.</li>
+          <li><strong>Code-review norms</strong> reserve human attention for what machines can't judge — design, naming, edge cases. Small PRs, fast turnaround (review within hours, not days), one approval for routine changes.</li>
+          <li><strong>A shared definition of done</strong> (see §3) so "quality" is an explicit checklist, not a vibe that varies by reviewer.</li>
+        </ul>
+        <p>The line: "Quality at speed isn't heroics — it's making the right thing the easy thing. If the paved road has the tests and the gates built in, engineers go fast <em>and</em> safe by default, and I'm not the bottleneck."</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S7 ============================ -->
+    <div class="sec" id="s7">
+      <span class="sec-tag tag-yellow">07 · Influence &amp; culture</span>
+      <h2>Changing how the team works — without a mandate</h2>
+      <p>The deepest tech-lead skill: getting a group to adopt something new when you can't (and shouldn't) just order it. The interviewer wants to see that you start small, prove value with evidence, bring skeptics in early, and model the culture rather than sloganeer about it.</p>
+
+      <div class="iq">You want to introduce a new practice (testing standard, tooling, on-call rotation) the team is skeptical of. How?</div>
+      <span class="probe">Probes · start small, prove value with a pilot, bring skeptics in early, don't mandate from the top</span>
+      <div class="ans">
+        <p>The losing move is a top-down mandate ("from Monday, everyone writes tests first") — it breeds malicious compliance and quiet resentment. The winning play is a <strong>pilot-driven, evidence-first</strong> rollout:</p>
+        <ul>
+          <li><strong>Start small.</strong> Pick one team / one service and try the practice there for a few weeks. Low risk, contained blast radius.</li>
+          <li><strong>Prove value with data.</strong> "After we added the integration-test suite to the orders service, escaped bugs dropped from 4 a month to 1, and we stopped fearing Friday deploys." Evidence beats opinion.</li>
+          <li><strong>Bring the loudest skeptic in early.</strong> I co-opt the strongest doubter as a co-owner of the pilot. If I win them, they sell it to everyone else far better than I can; if the practice is actually flawed, they'll find it before it spreads.</li>
+          <li><strong>Let it spread by pull, not push.</strong> When the pilot team is visibly better off, other teams ask for it. Adoption you're <em>asked</em> for sticks; adoption you <em>impose</em> erodes the moment you look away.</li>
+        </ul>
+        <p>The principle: "I'd rather change one team's mind with evidence than change everyone's calendar with a policy. The first lasts; the second lasts until I stop watching."</p>
+      </div>
+
+      <div class="iq">What kind of engineering culture do you try to build, and how?</div>
+      <span class="probe">Probes · concrete behaviors you model and reward — psychological safety, blameless postmortems, writing things down — not slogans</span>
+      <div class="ans">
+        <p>Avoid the poster words ("we value excellence and ownership"). Culture is <strong>what you model and what you reward</strong>, so I answer with concrete behaviors:</p>
+        <ul>
+          <li><strong>Psychological safety</strong> — I model it by admitting my own mistakes in front of the team ("I got that database call wrong, here's what I learned"). When the lead is fallible out loud, juniors stop hiding their bugs, and bugs found early are cheap.</li>
+          <li><strong>Blameless postmortems</strong> — we fix systems, not people. I reward the engineer who surfaces "I caused this outage, here's the systemic gap that let me" — because punishing honesty just teaches people to hide incidents.</li>
+          <li><strong>Writing things down</strong> — design docs before big changes, decisions recorded with their <em>why</em>. It scales knowledge past the people in the room and makes onboarding and disagreement both cheaper.</li>
+          <li><strong>Rewarding the multiplier work</strong> — I make sure the person who unblocked three others, or wrote the doc everyone uses, gets visible credit — not just the person who shipped the flashy feature. You get more of what you celebrate.</li>
+        </ul>
+        <p>The line: "Culture isn't the values on the wall — it's the worst behavior the team's leader is willing to walk past. So I try to model the behaviors I want and refuse to walk past the ones I don't."</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S8 ============================ -->
+    <div class="sec" id="s8">
+      <span class="sec-tag tag-pink">08 · Curveballs</span>
+      <h2>The self-awareness questions — answer them straight</h2>
+      <p>These exist to see whether you can be honest and reflective under a slightly uncomfortable spotlight. The universal rule: <strong>give a real answer, not a humble-brag.</strong> "My weakness is I care too much" is a non-answer that signals you either lack self-awareness or won't be candid — both disqualifying for a lead.</p>
+
+      <div class="g2">
+        <div class="card">
+          <h3><span class="comp-num pink">?</span> "What's your biggest weakness as a leader?"</h3>
+          <p>Give a <strong>real</strong> one, plus what you're actively doing about it. Example: "I default to jumping in and solving hard problems myself — which robs the team of the chance to grow and makes me a bottleneck. I'm fixing it by deliberately handing the next hard problem to someone else and coaching from the side, even when it's slower in the moment." The growth plan is the part they're scoring.</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num pink">?</span> "Why be a tech lead rather than stay purely hands-on?"</h3>
+          <p>Show you understand the role is a <strong>multiplier of others</strong>, and be honest about the trade-off. "I get more leverage from making five engineers better than from being the best individual coder in the room. I'll write less code, and I've made peace with that — the impact moved from what I can build to what we can build together."</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num pink">?</span> "How do you stay technical while spending more time on people and process?"</h3>
+          <p>Name <strong>concrete habits</strong>, not intentions. "I stay in the code through code review, by writing or reviewing every major design doc, and by picking up one well-chosen implementation task a sprint — something meaty enough to keep my hands calibrated, small enough that I'm not on the critical path. I deliberately don't take the urgent stuff, so I'm never the blocker."</p>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num pink">!</span> Questions to ask <em>them</em></h3>
+          <p>Asking these signals seniority — you're evaluating the role, not just hoping to pass: <em>How do you define the tech-lead role here — where's the line with the EM? How do technical decisions actually get made? What would success look like for this person in six months?</em></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ============================ S9 ============================ -->
+    <div class="sec" id="s9">
+      <span class="sec-tag tag-cyan">09 · Final prep checklist</span>
+      <h2>What to have ready before you walk in</h2>
+      <p>You don't prep a tech-lead loop by memorizing answers — you prep by having a small set of strong, true stories and structures ready to flex across whatever they throw. Here's the kit.</p>
+
+      <div class="g2">
+        <div class="card">
+          <h3><span class="comp-num green">★</span> Stories &amp; systems</h3>
+          <ul>
+            <li><strong>3–4 STAR stories</strong> that flex across multiple questions — one each for conflict, delivery-under-pressure, mentoring, and a genuine failure. Reusing strong stories across questions is fine and expected.</li>
+            <li><strong>2 systems you owned end-to-end</strong>, defensible to arbitrary depth — any component, any trade-off, any "what would you change."</li>
+            <li><strong>One real technical mistake</strong> with a clear, durable lesson about how you decide now.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3><span class="comp-num blue">SD</span> Reps &amp; structure</h3>
+          <ul>
+            <li><strong>5 system-design problems practiced out loud</strong>, timed to ~45 min on paper or a whiteboard.</li>
+            <li>For each, <strong>force two alternatives and the deciding trade-off</strong> — that habit is what the round actually scores.</li>
+            <li>The spine memorized cold: <code>clarify → estimate → high-level → deep dive → bottlenecks → trade-offs to revisit</code>.</li>
+            <li><strong>Your own questions for them</strong> — role definition, how decisions get made, 6-month success.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="highlight hl-orange" style="margin-top:1rem">
+        <strong>The one thing to remember.</strong> The throughline interviewers reward at every level of this loop is the same: <em>clear trade-off reasoning, ownership of outcomes including failures, and lifting the people around you.</em> When a question surprises you, fall back to those three. And when in doubt — be specific and tell the truth. Fabricated stories collapse under one follow-up question; real ones get stronger.
+      </div>
+    </div>
+
+    <!-- Closing -->
+    <div class="highlight hl-cyan" style="margin-top:2.5rem">
+      <strong>How to use this page.</strong> Don't memorize the wording — internalize the <em>shape</em>. For the technical half, practice the clarify-first / name-the-trade-off / what-breaks-first reflex out loud. For the people half, draft your own STAR stories and make sure the Action is 60% of each. Pick five questions, close the page, and answer them in 60–90 seconds like you're in the room. The patterns repeat — once they're reflexive, the question variations stop mattering.
+    </div>
+
+    <div class="highlight hl-orange" style="margin-top:.85rem">
+      <strong>Companion deep dives.</strong> Pair this with the design-round material:&nbsp;
+      <a href="../HLD/hld-interview-framework.html" style="color:var(--orange);text-decoration:underline">HLD Interview Framework</a> ·
+      <a href="../LLD/lld-interview-roadmap.html" style="color:var(--orange);text-decoration:underline">LLD Roadmap</a> ·
+      <a href="backend-interview-qna.html" style="color:var(--orange);text-decoration:underline">Backend &amp; System Design Q&amp;A</a> ·
+      <a href="../HLD/common-patterns.html" style="color:var(--orange);text-decoration:underline">Common HLD Patterns</a>.
+    </div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+<div class="likes-row"><div id="likes"></div></div>
+
+</body>
+</html>
