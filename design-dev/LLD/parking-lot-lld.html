@@ -7,9 +7,9 @@
 <title>Parking Lot — LLD Design</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="../../css/diagram-zoom.css"/>
-<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 <script src="../../js/diagram-zoom.js" defer></script>
-<script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs';
   mermaid.initialize({
     startOnLoad: true,
     theme: 'dark',
@@ -110,6 +110,8 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 
 .diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
 .diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+.state-flow{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2rem;overflow-x:auto;margin-bottom:1rem}
+.state-flow pre{background:transparent;border:none;padding:0;margin:0;font-size:.72rem;line-height:1.7;color:var(--text)}
 
 .highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.88rem}
 .hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}
@@ -554,149 +556,94 @@ erDiagram
 <div class="divider"></div>
 
 <!-- ════════════════════════════════════════════ -->
-<!-- SECTION 6: CLASS DIAGRAM                    -->
+<!-- SECTION 6: CLASS DIAGRAM                     -->
 <!-- ════════════════════════════════════════════ -->
 <div class="sec" id="s6">
-  <span class="sec-tag tag-purple">Step 6</span>
-  <h2>Class Diagram</h2>
-  <p>Now we wire methods, inheritance, and relationships. Pay attention to which arrows are inheritance (<code>&lt;|--</code>), which are composition (<code>*--</code>), and which are association (<code>--&gt;</code>). The split between <em>abstract Vehicle/ParkingSpot/Account</em> and their concrete subclasses is what lets the lot work with "any vehicle" and "any spot" without caring about the concrete type.</p>
+  <span class="sec-tag tag-blue">Step 6</span>
+  <h2>Class Diagram (Draw This on Whiteboard)</h2>
+  <p>The ER diagram showed identity and references — the <em>data</em> shape. This is the <em>code</em> shape: the classes, their fields and methods, and how they relate. It's drawn the way you'd sketch it on a whiteboard in the interview — two bands (the inventory plane up top, the transaction plane below), boxes for classes, arrows for relationships. Read the connectors carefully: <code>──►</code> is "has / uses" (association), <code>o─────</code> is a reference the holder doesn't own (aggregation — a spot <em>holds</em> a car, but the car outlives the parking session), and a <code>▼ inherits</code> fan-out is "is-a". The two abstract roots (<code>Vehicle</code>, <code>ParkingSpot</code>) and the two strategy interfaces are where every future change plugs in without touching the orchestrator.</p>
 
-  <div class="diagram-box">
-    <div class="mermaid">
-classDiagram
-  class ParkingLot {
-    -String name
-    -List~ParkingFloor~ floors
-    -Map~String,ParkingTicket~ activeTickets
-    -SpotAllocationStrategy allocator
-    -PricingStrategy pricer
-    -static ParkingLot instance
-    +getInstance() ParkingLot
-    +issueTicket(Vehicle) ParkingTicket
-    +closeTicket(String,PaymentMethod) Payment
-    +reportLostTicket(String) ParkingTicket
-    -synchronized assignSpot(Vehicle) ParkingSpot
-  }
+  <div class="state-flow">
+<pre>
+┌───────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                    CLASS RELATIONSHIPS                                        │
+│                                                                                               │
+│     ── INVENTORY PLANE (shared, contended) ──────────────────────────────────                 │
+│                                                                                               │
+│     «singleton»                   «abstract»                   «abstract»                     │
+│    ┌──────────────────┐  has    ┌─────────────────┐   has    ┌──────────────────┐             │
+│    │ ParkingLot       │────────►│ ParkingFloor    │─────────►│ ParkingSpot      │             │
+│    │──────────────────│         │─────────────────│          │──────────────────│             │
+│    │- floors          │         │- floorId        │          │- spotId          │             │
+│    │- activeTickets   │         │- spots          │          │- type            │             │
+│    │- plateIndex      │         │- board          │          │- vehicle   o─────┼──► Vehicle  │
+│    │- allocator       │         │+findFreeSpot()  │          │- free            │             │
+│    │- pricer          │         └────────┬────────┘          │+fits(v)*         │             │
+│    │+getInstance()    │             has  │                    │+assign(v)        │            │
+│    │+issueTicket()    │                  ▼                    │+release()        │            │
+│    │+closeTicket()    │          ┌──────────────┐             └────────┬─────────┘            │
+│    │+reportLostTicket │          │ DisplayBoard │            inherits   │                     │
+│    └───┬──────────┬───┘          │ (Observer)   │     ┌────┬─────┼─────┬──────┐               │
+│   uses │          │ uses         │──────────────│     ▼    ▼     ▼     ▼      ▼               │
+│        │          │              │- freeCounts  │  Compact Large Moto  Elec  Handi            │
+│        ▼          ▼              │+render()     │   Spot  Spot  Spot  Spot   Spot             │
+│                                  └──────────────┘                                             │
+│    «interface»               «interface»                       «abstract»                     │
+│   ┌────────────────────────┐ ┌─────────────────────────┐      ┌──────────────────┐            │
+│   │ SpotAllocationStrategy │ │ PricingStrategy          │      │ Vehicle          │           │
+│   │────────────────────────│ │──────────────────────────│      │──────────────────│           │
+│   │+allocate(v, floors)    │ │+price(in, out, type)     │      │- licensePlate    │           │
+│   └───────────┬────────────┘ └────────────┬─────────────┘      │- type            │           │
+│     implements │                implements │                    └────────┬─────────┘          │
+│         ┌──────┴──────┐         ┌───────────┼───────────┐        inherits │                   │
+│         ▼             ▼         ▼           ▼           ▼      ┌───┬───┬───┼───┬────────┐     │
+│    ┌──────────┐ ┌──────────┐ ┌────────┐ ┌────────┐ ┌─────────┐ ▼   ▼   ▼   ▼   ▼              │
+│    │Nearest   │ │BestFit   │ │FlatRate│ │Tiered  │ │PeakHour │ Car Moto Truck Van Electric    │
+│    │First     │ │Strategy  │ │Strategy│ │Rate    │ │decorator│                      Car       │
+│    │Strategy  │ │          │ │        │ │Strategy│ │(wraps ↑)│                                │
+│    └──────────┘ └──────────┘ └────────┘ └────────┘ └─────────┘                                │
+│                                                                                               │
+│     ── TRANSACTION PLANE (per-ticket, no contention) ────────────────────────                 │
+│                                                                                               │
+│     «abstract»                 ┌──────────────────┐  settled by  ┌──────────────┐             │
+│    ┌──────────────┐  process   │ ParkingTicket    │─────────────►│ Payment      │             │
+│    │ Gate         │ ───────────│──────────────────│              │──────────────│             │
+│    │──────────────│            │- ticketId        │              │- amount      │             │
+│    │- gateId      │            │- spotId          │              │- method      │             │
+│    │+process(v)   │            │- entryTime       │              │- status      │             │
+│    └──────┬───────┘            │- status  (FSM)   │              │+process()    │             │
+│   inherits│                    │+markPaid()       │              └──────────────┘             │
+│     ┌─────┴────┐               │+markLost()       │                                           │
+│     ▼          ▼               │+markExited()     │                                           │
+│   EntryGate  ExitGate          └──────────────────┘                                           │
+└───────────────────────────────────────────────────────────────────────────────────────────────┘
+</pre>
+  </div>
 
-  class ParkingFloor {
-    -String floorId
-    -Map~SpotType,List~ParkingSpot~~ spots
-    -DisplayBoard board
-    +findFreeSpot(Vehicle) ParkingSpot
-    +releaseSpot(ParkingSpot)
-  }
-
-  class ParkingSpot {
-    <<abstract>>
-    -String spotId
-    -SpotType type
-    -Vehicle vehicle
-    -boolean free
-    +fits(Vehicle) boolean
-    +assign(Vehicle)
-    +release()
-  }
-  class CompactSpot
-  class LargeSpot
-  class MotorcycleSpot
-  class ElectricSpot
-  class HandicappedSpot
-
-  class Vehicle {
-    <<abstract>>
-    -String licensePlate
-    -VehicleType type
-  }
-  class Car
-  class Motorcycle
-  class Truck
-  class Van
-  class ElectricCar
-
-  class ParkingTicket {
-    -String ticketId
-    -String licensePlate
-    -String spotId
-    -LocalDateTime entryTime
-    -LocalDateTime exitTime
-    -TicketStatus status
-    -BigDecimal amount
-    +markPaid(BigDecimal)
-    +markLost()
-    +markExited()
-  }
-
-  class SpotAllocationStrategy {
-    <<interface>>
-    +allocate(Vehicle, List~ParkingFloor~) ParkingSpot
-  }
-  class NearestFirstStrategy
-  class BestFitStrategy
-
-  class PricingStrategy {
-    <<interface>>
-    +price(LocalDateTime, LocalDateTime, VehicleType) BigDecimal
-  }
-  class FlatRateStrategy
-  class TieredRateStrategy
-  class PeakHourStrategy
-
-  class Payment {
-    -String paymentId
-    -BigDecimal amount
-    -PaymentMethod method
-    -PaymentStatus status
-    +process() boolean
-  }
-
-  class DisplayBoard {
-    -String floorId
-    -Map~SpotType,Integer~ freeCounts
-    +onSpotChanged(SpotEvent)
-    +render() String
-  }
-
-  class Gate { <<abstract>> }
-  class EntryGate
-  class ExitGate
-
-  class Account { <<abstract>> }
-  class Admin
-  class ParkingAttendant
-
-  ParkingSpot <|-- CompactSpot
-  ParkingSpot <|-- LargeSpot
-  ParkingSpot <|-- MotorcycleSpot
-  ParkingSpot <|-- ElectricSpot
-  ParkingSpot <|-- HandicappedSpot
-
-  Vehicle <|-- Car
-  Vehicle <|-- Motorcycle
-  Vehicle <|-- Truck
-  Vehicle <|-- Van
-  Vehicle <|-- ElectricCar
-
-  SpotAllocationStrategy <|.. NearestFirstStrategy
-  SpotAllocationStrategy <|.. BestFitStrategy
-  PricingStrategy <|.. FlatRateStrategy
-  PricingStrategy <|.. TieredRateStrategy
-  PricingStrategy <|.. PeakHourStrategy
-
-  Gate <|-- EntryGate
-  Gate <|-- ExitGate
-  Account <|-- Admin
-  Account <|-- ParkingAttendant
-
-  ParkingLot "1" *-- "many" ParkingFloor
-  ParkingFloor "1" *-- "many" ParkingSpot
-  ParkingFloor "1" *-- "1" DisplayBoard
-  ParkingLot "1" --> "1" SpotAllocationStrategy
-  ParkingLot "1" --> "1" PricingStrategy
-  ParkingTicket "1" --> "0..*" Payment
-  ParkingSpot "0..1" --> "0..1" Vehicle
-  ParkingTicket --> ParkingSpot
+  <div class="g2">
+    <div class="card">
+      <h3 style="color:var(--orange)">Read the connectors</h3>
+      <ul>
+        <li><code>▼ inherits</code> <strong>Inheritance</strong> — the fan-out under <code>ParkingSpot</code> and <code>Vehicle</code>: <code>CompactSpot</code> is-a <code>ParkingSpot</code>, <code>ElectricCar</code> is-a <code>Vehicle</code>.</li>
+        <li><code>implements</code> <strong>Realization</strong> — the fan-out under the two <code>«interface»</code> boxes: <code>BestFitStrategy</code> implements <code>SpotAllocationStrategy</code>.</li>
+        <li><code>has ──►</code> <strong>Ownership</strong> — <code>ParkingLot</code> has <code>ParkingFloor</code>s has <code>ParkingSpot</code>s; that's the composition spine.</li>
+        <li><code>o─────►</code> <strong>Aggregation</strong> — a <code>ParkingSpot</code> <em>holds</em> a <code>Vehicle</code>, but the car outlives the parking session (the hollow circle = "references, doesn't own").</li>
+        <li><code>uses ──►</code> <strong>Association</strong> — <code>ParkingLot</code> uses a <code>SpotAllocationStrategy</code> and a <code>PricingStrategy</code>, but neither owns the other.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--blue)">Where change plugs in</h3>
+      <ul>
+        <li><strong>New vehicle / spot type</strong> → one new subclass under the abstract root. Nothing else moves.</li>
+        <li><strong>New allocation policy</strong> (VIP, off-peak rebalancing) → one new <code>SpotAllocationStrategy</code> implementation.</li>
+        <li><strong>New pricing rule</strong> → a new <code>PricingStrategy</code>, or wrap an existing one like <code>PeakHourStrategy</code> does (decorator).</li>
+        <li><strong>New board</strong> (LED at the gate) → another <code>SpotListener</code>; the spot keeps notifying, blind to who listens.</li>
+        <li>The <code>ParkingLot</code> orchestrator depends on <em>interfaces</em>, so none of the above forces an edit to it — that's the Open/Closed payoff.</li>
+      </ul>
     </div>
   </div>
+
+  <div class="highlight hl-blue"><strong>So in short —</strong> the diagram has two abstract roots (<code>Vehicle</code>, <code>ParkingSpot</code>) for the things that come in many flavours, two strategy interfaces (<code>SpotAllocationStrategy</code>, <code>PricingStrategy</code>) for the policies that vary, and one composition spine (<code>ParkingLot → ParkingFloor → ParkingSpot</code>) for the ownership. Everything the orchestrator touches, it touches through an interface — so the lot never needs editing when a new vehicle, spot, policy, or board shows up.</div>
 </div>
 
 <div class="divider"></div>
