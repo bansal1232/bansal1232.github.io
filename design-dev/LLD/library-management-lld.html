@@ -58,6 +58,8 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 @media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
 .diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
 .diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+.state-flow{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2rem;overflow-x:auto;margin-bottom:1rem}
+.state-flow pre{background:transparent;border:none;padding:0;margin:0;font-size:.72rem;line-height:1.7;color:var(--text)}
 .highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.88rem}
 .hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
 .highlight strong{font-weight:700}
@@ -309,33 +311,76 @@ erDiagram
 
 <div class="sec" id="s6">
   <span class="sec-tag tag-purple">Step 6</span>
-  <h2>Class Diagram</h2>
-  <div class="diagram-box"><div class="mermaid">
-classDiagram
-  class Library { -Catalog catalog -Map queues +checkout(member,barcode) +return(barcode) +reserve(member,isbn) }
-  class Catalog { +searchByTitle(q) +searchByAuthor(q) +searchBySubject(q) }
-  class Book { -String isbn -String title -List authors }
-  class BookItem { -String barcode -BookStatus status +checkout(memberId) +returnItem() +reserve() +markLost() }
-  class ReservationQueue { -Queue waitlist +enqueue(memberId) +dequeueNext() }
-  class FineStrategy { <<interface>> +compute(daysLate, member) BigDecimal }
-  class FlatRateFine
-  class StudentFine
-  class FacultyFine
-  class NotificationService { +onBookAvailable(memberId, isbn) }
-  class Account { <<abstract>> }
-  class Member
-  class Librarian
-  Account <|-- Member
-  Account <|-- Librarian
-  Book <|-- BookItem
-  FineStrategy <|.. FlatRateFine
-  FineStrategy <|.. StudentFine
-  FineStrategy <|.. FacultyFine
-  Library --> Catalog
-  Library --> ReservationQueue
-  Library --> FineStrategy
-  Library --> NotificationService
-  </div></div>
+  <h2>Class Diagram (Draw This on Whiteboard)</h2>
+  <div class="state-flow">
+<pre>
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              CLASS RELATIONSHIPS                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                                │
+│   ┌──────────────────────┐                                                     │
+│   │      Library          │  «Singleton»                                       │
+│   │──────────────────────│                                                     │
+│   │- Catalog catalog     │ ──has──►┌──────────────────────┐                    │
+│   │- Map queues          │         │      Catalog          │ «Repository»       │
+│   │- Map fines           │         │──────────────────────│                    │
+│   │- EventBus bus        │         │+searchByTitle(q)      │                    │
+│   │+checkout(member,bc)  │         │+searchByAuthor(q)     │                    │
+│   │+returnItem(barcode)  │         │+searchBySubject(q)    │                    │
+│   │+reserve(member,isbn) │         └──────────┬───────────┘                    │
+│   └───┬────────┬─────┬───┘                    │ finds                          │
+│       │ has    │ has │ has                     ▼                                │
+│       │        │     │              ┌──────────────────────┐  «abstract»        │
+│       │        │     │              │        Book           │                  │
+│       ▼        │     │              │──────────────────────│                  │
+│ ┌──────────────┐│     │             │- String isbn          │                  │
+│ │Reservation    ││     │            │- String title         │                  │
+│ │Queue          ││     │            │- List authors         │                  │
+│ │──────────────││     │             └──────────┬───────────┘                  │
+│ │- Deque waitlist│     │                        │ extends                       │
+│ │+enqueue(mId)  ││     │                        ▼                               │
+│ │+dequeueNext() ││     │             ┌──────────────────────┐                   │
+│ │+positionOf()  ││     │             │      BookItem         │ «State Machine»   │
+│ └──────────────┘│     │             │──────────────────────│                   │
+│                 │     │             │- String barcode       │                   │
+│ ┌───────────────▼──┐  │             │- BookStatus status    │                   │
+│ │NotificationService│  │            │+checkout(memberId)    │                   │
+│ │ «Observer»        │  │            │+returnItem()          │                   │
+│ │──────────────────│  │             │+reserve() +markLost() │                   │
+│ │+onBookAvailable() │  │            └──────────────────────┘                   │
+│ └──────────────────┘  │              AVAILABLE→LOANED→RESERVED→…  (LOST sink)    │
+│                       │ uses                                                   │
+│                       ▼                                                        │
+│              ┌──────────────────────┐                                          │
+│              │  «interface»          │       ┌──────────────┐  «abstract»       │
+│              │   FineStrategy        │       │   Account     │                  │
+│              │──────────────────────│       │──────────────│                  │
+│              │+compute(daysLate, m)  │       └──────┬───────┘                  │
+│              └──────────┬───────────┘          ┌────┴─────┐                    │
+│            ┌────────┬───┴────┬────────┐        ▼          ▼                    │
+│            ▼        ▼        ▼        ▼  ┌─────────┐ ┌──────────┐               │
+│      ┌──────────┐┌────────┐┌────────┐   │ Member  │ │Librarian │               │
+│      │FlatRate  ││Student ││Faculty │   └─────────┘ └──────────┘               │
+│      │Fine      ││Fine    ││Fine    │                                          │
+│      └──────────┘└────────┘└────────┘                                          │
+│                                                                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  Relationships at a glance:
+  ┌──────────────────────────┬───────────────┬──────────────────────────────────┐
+  │ Pair                     │ Relationship  │ Meaning                          │
+  ├──────────────────────────┼───────────────┼──────────────────────────────────┤
+  │ Book ◄- BookItem         │ inheritance   │ a copy IS-A bibliographic record │
+  │ Account ◄- Member/Librar │ inheritance   │ both are accounts                │
+  │ FineStrategy ◄.. *Fine   │ realization   │ each fine rule implements it     │
+  │ Library --► Catalog      │ composition   │ Library owns the search facade   │
+  │ Library --► ReservationQ │ composition   │ one FIFO queue per Book ISBN     │
+  │ Library --► FineStrategy │ association   │ picks a strategy per member type │
+  │ Library --► Notification │ association   │ publishes events to the observer │
+  │ Catalog --► Book         │ association   │ resolves searches to records     │
+  └──────────────────────────┴───────────────┴──────────────────────────────────┘
+</pre>
+  </div>
 </div>
 
 <div class="divider"></div>

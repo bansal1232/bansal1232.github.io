@@ -58,6 +58,8 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 @media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
 .diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
 .diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+.state-flow{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2rem;overflow-x:auto;margin-bottom:1rem}
+.state-flow pre{background:transparent;border:none;padding:0;margin:0;font-size:.72rem;line-height:1.7;color:var(--text)}
 .highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.88rem}
 .hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
 .highlight strong{font-weight:700}
@@ -317,34 +319,76 @@ erDiagram
 
 <div class="sec" id="s6">
   <span class="sec-tag tag-purple">Step 6</span>
-  <h2>Class Diagram</h2>
-  <div class="diagram-box"><div class="mermaid">
-classDiagram
-  class BookingService { -SeatLockManager locker -PricingStrategy pricer -PaymentAdapter pay +book(showId,seatIds,custId) Booking +cancel(bookingId) }
-  class SeatLockManager { +tryLock(seatIds, custId, ttl) boolean +release(seatIds, custId) +confirm(seatIds, custId) }
-  class ShowSeat { -SeatStatus status -String lockedBy -LocalDateTime lockedUntil +lock(custId) +book() +release() }
-  class PricingStrategy { <<interface>> +price(ShowSeat, Show) BigDecimal }
-  class FlatRate
-  class SeatTypeMultiplier
-  class PeakHourMultiplier
-  class PaymentAdapter { <<interface>> +charge(amount, idempKey) PaymentResult +refund(paymentId) }
-  class LockExpiryWorker { +run() }
-  class NotificationService
-  class Account { <<abstract>> }
-  class Customer
-  class Admin
-  class FrontDeskOfficer
-  Account <|-- Customer
-  Account <|-- Admin
-  Account <|-- FrontDeskOfficer
-  PricingStrategy <|.. FlatRate
-  PricingStrategy <|.. SeatTypeMultiplier
-  PricingStrategy <|.. PeakHourMultiplier
-  BookingService --> SeatLockManager
-  BookingService --> PricingStrategy
-  BookingService --> PaymentAdapter
-  BookingService --> ShowSeat
-  </div></div>
+  <h2>Class Diagram (Draw This on Whiteboard)</h2>
+  <div class="state-flow">
+<pre>
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              CLASS RELATIONSHIPS                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                                │
+│   ┌──────────────────────┐  «Saga orchestrator»                                │
+│   │     BookingService    │                                                    │
+│   │──────────────────────│                                                     │
+│   │- SeatLockManager locker│ ──┐                                               │
+│   │- PricingStrategy pricer│   │                                               │
+│   │- PaymentAdapter   pay │   │ has / uses                                     │
+│   │- EventBus         bus │   │                                                │
+│   │+book(show,seats,cust)│   │                                                 │
+│   │+cancel(bookingId)    │   │                                                 │
+│   └───┬──────┬──────┬─────┘   │                                                │
+│       │      │      │         │                                                │
+│       ▼      │      │         ▼                                                │
+│ ┌──────────────┐│    │  ┌──────────────────────┐                               │
+│ │SeatLockManager││    │  │      ShowSeat         │ «State Machine»              │
+│ │──────────────││    │  │──────────────────────│                              │
+│ │+tryLockAll() ││    │  │- SeatStatus status    │                              │
+│ │+release()    ││    │  │- String lockedBy      │                              │
+│ │+confirm()    ││    │  │- LocalDateTime        │                              │
+│ └──────────────┘│    │  │       lockedUntil    │                               │
+│   (SETNX + TTL) │    │  │+tryLock(cust,ttl)     │                              │
+│                 │    │  │+book() +release()     │                              │
+│ ┌───────────────▼─┐  │  │+cancelBooking()       │                              │
+│ │  PaymentAdapter  │  │  └──────────────────────┘                              │
+│ │  «interface»     │  │   AVAILABLE→LOCKED→BOOKED→AVAILABLE                      │
+│ │─────────────────│  │                                                         │
+│ │+charge(amt,key)  │  │  ┌──────────────────────┐                              │
+│ │+refund(paymentId)│  └─►│  «interface»          │                              │
+│ └─────────────────┘     │   PricingStrategy      │                             │
+│                          │──────────────────────│                             │
+│ ┌─────────────────┐      │+price(ShowSeat, Show) │                             │
+│ │LockExpiryWorker  │     └──────────┬───────────┘                             │
+│ │+run() (reaper)   │       ┌────────┼─────────────┐  (Decorator stack)         │
+│ └─────────────────┘        ▼        ▼             ▼                            │
+│ ┌─────────────────┐  ┌──────────┐┌──────────────┐┌────────────────┐            │
+│ │NotificationSvc   │  │FlatRate  ││SeatType      ││PeakHour        │            │
+│ │ «Observer»       │  │ (base)   ││Multiplier    ││Multiplier      │            │
+│ └─────────────────┘  └──────────┘└──────────────┘└────────────────┘            │
+│                                                                                │
+│   ┌──────────────┐  «abstract»                                                 │
+│   │   Account     │                                                            │
+│   │──────────────│        ┌──────────┬──────────┬──────────────────┐           │
+│   └──────┬───────┘        ▼          ▼          ▼                   │           │
+│          └──────────►┌─────────┐┌────────┐┌──────────────────┐     │           │
+│                      │Customer ││ Admin  ││FrontDeskOfficer  │     │           │
+│                      └─────────┘└────────┘└──────────────────┘     │           │
+│                                                                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  Relationships at a glance:
+  ┌──────────────────────────┬───────────────┬──────────────────────────────────┐
+  │ Pair                     │ Relationship  │ Meaning                          │
+  ├──────────────────────────┼───────────────┼──────────────────────────────────┤
+  │ PricingStrategy ◄.. *    │ realization   │ FlatRate/SeatType/PeakHour impl. │
+  │ PricingStrategy o-- inner│ decorator     │ multipliers wrap an inner pricer │
+  │ Account ◄- Customer/...  │ inheritance   │ all are accounts                 │
+  │ BookingService --► Lock  │ composition   │ owns the TTL seat-lock primitive │
+  │ BookingService --► Pay   │ association   │ charges/refunds via the adapter  │
+  │ BookingService --► Show  │ association   │ drives each seat's state machine │
+  │ BookingService --► Price │ association   │ quotes total via strategy chain  │
+  │ NotificationSvc subscribes│ observer     │ listens to booking events        │
+  └──────────────────────────┴───────────────┴──────────────────────────────────┘
+</pre>
+  </div>
 </div>
 
 <div class="divider"></div>

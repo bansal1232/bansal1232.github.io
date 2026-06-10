@@ -63,6 +63,8 @@ pre{background:#090d12;border:1px solid var(--border);border-radius:0 8px 8px 8p
 @media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
 .diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
 .diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+.state-flow{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2rem;overflow-x:auto;margin-bottom:1rem}
+.state-flow pre{background:transparent;border:none;padding:0;margin:0;font-size:.72rem;line-height:1.7;color:var(--text)}
 .highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.88rem}
 .hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
 .highlight strong{font-weight:700}
@@ -332,62 +334,97 @@ erDiagram
 
 <div class="sec" id="s6">
   <span class="sec-tag tag-purple">Step 6</span>
-  <h2>Class Diagram</h2>
-  <div class="diagram-box"><div class="mermaid">
-classDiagram
-  class ATM {
-    -ATMState state
-    -Session session
-    -CardReader reader
-    -Keypad keypad
-    -Screen screen
-    -CashDispenser dispenser
-    -DepositSlot depositSlot
-    -Printer printer
-    -BankAdapter bank
-    -AuditLog log
-    +onEvent(Event) void
-    +setState(ATMState) void
-  }
-  class ATMState { <<interface>> +handle(ATM, Event) }
-  class IdleState
-  class CardInsertedState
-  class AuthenticatingState
-  class SelectingTxnState
-  class ProcessingState
-  class DispensingState
-  class ReceiptState
-  ATMState <|.. IdleState
-  ATMState <|.. CardInsertedState
-  ATMState <|.. AuthenticatingState
-  ATMState <|.. SelectingTxnState
-  ATMState <|.. ProcessingState
-  ATMState <|.. DispensingState
-  ATMState <|.. ReceiptState
+  <h2>Class Diagram (Draw This on Whiteboard)</h2>
+  <div class="state-flow">
+<pre>
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              CLASS RELATIONSHIPS                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                                │
+│                              ┌────────────────┐                                │
+│                              │  «interface»    │                                │
+│                              │    ATMState     │                                │
+│                              │────────────────│                                │
+│                              │+handle(ATM,Event)│                               │
+│                              └───────┬────────┘                                │
+│        ┌──────────┬──────────┬───────┼────────┬──────────┬──────────┐          │
+│        ▼          ▼          ▼       ▼        ▼          ▼          ▼          │
+│   ┌────────┐ ┌────────┐ ┌────────┐ ┌──────┐ ┌────────┐ ┌────────┐ ┌────────┐  │
+│   │ Idle   │ │ Card   │ │ Authen │ │Select│ │Process │ │Dispen  │ │Receipt │  │
+│   │ State  │ │Inserted│ │ticating│ │TxnSt │ │ingState│ │singStat│ │ State  │  │
+│   └────────┘ └────────┘ └────────┘ └──────┘ └────────┘ └────────┘ └────────┘  │
+│                                  (+ FaultedState)                              │
+│                                                                                │
+│   ┌──────────────────────┐                                                     │
+│   │       ATM             │  has──► CardReader, Keypad, Screen,                 │
+│   │  «Singleton»          │         DepositSlot, Printer                        │
+│   │──────────────────────│                                                     │
+│   │- ATMState state      │ ──────► (current ATMState)                          │
+│   │- Session session     │                                                     │
+│   │- CashDispenser disp  │ ──┐                                                  │
+│   │- BankAdapter  bank   │ ──┼──► (delegates work to these)                     │
+│   │- AuditLog     log    │   │                                                  │
+│   │+onEvent(Event)       │   │                                                  │
+│   │+setState(ATMState)   │   │                                                  │
+│   └──────────┬───────────┘   │                                                  │
+│              │ runs           │                                                 │
+│              ▼                ▼                                                  │
+│   ┌──────────────────────┐  ┌──────────────────────┐                            │
+│   │  «abstract»           │  │  «interface»          │                           │
+│   │   Transaction         │  │   BankAdapter         │                           │
+│   │──────────────────────│  │──────────────────────│                           │
+│   │# String txnId        │  │+authenticate(card,pin)│                           │
+│   │# TransactionStatus   │  │+authorize(a,amt,txn) │                            │
+│   │# BigDecimal amount   │  │+commit(txnId)         │                           │
+│   │+execute(ATM,Account) │  │+reverse(txnId)        │                           │
+│   │#deviceAction()       │  │+getBalance(Account)   │                           │
+│   └──────────┬───────────┘  └──────────────────────┘                            │
+│      ┌────┬──┴──┬─────┬──────────┐                                              │
+│      ▼    ▼     ▼     ▼          ▼                                              │
+│ ┌────────┐┌──────┐┌──────┐┌────────┐┌──────────┐                                │
+│ │Withdraw││Cash  ││Check ││Transfer││Balance   │                                │
+│ │        ││Deposit││Deposit││        ││Inquiry   │                               │
+│ └────────┘└──────┘└──────┘└────────┘└──────────┘                                │
+│                                                                                │
+│   ┌──────────────────────┐  has──►┌──────────────────────┐                      │
+│   │   CashDispenser       │        │  «abstract»           │                     │
+│   │──────────────────────│        │  DenominationHandler  │                     │
+│   │- DenominationHandler  │        │──────────────────────│                     │
+│   │        chain         │        │# int denomination     │                     │
+│   │+dispense(amount) Map │        │# CashCassette cassette│                     │
+│   └──────────────────────┘        │# DenominationHandler  │                     │
+│                                    │           next       │ ──┐ chain            │
+│   ┌──────────────────────┐         │+setNext(h)            │   │ (self-ref)       │
+│   │  «abstract»           │         │+handle(amount,out)    │ ◄─┘                 │
+│   │     Account           │         └──────────────────────┘                     │
+│   │──────────────────────│                                                      │
+│   │# String accountNumber│         ₹500Handler → ₹100Handler → ₹50Handler        │
+│   │# BigDecimal balance  │                                                      │
+│   │# BigDecimal available│                                                      │
+│   └──────────┬───────────┘                                                      │
+│       ┌──────┴───────┐                                                          │
+│       ▼              ▼                                                          │
+│ ┌────────────┐ ┌──────────────┐                                                 │
+│ │SavingAccount│ │CheckingAccount│                                                │
+│ └────────────┘ └──────────────┘                                                 │
+│                                                                                │
+└──────────────────────────────────────────────────────────────────────────────┘
 
-  class Transaction { <<abstract>> +execute(ATM, Account) Receipt }
-  class Withdraw
-  class CashDeposit
-  class CheckDeposit
-  class Transfer
-  class BalanceInquiry
-  Transaction <|-- Withdraw
-  Transaction <|-- CashDeposit
-  Transaction <|-- CheckDeposit
-  Transaction <|-- Transfer
-  Transaction <|-- BalanceInquiry
-
-  class Account { <<abstract>> }
-  Account <|-- SavingAccount
-  Account <|-- CheckingAccount
-
-  class CashDispenser { -DenominationHandler chain +dispense(amount) Map }
-  class DenominationHandler { <<abstract>> +setNext(h) +handle(amount, out) }
-
-  ATM --> ATMState
-  ATM --> Transaction
-  CashDispenser --> DenominationHandler
-  </div></div>
+  Relationships at a glance:
+  ┌─────────────────────┬──────────────────┬──────────────────────────────────┐
+  │ Pair                │ Relationship     │ Meaning                          │
+  ├─────────────────────┼──────────────────┼──────────────────────────────────┤
+  │ ATMState ◄.. States │ realization      │ each state class implements it   │
+  │ Transaction ◄- subs │ inheritance      │ Withdraw/Deposit/... extend it   │
+  │ Account ◄- subs     │ inheritance      │ Saving / Checking extend it      │
+  │ ATM --► ATMState    │ association      │ ATM holds the current state      │
+  │ ATM --► Transaction │ association      │ ATM runs the selected strategy   │
+  │ ATM --► BankAdapter │ association      │ ATM talks to the bank boundary   │
+  │ CashDispenser --►   │ composition      │ owns the DenominationHandler     │
+  │   DenominationHandler│                 │   chain (₹500→₹100→₹50)          │
+  └─────────────────────┴──────────────────┴──────────────────────────────────┘
+</pre>
+  </div>
 </div>
 
 <div class="divider"></div>
