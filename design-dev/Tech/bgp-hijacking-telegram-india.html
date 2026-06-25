@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/analytics.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BGP Hijacking, Explained Simply — and the Right Ways to Block an App in a Country</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="../../css/diagram-zoom.css"/>
+<link rel="stylesheet" href="../../css/likes.css"/>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="../../js/diagram-zoom.js" defer></script>
+<script src="../../js/likes.js" defer></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      fontSize: '13px',
+      darkMode: true,
+      background: '#11161e',
+      primaryColor: '#171d27',
+      primaryTextColor: '#d4dae5',
+      primaryBorderColor: '#e8743b',
+      lineColor: '#7b8599',
+      secondaryColor: '#11161e',
+      tertiaryColor: '#171d27'
+    }
+  });
+</script>
+<style>
+:root{
+  --bg:#0b0f14;--surface:#11161e;--surface2:#171d27;--border:#232b38;
+  --text:#d4dae5;--muted:#7b8599;--heading:#f0f2f7;
+  --orange:#e8743b;--orange-d:rgba(232,116,59,.12);
+  --green:#38b265;--green-d:rgba(56,178,101,.1);
+  --blue:#4a90d9;--blue-d:rgba(74,144,217,.1);
+  --purple:#9b72cf;--purple-d:rgba(155,114,207,.1);
+  --red:#e05252;--red-d:rgba(224,82,82,.1);
+  --yellow:#d4a838;--yellow-d:rgba(212,168,56,.12);
+  --cyan:#3cbfbf;--cyan-d:rgba(60,191,191,.1);
+  --pink:#ec5d8a;--pink-d:rgba(236,93,138,.12);
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.72}
+::selection{background:var(--orange);color:#fff}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(165deg,#0f1520 0%,#161e2e 50%,#12171f 100%);padding:4.5rem 2rem 3.5rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(ellipse at 40% 80%,rgba(232,116,59,.06) 0%,transparent 60%),radial-gradient(ellipse at 75% 20%,rgba(74,144,217,.05) 0%,transparent 55%);pointer-events:none}
+.back-btn{position:absolute;top:1.5rem;left:1.8rem;z-index:2;display:inline-flex;align-items:center;gap:.4rem;color:var(--orange);text-decoration:none;font-weight:600;font-size:.82rem;padding:.45rem .9rem;border:1px solid var(--border);border-radius:100px;background:rgba(17,22,30,.6);backdrop-filter:blur(6px);transition:transform .2s,border-color .2s,color .2s}
+.back-btn:hover{transform:translateX(-3px);border-color:var(--orange);color:#ffa675}
+@media(max-width:600px){.back-btn{top:1rem;left:1rem;font-size:.75rem;padding:.35rem .75rem}}
+.hero .pill{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);background:var(--orange-d);padding:.38rem 1.1rem;border-radius:100px;margin-bottom:1rem;position:relative;z-index:1}
+.hero h1{font-family:'Playfair Display',serif;font-weight:900;font-size:3rem;color:var(--heading);letter-spacing:-.03em;line-height:1.12;position:relative;z-index:1}
+.hero h1 span{color:var(--orange)}
+.hero .sub{color:var(--muted);font-size:1rem;margin-top:.55rem;position:relative;z-index:1;max-width:760px;margin-left:auto;margin-right:auto}
+
+.wrap{min-width:0}
+
+/* ─── LAYOUT ─── */
+.layout{max-width:1920px;margin:0 auto;padding:3rem 4rem 5rem;display:grid;grid-template-columns:280px minmax(0,1fr);gap:4.5rem;align-items:start}
+@media(max-width:1200px){.layout{padding:3rem 2rem 5rem;gap:3rem}}
+@media(max-width:960px){.layout{grid-template-columns:1fr;gap:1.5rem;padding:2rem 1.2rem 4rem}}
+
+/* ─── SIDEBAR TOC ─── */
+.sidebar{position:sticky;top:2rem;font-size:.88rem}
+@media(max-width:960px){.sidebar{position:static;top:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem 1.4rem}}
+.sidebar h4{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-bottom:.85rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.sidebar ol{list-style:none;padding:0;counter-reset:sbtoc}
+.sidebar ol li{counter-increment:sbtoc;margin-bottom:.35rem}
+.sidebar ol li::before{content:counter(sbtoc,decimal-leading-zero);display:inline-block;width:1.8rem;color:var(--orange);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.75rem}
+.sidebar a{color:var(--muted);text-decoration:none;transition:color .15s;font-size:.9rem}
+.sidebar a:hover{color:var(--orange)}
+@media(max-width:960px){.sidebar ol{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 1rem}}
+@media(max-width:560px){.sidebar ol{grid-template-columns:1fr}}
+
+.sec{scroll-margin-top:1.5rem;margin-bottom:3.5rem}
+.sec:last-child{margin-bottom:0}
+.layout{padding-bottom:2.5rem}
+.sec-tag{display:inline-flex;align-items:center;gap:.4rem;font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;padding:.3rem .85rem;border-radius:5px;margin-bottom:.7rem}
+.tag-orange{background:var(--orange-d);color:var(--orange)}
+.tag-green{background:var(--green-d);color:var(--green)}
+.tag-blue{background:var(--blue-d);color:var(--blue)}
+.tag-purple{background:var(--purple-d);color:var(--purple)}
+.tag-yellow{background:var(--yellow-d);color:var(--yellow)}
+.tag-red{background:var(--red-d);color:var(--red)}
+.tag-cyan{background:var(--cyan-d);color:var(--cyan)}
+
+.sec h2{font-family:'Playfair Display',serif;font-weight:700;font-size:1.7rem;color:var(--heading);letter-spacing:-.01em;margin-bottom:.35rem}
+.sec>p{color:var(--text);font-size:.95rem;margin-bottom:1.5rem;max-width:820px}
+.sec h3{font-size:1.2rem;font-weight:700;color:var(--heading);margin:1.6rem 0 .8rem}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem 1.65rem;margin-bottom:.85rem;transition:border-color .2s}
+.card:hover{border-color:rgba(232,116,59,.25)}
+.card h3{font-size:1.05rem;font-weight:700;color:var(--heading);margin-bottom:.45rem;display:flex;align-items:center;gap:.45rem}
+.card p,.card li{font-size:.9rem;color:var(--text);line-height:1.75}
+.card ul{list-style:none;margin-top:.4rem}
+.card ul li{padding-left:1.2rem;position:relative;margin-bottom:.25rem}
+.card ul li::before{content:'›';position:absolute;left:0;color:var(--orange);font-weight:700;font-size:1.1rem;line-height:1.55}
+.card code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.05rem .35rem;border-radius:3px}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.85rem}
+@media(max-width:700px){.g2,.g3{grid-template-columns:1fr}.hero h1{font-size:2.1rem}.wrap{padding:1.5rem 1rem 4rem}}
+
+/* ── DIAGRAM ── */
+.diagram-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.6rem;overflow-x:auto;margin-bottom:1rem}
+.diagram-box .mermaid{display:flex;justify-content:center;min-height:100px}
+
+/* ── HIGHLIGHT BOX ── */
+.highlight{border-radius:var(--r);padding:1.15rem 1.4rem;margin-bottom:.85rem;font-size:.9rem}
+.hl-orange{background:var(--orange-d);border-left:3px solid var(--orange);color:var(--orange)}
+.hl-green{background:var(--green-d);border-left:3px solid var(--green);color:var(--green)}
+.hl-blue{background:var(--blue-d);border-left:3px solid var(--blue);color:var(--blue)}
+.hl-red{background:var(--red-d);border-left:3px solid var(--red);color:var(--red)}
+.hl-yellow{background:var(--yellow-d);border-left:3px solid var(--yellow);color:var(--yellow)}
+.hl-purple{background:var(--purple-d);border-left:3px solid var(--purple);color:var(--purple)}
+.hl-cyan{background:var(--cyan-d);border-left:3px solid var(--cyan);color:var(--cyan)}
+.highlight strong{font-weight:700}
+.highlight code{font-family:'JetBrains Mono',monospace;font-size:.78rem;background:rgba(0,0,0,.25);padding:.05rem .35rem;border-radius:3px;color:inherit}
+
+.divider{height:1px;background:var(--border);margin:3rem 0}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem}
+.tbl th,.tbl td{padding:.6rem .85rem;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+.tbl th{background:var(--surface2);color:var(--heading);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}
+.tbl td{color:var(--text)}
+.tbl td code{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--orange);background:var(--orange-d);padding:.1rem .4rem;border-radius:3px}
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:1rem}
+
+/* ── CHECK LIST ── */
+.checklist{list-style:none;padding:0;margin:0}
+.checklist li{padding:.55rem 0 .55rem 1.8rem;position:relative;font-size:.9rem;color:var(--text);border-bottom:1px dashed var(--border)}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{content:'✓';position:absolute;left:.2rem;top:.55rem;color:var(--green);font-weight:800;font-size:.95rem}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-btn" href="../../design-development.html">← Back to Design &amp; Development</a>
+  <div class="pill">Internet Routing · Simple Guide</div>
+  <h1>BGP Hijacking, <span>Explained Simply</span></h1>
+  <p class="sub">What it is, why it's dangerous — and the cleaner ways a country can block an app inside its own borders without breaking the internet for everyone else.</p>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h4>On This Page</h4>
+    <ol>
+      <li><a href="#s1">The internet works like a postal system</a></li>
+      <li><a href="#s2">What is BGP?</a></li>
+      <li><a href="#s3">What is BGP hijacking?</a></li>
+      <li><a href="#s4">Why it's so dangerous</a></li>
+      <li><a href="#s5">Better ways to block an app in a country</a></li>
+      <li><a href="#s6">Quick comparison</a></li>
+      <li><a href="#s7">Key takeaways</a></li>
+    </ol>
+  </aside>
+
+  <div class="wrap">
+
+    <!-- ───────────────── S1 ───────────────── -->
+    <div class="sec" id="s1">
+      <span class="sec-tag tag-blue">Foundations</span>
+      <h2>The internet works like a postal system</h2>
+      <p>Before we can understand BGP hijacking, we need one simple picture. The internet is not one big machine — it's thousands of separate networks (run by ISPs, companies, and clouds) that agree to pass traffic to each other. Think of them as <strong>post offices</strong>.</p>
+      <p>When you open an app, your data is like a letter. You don't decide the route — you just hand the letter to your local post office (your ISP). It looks at the destination and forwards it to the next post office, which forwards it onward, until it reaches the right one. Each post office only needs to know <em>one</em> thing: <strong>"for this destination, who do I hand the letter to next?"</strong></p>
+
+      <div class="g2">
+        <div class="card">
+          <h3>IP address block = a postal code</h3>
+          <p>Every app's servers live at a range of IP addresses, written like <code>149.154.160.0/20</code>. Think of it as a <strong>postal code</strong> — a region of addresses, not one single house.</p>
+        </div>
+        <div class="card">
+          <h3>Network (AS) = a post office</h3>
+          <p>Each network is called an <strong>Autonomous System (AS)</strong> and gets a unique number. It's the post office that says: <em>"I can deliver mail for these postal codes — route through me."</em></p>
+        </div>
+      </div>
+
+      <div class="highlight hl-blue"><strong>So what:</strong> reaching any app means trusting a chain of post offices to forward your data correctly, based on a shared map of "which network owns which addresses." The system that builds that map is called BGP.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ───────────────── S2 ───────────────── -->
+    <div class="sec" id="s2">
+      <span class="sec-tag tag-green">The Protocol</span>
+      <h2>What is BGP?</h2>
+      <p><strong>BGP (Border Gateway Protocol)</strong> is simply the language post offices use to tell each other which addresses they can deliver to. One network <em>announces</em> to its neighbours: <em>"I own this address block — send that traffic to me."</em> Each neighbour writes it down and passes the message along. That's how the internet's whole map gets built.</p>
+
+      <div class="diagram-box">
+        <div class="mermaid">
+flowchart LR
+  APP([App's servers<br/>own 149.154.160.0/20])
+  N1[Network A]
+  N2[Network B]
+  ISP[Your ISP]
+  YOU([You])
+
+  APP -->|"I own this address block"| N1
+  N1 -->|"reach it through me"| N2
+  N2 -->|"reach it through me"| ISP
+  ISP -->|"forwards your traffic"| YOU
+
+  style APP fill:#38b265,stroke:#38b265,color:#fff
+  style YOU fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style ISP fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style N1 fill:#171d27,stroke:#7b8599,color:#d4dae5
+  style N2 fill:#171d27,stroke:#7b8599,color:#d4dae5
+        </div>
+      </div>
+
+      <p>There's one rule to remember: if a network hears about the <strong>same</strong> address block from two directions, it picks the one that looks <strong>"closer" or more specific</strong>. The winner gets <em>all</em> the traffic for that block. That tie-breaker is exactly the lever a hijacker pulls.</p>
+
+      <div class="highlight hl-green"><strong>So what:</strong> BGP is just networks shouting "I can deliver to these addresses!" and everyone believing them. The internet's map is only as honest as those announcements.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ───────────────── S3 ───────────────── -->
+    <div class="sec" id="s3">
+      <span class="sec-tag tag-red">The Problem</span>
+      <h2>What is BGP hijacking?</h2>
+      <p>Here's the shocking part: when a network announces <em>"I own these addresses,"</em> <strong>nobody checks if it's true.</strong> BGP was designed decades ago between a few trusting networks, so it runs on the honour system — it has no built-in way to verify ownership.</p>
+      <p>So if a network announces an address block it does <strong>not</strong> own, neighbours believe it and start sending that traffic the wrong way. That's <strong>BGP hijacking</strong> in one line:</p>
+
+      <div class="highlight hl-purple"><strong>BGP hijacking</strong> = a network claims to own IP addresses that actually belong to someone else, so traffic meant for the real owner gets redirected to the impostor — where it can be dropped (app goes offline) or spied on (man-in-the-middle).</p>
+
+      <div class="diagram-box">
+        <div class="mermaid">
+flowchart LR
+  YOU([You]) --> ISP[Your ISP]
+  ISP -->|"believes the false claim"| HJ[Impostor network<br/>falsely claims the app's addresses]
+  HJ -.->|"traffic dropped or spied on"| X((✕))
+  APP([Real app servers]):::ghost
+  classDef ghost fill:#171d27,stroke:#545d6e,color:#7b8599,stroke-dasharray:4 4
+  style YOU fill:#4a90d9,stroke:#4a90d9,color:#fff
+  style ISP fill:#9b72cf,stroke:#9b72cf,color:#fff
+  style HJ fill:#e05252,stroke:#e05252,color:#fff
+  style X fill:#e05252,stroke:#e05252,color:#fff
+        </div>
+      </div>
+
+      <p>It comes in two intents, and the difference matters:</p>
+      <div class="g2">
+        <div class="card" style="border-color:rgba(212,168,56,.3)">
+          <h3>⚠️ Accidental (a "route leak")</h3>
+          <p>The most common case — an engineer makes a config mistake, or a network forgets to filter an announcement, and a route escapes that should have stayed internal. No malice, just a slip.</p>
+        </div>
+        <div class="card" style="border-color:rgba(224,82,82,.3)">
+          <h3>🚨 Deliberate</h3>
+          <p>An attacker claims someone's addresses on purpose — to knock a service offline, intercept traffic, or steal data — then disappears.</p>
+        </div>
+      </div>
+
+      <div class="highlight hl-yellow"><strong>Key point:</strong> from the traffic's point of view, accidental and deliberate hijacks look <em>identical</em> — data simply goes to the wrong network. You can't tell intent from the routing alone.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ───────────────── S4 ───────────────── -->
+    <div class="sec" id="s4">
+      <span class="sec-tag tag-orange">Why It Matters</span>
+      <h2>Why it's so dangerous</h2>
+      <p>The whole danger of BGP hijacking is that it has <strong>no respect for borders</strong>. BGP is a <em>global</em> system — an announcement made in one country can spread to networks all over the world in seconds. So if a network tries to redirect an app's traffic but the announcement isn't kept strictly internal, it can <strong>leak worldwide</strong> and break the app for people in completely unrelated countries.</p>
+
+      <div class="g3">
+        <div class="card">
+          <h3>It's global by default</h3>
+          <p>A route meant for "my own users" can escape to international networks. Now their users are affected too — even though the original intent was local.</p>
+        </div>
+        <div class="card">
+          <h3>It spreads fast, undoes slow</h3>
+          <p>A false route ripples across the internet in seconds. Pulling it back means waiting for every network that learned it to hear the correction. The damage is done long before cleanup finishes.</p>
+        </div>
+        <div class="card">
+          <h3>It's silent</h3>
+          <p>No alarm goes off. Users just see the app "not working" with no error explaining why. Only engineers watching global routing tables can spot it.</p>
+        </div>
+      </div>
+
+      <div class="highlight hl-red"><strong>Bottom line:</strong> BGP hijacking is the wrong tool for blocking an app in one country. It's like trying to close one shop's door by rerouting the entire city's mail — the side effects spill far beyond where you intended. There are cleaner, contained ways to do it.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ───────────────── S5 ───────────────── -->
+    <div class="sec" id="s5">
+      <span class="sec-tag tag-cyan">The Alternatives</span>
+      <h2>Better ways to block an app in a country</h2>
+      <p>If a country genuinely needs to restrict an app inside its own borders, there are well-understood techniques that stay <strong>contained to that country's own networks</strong> — they don't leak onto the global internet the way a bad BGP announcement does. Here are the main ones, from simplest to strongest.</p>
+
+      <div class="card">
+        <h3><span style="color:var(--green)">1.</span> DNS blocking (the simplest)</h3>
+        <p><strong>What it is:</strong> DNS is the internet's phone book — it turns a name like <code>app.com</code> into an IP address. ISPs in the country are told to make their DNS servers refuse to answer for the app's name, so devices can't find its address in the first place.</p>
+        <p><strong>Stays contained:</strong> it only affects the DNS servers inside that country. Nobody abroad is touched.</p>
+        <p><strong>Trade-off:</strong> easy to bypass — users can just switch to a public DNS (like <code>8.8.8.8</code>) or use a VPN. It's a speed bump, not a wall.</p>
+      </div>
+
+      <div class="card">
+        <h3><span style="color:var(--blue)">2.</span> IP / firewall blocking</h3>
+        <p><strong>What it is:</strong> ISPs configure their own firewalls to drop traffic going to the app's known IP addresses. The block lives inside the ISP's network only.</p>
+        <p><strong>Stays contained:</strong> a firewall rule affects only that ISP's own traffic — unlike a BGP announcement, it is never advertised to other networks, so it can't leak globally.</p>
+        <p><strong>Trade-off:</strong> apps on big clouds share IPs with many other services, so you risk blocking innocent sites too. Apps can also rotate IPs to dodge it.</p>
+      </div>
+
+      <div class="card">
+        <h3><span style="color:var(--purple)">3.</span> Deep Packet Inspection (DPI) — the precise tool</h3>
+        <p><strong>What it is:</strong> equipment inside the ISP looks at the <em>type</em> of traffic flowing through and blocks or throttles connections that match the app — based on its traffic patterns or the server name in the connection — rather than just an IP.</p>
+        <p><strong>Stays contained:</strong> the inspection happens on traffic passing through that country's ISPs only. It is a local filter, not a global announcement.</p>
+        <p><strong>Trade-off:</strong> expensive hardware, and modern encryption increasingly hides the details DPI relies on. Still the most surgical option.</p>
+      </div>
+
+      <div class="card">
+        <h3><span style="color:var(--orange)">4.</span> Internal (null) routing — done correctly</h3>
+        <p><strong>What it is:</strong> an ISP routes the app's addresses to "nowhere" (a black hole) <em>inside its own network only</em>. This is the same basic idea a hijack abuses — the crucial difference is the announcement is <strong>never shared with other networks</strong>.</p>
+        <p><strong>Stays contained:</strong> as long as the route is filtered at the network's border and kept internal, it blocks only that ISP's customers and never reaches the global internet.</p>
+        <p><strong>Trade-off:</strong> requires careful border filtering — get it wrong and it becomes exactly the global leak we want to avoid. That's why this is the line between a legitimate block and an accidental hijack.</p>
+      </div>
+
+      <div class="highlight hl-cyan"><strong>The common thread:</strong> every safe method keeps the block <em>inside the country's own networks</em>. The danger with BGP is when an internal decision is announced to the whole world. Proper blocking is local; a hijack is global.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ───────────────── S6 ───────────────── -->
+    <div class="sec" id="s6">
+      <span class="sec-tag tag-yellow">Comparison</span>
+      <h2>Quick comparison</h2>
+      <p>The same goal — "make this app unreachable for users here" — but very different blast radius.</p>
+
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <tr><th>Method</th><th>Where it acts</th><th>Stays local?</th><th>Easy to bypass?</th></tr>
+          <tr><td><strong>DNS blocking</strong></td><td>Country's DNS servers</td><td>✅ Yes</td><td>Easy (change DNS / VPN)</td></tr>
+          <tr><td><strong>IP / firewall block</strong></td><td>ISP firewalls</td><td>✅ Yes</td><td>Moderate (VPN, IP rotation)</td></tr>
+          <tr><td><strong>DPI</strong></td><td>ISP inspection gear</td><td>✅ Yes</td><td>Hard (but VPNs still work)</td></tr>
+          <tr><td><strong>Internal null routing</strong></td><td>ISP routing, kept internal</td><td>✅ Yes — <em>if</em> filtered at the border</td><td>Moderate (VPN)</td></tr>
+          <tr><td><strong>BGP hijacking</strong></td><td>Global routing system</td><td>❌ No — can leak worldwide</td><td>N/A — it's the wrong tool</td></tr>
+        </table>
+      </div>
+
+      <div class="highlight hl-orange"><strong>Reading the table:</strong> the first four methods all keep the impact inside the country. BGP hijacking is the odd one out — it operates on the <em>global</em> routing map, so its effects can spill across borders. That's why it's considered abuse of internet routing rather than a normal blocking technique.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ───────────────── S7 ───────────────── -->
+    <div class="sec" id="s7">
+      <span class="sec-tag tag-blue">Wrap-up</span>
+      <h2>Key takeaways</h2>
+      <ul class="checklist">
+        <li>The internet routes like a postal system: networks (post offices) announce which address blocks (postal codes) they can deliver to.</li>
+        <li><strong>BGP</strong> is the language for those announcements — and it trusts them without verifying ownership.</li>
+        <li><strong>BGP hijacking</strong> is a network falsely claiming someone else's addresses, so their traffic gets redirected, dropped, or spied on.</li>
+        <li>It's dangerous because it's <strong>global</strong> — a local decision can leak worldwide, spread in seconds, and do so silently.</li>
+        <li>To block an app inside a country, use <strong>contained</strong> methods — DNS blocking, IP/firewall rules, DPI, or strictly-internal routing — never a global routing announcement.</li>
+        <li>The golden rule: <strong>proper blocking stays local; a hijack goes global.</strong></li>
+      </ul>
+    </div>
+
+  </div><!-- /.wrap -->
+</div><!-- /.layout -->
+
+<div class="likes-row"><div id="likes"></div></div>
+
+</body>
+</html>
