@@ -4,53 +4,56 @@
 <script src="/js/analytics.js"></script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Browser Storage — Cookies, localStorage &amp; sessionStorage Deep Dive</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;500;600;700;800&family=Newsreader:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"/>
+<title>Browser Storage — Cookies, Web Storage &amp; IndexedDB Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="../../css/likes.css"/>
 <script src="../../js/likes.js" defer></script>
 <style>
   :root {
-    --bg: #faf9f6;
-    --surface: #ffffff;
-    --surface-alt: #f4f1ec;
-    --border: #e4e0d8;
-    --text: #1a1714;
-    --text-muted: #6b6560;
-    --accent: #c44b24;
-    --accent-light: #fef0eb;
-    --green: #2a7d4f;
-    --green-light: #eef7f0;
-    --blue: #2563a8;
-    --blue-light: #eef4fb;
-    --purple: #6d3caa;
-    --purple-light: #f3eefa;
-    --gold: #a67c00;
-    --gold-light: #fdf8ea;
-    --red: #b91c1c;
-    --red-light: #fde2e2;
-    --dark: #1a1714;
-    --dark-surface: #2a2520;
+    --bg: #0b0f14;
+    --surface: #11161e;
+    --surface-alt: #171d27;
+    --border: #232b38;
+    --text: #d4dae5;
+    --text-muted: #7b8599;
+    --heading: #f0f2f7;
+    --accent: #e8743b;
+    --accent-light: rgba(232,116,59,.14);
+    --green: #38b265;
+    --green-light: rgba(56,178,101,.12);
+    --blue: #4a90d9;
+    --blue-light: rgba(74,144,217,.12);
+    --purple: #9b72cf;
+    --purple-light: rgba(155,114,207,.12);
+    --gold: #d4a838;
+    --gold-light: rgba(212,168,56,.14);
+    --red: #e05252;
+    --red-light: rgba(224,82,82,.12);
+    --dark: #0f1520;
+    --dark-surface: #171d27;
     --radius: 10px;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'DM Sans', sans-serif;
     background: var(--bg);
     color: var(--text);
     line-height: 1.7;
     padding: 0;
   }
+  ::selection { background: var(--accent); color: #fff; }
 
   /* ─── HERO ─── */
   .hero {
-    background: var(--dark);
+    background: linear-gradient(165deg, #0f1520 0%, #161e2e 50%, #12171f 100%);
     color: #fff;
     padding: 4rem 2rem 3.5rem;
     text-align: center;
     position: relative;
     overflow: hidden;
+    border-bottom: 1px solid var(--border);
   }
 
   .hero::before {
@@ -80,12 +83,14 @@
   }
 
   .hero h1 {
-    font-size: 2.8rem;
-    font-weight: 800;
+    font-family: 'Playfair Display', serif;
+    font-size: 2.9rem;
+    font-weight: 900;
     letter-spacing: -0.03em;
     line-height: 1.15;
     margin-bottom: 0.6rem;
     position: relative;
+    color: var(--heading);
   }
 
   .hero p {
@@ -209,14 +214,18 @@
   .section-label.gold { background: var(--gold-light); color: var(--gold); }
 
   .section h2 {
-    font-size: 1.65rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.7rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
     margin-bottom: 0.4rem;
+    color: var(--heading);
   }
 
+  .section h3 { color: var(--heading); }
+
   .section > p {
-    color: var(--text-muted);
+    color: var(--text);
     font-size: 0.95rem;
     margin-bottom: 1.5rem;
     max-width: 720px;
@@ -240,10 +249,11 @@
     gap: 0.5rem;
   }
 
+  .card h3 { color: var(--heading); }
   .card h3 .icon { font-size: 1.2rem; line-height: 1; }
 
   .card p, .card li {
-    color: var(--text-muted);
+    color: var(--text);
     font-size: 0.92rem;
     line-height: 1.75;
   }
@@ -295,7 +305,7 @@
     width: 1.9rem;
     height: 1.9rem;
     border-radius: 50%;
-    background: var(--dark);
+    background: var(--accent);
     color: #fff;
     font-size: 0.72rem;
     font-weight: 700;
@@ -304,8 +314,8 @@
     justify-content: center;
     z-index: 1;
   }
-  .step h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.3rem; }
-  .step p { color: var(--text-muted); font-size: 0.9rem; }
+  .step h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.3rem; color: var(--heading); }
+  .step p { color: var(--text); font-size: 0.9rem; }
 
   /* ─── GRID ─── */
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -343,7 +353,7 @@
   .compare-table td {
     padding: 0.85rem 1rem;
     border-bottom: 1px solid var(--border);
-    color: var(--text-muted);
+    color: var(--text);
     vertical-align: top;
   }
   .compare-table tr:last-child td { border-bottom: none; }
@@ -388,7 +398,7 @@
     font-weight: 700;
     margin-bottom: 0.3rem;
   }
-  .callout p { font-size: 0.88rem; color: var(--text-muted); }
+  .callout p { font-size: 0.88rem; color: var(--text); }
 
   .callout.danger { background: var(--red-light); border-color: rgba(185,28,28,0.2); }
   .callout.danger h4 { color: var(--red); }
@@ -424,7 +434,7 @@
     font-weight: 800;
   }
   .qa .a {
-    color: var(--text-muted);
+    color: var(--text);
     font-size: 0.88rem;
     line-height: 1.7;
     padding-left: 1.95rem;
@@ -544,7 +554,7 @@
     font-weight: 600;
     border-radius: 6px;
     cursor: pointer;
-    font-family: 'Outfit', sans-serif;
+    font-family: 'DM Sans', sans-serif;
     transition: all 0.15s;
   }
   button.btn:hover { background: var(--surface-alt); }
@@ -566,7 +576,8 @@
   button.btn.danger:hover { background: #8b1414; }
 
   .header-out {
-    background: #1a1714;
+    background: #0d1219;
+    border: 1px solid var(--border);
     color: #f4b89c;
     border-radius: 8px;
     padding: 0.9rem 1.1rem;
@@ -623,7 +634,7 @@
     padding: 0.3rem 0.6rem;
     border-radius: 5px;
     cursor: pointer;
-    font-family: 'Outfit', sans-serif;
+    font-family: 'DM Sans', sans-serif;
   }
   .cookie-row button:hover { background: var(--red-light); }
 
@@ -751,7 +762,7 @@
   .seq-msg .seq-num {
     display: inline-block;
     margin-right: 0.4rem;
-    font-family: 'Outfit', sans-serif;
+    font-family: 'DM Sans', sans-serif;
     color: var(--accent);
     font-weight: 700;
   }
@@ -1013,8 +1024,8 @@
 <!-- ═══════════ HERO ═══════════ -->
 <div class="hero">
   <div class="tag">Tech Deep Dive · Browser Storage + Live Demos</div>
-  <h1>Browser Storage —<br/>Cookies, localStorage &amp; sessionStorage</h1>
-  <p>The three places a browser can hold data — when to pick which, the security trade-offs, and three live playgrounds on this page.</p>
+  <h1>Browser Storage</h1>
+  <p>Where and how a browser keeps data on the client — and how to pick the right place for each job.</p>
   <a class="back-link" href="../../design-development.html">← Back to all deep dives</a>
 </div>
 
@@ -1025,12 +1036,13 @@
     <h4>On This Page</h4>
     <ol>
       <li><a href="#s1">Why Browser Storage Exists</a></li>
-      <li><a href="#s5">The Three Mechanisms</a></li>
+      <li><a href="#s5">The Storage Mechanisms</a></li>
       <li><a href="#s2">Cookies — Anatomy &amp; Attributes</a></li>
       <li><a href="#s-flow">Cookies in Flight — Login Flow</a></li>
       <li><a href="#s4">Cookie Playground</a></li>
       <li><a href="#s5b">Web Storage Playgrounds</a></li>
       <li><a href="#s5a">Real-World Use Cases</a></li>
+      <li><a href="#s-idb">IndexedDB — Offline Database</a></li>
       <li><a href="#s6">Security Pitfalls</a></li>
       <li><a href="#s7">Privacy &amp; Modern Web</a></li>
       <li><a href="#s8">Interview Q&amp;A</a></li>
@@ -1042,8 +1054,8 @@
 <!-- ═══════════ SECTION 1: WHY ═══════════ -->
 <div class="section" id="s1">
   <span class="section-label red">Topic 1</span>
-  <h2>Why Browser Storage Exists — Two Problems, Three Solutions</h2>
-  <p>Browsers ship with three different places to keep data: <b>cookies</b>, <b>localStorage</b>, and <b>sessionStorage</b>. They exist because the web needed to solve two different problems — and the solutions arrived fifteen years apart.</p>
+  <h2>Why Browser Storage Exists — The Problems It Solves</h2>
+  <p>Browsers ship with several different places to keep data — <b>cookies</b>, <b>localStorage</b>, <b>sessionStorage</b>, and <b>IndexedDB</b>. They exist because the web kept running into new problems, and each mechanism was added to solve one of them.</p>
 
   <div class="grid-2">
     <div class="card">
@@ -1064,10 +1076,10 @@ sessionStorage.setItem('step', '2');</div>
 
 <div class="divider"></div>
 
-<!-- ═══════════ SECTION 2: THE THREE MECHANISMS (moved up) ═══════════ -->
+<!-- ═══════════ SECTION 2: THE CORE MECHANISMS (moved up) ═══════════ -->
 <div class="section" id="s5">
   <span class="section-label green">Topic 2</span>
-  <h2>The Three Mechanisms — Side by Side</h2>
+  <h2>The Storage Mechanisms — Side by Side</h2>
   <p>Before we dive into each, here's the whole landscape on one page. Every property that matters when you're picking which storage to use.</p>
 
   <table class="compare-table">
@@ -1077,6 +1089,7 @@ sessionStorage.setItem('step', '2');</div>
         <th>Cookies</th>
         <th>localStorage</th>
         <th>sessionStorage</th>
+        <th>IndexedDB</th>
       </tr>
     </thead>
     <tbody>
@@ -1085,49 +1098,70 @@ sessionStorage.setItem('step', '2');</div>
         <td><span class="badge b-yes">YES</span></td>
         <td><span class="badge b-no">NO</span></td>
         <td><span class="badge b-no">NO</span></td>
+        <td><span class="badge b-no">NO</span></td>
       </tr>
       <tr>
         <td>Capacity</td>
         <td>~4 KB / cookie</td>
         <td>~5–10 MB / origin</td>
         <td>~5–10 MB / tab</td>
+        <td>100s MB – GBs</td>
       </tr>
       <tr>
         <td>Hidden from JS</td>
         <td>With <code>HttpOnly</code></td>
         <td><span class="badge b-no">NO</span></td>
         <td><span class="badge b-no">NO</span></td>
+        <td><span class="badge b-no">NO</span></td>
+      </tr>
+      <tr>
+        <td>Data model</td>
+        <td>String name=value</td>
+        <td>String → string</td>
+        <td>String → string</td>
+        <td>Objects + indexes</td>
+      </tr>
+      <tr>
+        <td>API style</td>
+        <td>Sync</td>
+        <td>Sync</td>
+        <td>Sync</td>
+        <td>Async (non-blocking)</td>
       </tr>
       <tr>
         <td>Lifetime</td>
         <td>Configurable (Expires / session)</td>
         <td>Until cleared</td>
         <td>Until tab closes</td>
+        <td>Until cleared</td>
       </tr>
       <tr>
         <td>Cross-tab sharing</td>
         <td>Yes (same origin)</td>
         <td>Yes (same origin)</td>
         <td><span class="badge b-no">No — tab scoped</span></td>
+        <td>Yes (same origin)</td>
       </tr>
       <tr>
         <td>API</td>
         <td><code>document.cookie</code> + <code>Set-Cookie</code> header</td>
         <td><code>localStorage.setItem(k, v)</code></td>
         <td><code>sessionStorage.setItem(k, v)</code></td>
+        <td><code>indexedDB.open(name)</code> + object stores</td>
       </tr>
       <tr>
         <td>Best for</td>
         <td>Auth sessions, CSRF tokens, server-rendered prefs</td>
         <td>Theme, draft text, app caches</td>
         <td>Single-flow wizards, OAuth state</td>
+        <td>Offline apps, large / structured data</td>
       </tr>
     </tbody>
   </table>
 
   <div class="callout">
     <h4>Rule of thumb</h4>
-    <p>If the server needs to read it on every request → <b>cookie</b>. If only the JS app needs it → <code>localStorage</code> (persistent) or <code>sessionStorage</code> (one-tab). Never store JWTs in <code>localStorage</code> unless your XSS posture is zero — and assume it isn't.</p>
+    <p>If the server needs to read it on every request → <b>cookie</b>. If only the JS app needs it → <code>localStorage</code> (persistent) or <code>sessionStorage</code> (one-tab). If the data is large, structured, or must work offline → <code>IndexedDB</code>. Never store JWTs in <code>localStorage</code> or <code>IndexedDB</code> unless your XSS posture is zero — and assume it isn't.</p>
   </div>
 </div>
 
@@ -1788,11 +1822,162 @@ if (expected !== got)
 
 <div class="divider"></div>
 
+<!-- ═══════════ SECTION: INDEXEDDB ═══════════ -->
+<div class="section" id="s-idb">
+  <span class="section-label purple">Topic 8 · Deep Dive</span>
+  <h2>IndexedDB — The Browser's Real Database</h2>
+  <p>Cookies hold a few bytes. <code>localStorage</code> holds a few megabytes of plain strings, synchronously, with no way to query them. But what if your app has to work with <b>thousands of emails</b>, an <b>entire Notion workspace</b>, or a <b>Figma file</b> — and keep working when the Wi-Fi drops? That's the job <code>IndexedDB</code> was built for: a full, transactional, asynchronous database that lives <i>inside the browser</i>.</p>
+
+  <h3 style="margin-top:1.5rem; font-size:1.25rem; font-weight:800; letter-spacing:-0.01em;">🛜 Why do we even need it? — the offline apps you already use</h3>
+  <p style="margin-top:0.4rem;">Open Gmail on a plane. Scroll old emails, search, draft a reply. No signal — yet it all works. The apps below all lean on IndexedDB to feel instant and survive going offline:</p>
+
+  <div class="grid-3" style="margin-top:0.75rem;">
+    <div class="card"><h3><span class="icon">📧</span> Gmail</h3><p>Reads previously synced emails offline — search, open, and draft with zero network.</p></div>
+    <div class="card"><h3><span class="icon">📄</span> Google Docs</h3><p>Keeps editing documents without an internet connection; edits sync when you reconnect.</p></div>
+    <div class="card"><h3><span class="icon">📝</span> Notion</h3><p>Holds pages and blocks locally and syncs notes automatically after you're back online.</p></div>
+    <div class="card"><h3><span class="icon">🎨</span> Figma</h3><p>Recovers your designs after a refresh or an unexpected browser crash.</p></div>
+    <div class="card"><h3><span class="icon">🎵</span> Spotify Web</h3><p>Caches playlists, albums, and artwork so the library loads instantly.</p></div>
+    <div class="card"><h3><span class="icon">🗺️</span> Google Maps</h3><p>Serves previously viewed maps and locations far faster than re-fetching them.</p></div>
+    <div class="card"><h3><span class="icon">🛒</span> Amazon / Flipkart</h3><p>Preserves your shopping cart and recently viewed products across sessions.</p></div>
+    <div class="card"><h3><span class="icon">💬</span> WhatsApp Web</h3><p>Loads recent chats instantly while new messages sync in the background.</p></div>
+    <div class="card"><h3><span class="icon">🎓</span> Coursera / Udemy</h3><p>Saves your learning progress and course data locally so lessons resume anywhere.</p></div>
+    <div class="card"><h3><span class="icon">📰</span> News Apps</h3><p>Opens previously viewed articles instantly, even on a poor connection.</p></div>
+    <div class="card"><h3><span class="icon">💻</span> VS Code Web</h3><p>Persists your open files and settings entirely inside the browser.</p></div>
+    <div class="card"><h3><span class="icon">📴</span> Any PWA</h3><p>Progressive Web Apps use it (with Service Workers) as their offline data store.</p></div>
+  </div>
+
+  <p style="margin-top:1.2rem;">The trick is that the browser isn't just HTML, CSS, and JS anymore — it ships with a database layer underneath your app. All the <b>important data lives locally</b>, and the network becomes an <i>optimisation</i>, not a requirement:</p>
+
+  <div class="example">Browser
+ ├── HTML        → structure of the page
+ ├── CSS         → styling
+ ├── JS          → application logic
+ └── IndexedDB   → the data itself (persists, works offline)</div>
+
+  <h3 style="margin-top:2rem; font-size:1.25rem; font-weight:800; letter-spacing:-0.01em;">📬 The Gmail flow, step by step</h3>
+  <p style="margin-top:0.4rem;">Here's exactly how "read old emails with no internet" actually happens. The one-time download populates the local database; from then on the UI reads from IndexedDB, not the server.</p>
+
+  <div class="steps" style="margin-top:1rem;">
+    <div class="step" data-num="1">
+      <h3>User opens Gmail</h3>
+      <p>The app shell (HTML/CSS/JS) loads — either from the network or from the Service Worker cache if offline.</p>
+    </div>
+    <div class="step" data-num="2">
+      <h3>Emails downloaded</h3>
+      <p>While online, the app fetches your recent messages from the server over the network.</p>
+    </div>
+    <div class="step" data-num="3">
+      <h3>Stored in IndexedDB</h3>
+      <p>Each email is written into an <b>object store</b> keyed by message ID — as a structured object, not a string. Thousands of them, comfortably.</p>
+    </div>
+    <div class="step" data-num="4">
+      <h3>Internet goes off</h3>
+      <p>The connection drops. Any <code>fetch()</code> to the server now fails — but the app doesn't rely on it for reads.</p>
+    </div>
+    <div class="step" data-num="5">
+      <h3>User can still read old emails</h3>
+      <p>The UI reads straight from IndexedDB. Search, open, scroll — all instant and fully offline. New sends queue up and flush when the network returns.</p>
+    </div>
+  </div>
+
+  <h3 style="margin-top:2rem; font-size:1.25rem; font-weight:800; letter-spacing:-0.01em;">🧠 What IndexedDB actually is</h3>
+  <p style="margin-top:0.4rem;">Think of it as a <b>NoSQL, object-oriented database</b> baked into the browser. Not tables and rows — <i>object stores</i> full of JavaScript objects, each retrievable by key or by an index you defined.</p>
+
+  <div class="grid-2" style="margin-top:0.75rem;">
+    <div class="card">
+      <h3>🗄️ Object stores</h3>
+      <p>The equivalent of a table. Each store holds JavaScript objects, addressed by a <b>key</b> (e.g. the email's <code>id</code>). A single database can have many stores.</p>
+    </div>
+    <div class="card">
+      <h3>🔎 Indexes</h3>
+      <p>Secondary lookups. Define an index on <code>from</code> or <code>date</code> and you can query "all emails from Alice" or "everything this week" without scanning every record.</p>
+    </div>
+    <div class="card">
+      <h3>🔒 Transactions</h3>
+      <p>Every read and write runs inside a transaction. If anything in the batch fails, the whole thing rolls back — so your local data never ends up half-written.</p>
+    </div>
+    <div class="card">
+      <h3>⚡ Asynchronous</h3>
+      <p>Unlike <code>localStorage</code>, IndexedDB never blocks the main thread. Operations return via events/promises, so parsing a big dataset won't freeze the UI.</p>
+    </div>
+    <div class="card">
+      <h3>🧬 Stores real objects</h3>
+      <p>It uses the <b>structured clone</b> algorithm — you can store objects, arrays, dates, blobs, even files. No <code>JSON.stringify</code> dance like <code>localStorage</code> forces on you.</p>
+    </div>
+    <div class="card">
+      <h3>💾 Huge capacity</h3>
+      <p>Not ~5 MB — often <b>hundreds of MB to gigabytes</b>, scaled to available disk. Enough for whole mailboxes, document sets, or media metadata.</p>
+    </div>
+  </div>
+
+  <h3 style="margin-top:2rem; font-size:1.25rem; font-weight:800; letter-spacing:-0.01em;">⚖️ IndexedDB vs localStorage — the honest comparison</h3>
+  <table class="compare-table" style="margin-top:0.75rem;">
+    <thead>
+      <tr>
+        <th>Property</th>
+        <th>localStorage</th>
+        <th>IndexedDB</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Data model</td><td>String key → string value</td><td>Object stores + indexes (NoSQL)</td></tr>
+      <tr><td>Stored types</td><td>Strings only (manual <code>JSON.stringify</code>)</td><td>Objects, arrays, dates, blobs, files</td></tr>
+      <tr><td>Capacity</td><td>~5–10 MB / origin</td><td>Hundreds of MB → GBs (disk-based quota)</td></tr>
+      <tr><td>API style</td><td>Synchronous (blocks main thread)</td><td>Asynchronous (event / promise based)</td></tr>
+      <tr><td>Querying</td><td>None — read the whole key</td><td>Indexes, key ranges, cursors</td></tr>
+      <tr><td>Transactions</td><td><span class="badge b-no">NO</span></td><td><span class="badge b-yes">YES</span></td></tr>
+      <tr><td>Best for</td><td>Small flags, prefs, tokens-you-shouldn't-store</td><td>Offline apps, large/structured datasets, caches</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="margin-top:2rem; font-size:1.25rem; font-weight:800; letter-spacing:-0.01em;">🛠️ What the code looks like</h3>
+  <p style="margin-top:0.4rem;">The raw API is event-based and verbose — this is why most teams reach for a thin wrapper like <code>idb</code>. Here's the shape of storing and reading an email:</p>
+
+  <div class="example">// 1. Open (or create/upgrade) the database
+const req = indexedDB.open('gmail-cache', 1);
+
+req.onupgradeneeded = (e) =&gt; {
+  const db = e.target.result;
+  // create an object store keyed by the email id
+  const store = db.createObjectStore('emails', { keyPath: 'id' });
+  // a secondary index so we can query by sender
+  store.createIndex('by_from', 'from', { unique: false });
+};
+
+req.onsuccess = (e) =&gt; {
+  const db = e.target.result;
+
+  // 2. WRITE — inside a readwrite transaction
+  const tx = db.transaction('emails', 'readwrite');
+  tx.objectStore('emails').put({
+    id: 'msg-42', from: 'alice@x.com',
+    subject: 'Lunch?', body: '...', date: Date.now()
+  });
+
+  // 3. READ — even with no internet, this works
+  const rtx = db.transaction('emails', 'readonly');
+  const get = rtx.objectStore('emails').get('msg-42');
+  get.onsuccess = () =&gt; console.log(get.result); // the full object
+};</div>
+
+  <div class="callout" style="margin-top:1rem;">
+    <h4>The mental model</h4>
+    <p><code>localStorage</code> is a sticky note. IndexedDB is a filing cabinet with labelled drawers, an index-card system, and a rule that you never leave a drawer half-open. Reach for it the moment your data is large, structured, or has to survive offline.</p>
+  </div>
+
+  <div class="callout danger">
+    <h4>It is NOT a secure store</h4>
+    <p>IndexedDB is readable by any JavaScript running on your origin — including an XSS payload. Same rule as <code>localStorage</code>: never put auth tokens, secrets, or unencrypted sensitive data here. Use it for cache and app data, keep the session in an <code>HttpOnly</code> cookie.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
 <!-- ═══════════ SECTION 6: SECURITY ═══════════ -->
 <div class="section" id="s6">
-  <span class="section-label red">Topic 8</span>
-  <h2>Security Pitfalls — Across All Three Stores</h2>
-  <p>The threat model differs per storage. Cookies face CSRF; <code>localStorage</code> faces XSS exfiltration; <code>sessionStorage</code> faces tab-takeover variants. Below: the four most common ways each one bites teams in production.</p>
+  <span class="section-label red">Topic 9</span>
+  <h2>Security Pitfalls — Across Every Store</h2>
+  <p>The threat model differs per storage. Cookies face CSRF; <code>localStorage</code>, <code>sessionStorage</code>, and <code>IndexedDB</code> are all readable by any JS on the origin, so they face XSS exfiltration; <code>sessionStorage</code> also faces tab-takeover variants. Below: the most common ways these stores bite teams in production.</p>
 
   <div class="grid-2">
     <div class="card">
@@ -1831,7 +2016,7 @@ if (expected !== got)
 
 <!-- ═══════════ SECTION 7: PRIVACY ═══════════ -->
 <div class="section" id="s7">
-  <span class="section-label gold">Topic 9</span>
+  <span class="section-label gold">Topic 10</span>
   <h2>The End of Third-Party Cookies (and What's Replacing Them)</h2>
   <p>For two decades, ad networks tracked users across sites by relying on cookies set by an iframe to <code>doubleclick.net</code> being readable on every other site that embedded a DoubleClick pixel. Browsers have been progressively shutting this down.</p>
 
@@ -1869,7 +2054,7 @@ if (expected !== got)
 
 <!-- ═══════════ SECTION 8: Q&A ═══════════ -->
 <div class="section" id="s8">
-  <span class="section-label blue">Topic 10</span>
+  <span class="section-label blue">Topic 11</span>
   <h2>Interview Q&amp;A</h2>
 
   <div class="qa">
@@ -1949,7 +2134,7 @@ if (expected !== got)
 
 </div>
 
-<div class="footer">© Shubham Bansal · 2026 · Browser Storage Deep Dive — Cookies, localStorage &amp; sessionStorage</div>
+<div class="footer">© Shubham Bansal · 2026 · Browser Storage Deep Dive — Cookies, Web Storage &amp; IndexedDB</div>
 
   </main>
 </div>
@@ -2387,7 +2572,7 @@ if (expected !== got)
 
 <div class="likes-row">
   <p class="like-prompt">
-    <strong>Did this clear up cookies vs localStorage vs sessionStorage for you?</strong>
+    <strong>Did this clear up how the browser's storage options compare?</strong>
     If it clicked, tap the ❤️ — <em>that's how I know it hit.</em>
   </p>
   <div id="likes"></div>
