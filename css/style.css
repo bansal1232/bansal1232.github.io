@@ -672,6 +672,22 @@ a:visited {
   margin: 2px 0 6px;
 }
 
+.exp-project {
+  margin: 14px 0 10px;
+}
+
+.exp-project__title {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 14.5px;
+}
+
+.exp-project__desc {
+  color: var(--text);
+  font-size: 13.5px;
+  margin: 3px 0 4px;
+}
+
 .project {
   margin-bottom: 22px;
 }

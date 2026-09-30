@@ -74,6 +74,9 @@
               <span class="email-label">✉ shubhambansal1232@gmail.com</span>
               <span class="email-copy" aria-hidden="true">click to copy</span>
             </a>
+            <a class="contact-item" href="https://www.youtube.com/channel/UCxu_uOn2Kda_87yUanbpdcQ" target="_blank" rel="noopener">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#FF0000" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.4 31.4 0 0 0 0 12a31.4 31.4 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.4 31.4 0 0 0 24 12a31.4 31.4 0 0 0-.5-5.8zM9.6 15.6V8.4l6.2 3.6z"/></svg> YouTube
+            </a>
             <a class="contact-item" href="https://www.linkedin.com/in/bansal1232/" target="_blank" rel="noopener">
               <img src="img/linked.png" width="20" alt="" /> LinkedIn
             </a>
@@ -139,14 +142,39 @@
           <button class="tech-pill" data-tech="elasticsearch">Elasticsearch</button>
           <button class="tech-pill" data-tech="aws">AWS</button>
           <button class="tech-pill" data-tech="spring">Spring</button>
+          <button class="tech-pill" data-tech="python">Python</button>
+          <button class="tech-pill" data-tech="ai">AI / LLM</button>
         </div>
 
         <div class="timeline">
 
+          <div class="experience" data-tech="python ai aws">
+            <div class="meta-title"><a href="https://arcticwolf.com/" target="_blank" rel="noopener">Arctic Wolf</a></div>
+            <div class="experience__role">Senior Software Engineer</div>
+            <div class="experience__time">Jun 2026 – Present · Bengaluru, India</div>
+            <div class="exp-project">
+              <div class="exp-project__title">NLQ → PQL Conversion</div>
+              <p class="exp-project__desc">Turned a user's plain-English question into executable <b>AQL (Aurora Query Language)</b> — internally called AQL, surfaced to the product/UI as <b>PQL</b> — through two complementary paths, one deterministic and one AI-composed.</p>
+              <ul>
+                <li><b>NLQ → PQL, programmatically:</b> Built a new <b>service/aql</b> module that deterministically translates the structured <b>IntentEnvelope</b> emitted by the Intent Generation Agent (IGA) pipeline — one or more <b>QuerySpec</b> objects covering table, fields, filters, group-by, order-by, time range, and limit — into pipe-based AQL text (<b>table | where … | summarize … | sort by … | take … | render …</b>). Shipped as a pure, dependency-free translation layer (<b>deps = []</b>) exposed via a single public entry point, <b>intent_to_aql(intent)</b>, re-routing the flow so AI-generated PQL now passes through the AQL service before the Query Broker instead of the Broker consuming the DSL directly.</li>
+                <li><b>NLQ → PQL, dynamically:</b> Added a dynamic Natural-Language-Query → AQL path to the <b>ai-intent-service</b> — a plain-English query is classified, enriched with schema/field context via <b>RAG retrieval</b>, and composed by an <b>LLM</b> directly into AQL pipeline text. Unlike the intent flow, this path emits the query language itself (not a JSON <b>IntentEnvelope</b>) and returns the composed AQL as text for downstream use rather than executing it.</li>
+              </ul>
+            </div>
+
+            <div class="exp-project">
+              <div class="exp-project__title">OIDC for GitHub Actions</div>
+              <p class="exp-project__desc">Modernised CI/CD deployments for the Airflow <b>kb_builder</b> across every environment, from dev2 to prod.</p>
+              <ul>
+                <li>Migrated deployments to <b>OIDC-based authentication</b>, eliminating long-lived static cloud credentials and replacing the manually-triggered, dropdown-selected job flow.</li>
+                <li>Reworked jobs to run <b>fully in parallel without interrupting each other</b>, adding concurrency guards so repeated merges of the same PR never cancel an already-running job — automating the sync of the <b>/data</b> and <b>/dags</b> folders under <b>kb_builder</b> for Airflow.</li>
+              </ul>
+            </div>
+          </div>
+
           <div class="experience" data-tech="node mongodb postgresql redis elasticsearch aws">
             <div class="meta-title"><a href="https://www.onsurity.com/" target="_blank" rel="noopener">Onsurity</a></div>
             <div class="experience__role">Senior Software Engineer</div>
-            <div class="experience__time">Jan 2023 – Present · Bengaluru, India</div>
+            <div class="experience__time">Jan 2023 – May 2026 · Bengaluru, India</div>
             <ul>
               <li>Architected and shipped end-to-end B2B insurance membership APIs for the <b>CRED integration</b>, serving <b>~10K API calls/day</b> at 99.9% uptime — secured against replay attacks via timestamp validation + HMAC-SHA256 signing and Redis locking for idempotency.</li>
               <li>Slashed employer dashboard API <b>p95 latency by ~40%</b> by introducing an Elasticsearch caching layer absorbing <b>~5000 queries/min</b> at peak, eliminating high-frequency MongoDB round-trips.</li>
